@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<golem>
+  <controller name="Birmingham robot">
+    <global_pose v1="0.0" v2="0.0" v3="0.0" roll="0.0" pitch="0.0" yaw="0.0"></global_pose>
+
+    <controller library_path="GolemDeviceKukaKR5SixxSim" config_path="GolemDeviceKukaKR5SixxSim" linked_chain_index="-1">
+      <local_pose v1="0.0" v2="0.0" v3="0.0" roll="0.0" pitch="0.0" yaw="0.0"></local_pose>
+    </controller>
+    <controller library_path="GolemDeviceDLRHitHandIISim" config_path="GolemDeviceDLRHitHandIISim" linked_chain_index="0">
+      <!-- y = 80(kuka end-effector mounting) + 7+2+2(Rustam's F/T sensor and Kinect mounting plates) + 33.3(Gamma FT sensor) + 14(approx. Schunk adapter) -->
+      <local_pose v1="0.0" v2="0.1383" v3="0.0" roll="0.0" pitch="2.74889357189" yaw="0.0"></local_pose>
+    </controller>
+  </controller>
+
+  <planner>
+    <!--<heuristic>
+      <collision enabled="1" path_dist_delta="0.01" skin_thickness="0.001"/>
+      <cost dist_goal_fac="1.0" dist_root_fac="0.2" dist_dflt_fac="0.01" dist_limits_fac="10.0" dist_path_fac="1.0"/>
+
+      <chain enabled_lin="1" enabled_ang="1" dist_norm="0.9" dist_linear_max="0.3" dist_angular_max="0.4" dist_configspace_workspace_norm="0.5"></chain>
+
+      <chain enabled_lin="1" enabled_ang="0" dist_norm="0.9" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
+      <chain enabled_lin="1" enabled_ang="0" dist_norm="0.8" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
+      <chain enabled_lin="1" enabled_ang="0" dist_norm="0.9" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
+      <chain enabled_lin="1" enabled_ang="0" dist_norm="0.8" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
+      <chain enabled_lin="1" enabled_ang="0" dist_norm="0.9" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
+
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="2.0" collision_bounds="1" collision_joints="2, 5"></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="2.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="2.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="3.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="3.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="3.0" collision_bounds="1" collision_joints=""></joint>
+
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints="13"></joint>
+
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints="17"></joint>
+
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints="21"></joint>
+
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints="25"></joint>
+
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="1" collision_joints=""></joint>
+    </heuristic>
+
+    <global_finder dist_scale_fac="0.75" range_fac="0.5" num_iterations="6">
+      <global_path_finder graph_size="5000" waypoint_init_trials="10000" dist_goal_fac="0.95" dist_root_fac="0.2" dist_path_fac="0.98">
+        <generator_root weight="1.0">
+          <delta dim="26" c1="6.28318531" c2="6.28318531" c3="6.28318531" c4="6.28318531" c5="6.28318531" c6="6.28318531" c7="6.28318531" c8="6.28318531" c9="6.28318531" c10="6.28318531" c11="6.28318531" c12="6.28318531" c13="6.28318531" c14="6.28318531" c15="6.28318531" c16="6.28318531" c17="6.28318531" c18="6.28318531" c19="6.28318531" c20="6.28318531" c21="6.28318531" c22="6.28318531" c23="6.28318531" c24="6.28318531" c25="6.28318531" c26="6.28318531"/>
+        </generator_root>
+        <generator_goal weight="1.0">
+          <delta dim="26" c1="1.0" c2="1.0" c3="1.0" c4="1.0" c5="1.0" c6="1.0" c7="1.0" c8="1.0" c9="1.0" c10="1.0" c11="1.0" c12="1.0" c13="1.0" c14="1.0" c15="1.0" c16="1.0" c17="1.0" c18="1.0" c19="1.0" c20="1.0" c21="1.0" c22="1.0" c23="1.0" c24="1.0" c25="1.0" c26="1.0"/>
+        </generator_goal>
+      </global_path_finder>
+      <local_path_finder graph_size="2000" waypoint_init_trials="10000" dist_goal_fac="0.95" dist_root_fac="0.2" dist_path_fac="0.98">
+        <generator_root weight="1.0">
+          <delta dim="26" c1="6.28318531" c2="6.28318531" c3="6.28318531" c4="6.28318531" c5="6.28318531" c6="6.28318531" c7="6.28318531" c8="6.28318531" c9="6.28318531" c10="6.28318531" c11="6.28318531" c12="6.28318531" c13="6.28318531" c14="6.28318531" c15="6.28318531" c16="6.28318531" c17="6.28318531" c18="6.28318531" c19="6.28318531" c20="6.28318531" c21="6.28318531" c22="6.28318531" c23="6.28318531" c24="6.28318531" c25="6.28318531" c26="6.28318531"/>
+        </generator_root>
+        <generator_goal weight="1.0">
+          <delta dim="26" c1="6.28318531" c2="6.28318531" c3="6.28318531" c4="6.28318531" c5="6.28318531" c6="6.28318531" c7="6.28318531" c8="6.28318531" c9="6.28318531" c10="6.28318531" c11="6.28318531" c12="6.28318531" c13="6.28318531" c14="6.28318531" c15="6.28318531" c16="6.28318531" c17="6.28318531" c18="6.28318531" c19="6.28318531" c20="6.28318531" c21="6.28318531" c22="6.28318531" c23="6.28318531" c24="6.28318531" c25="6.28318531" c26="6.28318531"/>
+        </generator_goal>
+      </local_path_finder>
+    </global_finder>
+    <local_finder>
+      <range dim="26" c1="0.31415926" c2="0.31415926" c3="0.31415926" c4="0.31415926" c5="0.31415926" c6="0.31415926" c7="0.31415926" c8="0.31415926" c9="0.31415926" c10="0.31415926" c11="0.31415926" c12="0.31415926" c13="0.31415926" c14="0.31415926" c15="0.31415926" c16="0.31415926" c17="0.31415926" c18="0.31415926" c19="0.31415926" c20="0.31415926" c21="0.31415926" c22="0.31415926" c23="0.31415926" c24="0.31415926" c25="0.31415926" c26="0.31415926"/>
+    </local_finder>
+    <optimisation num_iterations="1000" t_init="0.1" t_final="0.01" e_norm="3.0e4" cross_prob="0.3" dist_path_thr="0.5"/>
+    <kinematics minimum="1" population_size="100" generations_num="10000000" diff_fac="0.5" cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-5" num_of_threads="-1" thread_priority="lowest"/>
+    <profile average="1.0">
+      <velocity dim="26" c1="1.0" c2="1.0" c3="1.0" c4="1.0" c5="1.0" c6="1.0" c7="1.0" c8="1.0" c9="1.0" c10="1.0" c11="1.0" c12="1.0" c13="1.0" c14="1.0" c15="1.0" c16="1.0" c17="1.0" c18="1.0" c19="1.0" c20="1.0" c21="1.0" c22="1.0" c23="1.0" c24="1.0" c25="1.0" c26="1.0"/>
+      <acceleration dim="26" c1="1.0" c2="1.0" c3="1.0" c4="1.0" c5="1.0" c6="1.0" c7="1.0" c8="1.0" c9="1.0" c10="1.0" c11="1.0" c12="1.0" c13="1.0" c14="1.0" c15="1.0" c16="1.0" c17="1.0" c18="1.0" c19="1.0" c20="1.0" c21="1.0" c22="1.0" c23="1.0" c24="1.0" c25="1.0" c26="1.0"/>
+    </profile>-->
+
+    <heuristic>
+      <collision enabled="1" path_dist_delta="0.01" skin_thickness="0.001"/>
+      <cost dist_goal_fac="1.0" dist_root_fac="0.01" dist_dflt_fac="0.0" dist_limits_fac="1.0" dist_path_fac="1.0"/>
+
+      <chain enabled_obs="1" enabled_lin="1" enabled_ang="1" dist_norm="0.2" dist_linear_max="0.3" dist_angular_max="0.4" dist_configspace_workspace_norm="0.98"></chain>
+
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.01" dist_max="2.0" collision_bounds="1" collision_joints="2, 5"></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.01" dist_max="2.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.01" dist_max="2.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.01" dist_max="3.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.01" dist_max="3.0" collision_bounds="1" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.01" dist_max="3.0" collision_bounds="1" collision_joints=""></joint>
+
+      <chain enabled_obs="1" enabled_lin="1" enabled_ang="1" dist_norm="0.9" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
+      <chain enabled_obs="1" enabled_lin="1" enabled_ang="1" dist_norm="0.8" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
+      <chain enabled_obs="1" enabled_lin="1" enabled_ang="1" dist_norm="0.9" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
+      <chain enabled_obs="1" enabled_lin="1" enabled_ang="1" dist_norm="0.8" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
+      <chain enabled_obs="1" enabled_lin="1" enabled_ang="1" dist_norm="0.9" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
+
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="13"></joint>
+
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="17"></joint>
+
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="21"></joint>
+
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="25"></joint>
+
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+    </heuristic>
+
+    <global_finder dist_scale_fac="0.7" range_fac="0.5" num_iterations="3">
+      <global_path_finder graph_size="10000" waypoint_init_trials="10000">
+        <generator_root weight="1.0">
+          <delta dim="26" c1="1.57079633" c2="6.28318531" c3="6.28318531" c4="6.28318531" c5="6.28318531" c6="6.28318531" c7="6.28318531" c8="6.28318531" c9="6.28318531" c10="6.28318531" c11="6.28318531" c12="6.28318531" c13="6.28318531" c14="6.28318531" c15="6.28318531" c16="6.28318531" c17="6.28318531" c18="6.28318531" c19="6.28318531" c20="6.28318531" c21="6.28318531" c22="6.28318531" c23="6.28318531" c24="6.28318531" c25="6.28318531" c26="6.28318531"/>
+        </generator_root>
+        <generator_goal weight="1.0">
+          <delta dim="26" c1="1.57079633" c2="6.28318531" c3="6.28318531" c4="6.28318531" c5="6.28318531" c6="6.28318531" c7="6.28318531" c8="6.28318531" c9="6.28318531" c10="6.28318531" c11="6.28318531" c12="6.28318531" c13="6.28318531" c14="6.28318531" c15="6.28318531" c16="6.28318531" c17="6.28318531" c18="6.28318531" c19="6.28318531" c20="6.28318531" c21="6.28318531" c22="6.28318531" c23="6.28318531" c24="6.28318531" c25="6.28318531" c26="6.28318531"/>
+        </generator_goal>
+      </global_path_finder>
+      <local_path_finder graph_size="1000" waypoint_init_trials="10000">
+        <generator_root weight="1.0">
+          <delta dim="26" c1="0.78539816" c2="0.78539816" c3="0.78539816" c4="0.78539816" c5="0.78539816" c6="0.78539816" c7="6.28318531" c8="6.28318531" c9="6.28318531" c10="6.28318531" c11="6.28318531" c12="6.28318531" c13="6.28318531" c14="6.28318531" c15="6.28318531" c16="6.28318531" c17="6.28318531" c18="6.28318531" c19="6.28318531" c20="6.28318531" c21="6.28318531" c22="6.28318531" c23="6.28318531" c24="6.28318531" c25="6.28318531" c26="6.28318531"/>
+        </generator_root>
+        <generator_goal weight="1.0">
+          <delta dim="26" c1="0.78539816" c2="0.78539816" c3="0.78539816" c4="0.78539816" c5="0.78539816" c6="0.78539816" c7="6.28318531" c8="6.28318531" c9="6.28318531" c10="6.28318531" c11="6.28318531" c12="6.28318531" c13="6.28318531" c14="6.28318531" c15="6.28318531" c16="6.28318531" c17="6.28318531" c18="6.28318531" c19="6.28318531" c20="6.28318531" c21="6.28318531" c22="6.28318531" c23="6.28318531" c24="6.28318531" c25="6.28318531" c26="6.28318531"/>
+        </generator_goal>
+      </local_path_finder>
+    </global_finder>
+    <local_finder>
+      <range dim="26" c1="0.31415926" c2="0.31415926" c3="0.31415926" c4="0.31415926" c5="0.31415926" c6="0.31415926" c7="0.31415926" c8="0.31415926" c9="0.31415926" c10="0.31415926" c11="0.31415926" c12="0.31415926" c13="0.31415926" c14="0.31415926" c15="0.31415926" c16="0.31415926" c17="0.31415926" c18="0.31415926" c19="0.31415926" c20="0.31415926" c21="0.31415926" c22="0.31415926" c23="0.31415926" c24="0.31415926" c25="0.31415926" c26="0.31415926"/>
+    </local_finder>
+    <optimisation num_iterations="500" t_init="0.1" t_final="0.01" e_norm="3.0e4" cross_prob="0.3" dist_path_thr="0.5"/>
+    <kinematics minimum="1" population_size="100" generations_num="10000000" de_diff_fac="0.5" de_cross_prob="0.3" test_generations="1000" test_pairs="100" test_variance="1e-9" num_of_threads="-1" thread_priority="lowest"/>
+    <profile average="1.0">
+      <velocity dim="26" c1="0.1" c2="0.1" c3="0.1" c4="0.1" c5="0.1" c6="0.1" c7="0.5" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5" c21="0.5" c22="0.5" c23="0.5" c24="0.5" c25="0.5" c26="0.5"/>
+      <acceleration dim="26" c1="0.05" c2="0.05" c3="0.05" c4="0.05" c5="0.05" c6="0.05" c7="0.5" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5" c21="0.5" c22="0.5" c23="0.5" c24="0.5" c25="0.5" c26="0.5"/>
+    </profile>
+  </planner>
+</golem>
