@@ -91,10 +91,10 @@ public:
 		/** Default construtor */
 		HypSample() {}
 		/** Complete constructor */
-		HypSample(const golem::U32 idx, const grasp::RBPose::Sample &s, grasp::Point::Seq &p) {
+		HypSample(const golem::U32 idx, const grasp::RBPose::Sample &s, grasp::Cloud::PointSeq &p) {
 			index = idx;
 			sample = s;
-			for (grasp::Point::Seq::const_iterator i = p.begin(); i != p.end(); ++i)
+			for (grasp::Cloud::PointSeq::const_iterator i = p.begin(); i != p.end(); ++i)
 				points.push_back(*i);
 			build();
 			//buildMesh();
@@ -116,7 +116,7 @@ public:
 		/** Hypothesis */
 		grasp::RBPose::Sample sample;
 		/** Point cloud */
-		grasp::Point::Seq points;
+		grasp::Cloud::PointSeq points;
 		/** Kd tree */
 		golem::shared_ptr<pcl::KdTreeFLANN<pcl::PointXYZ, flann::L2_Simple<float>>> pTree;
 		/** Polygon mesh */
@@ -257,7 +257,7 @@ public:
 	}
 
 	/** Sets model cloud points */
-	void setModel(grasp::Point::Seq::const_iterator begin, grasp::Point::Seq::const_iterator end, const golem::Mat34 &transform);
+	void setModel(grasp::Cloud::PointSeq::const_iterator begin, grasp::Cloud::PointSeq::const_iterator end, const golem::Mat34 &transform);
 	/** Sets the current belief state */
 	void setBeliefState(grasp::RBPose::Sample::Seq &samples, const golem::Mat34 &transform);
 	/** Evaluate the likelihood of reading a contact between robot's pose and the sample */
@@ -305,7 +305,7 @@ protected:
 	grasp::RealSeq jointFac;
 
 	/** Model cloud points */
-	grasp::Point::Seq modelPoints;
+	grasp::Cloud::PointSeq modelPoints;
 
 	/** Hit normalising factor */
 	golem::Real hitNormFacInv;

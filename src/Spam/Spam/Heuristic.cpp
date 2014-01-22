@@ -276,9 +276,9 @@ void FTDrivenHeuristic::setDesc(const Heuristic::Desc &desc) {
 
 //------------------------------------------------------------------------------
 
-void FTDrivenHeuristic::setModel(Point::Seq::const_iterator begin, Point::Seq::const_iterator end, const Mat34 &transform) {
+void FTDrivenHeuristic::setModel(Cloud::PointSeq::const_iterator begin, Cloud::PointSeq::const_iterator end, const Mat34 &transform) {
 	modelPoints.clear();
-	for (Point::Seq::const_iterator i = begin; i != end; ++i) {
+	for (Cloud::PointSeq::const_iterator i = begin; i != end; ++i) {
 		Point point = *i;
 		point.frame.multiply(transform, point.frame);
 		modelPoints.push_back(point);

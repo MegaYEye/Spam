@@ -119,9 +119,9 @@ void RagPlanner::renderTrialData(TrialData::Map::const_iterator dataPtr) {
 				sampleRenderer.addAxes(sampleFrame, distribFrameSize);
 		
 			if (showSamplePoints) {
-				grasp::Point::Seq sample; // = modelPoints;
+				grasp::Cloud::PointSeq sample; // = modelPoints;
 				sample.reserve(modelPoints.size());
-				for (grasp::Point::Seq::const_iterator point = modelPoints.begin(); point != modelPoints.end(); ++point) {
+				for (grasp::Cloud::PointSeq::const_iterator point = modelPoints.begin(); point != modelPoints.end(); ++point) {
 					grasp::Point p = *point;
 					if (!showSampleColour) p.colour = (i == dataPtr->second.samples.begin()) ? golem::RGBA::WHITE : golem::RGBA::BLUE;
 					p.frame.multiply(actionFrame, p.frame);
@@ -143,10 +143,10 @@ void RagPlanner::renderTrialData(TrialData::Map::const_iterator dataPtr) {
 		
 			const bool show = pBelief->getHypotheses().size() < 100 || (pBelief->getHypotheses().size() >= 100 && idx%12 == 0);
 			if (showMLEPoints && show) {
-				grasp::Point::Seq sample; // = modelPoints;
+				grasp::Cloud::PointSeq sample; // = modelPoints;
 				sample.reserve(modelPoints.size());
 				const golem::RGBA colour(255*i->weight, 0, 0, 255);
-				for (grasp::Point::Seq::const_iterator point = modelPoints.begin(); point != modelPoints.end(); ++point) {
+				for (grasp::Cloud::PointSeq::const_iterator point = modelPoints.begin(); point != modelPoints.end(); ++point) {
 					grasp::Point p = *point;
 					p.colour = golem::RGBA::MAGENTA;
 					p.frame.multiply(actionFrame, p.frame);
@@ -239,7 +239,7 @@ void RagPlanner::renderContacts() {
 	GenWorkspaceChainState gwcs;
 	robot->getController()->chainForwardTransform(robot->recvState().config.cpos, gwcs.wpos);
 	const size_t size = 10000;
-	for (grasp::Point::Seq::iterator i = queryPoints.begin(); i != queryPoints.end(); ++i) {
+	for (grasp::Cloud::PointSeq::iterator i = queryPoints.begin(); i != queryPoints.end(); ++i) {
 		Real maxDist = REAL_MAX;
 		for (Chainspace::Index j = robot->getStateHandInfo().getChains().begin(); j != robot->getStateHandInfo().getChains().end(); ++j) {
 			const Real d = i->frame.p.distance(gwcs.wpos[j].p);
@@ -658,7 +658,7 @@ golem::Real RagPlanner::evaluate(const grasp::RBCoord &pose, const grasp::RBPose
 	//context.write("                    new pose <%5.7f %5.7f %5.7f>,  model <%5.7f %5.7f %5.7f>, dist=%5.7f\n",
 	//	relativejointpose.p.x, relativejointpose.p.y, relativejointpose.p.z, modelframe.p.x, modelframe.p.y, modelframe.p.z, modelframe.p.distance(relativejointpose.p));
 	Real distMin = golem::REAL_ZERO;
-	for (grasp::Point::Seq::const_iterator point = modelPoints.begin(); point != modelPoints.end(); ++point) {
+	for (grasp::Cloud::PointSeq::const_iterator point = modelPoints.begin(); point != modelPoints.end(); ++point) {
 		const Real dist = relativeJointPose.p.distance(point->frame.p);
 		if (dist > distMin)
 			distMin = dist;
@@ -837,7 +837,7 @@ void RagPlanner::function(grasp::TrialData::Map::iterator& dataPtr, int key) {
 			v.next(rand); // |v|==1
 			v.multiply(Math::abs(rand.nextGaussian<Real>(REAL_ZERO, ragDesc.gtPoseStddev.lin)), v);
 			q.next(rand, ragDesc.gtPoseStddev.ang);		
-			for (grasp::Point::Seq::iterator p = dataPtr->second.pointCloud.begin(); p != dataPtr->second.pointCloud.end(); ++p) {
+			for (grasp::Cloud::PointSeq::iterator p = dataPtr->second.pointCloud.begin(); p != dataPtr->second.pointCloud.end(); ++p) {
 				grasp::Point point(*p);
 				point.colour = golem::RGBA::YELLOW;
 				groundTruthPoints.push_back(point);
@@ -947,7 +947,7 @@ void RagPlanner::function(grasp::TrialData::Map::iterator& dataPtr, int key) {
 		// Angular component
 		Quat q;
 		q.next(rand, ragDesc.gtPoseStddev.ang);		
-		for (grasp::Point::Seq::iterator p = dataPtr->second.pointCloud.begin(); p != dataPtr->second.pointCloud.end(); ++p) {
+		for (grasp::Cloud::PointSeq::iterator p = dataPtr->second.pointCloud.begin(); p != dataPtr->second.pointCloud.end(); ++p) {
 			grasp::Point point(*p);
 			point.colour = golem::RGBA::YELLOW;
 			groundTruthPoints.push_back(point);
@@ -1152,7 +1152,7 @@ MOVING_BACK:
 				m.R.determinant());
 
 			Real distMax = golem::REAL_ZERO;
-			for (grasp::Point::Seq::const_iterator p = modelPoints.begin(); p != modelPoints.end(); ++p) {
+			for (grasp::Cloud::PointSeq::const_iterator p = modelPoints.begin(); p != modelPoints.end(); ++p) {
 				const Real d = p->frame.p.magnitude();
 				if (d > distMax)
 					distMax = d;

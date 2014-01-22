@@ -68,12 +68,12 @@ bool Belief::create(const Desc& desc) {
 
 //------------------------------------------------------------------------------
 
-void Belief::createQuery(const grasp::Point::Seq& points, golem::U32 label) {
+void Belief::createQuery(const grasp::Cloud::PointSeq& points) {
 	mfsePoses.clear();
 
 	if (myDesc.tactile.test) {
 		/* To save time TEST generates only one query and then estimates the max score fitting as many time as KERNELS */
-		grasp::RBPose::createQuery(points, label);
+		grasp::RBPose::createQuery(points);
 		const grasp::RBPose::Sample maximum = grasp::RBPose::maximum();
 		for (size_t i = 0; i < myDesc.tactile.kernels; ++i)
 			mfsePoses.push_back(grasp::RBPose::Sample(sample(maximum)));
@@ -89,7 +89,7 @@ void Belief::createQuery(const grasp::Point::Seq& points, golem::U32 label) {
 	*/
 	SecTmReal init = context.getTimer().elapsed();
 	for (size_t i = 0; i < myDesc.tactile.kernels; ++i) {
-			grasp::RBPose::createQuery(points, label);
+			grasp::RBPose::createQuery(points);
 			grasp::RBPose::Sample s = grasp::RBPose::maximum();
 			mfsePoses.push_back(s);
 			initPoses.push_back(s);

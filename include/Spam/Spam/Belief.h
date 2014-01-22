@@ -46,7 +46,7 @@
 
 //------------------------------------------------------------------------------
 
-#include <Grasp/Grasp/Data.h>
+#include <Grasp/Grasp/Cloud.h>
 #include <Grasp/Grasp/RBPose.h>
 
 //------------------------------------------------------------------------------
@@ -180,7 +180,7 @@ public:
 	inline golem::SampleProperty<golem::Real, grasp::RBCoord, grasp::RBCoord::N> getSampleProperties() { return mfseProperties; };
 
 	/** Creates query object pose distribution */
-	void createQuery(const grasp::Point::Seq& points, golem::U32 label = grasp::Point::LABEL_OBJECT);
+	void createQuery(const grasp::Cloud::PointSeq& points);
 	/** Creates a new set of weights for the current poses */
 	virtual void createUpdate(const golem::Mat34 &trn);
 	/** Creates a new set of poses (resampling wheel algorithm) */

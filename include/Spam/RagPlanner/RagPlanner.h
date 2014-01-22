@@ -206,7 +206,7 @@ protected:
 	/** Shows the posterior distribution */
 	bool posterior;
 	/** Ground truth points */
-	grasp::Point::Seq groundTruthPoints;
+	grasp::Cloud::PointSeq groundTruthPoints;
 
 	/** Enables/disables the transformation in the action frame */
 	bool trnEnable;
