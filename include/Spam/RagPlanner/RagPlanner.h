@@ -88,7 +88,7 @@ public:
 		golem::Real timestampFac;
 
 		/** 3D surface samples' point feature appearance */
-		grasp::Point::Appearance sampleAppearance;
+		grasp::Director::Data::Appearance sampleAppearance;
 
 		/** Enables/disables explicit use of uncertainty in planning */
 		bool uncEnable;
@@ -120,7 +120,8 @@ public:
 			theta = golem::Real(0.20);
 			maxSamplingIter = 100;
 			timestampFac = 0.25;
-			pointAppearance.setToDefault();
+			//pointAppearance.setToDefault();
+			data->appearance.setToDefault();
 			uncEnable = true;
 			singleGrasp = false;
 			withdrawToHomePose = false;
@@ -184,7 +185,7 @@ protected:
 	/** Backward moving factor */
 	golem::Real timestampFac;
 	/** 3d surface samples' point feature appearance */
-	grasp::Point::Appearance sampleAppearance;
+	grasp::Director::Data::Appearance sampleAppearance;
 	/** Show original colour of the point cloud */
 	bool showSampleColour;
 	/** Show Sample frame */
@@ -211,7 +212,7 @@ protected:
 	/** Enables/disables the transformation in the action frame */
 	bool trnEnable;
 
-	grasp::Hand::Ptr hand;
+	grasp::Manipulator::Ptr manipulator;
 	golem::Bounds::Seq handBounds;
 
 	/** Sent trajectory */
@@ -261,7 +262,7 @@ protected:
 	/** Render trial data */
 	virtual void renderTrialData(TrialData::Map::const_iterator dataPtr);
 	/** Overwrite pose planner render trial data */
-	virtual void renderTrialData(grasp::TrialData::Map::const_iterator dataPtr);
+	virtual void renderData(Data::Map::const_iterator dataPtr);
 	void renderContacts();
 	void renderPose(const golem::Mat34 &pose);
 	golem::DebugRenderer testPose;
@@ -276,7 +277,7 @@ protected:
 	void printState(const golem::Controller::State &state, const golem::Configspace::Index &begin, const golem::Configspace::Index &end, const std::string &label = "") const;
 
 	/** User interface: menu function */
-	virtual void function(grasp::TrialData::Map::iterator& dataPtr, int key);
+	virtual void function(Data::Map::iterator& dataPtr, int key);
 	/** User interface: help message */
 //	virtual std::string help() const;
 

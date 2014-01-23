@@ -111,7 +111,7 @@ void RagGraphPlanner::enableHandPlanning() {
 
 bool RagGraphPlanner::localFind(const ConfigspaceCoord &begin, const ConfigspaceCoord &end, Waypoint::Seq &localPath) {
 	enableHandPlanning();
-	context.verbose("Rag::LocalFind: %s\n", grasp::plannerDebug(*this).str().c_str());
+	context.verbose("Rag::LocalFind: %s\n", grasp::plannerDebug(*this).c_str());
 	Real scale = REAL_ONE;
 	for (U32 i = 0; i < pathFinderDesc.numOfIterations; ++i) {
 		// scale maximum distance between waypoints
@@ -309,7 +309,7 @@ bool RagGraphPlanner::localFind(const ConfigspaceCoord &begin, const Configspace
 bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const GenWorkspaceChainState& wend, GenConfigspaceState &cend) {
 	context.write("RagGraphPlanner::find target\n");
 //	return GraphPlanner::findTarget(begin, wend, cend);
-	context.verbose("RagGraphPlanner::findTarget: %s\n", grasp::plannerDebug(*this).str().c_str());
+	context.verbose("RagGraphPlanner::findTarget: %s\n", grasp::plannerDebug(*this).c_str());
 
 	bool enable = false;
 	spam::FTDrivenHeuristic *heuristic = getFTDrivenHeuristic();
@@ -380,7 +380,7 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 #endif
 	// generate global graph only for the arm
 	disableHandPlanning();
-	context.verbose("Rag::findGlobalTrajectory: %s\n", grasp::plannerDebug(*this).str().c_str());
+	context.verbose("Rag::findGlobalTrajectory: %s\n", grasp::plannerDebug(*this).c_str());
 	if (!pGlobalPathFinder->generateGraph(begin.cpos, end.cpos)) {
 		context.error("GraphPlanner::findTrajectory(): unable to generate global graph\n");
 		return false;

@@ -90,21 +90,15 @@ template <> void golem::Stream::read(spam::TrialData& trialData) const {
 	if (version != trialData.headerVersion)
 		throw Message(Message::LEVEL_CRIT, "Stream::read(spam::TrialData&): Unknown file version: %d", version);
 
-	trialData.robotStates.clear();
-	read(trialData.robotStates, trialData.robotStates.begin(), grasp::State(*trialData.controller));
-	trialData.pointCloud.clear();
-	read(trialData.pointCloud, trialData.pointCloud.begin());
-	trialData.kinectDataSet.clear();
-	read(trialData.kinectDataSet, trialData.kinectDataSet.begin());
+	trialData.approachAction.clear();
+	read(trialData.approachAction, trialData.approachAction.begin(), grasp::RobotState(trialData.controller));
+	trialData.manipAction.clear();
+	read(trialData.manipAction, trialData.manipAction.begin(), grasp::RobotState(trialData.controller));
 
 	trialData.approachWithdraw.clear();
-	read(trialData.approachWithdraw, trialData.approachAction.begin(), grasp::State(*trialData.controller));
-	trialData.approachAction.clear();
-	read(trialData.approachAction, trialData.approachAction.begin(), grasp::State(*trialData.controller));
-	trialData.manipAction.clear();
-	read(trialData.manipAction, trialData.manipAction.begin(), grasp::State(*trialData.controller));
-	trialData.action.clear();
-	read(trialData.action, trialData.action.begin(), trialData.controller->createState());
+	read(trialData.approachWithdraw, trialData.approachWithdraw.begin(), grasp::RobotState(trialData.controller));
+	//trialData.action.clear();
+	//read(trialData.action, trialData.action.begin(), trialData.controller.createState());
 
 	trialData.pdf.clear();
 	read(trialData.pdf, trialData.pdf.begin());
@@ -114,15 +108,12 @@ template <> void golem::Stream::read(spam::TrialData& trialData) const {
 
 template <> void golem::Stream::write(const spam::TrialData& trialData) {
 	*this << trialData.headerName << trialData.headerVersion;
-	
-	write(trialData.robotStates.begin(), trialData.robotStates.end());
-	write(trialData.pointCloud.begin(), trialData.pointCloud.end());
-	write(trialData.kinectDataSet.begin(), trialData.kinectDataSet.end());
 
-	write(trialData.approachWithdraw.begin(), trialData.approachWithdraw.end());
 	write(trialData.approachAction.begin(), trialData.approachAction.end());
 	write(trialData.manipAction.begin(), trialData.manipAction.end());
-	write(trialData.action.begin(), trialData.action.end());
+
+	write(trialData.approachWithdraw.begin(), trialData.approachWithdraw.end());
+	//write(trialData.action.begin(), trialData.action.end());
 	write(trialData.pdf.begin(), trialData.pdf.end());
 	write(trialData.samples.begin(), trialData.samples.end());
 }

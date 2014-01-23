@@ -71,7 +71,7 @@ void XMLData(RagGraphPlanner::Desc &val, golem::XMLContext* context, bool create
 //------------------------------------------------------------------------------
 
 /** Trial data for a single demonstration and/or test trial in a binary format (stored on disk) */
-class TrialData : public grasp::TrialData {
+class TrialData {
 public:
 	typedef std::map<std::string, TrialData> Map;
 	friend class golem::Stream;
@@ -80,6 +80,16 @@ public:
 	static const char headerName [];
 	/** Header version */
 	static const golem::U32 headerVersion;
+
+	/** Cache (local): OpenGL settings */
+	golem::Scene::OpenGL openGL;
+	/** Cache (local): action */
+	golem::Controller::State::Seq action;
+
+	/** Approach action waypoints */
+	grasp::RobotState::List approachAction;
+	/** Manipulation action waypoints */
+	grasp::RobotState::List manipAction;
 
 	/** High dim representation of pdf */
 	grasp::RBPose::Sample::Seq pdf;
@@ -110,7 +120,7 @@ public:
 	golem::Controller::State::Seq triggeredStates;
 
 	/** Safety configurations of the robot */
-	grasp::State::Seq homeStates;
+	grasp::RobotState::Seq homeStates;
 
 	/** Specifies if the replanning should be triggered */
 	bool replanning;
@@ -118,11 +128,14 @@ public:
 	/** Combined action waypoints */
 	golem::Controller::State::Seq executedTrajectory;
 	/** Withdraw action waypoints */
-	grasp::State::List approachWithdraw;
+	grasp::RobotState::List approachWithdraw;
 
 	/** Constructor */
-	TrialData(const golem::Controller& controller) : grasp::TrialData(controller) {
+	TrialData(const golem::Controller& controller) : controller(controller) {
 	}
+
+protected:
+	const golem::Controller& controller;
 };
 
 }; /** namespace */
