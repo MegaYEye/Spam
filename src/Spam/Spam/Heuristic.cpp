@@ -39,10 +39,10 @@ bool FTDrivenHeuristic::HypSample::build() {
 	cloud->height = 1;
 	cloud->points.resize (cloud->width * cloud->height);
 	int j = 0;
-	for (Point::Seq::const_iterator point = points.begin(); point != points.end(); ++point) {
-		cloud->points[j].x = (float)point->frame.p.x;
-		cloud->points[j].y = (float)point->frame.p.y;
-		cloud->points[j++].z = (float)point->frame.p.z;
+	for (Cloud::PointSeq::const_iterator point = points.begin(); point != points.end(); ++point) {
+		cloud->points[j].x = (float)point->x;
+		cloud->points[j].y = (float)point->y;
+		cloud->points[j++].z = (float)point->z;
 	}
 	pTree->setInputCloud(cloud);
 
@@ -57,10 +57,10 @@ bool FTDrivenHeuristic::HypSample::buildMesh() {
 	cloud->height = 1;
 	cloud->points.resize(cloud->width * cloud->height);
 	int j = 0;
-	for (Point::Seq::const_iterator point = points.begin(); point != points.end(); ++point) {
-		cloud->points[j].x = (float)point->frame.p.x;
-		cloud->points[j].y = (float)point->frame.p.y;
-		cloud->points[j++].z = (float)point->frame.p.z;
+	for (Cloud::PointSeq::const_iterator point = points.begin(); point != points.end(); ++point) {
+		cloud->points[j].x = (float)point->x;
+		cloud->points[j].y = (float)point->y;
+		cloud->points[j++].z = (float)point->z;
 	}
 
 	  // Normal estimation*
@@ -277,12 +277,15 @@ void FTDrivenHeuristic::setDesc(const Heuristic::Desc &desc) {
 //------------------------------------------------------------------------------
 
 void FTDrivenHeuristic::setModel(Cloud::PointSeq::const_iterator begin, Cloud::PointSeq::const_iterator end, const Mat34 &transform) {
+	//modelPoints.clear();
+	//for (Cloud::PointSeq::const_iterator i = begin; i != end; ++i) {
+	//	Point point = *i;
+	//	point.frame.multiply(transform, point.frame);
+	//	modelPoints.push_back(point);
+	//}
 	modelPoints.clear();
-	for (Cloud::PointSeq::const_iterator i = begin; i != end; ++i) {
-		Point point = *i;
-		point.frame.multiply(transform, point.frame);
-		modelPoints.push_back(point);
-	}
+	modelPoints.insert(modelPoints.begin(), begin, end);
+	Cloud::transform(transform, modelPoints, modelPoints);
 }
 
 void FTDrivenHeuristic::setBeliefState(RBPose::Sample::Seq &samples, const golem::Mat34 &transform) {
@@ -293,7 +296,7 @@ void FTDrivenHeuristic::setBeliefState(RBPose::Sample::Seq &samples, const golem
 		const Mat34 sampleFrame(Mat34(s->q, s->p) * transform);
 		RBPose::Sample sample(RBCoord(sampleFrame), s->weight, s->cdf);
 //		this->samples.push_back(RBPose::Sample(RBCoord(sampleFrame), s->weight, s->cdf));
-		Point::Seq sampleCloud;
+		Cloud::PointSeq sampleCloud;
 		//for (Point::Seq::const_iterator i = modelPoints.begin(); i != modelPoints.end(); ++i) {
 		//	Point p = *i;
 		//	p.frame.multiply(sampleFrame, p.frame);
@@ -303,8 +306,13 @@ void FTDrivenHeuristic::setBeliefState(RBPose::Sample::Seq &samples, const golem
 		// limits the number of point inserted into the kd-tree to save performance while quering it
 		const size_t size = modelPoints.size() < ftDrivenDesc.maxSurfacePoints ? modelPoints.size() : ftDrivenDesc.maxSurfacePoints;
 		for (size_t i = 0; i < size; ++i) {
-			Point& p = size < modelPoints.size() ? modelPoints[size_t(rand.next())%modelPoints.size()] : modelPoints[i];
-			p.frame.multiply(sampleFrame, p.frame);
+			// CHECK: Points from modelPoints are modified multiple times (loop over samples, then nested loop)!
+
+			//Point& p = size < modelPoints.size() ? modelPoints[size_t(rand.next())%modelPoints.size()] : modelPoints[i]; // this is reference!
+			//p.frame.multiply(sampleFrame, p.frame);
+			//sampleCloud.push_back(p);
+			Cloud::Point p = size < modelPoints.size() ? modelPoints[size_t(rand.next())%modelPoints.size()] : modelPoints[i]; // make a copy here
+			Cloud::setPoint(sampleFrame * Cloud::getPoint(p), p);
 			sampleCloud.push_back(p);
 		}
 		this->samples.insert(HypSample::Map::value_type(idx, HypSample::Ptr(new HypSample(idx, sample, sampleCloud))));
@@ -770,10 +778,12 @@ Real FTDrivenHeuristic::dist2NearestKPoints(const grasp::RBCoord &pose,  HypSamp
 		const size_t size = indeces.size() < ftDrivenDesc.numIndeces ? indeces.size() : ftDrivenDesc.numIndeces;
 		for (size_t i = 0; i < size; ++i) {
 			idxdiff_t idx = size < indeces.size() ? indeces[size_t(rand.next())%indeces.size()] : indeces[i];
-			Point point;
-			point.frame.setId();
-			point.frame.p.set(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z);
-			result += pose.p.distance(point.frame.p);
+			//Point point;
+			//point.frame.setId();
+			//point.frame.p.set(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z);
+			//result += pose.p.distance(point.frame.p);
+			//median += Vec3(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z);
+			result += pose.p.distance(Vec3(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z));
 			median += Vec3(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z);
 		}
 		result /= size;
@@ -840,10 +850,15 @@ Real FTDrivenHeuristic::dist2NearestTriangle(const grasp::RBCoord &pose,  HypSam
 	for (size_t i = 0; i < size; ++i) {
 		const pcl::Vertices vertex = size < p->second->pTriangles->polygons.size() ? p->second->pTriangles->polygons[size_t(rand.next())%p->second->pTriangles->polygons.size()] : p->second->pTriangles->polygons[i];
 		for (std::vector<golem::U32>::const_iterator j = vertex.vertices.begin(); j != vertex.vertices.end(); ++j) {
-			const Real dist = pose.p.distance(p->second->points[*j].frame.p);
+			//const Real dist = pose.p.distance(p->second->points[*j].frame.p);
+			//if (result > dist) {
+			//	result = dist;
+			//	median.set(p->second->points[*j].frame.p);
+			//}
+			const Real dist = pose.p.distance(Cloud::getPoint(p->second->points[*j]));
 			if (result > dist) {
 				result = dist;
-				median.set(p->second->points[*j].frame.p);
+				median.set(Cloud::getPoint(p->second->points[*j]));
 			}
 		}
 	}
@@ -881,11 +896,17 @@ Real FTDrivenHeuristic::dist2NearestPoint(const grasp::RBCoord &pose,  HypSample
 	median.setZero();
 	const size_t size = modelPoints.size() < ftDrivenDesc.ftModelDesc.points ? modelPoints.size() : ftDrivenDesc.ftModelDesc.points;
 	for (size_t i = 0; i < size; ++i) {
-		const Point& point = size < p->second->points.size() ? p->second->points[size_t(rand.next())%p->second->points.size()] : p->second->points[i];
-		const Real dist = pose.p.distance(point.frame.p);
+		//const Point& point = size < p->second->points.size() ? p->second->points[size_t(rand.next())%p->second->points.size()] : p->second->points[i];
+		//const Real dist = pose.p.distance(point.frame.p);
+		//if (result > dist) {
+		//	result = dist;
+		//	median.set(point.frame.p);
+		//}
+		const Vec3 point = Cloud::getPoint(size < p->second->points.size() ? p->second->points[size_t(rand.next())%p->second->points.size()] : p->second->points[i]);
+		const Real dist = pose.p.distance(point);
 		if (result > dist) {
 			result = dist;
-			median.set(point.frame.p);
+			median.set(point);
 		}
 	}
 	
@@ -956,10 +977,15 @@ golem::Real FTDrivenHeuristic::evaluate(const golem::Bounds::Seq &bounds, const 
 	if (pose.p.distance(queryFrame.p) < distMin) {
 		const size_t size = modelPoints.size() < ftDrivenDesc.ftModelDesc.points ? modelPoints.size() : ftDrivenDesc.ftModelDesc.points;
 		for (size_t i = 0; i < size; ++i) {
-			const Point& point = size < modelPoints.size() ? modelPoints[size_t(rand.next())%
-				modelPoints.size()] : modelPoints[i];
-			Mat34 pointFrame;
-			pointFrame.multiply(actionFrame, point.frame);
+			// CHECK: Do you assume that a point has a full frame with **orientation**? Where does the orientation come from?
+
+			//const Point& point = size < modelPoints.size() ? modelPoints[size_t(rand.next())%
+			//	modelPoints.size()] : modelPoints[i];
+			//Mat34 pointFrame;
+			//pointFrame.multiply(actionFrame, point.frame);
+			const Vec3 point = Cloud::getPoint(size < modelPoints.size() ? modelPoints[size_t(rand.next())%modelPoints.size()] : modelPoints[i]);
+			Mat34 pointFrame = actionFrame;
+			pointFrame.p += point; // only position is updated
 			const Real dist = [&] () -> Real {
 				Real min = REAL_MAX;
 				for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b) {
@@ -1029,120 +1055,122 @@ golem::Real FTDrivenHeuristic::evaluate(const golem::Bounds::Seq &bounds, const 
 //	return /*norm**/density(distMin);
 }
 
-golem::Real FTDrivenHeuristic::evaluate(const grasp::Hand *hand, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<grasp::FTGuard> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const {
+golem::Real FTDrivenHeuristic::evaluate(const grasp::Manipulator *manipulator, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<grasp::FTGuard> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const {
 	Real weight = golem::REAL_ONE;
-	bool intersect = false; 
-	// retrieve wrist's workspace pose and fingers configuration
-	const golem::Chainspace::Index armChain = armInfo.getChains().begin();
-	grasp::Hand::Config config;
-	for (Configspace::Index i = handInfo.getJoints().begin(); i != handInfo.getJoints().end(); ++i) {
-		const U32 k = i - handInfo.getJoints().begin();
-		config.c[k] = w.cpos[i];				
-	}
-	grasp::RealSeq forces(force);
-	for (Chainspace::Index i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i) {
-		// check if any of the joint in the current chain (finger) has been triggered
-		bool triggered = false;
-//		context.write("Chain %d\n", i);
-		for (Configspace::Index j = handInfo.getJoints(i).begin(); j != handInfo.getJoints(i).end(); ++j) { 
-			const size_t idx = j - handInfo.getJoints().begin();
-			triggered = triggered || [&] () -> bool {
-				for (std::vector<grasp::FTGuard>::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
-					if (j == i->jointIdx) {
-						forces[idx] = i->type == grasp::FTGUARD_ABS ? 0 : i->type == grasp::FTGUARD_LESSTHAN ? -1 : 1;
-						return true;
-					}
-				return false;
-			} ();
-			const golem::Bounds::Seq bounds = hand->getFingers()[i - handInfo.getChains().begin()].getBounds(grasp::Hand::Pose(w.wpos[armChain], config));
-			//for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b)
-			//		context.write("finger bound frame <%f %f %f>\n", (*b)->getPose().p.x, (*b)->getPose().p.y, (*b)->getPose().p.z);
-			const Real eval = evaluate(bounds, grasp::RBCoord(w.wposex[j]), sample, forces[idx], trn, intersect);
-			weight *= (triggered ? ftDrivenDesc.contactFac*eval : intersect ? ftDrivenDesc.nonContactFac*(REAL_ONE - eval) : 1);
-			//context.write("evaluate %f prob %f partial weight %f, intersect %s, triggered %s\n", eval, 
-			//	/*jointFac[j - handInfo.getJoints().begin()]**/(triggered ? ftDrivenDesc.contactFac*eval : ftDrivenDesc.nonContactFac*(REAL_ONE - eval)), weight,
-			//	intersect ? "Y" : "N", triggered ? "Y" : "N");
-		}
-//		const Real eval = evaluate(grasp::RBCoord(w.wpos[i]), sample, 0, trn);
-//		weight *= triggered ? eval : REAL_ONE;
-//		weight *= triggered ? ftDrivenDesc.contactFac*eval : ftDrivenDesc.nonContactFac*(REAL_ONE - eval);
-//		context.write(" -> (triggered %d) weight=%f partial_weight=%f\n", triggered, eval, weight);
-
-	}
-
-	//for (Configspace::Index j = handInfo.getJoints().begin(); j != handInfo.getJoints().end(); ++j) {
-	//	context.write("Joint %d\n", j);
-	//	const size_t k = j - handInfo.getJoints().begin();
-	//	bool triggered = [&] () -> bool {
-	//		for (std::vector<Configspace::Index>::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
-	//			if (j == *i)
-	//				return true;
-	//		return false;
-	//	} ();
-	//	const Real eval = evaluate(grasp::RBCoord(w.wposex[j]), sample, force[k], trn);
-	//	const Real tmp = triggered ? eval : 1 - eval;
-	//	weight *= jointFac[j - handInfo.getJoints().begin()]*tmp;
-	//	context.write(" -> (triggered %d) weight=%f partial_weight=%f\n", triggered, jointFac[j - handInfo.getJoints().begin()]*tmp, weight);
-	//}
-//	context.write("final weight=%f\n", weight);
+// TODO Hand -> Manipulator
+//	bool intersect = false; 
+//	// retrieve wrist's workspace pose and fingers configuration
+//	const golem::Chainspace::Index armChain = armInfo.getChains().begin();
+//	grasp::Hand::Config config;
+//	for (Configspace::Index i = handInfo.getJoints().begin(); i != handInfo.getJoints().end(); ++i) {
+//		const U32 k = i - handInfo.getJoints().begin();
+//		config.c[k] = w.cpos[i];				
+//	}
+//	grasp::RealSeq forces(force);
+//	for (Chainspace::Index i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i) {
+//		// check if any of the joint in the current chain (finger) has been triggered
+//		bool triggered = false;
+////		context.write("Chain %d\n", i);
+//		for (Configspace::Index j = handInfo.getJoints(i).begin(); j != handInfo.getJoints(i).end(); ++j) { 
+//			const size_t idx = j - handInfo.getJoints().begin();
+//			triggered = triggered || [&] () -> bool {
+//				for (std::vector<grasp::FTGuard>::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
+//					if (j == i->jointIdx) {
+//						forces[idx] = i->type == grasp::FTGUARD_ABS ? 0 : i->type == grasp::FTGUARD_LESSTHAN ? -1 : 1;
+//						return true;
+//					}
+//				return false;
+//			} ();
+//			const golem::Bounds::Seq bounds = hand->getFingers()[i - handInfo.getChains().begin()].getBounds(grasp::Hand::Pose(w.wpos[armChain], config));
+//			//for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b)
+//			//		context.write("finger bound frame <%f %f %f>\n", (*b)->getPose().p.x, (*b)->getPose().p.y, (*b)->getPose().p.z);
+//			const Real eval = evaluate(bounds, grasp::RBCoord(w.wposex[j]), sample, forces[idx], trn, intersect);
+//			weight *= (triggered ? ftDrivenDesc.contactFac*eval : intersect ? ftDrivenDesc.nonContactFac*(REAL_ONE - eval) : 1);
+//			//context.write("evaluate %f prob %f partial weight %f, intersect %s, triggered %s\n", eval, 
+//			//	/*jointFac[j - handInfo.getJoints().begin()]**/(triggered ? ftDrivenDesc.contactFac*eval : ftDrivenDesc.nonContactFac*(REAL_ONE - eval)), weight,
+//			//	intersect ? "Y" : "N", triggered ? "Y" : "N");
+//		}
+////		const Real eval = evaluate(grasp::RBCoord(w.wpos[i]), sample, 0, trn);
+////		weight *= triggered ? eval : REAL_ONE;
+////		weight *= triggered ? ftDrivenDesc.contactFac*eval : ftDrivenDesc.nonContactFac*(REAL_ONE - eval);
+////		context.write(" -> (triggered %d) weight=%f partial_weight=%f\n", triggered, eval, weight);
+//
+//	}
+//
+//	//for (Configspace::Index j = handInfo.getJoints().begin(); j != handInfo.getJoints().end(); ++j) {
+//	//	context.write("Joint %d\n", j);
+//	//	const size_t k = j - handInfo.getJoints().begin();
+//	//	bool triggered = [&] () -> bool {
+//	//		for (std::vector<Configspace::Index>::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
+//	//			if (j == *i)
+//	//				return true;
+//	//		return false;
+//	//	} ();
+//	//	const Real eval = evaluate(grasp::RBCoord(w.wposex[j]), sample, force[k], trn);
+//	//	const Real tmp = triggered ? eval : 1 - eval;
+//	//	weight *= jointFac[j - handInfo.getJoints().begin()]*tmp;
+//	//	context.write(" -> (triggered %d) weight=%f partial_weight=%f\n", triggered, jointFac[j - handInfo.getJoints().begin()]*tmp, weight);
+//	//}
+////	context.write("final weight=%f\n", weight);
 
 	return weight;
 }
 
-golem::Real FTDrivenHeuristic::evaluate(const grasp::Hand *hand, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<golem::Configspace::Index> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const {
+golem::Real FTDrivenHeuristic::evaluate(const grasp::Manipulator *manipulator, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<golem::Configspace::Index> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const {
 	Real weight = golem::REAL_ONE;
-	bool intersect = false; 
-	// retrieve wrist's workspace pose and fingers configuration
-	const golem::Chainspace::Index armChain = armInfo.getChains().begin();
-	grasp::Hand::Config config;
-	for (Configspace::Index i = handInfo.getJoints().begin(); i != handInfo.getJoints().end(); ++i) {
-		const U32 k = i - handInfo.getJoints().begin();
-		config.c[k] = w.cpos[i];				
-	}
-
-	for (Chainspace::Index i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i) {
-		// check if any of the joint in the current chain (finger) has been triggered
-		bool triggered = false;
-//		context.write("Chain %d\n", i);
-		for (Configspace::Index j = handInfo.getJoints(i).begin(); j != handInfo.getJoints(i).end(); ++j) { 
-			const size_t idx = j - handInfo.getJoints().begin();
-			triggered = triggered || [&] () -> bool {
-				for (std::vector<Configspace::Index>::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
-					if (j == *i)
-						return true;
-				return false;
-			} ();
-			const golem::Bounds::Seq bounds = hand->getFingers()[i - handInfo.getChains().begin()].getBounds(grasp::Hand::Pose(w.wpos[armChain], config));
-			//for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b)
-			//		context.write("finger bound frame <%f %f %f>\n", (*b)->getPose().p.x, (*b)->getPose().p.y, (*b)->getPose().p.z);
-			const Real eval = evaluate(bounds, grasp::RBCoord(w.wposex[j]), sample, force[idx], trn, intersect);
-			weight *= (triggered ? ftDrivenDesc.contactFac*eval : intersect ? ftDrivenDesc.nonContactFac*(REAL_ONE - eval) : 1);
-			//context.write("evaluate %f prob %f partial weight %f, intersect %s, triggered %s\n", eval, 
-			//	/*jointFac[j - handInfo.getJoints().begin()]**/(triggered ? ftDrivenDesc.contactFac*eval : ftDrivenDesc.nonContactFac*(REAL_ONE - eval)), weight,
-			//	intersect ? "Y" : "N", triggered ? "Y" : "N");
-		}
-//		const Real eval = evaluate(grasp::RBCoord(w.wpos[i]), sample, 0, trn);
-//		weight *= triggered ? eval : REAL_ONE;
-//		weight *= triggered ? ftDrivenDesc.contactFac*eval : ftDrivenDesc.nonContactFac*(REAL_ONE - eval);
-//		context.write(" -> (triggered %d) weight=%f partial_weight=%f\n", triggered, eval, weight);
-
-	}
-
-	//for (Configspace::Index j = handInfo.getJoints().begin(); j != handInfo.getJoints().end(); ++j) {
-	//	context.write("Joint %d\n", j);
-	//	const size_t k = j - handInfo.getJoints().begin();
-	//	bool triggered = [&] () -> bool {
-	//		for (std::vector<Configspace::Index>::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
-	//			if (j == *i)
-	//				return true;
-	//		return false;
-	//	} ();
-	//	const Real eval = evaluate(grasp::RBCoord(w.wposex[j]), sample, force[k], trn);
-	//	const Real tmp = triggered ? eval : 1 - eval;
-	//	weight *= jointFac[j - handInfo.getJoints().begin()]*tmp;
-	//	context.write(" -> (triggered %d) weight=%f partial_weight=%f\n", triggered, jointFac[j - handInfo.getJoints().begin()]*tmp, weight);
-	//}
-//	context.write("final weight=%f\n", weight);
+// TODO Hand -> Manipulator
+//	bool intersect = false; 
+//	// retrieve wrist's workspace pose and fingers configuration
+//	const golem::Chainspace::Index armChain = armInfo.getChains().begin();
+//	grasp::Hand::Config config;
+//	for (Configspace::Index i = handInfo.getJoints().begin(); i != handInfo.getJoints().end(); ++i) {
+//		const U32 k = i - handInfo.getJoints().begin();
+//		config.c[k] = w.cpos[i];				
+//	}
+//
+//	for (Chainspace::Index i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i) {
+//		// check if any of the joint in the current chain (finger) has been triggered
+//		bool triggered = false;
+////		context.write("Chain %d\n", i);
+//		for (Configspace::Index j = handInfo.getJoints(i).begin(); j != handInfo.getJoints(i).end(); ++j) { 
+//			const size_t idx = j - handInfo.getJoints().begin();
+//			triggered = triggered || [&] () -> bool {
+//				for (std::vector<Configspace::Index>::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
+//					if (j == *i)
+//						return true;
+//				return false;
+//			} ();
+//			const golem::Bounds::Seq bounds = hand->getFingers()[i - handInfo.getChains().begin()].getBounds(grasp::Hand::Pose(w.wpos[armChain], config));
+//			//for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b)
+//			//		context.write("finger bound frame <%f %f %f>\n", (*b)->getPose().p.x, (*b)->getPose().p.y, (*b)->getPose().p.z);
+//			const Real eval = evaluate(bounds, grasp::RBCoord(w.wposex[j]), sample, force[idx], trn, intersect);
+//			weight *= (triggered ? ftDrivenDesc.contactFac*eval : intersect ? ftDrivenDesc.nonContactFac*(REAL_ONE - eval) : 1);
+//			//context.write("evaluate %f prob %f partial weight %f, intersect %s, triggered %s\n", eval, 
+//			//	/*jointFac[j - handInfo.getJoints().begin()]**/(triggered ? ftDrivenDesc.contactFac*eval : ftDrivenDesc.nonContactFac*(REAL_ONE - eval)), weight,
+//			//	intersect ? "Y" : "N", triggered ? "Y" : "N");
+//		}
+////		const Real eval = evaluate(grasp::RBCoord(w.wpos[i]), sample, 0, trn);
+////		weight *= triggered ? eval : REAL_ONE;
+////		weight *= triggered ? ftDrivenDesc.contactFac*eval : ftDrivenDesc.nonContactFac*(REAL_ONE - eval);
+////		context.write(" -> (triggered %d) weight=%f partial_weight=%f\n", triggered, eval, weight);
+//
+//	}
+//
+//	//for (Configspace::Index j = handInfo.getJoints().begin(); j != handInfo.getJoints().end(); ++j) {
+//	//	context.write("Joint %d\n", j);
+//	//	const size_t k = j - handInfo.getJoints().begin();
+//	//	bool triggered = [&] () -> bool {
+//	//		for (std::vector<Configspace::Index>::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
+//	//			if (j == *i)
+//	//				return true;
+//	//		return false;
+//	//	} ();
+//	//	const Real eval = evaluate(grasp::RBCoord(w.wposex[j]), sample, force[k], trn);
+//	//	const Real tmp = triggered ? eval : 1 - eval;
+//	//	weight *= jointFac[j - handInfo.getJoints().begin()]*tmp;
+//	//	context.write(" -> (triggered %d) weight=%f partial_weight=%f\n", triggered, jointFac[j - handInfo.getJoints().begin()]*tmp, weight);
+//	//}
+////	context.write("final weight=%f\n", weight);
 
 	return weight;
 }
@@ -1232,10 +1260,12 @@ Real FTDrivenHeuristic::testObservations(const grasp::RBCoord &pose, const bool 
 	median.setZero();
 	if (samples.begin()->second->pTree->nearestKSearch(searchPoint, ftDrivenDesc.ftModelDesc.k, indeces, distances) > 0) {
 		for (size_t i = 0; i < indeces.size(); ++i) {
-			Point point;
-			point.frame.setId();
-			point.frame.p.set(cloud->points[indeces[i]].x, cloud->points[indeces[i]].y, cloud->points[indeces[i]].z);
-			result += pose.p.distance(point.frame.p);
+			//Point point;
+			//point.frame.setId();
+			//point.frame.p.set(cloud->points[indeces[i]].x, cloud->points[indeces[i]].y, cloud->points[indeces[i]].z);
+			//result += pose.p.distance(point.frame.p);
+			//median += Vec3(cloud->points[indeces[i]].x, cloud->points[indeces[i]].y, cloud->points[indeces[i]].z);
+			result += pose.p.distance(Vec3(cloud->points[indeces[i]].x, cloud->points[indeces[i]].y, cloud->points[indeces[i]].z));
 			median += Vec3(cloud->points[indeces[i]].x, cloud->points[indeces[i]].y, cloud->points[indeces[i]].z);
 		}
 		result /= indeces.size();

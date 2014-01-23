@@ -50,6 +50,7 @@
 #include <Golem/Device/SingleCtrl/Data.h>
 #include <Grasp/Grasp/Grasp.h>
 #include <Grasp/Grasp/RBPose.h>
+#include <Grasp/Grasp/Robot.h>
 
 //------------------------------------------------------------------------------
 
@@ -261,9 +262,9 @@ public:
 	/** Sets the current belief state */
 	void setBeliefState(grasp::RBPose::Sample::Seq &samples, const golem::Mat34 &transform);
 	/** Evaluate the likelihood of reading a contact between robot's pose and the sample */
-	golem::Real evaluate(const grasp::Hand *hand, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<golem::Configspace::Index> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const;
+	golem::Real evaluate(const grasp::Manipulator *manipulator, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<golem::Configspace::Index> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const;
 	/** Evaluate the likelihood of reading a contact between robot's pose and the sample */
-	golem::Real evaluate(const grasp::Hand *hand, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<grasp::FTGuard> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const;
+	golem::Real evaluate(const grasp::Manipulator *manipulator, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<grasp::FTGuard> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const;
 	/** Evaluate the likelihood of reading a contact between robot's pose and the sample */
 	golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const golem::Real &force, const golem::Mat34 &trn, bool &interect) const;
 
