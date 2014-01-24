@@ -3,8 +3,7 @@
 <golem>
   <rand seed="0"></rand>
   <parallels threads="4"></parallels>
-  <messages level="verbose"/>
-  <!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
+  <messages level="verbose"/><!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
   <library physx="0" normals="0"/>
 
   <universe name="Grasp PosePlanner">
@@ -27,13 +26,13 @@
     </opengl>
   </scene>
 
-  <rag_planner num_sampled_poses="5" imp_weights_threshold="0.0001" max_sampling_iterations="100" timestamp_factor="0.15" planning_uncertainty="0">
+  <rag_planner num_sampled_poses="5" imp_weights_threshold="0.0001" max_sampling_iterations="100" timestamp_factor="0.15" planning_uncertainty="0" single_grasp_attempt="0" withdraw_to_home_pose="1">
     <point_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="10" camera_frame="1" camera_frame_size="0.05">
       <frame_size v1="5e-1" v2="5e-1" v3="1e-2"/>
       <colour override="0" R="127" G="127" B="127" A="255"/>
     </point_appearance>
-    <heuristic>
-      <ftmodel dist_max="0.7" cone_theta_orizontal_axis="0.5" cone_theta_vertical_axis="0.785" num_nearest_points="5" mahalanobis_fac="0.05" enabled_likelihood="1" intrinsic_exp_parameter="1">
+    <heuristic contact_fac="0.75" non_contact_fac="0.25" max_surface_points_inkd="5000">
+      <ftmodel dist_max="0.7" cone_theta_orizontal_axis="0.5" cone_theta_vertical_axis="0.785" num_nearest_points="5" num_points="5000" mahalanobis_fac="0.05" enabled_likelihood="1" intrinsic_exp_parameter="1">
         <joint_fac dim="16" c1="0.01" c2="0.01" c3="0.38" c4="0.60" c5="0.01" c6="0.01" c7="0.38" c8="0.60" c9="0.01" c10="0.01" c11="0.38" c12="0.60" c13="0.01" c14="0.01" c15="0.38" c16="0.60"/>
       </ftmodel>
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
@@ -51,9 +50,16 @@
         <pose v1="0.0" v2="0.0" v3="0.0" roll="0.0" pitch="0.0" yaw="0.0"/>
       </bounds>
     </obstacles>
-    <tactile_model kernels="20">
+    <tactile_model kernels="20" test="0">
       <covariance dim="7" c1="0.0001" c2="0.0001" c3="0.0001" c4="0.0001" c5="0.0001" c6="0.0001" c7="0.0001"/>
+      <test_stddev lin="0.025" ang="0"/>
     </tactile_model>
+    <point_cloud_noise enable_noise="0">
+      <!--<mean dim="7" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="0.0"/>-->
+      <!--<stddev dim="7" c1="0.0" c2="0.0" c3="0.0" c4="0.00" c5="0.00" c6="0.00" c7="0.00"/>-->
+      <!--<stddev dim="7" c1="10" c2="10" c3="1" c4="1.5" c5="1.5" c6="1.5" c7="1.5"/>-->
+      <gt_pose_stddev lin="0.01" ang="10000"/>
+    </point_cloud_noise>
   </rag_planner>
 
   <pose_planner features="2000000" attempts="10" kernels="1000000" neighbours="10000" distance_range="10.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
@@ -98,7 +104,7 @@
   </player>
 
   <robot force_disp_scale="0.2" trajectory_idle="0.5" trajectory_duration="1.0">
-    <ft_sensor use_ft_sensor_client="1">
+    <ft_sensor use_ft_sensor_client="0">
       <daq calibration_file="FT10731.cal" sampling_rate="10000" avg_window_size="10"/>
       <client host="localhost" port="26873"/>
       <!-- y = 80(kuka end-effector mounting) + 7+2+2(Rustam's F/T sensor and Kinect mounting plates) + 33.3(Gamma FT sensor) -->
@@ -142,6 +148,15 @@
       <dimensions v1="0.09" v2="0.15" v3="0.09"/>
       <pose v1="0.0" v2="0.22" v3="0.0" roll="0.0" pitch="2.74889357189" yaw="0.0"/>
     </arm_tool_bounds>
+
+    <obstacle_bounds type="box" group="1">
+      <dimensions v1="0.3" v2="0.3" v3="0.04"/>
+      <pose v1="0.0" v2="0.6" v3="0.04" roll="0.0" pitch="0.0" yaw="0.0"/>
+    </obstacle_bounds>
+    <obstacle_bounds type="plane" distance="0.0" grid_size="10" grid_delta="0.1" group="1">
+      <normal v1="0.0" v2="0.0" v3="1.0"/>
+      <pose v1="0.0" v2="0.0" v3="0.2" roll="0.0" pitch="0.0" yaw="0.0"/>
+    </obstacle_bounds>
   </robot>
 
   <!-- Birmingham robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="SpamDeviceRobotBhamSim" -->

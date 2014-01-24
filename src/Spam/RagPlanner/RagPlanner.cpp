@@ -31,7 +31,7 @@ using namespace spam;
 
 //------------------------------------------------------------------------------
 
-RagPlanner::RagPlanner(Scene &scene) : grasp::PosePlanner(scene) {
+RagPlanner::RagPlanner(Scene &scene) : grasp::PosePlanner(scene), pBelief(nullptr), pHeuristic(nullptr) {
 }
 
 RagPlanner::~RagPlanner() {
@@ -52,10 +52,8 @@ bool RagPlanner::create(const Desc& desc) {
 		objectRealPose.p.x, objectRealPose.p.y, objectRealPose.p.z, objectRealPose.q.w, objectRealPose.q.x, objectRealPose.q.y, objectRealPose.q.z);
 	iterations = 0;
 
-//	pRBPose.reset(dynamic_cast<RBPose*>(&*desc.pRBPoseDesc->create(context)));
-//	pRBPose.reset(dynamic_cast<Belief*>(desc.pRBPoseDesc->create(context).get()));
-	pBelief.reset(&(Belief&)*pRBPose.get());
-	pHeuristic.reset(dynamic_cast<FTDrivenHeuristic*>(&robot->getPlanner()->getHeuristic()));
+	pBelief = dynamic_cast<Belief*>(pRBPose.get());
+	pHeuristic = dynamic_cast<FTDrivenHeuristic*>(&robot->getPlanner()->getHeuristic());
 	uncEnable = desc.uncEnable;
 	singleGrasp = desc.singleGrasp;
 	withdrawToHomePose = desc.withdrawToHomePose;

@@ -67,17 +67,6 @@ MACRO(COPY_FILES TAR DST)
 	endif(POST_BUILD_COPY_FILES)
 ENDMACRO(COPY_FILES TAR DST)
 
-# Build options
-if (WIN32)
-	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  /D_CRT_SECURE_NO_DEPRECATE /Ox")
-	option(BUILD_DYNAMIC_LIBS "Build dynamic library versions" NO)
-	mark_as_advanced(BUILD_DYNAMIC_LIBS)
-elseif (UNIX)
-	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -DLINUX -Dlinux -DLINUX64 -D__x86_64__ -DNX64 -Wno-deprecated-declarations -std=c++0x -O3")
-	option(BUILD_DYNAMIC_LIBS "Build dynamic library versions" YES)
-	mark_as_advanced(BUILD_DYNAMIC_LIBS)
-endif()
-
 # Boost
 FIND_PACKAGE(Boost COMPONENTS system filesystem thread)
 
@@ -115,6 +104,15 @@ if (WIN32)
 	elseif(MSVC11)
 		SET(MSVC_VER "110")
 	endif()
+	
+	# Build options
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D_CRT_SECURE_NO_DEPRECATE")
+	SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Ox")
+	SET(CMAKE_DLL_EXPORT_FLAGS " ")
+	
+	# Library settings
+	option(BUILD_DYNAMIC_LIBS "Build dynamic library versions" NO)
+	mark_as_advanced(BUILD_DYNAMIC_LIBS)
 	
 	# Expat
 	SET(EXPAT_INCLUDE "${PROGRAM_FILES}/expat/include" CACHE PATH "Path prefix for Expat include")
@@ -164,6 +162,20 @@ if (WIN32)
 		MARK_AS_ADVANCED(POINTGRAY_LIBRARY)
 	endif(BUILD_SPAM_CAMERA_PGR)
 elseif (UNIX)
+	# Build options
+	if(X86_64)
+		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -DLINUX -Dlinux -DLINUX64 -D__x86_64__ -DNX64 -Wno-deprecated-declarations -std=c++0x")
+	else(X86_64)
+		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -DLINUX -Dlinux -DLINUX32 -m32 -Di386 -DNX32 -Wno-deprecated-declarations -std=c++0x")
+	endif(X86_64)
+	SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+	SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -ggdb")
+	SET(CMAKE_DLL_EXPORT_FLAGS " ")
+
+	# Library settings
+	option(BUILD_DYNAMIC_LIBS "Build dynamic library versions" YES)
+	mark_as_advanced(BUILD_DYNAMIC_LIBS)
+	
 	# Expat
 	SET(EXPAT_INCLUDE /usr/include CACHE PATH "Path prefix for Expat include")
 	#MARK_AS_ADVANCED(EXPAT_INCLUDE)

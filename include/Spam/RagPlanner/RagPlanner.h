@@ -160,9 +160,9 @@ protected:
 	golem::DebugRenderer gtRenderer;
 
 	/** Smart pointer to the belief state */
-	Belief::Ptr pBelief;
+	Belief* pBelief;
 	/** Smart pointer to the ft driven heuristic */
-	FTDrivenHeuristic::Ptr pHeuristic;
+	FTDrivenHeuristic* pHeuristic;
 
 	/** Data copllector */
 	TrialData::Map dataMap;
