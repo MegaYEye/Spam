@@ -28,8 +28,9 @@
   </scene>
 
   <rag_planner num_sampled_poses="5" imp_weights_threshold="0.0001" max_sampling_iterations="100" timestamp_factor="0.15" planning_uncertainty="0">
-    <point_appearance point_show="1" normal_show="0" frame_show="0" frame_num="200" lambda="200">
+    <point_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="10" camera_frame="1" camera_frame_size="0.05">
       <frame_size v1="5e-1" v2="5e-1" v3="1e-2"/>
+      <colour override="0" R="127" G="127" B="127" A="255"/>
     </point_appearance>
     <heuristic>
       <ftmodel dist_max="0.7" cone_theta_orizontal_axis="0.5" cone_theta_vertical_axis="0.785" num_nearest_points="5" mahalanobis_fac="0.05" enabled_likelihood="1" intrinsic_exp_parameter="1">
