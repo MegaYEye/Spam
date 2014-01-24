@@ -106,34 +106,34 @@
       <chain enabled_obs="1" enabled_lin="1" enabled_ang="1" dist_norm="0.8" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
       <chain enabled_obs="1" enabled_lin="1" enabled_ang="1" dist_norm="0.9" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
 
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
       <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="13"></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="13"></joint>
 
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="17"></joint>
-
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="21"></joint>
-
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="25"></joint>
-
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
       <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
       <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="17"></joint>
+
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="21"></joint>
+
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="25"></joint>
+
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
     </heuristic>
 
     <global_finder dist_scale_fac="0.7" range_fac="0.5" num_iterations="3">
-      <global_path_finder graph_size="10000" waypoint_init_trials="10000">
+      <global_path_finder graph_size="1000" waypoint_init_trials="200">
         <generator_root weight="1.0">
           <delta dim="26" c1="1.57079633" c2="6.28318531" c3="6.28318531" c4="6.28318531" c5="6.28318531" c6="6.28318531" c7="6.28318531" c8="6.28318531" c9="6.28318531" c10="6.28318531" c11="6.28318531" c12="6.28318531" c13="6.28318531" c14="6.28318531" c15="6.28318531" c16="6.28318531" c17="6.28318531" c18="6.28318531" c19="6.28318531" c20="6.28318531" c21="6.28318531" c22="6.28318531" c23="6.28318531" c24="6.28318531" c25="6.28318531" c26="6.28318531"/>
         </generator_root>
@@ -141,13 +141,23 @@
           <delta dim="26" c1="1.57079633" c2="6.28318531" c3="6.28318531" c4="6.28318531" c5="6.28318531" c6="6.28318531" c7="6.28318531" c8="6.28318531" c9="6.28318531" c10="6.28318531" c11="6.28318531" c12="6.28318531" c13="6.28318531" c14="6.28318531" c15="6.28318531" c16="6.28318531" c17="6.28318531" c18="6.28318531" c19="6.28318531" c20="6.28318531" c21="6.28318531" c22="6.28318531" c23="6.28318531" c24="6.28318531" c25="6.28318531" c26="6.28318531"/>
         </generator_goal>
       </global_path_finder>
-      <local_path_finder graph_size="1000" waypoint_init_trials="10000">
+      <local_path_finder graph_size="1000" waypoint_init_trials="100">
         <generator_root weight="1.0">
           <delta dim="26" c1="0.78539816" c2="0.78539816" c3="0.78539816" c4="0.78539816" c5="0.78539816" c6="0.78539816" c7="6.28318531" c8="6.28318531" c9="6.28318531" c10="6.28318531" c11="6.28318531" c12="6.28318531" c13="6.28318531" c14="6.28318531" c15="6.28318531" c16="6.28318531" c17="6.28318531" c18="6.28318531" c19="6.28318531" c20="6.28318531" c21="6.28318531" c22="6.28318531" c23="6.28318531" c24="6.28318531" c25="6.28318531" c26="6.28318531"/>
         </generator_root>
         <generator_goal weight="1.0">
           <delta dim="26" c1="0.78539816" c2="0.78539816" c3="0.78539816" c4="0.78539816" c5="0.78539816" c6="0.78539816" c7="6.28318531" c8="6.28318531" c9="6.28318531" c10="6.28318531" c11="6.28318531" c12="6.28318531" c13="6.28318531" c14="6.28318531" c15="6.28318531" c16="6.28318531" c17="6.28318531" c18="6.28318531" c19="6.28318531" c20="6.28318531" c21="6.28318531" c22="6.28318531" c23="6.28318531" c24="6.28318531" c25="6.28318531" c26="6.28318531"/>
         </generator_goal>
+        <generator weight="1.0">
+          <delta dim="26" c1="0.314159266" c2="0.314159266" c3="0.314159266" c4="0.314159266" c5="0.314159266" c6="0.314159266" c7="0.314159266" c8="3.14159266" c9="3.14159266" c10="3.14159266" c11="3.14159266" c12="3.14159266" c13="3.14159266" c14="3.14159266" c15="3.14159266" c16="3.14159266" c17="3.14159266" c18="3.14159266" c19="3.14159266" c20="3.14159266" c21="3.14159266" c22="3.14159266" c23="3.14159266" c24="3.14159266" c25="3.14159266" c26="3.14159266"/>
+          <!--<delta dim="23" c1="0.314159266" c2="0.314159266" c3="0.314159266" c4="0.314159266" c5="0.314159266" c6="0.314159266" c7="0.314159266" c8="0.314159266" c9="0.314159266" c10="0.314159266" c11="0.314159266" c12="0.314159266" c13="0.314159266" c14="0.314159266" c15="0.314159266" c16="0.314159266" c17="0.314159266" c18="0.314159266" c19="0.314159266" c20="0.314159266" c21="0.314159266" c22="0.314159266" c23="0.314159266"/>-->
+        </generator>
+        <generator weight="1.0">
+          <delta dim="26" c1="0.314159266" c2="0.314159266" c3="0.314159266" c4="0.314159266" c5="0.314159266" c6="0.314159266" c7="0.314159266" c8="3.14159266" c9="3.14159266" c10="3.14159266" c11="3.14159266" c12="3.14159266" c13="3.14159266" c14="3.14159266" c15="3.14159266" c16="3.14159266" c17="3.14159266" c18="3.14159266" c19="3.14159266" c20="3.14159266" c21="3.14159266" c22="3.14159266" c23="3.14159266" c24="3.14159266" c25="3.14159266" c26="3.14159266"/>
+        </generator>
+        <generator weight="1.0">
+          <delta dim="26" c1="0.314159266" c2="0.314159266" c3="0.314159266" c4="0.314159266" c5="0.314159266" c6="0.314159266" c7="0.314159266" c8="3.14159266" c9="3.14159266" c10="3.14159266" c11="3.14159266" c12="3.14159266" c13="3.14159266" c14="3.14159266" c15="3.14159266" c16="3.14159266" c17="3.14159266" c18="3.14159266" c19="3.14159266" c20="3.14159266" c21="3.14159266" c22="3.14159266" c23="3.14159266" c24="3.14159266" c25="3.14159266" c26="3.14159266"/>
+        </generator>
       </local_path_finder>
     </global_finder>
     <local_finder>
