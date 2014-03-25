@@ -324,42 +324,52 @@ void FTDrivenHeuristic::setBeliefState(RBPose::Sample::Seq &samples, const golem
 		//queryPoints.insert(std::map<RBPose::Sample::Seq::const_iterator, pcl::KdTreeFLANN<pcl::PointXYZ>>::value_type(s, kdtree));
 	}
 	
-	// compute the covariance matrix
-	RBCoord mean, covariance, c;
-	const Real norm = REAL_ONE/samples.size();
-
-	mean.setZero();
-	c.setZero();
-	for (RBPose::Sample::Seq::const_iterator i = samples.begin(); i != samples.end(); ++i)
-		golem::kahanSum(&mean[0], &c[0], &(*i)[0], RBCoord::N);
-	for (golem::U32 j = 0; j < RBCoord::N; ++j)
-		mean[j] *= norm;
+	// mean and covariance
+	if (!sampleProperties.create<golem::Ref1, RBPose::Sample::Ref>(ftDrivenDesc.covariance, samples))
+		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
+		
+	context.write("spam::Belief::createQuery(TEST): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", sampleProperties.covariance[0], sampleProperties.covariance[1], sampleProperties.covariance[2], sampleProperties.covariance[3], sampleProperties.covariance[4], sampleProperties.covariance[5], sampleProperties.covariance[6]);
 	
-	covariance.setZero();
-	c.setZero();
-	for (RBPose::Sample::Seq::const_iterator i = samples.begin(); i != samples.end(); ++i)
-		for (golem::U32 j = 0; j < RBCoord::N; ++j)
-			golem::kahanSum(covariance[j], c[j], golem::Math::sqr((*i)[j] - mean[j]));
-	for (golem::U32 j = 0; j < RBCoord::N; ++j)
-		covariance[j] *= norm*ftDrivenDesc.covariance[j];
-	//covariance.q.setId();
-	//covariance.p.set(Vec3(.04, .025, .0001));
-
 	covarianceDet = REAL_ONE;
 	for (golem::U32 j = 0; j < RBCoord::N; ++j)
-			covarianceDet *= covariance[j];	
+			covarianceDet *= sampleProperties.covariance[j];	
+	
+	// compute the covariance matrix
+	//RBCoord mean, covariance, c;
+	//const Real norm = REAL_ONE/samples.size();
 
-	if (covarianceDet < REAL_EPS)
-		covarianceDet = REAL_EPS;
+	//mean.setZero();
+	//c.setZero();
+	//for (RBPose::Sample::Seq::const_iterator i = samples.begin(); i != samples.end(); ++i)
+	//	golem::kahanSum(&mean[0], &c[0], &(*i)[0], RBCoord::N);
+	//for (golem::U32 j = 0; j < RBCoord::N; ++j)
+	//	mean[j] *= norm;
+	//
+	//covariance.setZero();
+	//c.setZero();
+	//for (RBPose::Sample::Seq::const_iterator i = samples.begin(); i != samples.end(); ++i)
+	//	for (golem::U32 j = 0; j < RBCoord::N; ++j)
+	//		golem::kahanSum(covariance[j], c[j], golem::Math::sqr((*i)[j] - mean[j]));
+	//for (golem::U32 j = 0; j < RBCoord::N; ++j)
+	//	covariance[j] *= norm*ftDrivenDesc.covariance[j];
+	////covariance.q.setId();
+	////covariance.p.set(Vec3(.04, .025, .0001));
 
-	while (covarianceDet < ftDrivenDesc.covarianceDetMin)
-		covarianceDet *= ftDrivenDesc.covarianceDet;
-	context.debug("FTDrivenHeuristic::setBeliefState: covariance hypothesis = {(%.f, %f, %f) (%f, %f, %f, %f) det=%.10f}\n", covariance[3], covariance[4], covariance[5], covariance[6], covariance[0], covariance[1], covariance[2], covarianceDet);
+	//covarianceDet = REAL_ONE;
+	//for (golem::U32 j = 0; j < RBCoord::N; ++j)
+	//		covarianceDet *= covariance[j];	
 
-	for (golem::U32 j = 0; j < RBCoord::N; ++j) {
-		covarianceInv[j] = REAL_ONE/(covariance[j]);
-		covarianceSqrt[j] = Math::sqrt(covariance[j]);
-	}
+	//if (covarianceDet < REAL_EPS)
+	//	covarianceDet = REAL_EPS;
+
+	//while (covarianceDet < ftDrivenDesc.covarianceDetMin)
+	//	covarianceDet *= ftDrivenDesc.covarianceDet;
+	//context.debug("FTDrivenHeuristic::setBeliefState: covariance hypothesis = {(%.f, %f, %f) (%f, %f, %f, %f) det=%.10f}\n", covariance[3], covariance[4], covariance[5], covariance[6], covariance[0], covariance[1], covariance[2], covarianceDet);
+
+	//for (golem::U32 j = 0; j < RBCoord::N; ++j) {
+	//	covarianceInv[j] = REAL_ONE/(covariance[j]);
+	//	covarianceSqrt[j] = Math::sqrt(covariance[j]);
+	//}
 }
 
 //------------------------------------------------------------------------------
@@ -462,7 +472,7 @@ golem::Real FTDrivenHeuristic::getMahalanobisDist(const golem::Waypoint& w0, con
 	//const Real d2 = covarianceInv[3]*golem::Math::sqr(a[3] + b[3]) + covarianceInv[4]*golem::Math::sqr(a[4] + b[4]) + covarianceInv[5]*golem::Math::sqr(a[5] + b[5]) + covarianceInv[6]*golem::Math::sqr(a[6] + b[6]);
 	//return golem::REAL_HALF*(d0 + std::min(d1, d2));
 			const golem::Vec3 p = w0.wpos[i].p - goal.wpos[i].p;
-			const golem::Real d = dot(p, covarianceInv.p).dot(p);
+			const golem::Real d = dot(p, sampleProperties.covarianceInv.p).dot(p);
 //			context.debug("  Vec p<%.4f,%.4f,%.4f>, p^TC^-1<%.4f,%.4f,%.4f>, d=%.4f\n",
 //				p.x, p.y, p.z, dot(p, covarianceInv.p).x, dot(p, covarianceInv.p).y, dot(p, covarianceInv.p).z,
 //				d);

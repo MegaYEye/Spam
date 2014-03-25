@@ -3,89 +3,34 @@
 <golem>
   <rand seed="0"></rand>
   <parallels threads="4"></parallels>
-  <messages level="error"/><!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
-  <library physx="0" normals="0"/>
+  <messages level="debug"/>
+  <!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
 
-  <universe name="Spam RagPlanner">
+  <universe name="SPAM RaGPlanner">
     <window x="0" y="0" width="800" height="600"></window>
     <physx fps="30" skin_width="0.005" sleep_lin_vel_squared="0.0025" sleep_ang_vel_squared="0.0025" max_angular_velocity="7.0" bounce_threshold="-2.0"></physx>
-    <recorder frame_drop="1" file_name="data/rag/screen_capture_1/screen" file_ext=".png" leading_zeros="1" encoder_str="image/png" buffer_len="100"></recorder>
+    <recorder frame_drop="1" file_name="screen" file_ext=".png" leading_zeros="1" encoder_str="image/png" buffer_len="100"></recorder>
   </universe>
 
-  <scene name="Spam Reach-and-Grasp planner">
+  <scene name="Spam Pose Planner">
     <physx restitution="0.0" static_friction="0.2" dynamic_friction="0.1">
       <gravity v1="0.0" v2="0.0" v3="-9.81"></gravity>
     </physx>
     <opengl view_name="Default" view_inc="0.2">
-      <view_point v1="12.6729" v2="2.9922" v3="10.1857"/>
-      <view_dir v1="-0.7612" v2="-0.3427" v3="-0.5505"/>
+      <view_point v1="6.0" v2="7.0" v3="10.0"></view_point>
+      <view_dir v1="-1.5" v2="-0.5" v3="-1.0"></view_dir>
       <view_up v1="0.0000" v2="0.0000" v3="1.0000"/>
-      <clear_color R="55" G="55" B="60" A="255"></clear_color>
-      <draw solid="0" wire="1" shadow="0" physx="0" normals="0"/>
-    </opengl>
-    <opengl view_name="Queried object" view_inc="0.2">
-      <view_point v1="10.1790" v2="-2.6855" v3="5.7804"/>
-      <view_dir v1="-0.7308" v2="-0.0480" v3="-0.6809"/>
-      <view_up v1="0.0000" v2="0.0000" v3="1.0000"/>
-      <clear_color R="55" G="55" B="60" A="255"></clear_color>
-      <draw solid="0" wire="1" shadow="0" physx="0" normals="0"/>
-    </opengl>
-    <opengl view_name="Recording view" view_inc="0.2">
-      <view_point v1="8.0100" v2="0.7698" v3="4.0419"/>
-      <view_dir v1="-0.5676" v2="-0.7651" v3="-0.3041"/>
-      <view_up v1="0.0000" v2="0.0000" v3="1.0000"/>
+      <!--<clear_color R="0" G="0" B="0" A="255"></clear_color>-->
       <clear_color R="55" G="55" B="60" A="255"></clear_color>
       <draw solid="0" wire="1" shadow="0" physx="0" normals="0"/>
     </opengl>
   </scene>
 
-  <rag_planner num_sampled_poses="5" imp_weights_threshold="0.0001" max_sampling_iterations="100" timestamp_factor="0.15" planning_uncertainty="1" single_grasp_attempt="0" withdraw_to_home_pose="1">
-    <point_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="10" camera_frame="1" camera_frame_size="0.05">
-      <frame_size v1="5e-1" v2="5e-1" v3="1e-2"/>
-      <colour override="0" R="127" G="127" B="127" A="255"/>
-    </point_appearance>
-    <heuristic contact_fac="0.75" non_contact_fac="0.25" max_surface_points_inkd="5000">
-      <ftmodel dist_max="0.45" cone_theta_orizontal_axis="0.5" cone_theta_vertical_axis="0.785" num_nearest_points="10" num_points="5000" mahalanobis_fac="0.05" enabled_likelihood="1" intrinsic_exp_parameter="20">
-        <joint_fac dim="16" c1="0.05" c2="0.05" c3="0.45" c4="0.45" c5="0.05" c6="0.05" c7="0.45" c8="0.45" c9="0.05" c10="0.05" c11="0.45" c12="0.45" c13="0.05" c14="0.05" c15="0.45" c16="0.45"/>
-      </ftmodel>
-      <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
-    </heuristic>
-    <object_bounding_box>
-      <bounds type="box" group="1">
-        <dimensions v1="0.01" v2="0.01" v3="0.01"/>
-        <pose v1="0.0" v2="0.0" v3="0.0" roll="0.0" pitch="0.0" yaw="0.0"/>
-      </bounds>
-    </object_bounding_box>
-    <!--<real_object_pose v1="0.6673" v2="-0.3617" v3="0.1157" roll="0.0" pitch="0.0" yaw="0.0"/>-->
-    <obstacles>
-      <bounds type="box" group="1">
-        <dimensions v1="0.3" v2="0.6" v3="0.005"/>
-        <pose v1="0.0" v2="0.0" v3="0.0" roll="0.0" pitch="0.0" yaw="0.0"/>
-      </bounds>
-    </obstacles>
-    <tactile_model kernels="50" test="0">
-      <!--<covariance dim="7" c1="0.02" c2="0.02" c3="0.02" c4="0.005" c5="0.005" c6="0.005" c7="0.005"/>-->
-      <!--if text=1-->
-      <!--<covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.001" c6="0.01" c7="0.001"/>-->
-      <!--if text=0-->
-      <covariance dim="7" c1="0.001" c2="0.001" c3="0.001" c4="0.001" c5="0.0001" c6="0.001" c7="0.0001"/>
-      <!--no uncertainty-->
-      <!--<covariance dim="7" c1="0.00" c2="0.00" c3="0.00" c4="0.00" c5="0.00" c6="0.00" c7="0.00"/>-->
-      <test_stddev lin="0.025" ang="0"/>
-    </tactile_model>
-    <point_cloud_noise enable_noise="0">
-      <!--<mean dim="7" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="0.0"/>-->
-      <!--<stddev dim="7" c1="0.0" c2="0.0" c3="0.0" c4="0.00" c5="0.00" c6="0.00" c7="0.00"/>-->
-      <!--<stddev dim="7" c1="10" c2="10" c3="1" c4="1.5" c5="1.5" c6="1.5" c7="1.5"/>-->
-      <gt_pose_stddev lin="0.01" ang="10000"/>
-    </point_cloud_noise>
-  </rag_planner>
-
-  <pose_planner features="2000000" attempts="10" kernels="100000" neighbours="10000" distance_range="10.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
+  <pose_planner num_poses="10" num_hypotheses="3" features="500000" attempts="10" kernels="500000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
     <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
-    <mean_shift population_size="100" generations_min="10" generations_max="100" distance_diff="1e-4"/>
+    <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
     <pose_stddev lin="0.01" ang="100.0"/>
-    <dist prod="1" lin="1.0" ang="1.0" feature="0"/>
+    <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
     <appearance distrib_samples="100">
       <model>
         <line show="1" R="255" G="255" B="0" A="255"/>
@@ -102,21 +47,21 @@
   </pose_planner>
 
   <player>
-    <trajectory scan_idle="1.0" approach_duration="5.0" approach_idle="2.0" approach_extrapol_fac="0.5" manip_duration="3.0" manip_idle="2.0" manip_perf_off="9.0" average="0.2">
-      <velocity dim="26" c1="0.1" c2="0.1" c3="0.1" c4="0.1" c5="0.1" c6="0.1" c7="0.5" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5" c21="0.5" c22="0.5" c23="0.5" c24="0.5" c25="0.5" c26="0.5"/>
-      <acceleration dim="26" c1="0.05" c2="0.05" c3="0.05" c4="0.05" c5="0.05" c6="0.05" c7="0.5" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5" c21="0.5" c22="0.5" c23="0.5" c24="0.5" c25="0.5" c26="0.5"/>
-      <distance dim="26" c1="10.0" c2="10.0" c3="10.0" c4="10.0" c5="10.0" c6="10.0" c7="1.0" c8="1.0" c9="1.0" c10="1.0" c11="1.0" c12="1.0" c13="1.0" c14="1.0" c15="1.0" c16="1.0" c17="1.0" c18="1.0" c19="1.0" c20="1.0" c21="1.0" c22="1.0" c23="1.0" c24="1.0" c25="1.0" c26="1.0"/>
+    <trajectory scan_idle="1.0" approach_duration="3.0" approach_idle="1.0" approach_extrapol_fac="0.5" manip_duration="2.0" manip_idle="2.0" manip_perf_off="0.0" average="0.2">
+      <velocity dim="27" c1="0.1" c2="0.1" c3="0.1" c4="0.1" c5="0.1" c6="0.1" c7="0.1" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5" c21="0.5" c22="0.5" c23="0.5" c24="0.5" c25="0.5" c26="0.5" c27="0.5"/>
+      <acceleration dim="27" c1="0.05" c2="0.05" c3="0.05" c4="0.05" c5="0.05" c6="0.05" c7="0.05" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5" c21="0.5" c22="0.5" c23="0.5" c24="0.5" c25="0.5" c26="0.5" c27="0.5"/>
+      <distance dim="27" c1="10.0" c2="10.0" c3="10.0" c4="10.0" c5="10.0" c6="10.0" c7="10.0" c8="1.0" c9="1.0" c10="1.0" c11="1.0" c12="1.0" c13="1.0" c14="1.0" c15="1.0" c16="1.0" c17="1.0" c18="1.0" c19="1.0" c20="1.0" c21="1.0" c22="1.0" c23="1.0" c24="1.0" c25="1.0" c26="1.0" c27="1.0"/>
     </trajectory>
 
-    <pose dim="23" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0"/>
-    <pose dim="23" c1="-0.790730" c2="-1.471339" c3="0.238979" c4="1.617946" c5="0.710470" c6="-0.616314" c7="0.626091" c8="0.455844" c9="0.456985" c10="0.782229" c11="0.782229" c12="-0.052385" c13="0.284712" c14="1.057750" c15="1.057750" c16="-0.011364" c17="0.673765" c18="1.379509" c19="1.379509" c20="0.190139" c21="1.037176" c22="1.347333" c23="1.347333"/>
-    <pose dim="23" c1="-0.785400" c2="-1.396300" c3="0.000000" c4="1.483500" c5="0.436300" c6="-0.523600" c7="0.523600" c8="0.000000" c9="0.000000" c10="0.000000" c11="0.000000" c12="0.000000" c13="0.000000" c14="0.000000" c15="0.000000" c16="0.000000" c17="0.000000" c18="0.000000" c19="0.000000" c20="0.000000" c21="0.000000" c22="0.000000" c23="0.000000"/>
-    <pose dim="23" c1="-0.785400" c2="-1.396300" c3="0.000000" c4="1.483500" c5="0.436300" c6="-0.523600" c7="0.523600" c8="0.000000" c9="0.5236" c10="0.000000" c11="0.000000" c12="0.000000" c13="0.5236" c14="0.000000" c15="0.000000" c16="0.000000" c17="0.5236" c18="0.000000" c19="0.000000" c20="0.000000" c21="0.5236" c22="0.000000" c23="0.000000"/>
+    <pose dim="26" c1="0.0" c2="-1.57079633" c3="+1.57079633" c4="0.0" c5="0.0" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
+    <pose dim="26" c1="0.0" c2="-1.57079633" c3="+1.57079633" c4="0.0" c5="+1.57079633" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
+    <pose dim="26" c1="-0.0379758" c2="-1.31591" c3="1.79694" c4="2.96318" c5="-0.847821" c6="-1.16174" c7="0" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0"/>
 
-    <pose dim="23" c1="0.845909" c2="-0.975831" c3="-0.340497" c4="1.207063" c5="-0.130931" c6="-1.492706" c7="0.401741" c8="0.335003" c9="0.305802" c10="0.055335" c11="0.055335" c12="0.000000" c13="0.459102" c14="0.155279" c15="0.155279" c16="0.000000" c17="0.354856" c18="0.240511" c19="0.240511" c20="0.036604" c21="0.416106" c22="0.259811" c23="0.259811"/>
-    <pose dim="23" c1="0.844245" c2="-0.962877" c3="-0.333309" c4="1.198550" c5="-0.128992" c6="-1.495119" c7="0.400001" c8="0.335003" c9="0.013530" c10="0.006737" c11="0.006737" c12="0.000000" c13="0.160177" c14="0.099347" c15="0.099347" c16="0.000000" c17="0.015340" c18="0.151873" c19="0.151873" c20="0.036604" c21="-0.022577" c22="0.206894" c23="0.206894"/>
-    <pose dim="23" c1="0.844422" c2="-0.914784" c3="-0.311686" c4="1.152846" c5="-0.117851" c6="-1.517603" c7="0.390201" c8="0.224056" c9="-0.084477" c10="-0.027733" c11="-0.027733" c12="0.025086" c13="-0.055087" c14="0.015140" c15="0.015140" c16="0.000000" c17="-0.170166" c18="0.080126" c19="0.080126" c20="0.012150" c21="-0.186317" c22="0.106190" c23="0.106190"/>
-    <pose dim="23" c1="0.854099" c2="-0.841432" c3="-0.275754" c4="1.050381" c5="-0.106604" c6="-1.541328" c7="0.379987" c8="0.224056" c9="-0.084477" c10="-0.027733" c11="-0.027733" c12="0.025086" c13="-0.055087" c14="0.015140" c15="0.015140" c16="0.000000" c17="-0.170166" c18="0.080126" c19="0.080126" c20="0.012150" c21="-0.186317" c22="0.106190" c23="0.106190"/>
+    <pose dim="26" c1="0.764376" c2="-0.947911" c3="1.32172" c4="-0.634099" c5="1.95336" c6="0.0874253" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
+    <pose dim="26" c1="0.939423" c2="-2.17826" c3="2.46344" c4="-0.778965" c5="1.46438" c6="-0.164736" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
+    <!--<pose dim="26" c1="0.0" c2="-1.57079633" c3="+1.57079633" c4="0.0" c5="+1.57079633" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>-->
+    <pose dim="26" c1="-0.994729" c2="-2.10636" c3="2.66316" c4="1.0669" c5="1.45776" c6="-0.165368" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
+    <pose dim="26" c1="-0.769612" c2="-0.852913" c3="1.31988" c4="0.654703" c5="1.97807" c6="-0.286445" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
   </player>
 
   <robot force_disp_scale="0.2" trajectory_idle="0.5" trajectory_duration="1.0">
@@ -130,8 +75,7 @@
       <!--<limit v1="65.0" v2="65.0" v3="200.0" w1="5.0" w2="5.0" w3="5.0"/>-->
       <limit v1="30.0" v2="30.0" v3="80.0" w1="2.0" w2="2.0" w3="2.0"/>
       <guards_tcp v1="30.0" v2="30.0" v3="80.0" w1="2.0" w2="2.0" w3="2.0"/>
-      <!--<guards_hand dim="12" c1="3.0" c2="3.0" c3="3.0" c4="3.0" c5="3.0" c6="3.0" c7="3.0" c8="3.0" c9="3.0" c10="3.0" c11="3.0" c12="3.0"/>-->
-      <guards_hand dim="12" c1="0.3" c2="0.3" c3="0.3" c4="0.3" c5="0.3" c6="0.3" c7="0.3" c8="0.3" c9="0.3" c10="0.3" c11="0.3" c12="0.3"/>
+      <guards_hand dim="12" c1="3.0" c2="3.0" c3="3.0" c4="3.0" c5="3.0" c6="3.0" c7="3.0" c8="3.0" c9="3.0" c10="3.0" c11="3.0" c12="3.0"/>
       <stiffness_hand dim="12" c1="1.0" c2="1.0" c3="0.5" c4="1.0" c5="1.0" c6="0.5" c7="1.0" c8="1.0" c9="0.5" c10="1.0" c11="1.0" c12="0.5"/>
     </ft_sensor>
 
@@ -161,26 +105,25 @@
       <frame_size v1="0.1" v2="0.1" v3="0.1"/>
     </active_workspace_ctrl_arm>
 
-    <arm_tool_bounds type="box" group="1">
-      <dimensions v1="0.09" v2="0.15" v3="0.09"/>
-      <pose v1="0.0" v2="0.22" v3="0.0" roll="0.0" pitch="2.74889357189" yaw="0.0"/>
-    </arm_tool_bounds>
+    <!--<arm_tool_bounds type="box" group="1">
+      <dimensions v1="0.12" v2="0.08" v3="0.15"/>
+      <pose v1="0.025" v2="-0.005" v3="0.23" roll="0.0" pitch="0.0" yaw="0.16"/>
+    </arm_tool_bounds>-->
 
-    <!--<obstacle_bounds type="box" group="1">
-      <dimensions v1="0.34" v2="0.635" v3="0.38"/>
-      <pose v1="0.75" v2="0.0" v3="-0.27" roll="0.0" pitch="0.0" yaw="0.0"/>
-    </obstacle_bounds>-->
-    <obstacle_bounds type="sphere" group="1" radius="0.12">
-      <pose v1="0.3" v2="0.0" v3="0.8" roll="0.0" pitch="0.0" yaw="0.0"/>
+    <obstacle_bounds type="plane" distance="0.0" grid_size="10" grid_delta="0.1" group="1">
+      <normal v1="0.0" v2="0.0" v3="1.0"/>
+      <pose v1="0.0" v2="0.0" v3="0.0" roll="0.0" pitch="0.0" yaw="0.0"/>
     </obstacle_bounds>
   </robot>
 
-  <!-- Birmingham robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="SpamDeviceRobotBhamSim" -->
-  <!-- Birmingham robot (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="SpamDeviceRobotBham" -->
-  <!-- DLR Justin robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="SpamDeviceRobotJustin" -->
-  <!-- DLR Justin robot (controller, planner): library_path="GolemDeviceRobotJustin" config_path="SpamDeviceRobotJustin" -->
+  <!-- Birmingham robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBhamSim" -->
+  <!-- Birmingham robot (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBham" -->
+  <!-- DLR Justin robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotJustin" -->
+  <!-- DLR Justin robot (controller, planner): library_path="GolemDeviceRobotJustin" config_path="GolemDeviceRobotJustin" -->
+  <!-- UIBK robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotUIBKSim" -->
+  <!-- UIBK robot (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotUIBK" -->
 
-  <controller library_path="GolemDeviceRobotJustin" config_path="SpamDeviceRobotJustin">
+  <controller library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBhamSim">
     <renderer>
       <joint_appearance line_width="1.0">
         <solid_colour R="192" G="192" B="0" A="100"></solid_colour>
@@ -190,33 +133,33 @@
       <path_renderer show="1" vertex_position_show="0" vertex_frame_show="0" edge_show="1" path_time_past="0" path_time_future="1e10" path_segments="5000" path_segment_duration="0.1">
         <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
         <vertex_frame_size v1="0.02" v2="0.02" v3="0.02"></vertex_frame_size>
-        <edge_colour R="255" G="255" B="255" A="255"></edge_colour>
+        <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
       </path_renderer>
       <state_renderer show="1" vertex_position_show="1" vertex_frame_show="1" edge_show="0" state_use_commands="0" state_joint_frames_show="0">
         <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
         <vertex_frame_size v1="0.02" v2="0.02" v3="0.02"></vertex_frame_size>
-        <edge_colour R="255" G="255" B="255" A="255"></edge_colour>
+        <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
         <state_joint_frames_size v1="0.03" v2="0.03" v3="0.03"/>
       </state_renderer>
     </renderer>
   </controller>
 
-  <planner library_path="GolemDeviceRobotJustin" config_path="SpamDeviceRobotJustin">
+  <planner library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBhamSim">
     <renderer show_duration="600.0">
       <goal_renderer show="1" vertex_position_show="0" vertex_frame_show="1" edge_show="0">
         <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
         <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
-        <edge_colour R="255" G="255" B="255" A="255"></edge_colour>
+        <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
       </goal_renderer>
       <goal_population_renderer show="1" vertex_position_show="1" vertex_frame_show="0" edge_show="0">
         <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
         <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
-        <edge_colour R="255" G="255" B="255" A="255"></edge_colour>
+        <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
       </goal_population_renderer>
       <global_graph_renderer show="0" vertex_position_show="1" vertex_frame_show="0" edge_show="0">
         <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
         <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
-        <edge_colour R="255" G="255" B="255" A="255"></edge_colour>
+        <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
       </global_graph_renderer>
       <global_path_renderer show="0" vertex_position_show="0" vertex_frame_show="0" edge_show="1">
         <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
@@ -226,7 +169,7 @@
       <local_graph_renderer show="0" vertex_position_show="1" vertex_frame_show="0" edge_show="0">
         <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
         <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
-        <edge_colour R="255" G="255" B="255" A="255"></edge_colour>
+        <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
       </local_graph_renderer>
       <local_path_renderer show="0" vertex_position_show="0" vertex_frame_show="0" edge_show="1">
         <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
@@ -265,8 +208,10 @@
       </scan_region>
       <object_region>
         <bounds type="box" group="1">
-          <dimensions v1="1.0" v2="1.0" v3="0.09"/>
-          <pose v1="0.72" v2="-0.29" v3="0.21" roll="0.0" pitch="0.0" yaw="0.0"/>
+          <!--<dimensions v1="0.3" v2="0.3" v3="0.2"/>
+          <pose v1="0.0" v2="0.55" v3="0.315" roll="0.0" pitch="0.0" yaw="0.0"/>-->
+          <dimensions v1="0.1" v2="0.1" v3="0.2"/>
+          <pose v1="0.0" v2="0.55" v3="0.315" roll="0.0" pitch="0.0" yaw="0.0"/>
         </bounds>
       </object_region>
       <region_colour R="255" G="0" B="255" A="255"/>
@@ -316,7 +261,7 @@
       <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
     </pose_estimation>
 
-    <data dir="data/" name="default" ext_data=".xml" ext_cloud=".pcd" ext_action=".act" ext_grasp_pose=".grasppose" ext_grasp_cluster=".graspcluster" sep_name="-" sep_field="&#x9;">
+    <data dir="data/" name="default" ext_data=".xml" ext_cloud=".pcd" ext_action=".act" sep_name="-" sep_field="&#x9;">
       <appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="10" camera_frame="1" camera_frame_size="0.05">
         <frame_size v1="1e-1" v2="1e-1" v3="1e-2"/>
         <colour override="0" R="127" G="127" B="127" A="255"/>
@@ -327,11 +272,11 @@
       <!--<frame v1="0.0" v2="0.0" v3="0.0" q0="1.0" q1="0.0" q2="0.0" q3="0.0"/>-->
       <!--<frame v1="0.653760" v2="-0.363143" v3="0.110231" q0="0.997094" q1="-0.013287" q2="0.004461" q3="0.074874"/>-->
       <frame v1="0.0" v2="0.5" v3="0.1" roll="-1.5707963267949" pitch="0.0" yaw="0.0"/>
-      <colour R="255" G="255" B="255" A="255"/>
+      <colour R="127" G="127" B="127" A="255"/>
     </import>
 
-    <pose_calb dim="23" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0"/>
+    <pose_calb dim="15" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0"/>
 
-    <pose_scan dim="23" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0"/>
+    <pose_scan dim="15" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0"/>
   </director>
 </golem>

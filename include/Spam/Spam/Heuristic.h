@@ -274,7 +274,7 @@ public:
 	/** Mahalanobis distance between rigid bodies a and b */
 	golem::Real distance(const grasp::RBCoord &a, const grasp::RBCoord &b, bool enableAng = false) const;
 
-	inline grasp::RBCoord& getCovarianceSqrt() { return covarianceSqrt; }
+	inline grasp::RBCoord& getCovarianceSqrt() { return sampleProperties.covarianceSqrt; }
 
 	/** test observational model */
 	golem::Real testObservations(const grasp::RBCoord &pose, const bool normal = false) const;
@@ -295,10 +295,12 @@ protected:
 
 	/** Sampled poses */
 	HypSample::Map samples;
-	/** Inverse covariance matrix associated with the samples */
-	grasp::RBCoord covarianceInv;
-	/** Squared covariance matrix associated with the samples */
-	grasp::RBCoord covarianceSqrt;
+	/** Transformation samples properties */
+	golem::SampleProperty<golem::Real, grasp::RBCoord, grasp::RBCoord::N> sampleProperties;
+	///** Inverse covariance matrix associated with the samples */
+	//grasp::RBCoord covarianceInv;
+	///** Squared covariance matrix associated with the samples */
+	//grasp::RBCoord covarianceSqrt;
 	/** Determinant of covariance matrix associated with the samples */
 	golem::Real covarianceDet;
 

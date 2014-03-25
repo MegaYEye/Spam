@@ -39,49 +39,7 @@
     </opengl>
   </scene>
 
-  <rag_planner num_sampled_poses="5" imp_weights_threshold="0.0001" max_sampling_iterations="100" timestamp_factor="0.15" planning_uncertainty="1" single_grasp_attempt="0" withdraw_to_home_pose="1">
-    <point_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="10" camera_frame="1" camera_frame_size="0.05">
-      <frame_size v1="5e-1" v2="5e-1" v3="1e-2"/>
-      <colour override="0" R="127" G="127" B="127" A="255"/>
-    </point_appearance>
-    <heuristic contact_fac="0.75" non_contact_fac="0.25" max_surface_points_inkd="5000">
-      <ftmodel dist_max="0.45" cone_theta_orizontal_axis="0.5" cone_theta_vertical_axis="0.785" num_nearest_points="10" num_points="5000" mahalanobis_fac="0.05" enabled_likelihood="1" intrinsic_exp_parameter="20">
-        <joint_fac dim="16" c1="0.05" c2="0.05" c3="0.45" c4="0.45" c5="0.05" c6="0.05" c7="0.45" c8="0.45" c9="0.05" c10="0.05" c11="0.45" c12="0.45" c13="0.05" c14="0.05" c15="0.45" c16="0.45"/>
-      </ftmodel>
-      <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
-    </heuristic>
-    <object_bounding_box>
-      <bounds type="box" group="1">
-        <dimensions v1="0.01" v2="0.01" v3="0.01"/>
-        <pose v1="0.0" v2="0.0" v3="0.0" roll="0.0" pitch="0.0" yaw="0.0"/>
-      </bounds>
-    </object_bounding_box>
-    <!--<real_object_pose v1="0.6673" v2="-0.3617" v3="0.1157" roll="0.0" pitch="0.0" yaw="0.0"/>-->
-    <obstacles>
-      <bounds type="box" group="1">
-        <dimensions v1="0.3" v2="0.6" v3="0.005"/>
-        <pose v1="0.0" v2="0.0" v3="0.0" roll="0.0" pitch="0.0" yaw="0.0"/>
-      </bounds>
-    </obstacles>
-    <tactile_model kernels="50" test="0">
-      <!--<covariance dim="7" c1="0.02" c2="0.02" c3="0.02" c4="0.005" c5="0.005" c6="0.005" c7="0.005"/>-->
-      <!--if text=1-->
-      <!--<covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.001" c6="0.01" c7="0.001"/>-->
-      <!--if text=0-->
-      <covariance dim="7" c1="0.001" c2="0.001" c3="0.001" c4="0.001" c5="0.0001" c6="0.001" c7="0.0001"/>
-      <!--no uncertainty-->
-      <!--<covariance dim="7" c1="0.00" c2="0.00" c3="0.00" c4="0.00" c5="0.00" c6="0.00" c7="0.00"/>-->
-      <test_stddev lin="0.025" ang="0"/>
-    </tactile_model>
-    <point_cloud_noise enable_noise="0">
-      <!--<mean dim="7" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="0.0"/>-->
-      <!--<stddev dim="7" c1="0.0" c2="0.0" c3="0.0" c4="0.00" c5="0.00" c6="0.00" c7="0.00"/>-->
-      <!--<stddev dim="7" c1="10" c2="10" c3="1" c4="1.5" c5="1.5" c6="1.5" c7="1.5"/>-->
-      <gt_pose_stddev lin="0.01" ang="10000"/>
-    </point_cloud_noise>
-  </rag_planner>
-
-  <pose_planner features="2000000" attempts="10" kernels="100000" neighbours="10000" distance_range="10.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
+  <pose_planner num_poses="10" num_hypotheses="3" features="2000000" attempts="10" kernels="100000" neighbours="10000" distance_range="10.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
     <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
     <mean_shift population_size="100" generations_min="10" generations_max="100" distance_diff="1e-4"/>
     <pose_stddev lin="0.01" ang="100.0"/>

@@ -107,6 +107,9 @@ public:
 		/** Noise lin/ang components */
 		grasp::RBDist gtPoseStddev;
 
+		/** Model point transformation **/
+		grasp::RBCoord trnModelPointCloud;
+
 		/** Constructs from description object */
 		Desc() {
 			Desc::setToDefault();
@@ -129,6 +132,7 @@ public:
 			objectPose.setId();
 			gtNoiseEnable = false;
 			gtPoseStddev.set();
+			trnModelPointCloud.set(golem::Vec3(golem::REAL_ZERO, golem::REAL_ZERO, golem::REAL_ZERO), golem::Quat(golem::Mat33::identity()));
 		}
 		/** Checks if the description is valid. */
 		virtual bool isValid() const {
@@ -211,6 +215,9 @@ protected:
 
 	/** Enables/disables the transformation in the action frame */
 	bool trnEnable;
+
+	/** Model point transformation **/
+	grasp::RBCoord trnModelPointCloud;
 
 	grasp::Manipulator::Ptr manipulator;
 	golem::Bounds::Seq handBounds;

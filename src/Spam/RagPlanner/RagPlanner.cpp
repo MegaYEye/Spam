@@ -65,6 +65,8 @@ bool RagPlanner::create(const Desc& desc) {
 	timestampFac = desc.timestampFac;
 	maxSamplingIter = desc.maxSamplingIter;
 
+	trnModelPointCloud = desc.trnModelPointCloud;
+
 	objectBounds.reset(new Bounds::Desc::Seq());
 	objectBounds->insert(objectBounds->begin(), desc.objectBounds.begin(), desc.objectBounds.end());
 
@@ -86,11 +88,11 @@ void RagPlanner::render() {
 		golem::CriticalSectionWrapper csw(csDataRenderer);
 		sampleRenderer.render();
 //		gtRenderer.render();
-		testPose.render();
-		testUpdate.render();
-		handRenderer.setWireColour(RGBA(golem::U8(255), golem::U8(255), golem::U8(0), golem::U8(255)));
-		handRenderer.setLineWidth(Real(2.0));
-		handRenderer.renderWire(handBounds.begin(), handBounds.end());
+		//testPose.render();
+		//testUpdate.render();
+		//handRenderer.setWireColour(RGBA(golem::U8(255), golem::U8(255), golem::U8(0), golem::U8(255)));
+		//handRenderer.setLineWidth(Real(2.0));
+		//handRenderer.renderWire(handBounds.begin(), handBounds.end());
 		pointRenderer.render();
 	}
 }
@@ -133,8 +135,8 @@ void RagPlanner::renderTrialData(TrialData::Map::const_iterator dataPtr) {
 		for (grasp::RBPose::Sample::Seq::const_iterator i = pBelief->getHypotheses().begin(); i != pBelief->getHypotheses().end(); ++i, ++idx) {
 			const Mat34 actionFrame(i->q, i->p);
 			const Mat34 sampleFrame(actionFrame * modelFrame);
-			//context.write("modelFrame <%.4f,%.4f,%.4f>\nqueryFrame <%.4f,%.4f,%.4f>\nactionFrame <%.4f,%.4f,%.4f>\nsampleFrame <%.4f,%.4f,%.4f>\n\n",
-			//	modelFrame.p.x, modelFrame.p.y, modelFrame.p.z, queryFrame.p.x, queryFrame.p.y, queryFrame.p.z, actionFrame.p.x, actionFrame.p.y, actionFrame.p.z,
+			//context.write("modelFrame <%.4f,%.4f,%.4f>\nactionFrame <%.4f,%.4f,%.4f>\nsampleFrame <%.4f,%.4f,%.4f>\n\n",
+			//	modelFrame.p.x, modelFrame.p.y, modelFrame.p.z, actionFrame.p.x, actionFrame.p.y, actionFrame.p.z,
 			//	sampleFrame.p.x, sampleFrame.p.y, sampleFrame.p.z);
 			if (showMLEFrame) 
 				sampleRenderer.addAxes(sampleFrame, distribFrameSize);
@@ -812,6 +814,7 @@ void RagPlanner::function(Data::Map::iterator& dataPtr, int key) {
 	}
 	case 'M':
 	{
+		dataPtr->second->trnPoints(Mat34(Mat33(trnModelPointCloud.q), trnModelPointCloud.p));
 		grasp::PosePlanner::function(dataPtr, key);
 		const Mat34 transform(Mat33::identity(), Vec3(golem::REAL_ZERO, golem::REAL_ZERO, golem::REAL_ZERO));
 		pHeuristic->setModel(modelPoints.begin(), modelPoints.end(), transform);
@@ -821,31 +824,6 @@ void RagPlanner::function(Data::Map::iterator& dataPtr, int key) {
 	{
 		grasp::Cloud::PointSeqMap::iterator points = getPoints(dataPtr);
 
-		// move the point cloud for testing purposes
-		groundTruthPoints.clear();
-		Vec3 v;
-		Quat q;
-		if (ragDesc.gtNoiseEnable) {
-			v.next(rand); // |v|==1
-			v.multiply(Math::abs(rand.nextGaussian<Real>(REAL_ZERO, ragDesc.gtPoseStddev.lin)), v);
-			q.next(rand, ragDesc.gtPoseStddev.ang);		
-			for (grasp::Cloud::PointSeq::iterator p = points->second.begin(); p != points->second.end(); ++p) {
-				//grasp::Point point(*p);
-				//point.colour = golem::RGBA::YELLOW;
-				//groundTruthPoints.push_back(point);
-				//grasp::RBCoord kernel(p->frame);
-				//kernel.p.add(kernel.p, v);
-				//kernel.q.multiply(kernel.q, q);
-				//p->frame = Mat34(kernel.q, kernel.p);
-				grasp::Cloud::Point point(*p);
-				grasp::Cloud::setColour(golem::RGBA::YELLOW, point);
-				groundTruthPoints.push_back(point);
-				p->x += (float)v.x;
-				p->y += (float)v.y;
-				p->z += (float)v.z;
-			}
-		}
-
 		// query create
 		context.write("Creating %s query...\n", grasp::to<Data>(dataPtr)->getLabelName(points->first).c_str());
 		Mat34 objectPose(Mat33(objectRealPose.q), objectRealPose.p), modelFrameInv;
@@ -853,7 +831,7 @@ void RagPlanner::function(Data::Map::iterator& dataPtr, int key) {
 		objectPose.multiply(objectPose, modelFrameInv);
 		pBelief->realPose = grasp::RBCoord(objectPose);
 		pBelief->setInitObjPose(objectPose);
-		pBelief->createQuery(points->second); //((Belief&)*pRBPose.get()).createQuery(dataPtr->second.pointCloud, objectLabel);
+		pBelief->createQuery(points->second);
 		queryDataPtr = dataPtr;
 		// compute frame
 		mlFrame = pBelief->maximum();
@@ -887,10 +865,10 @@ void RagPlanner::function(Data::Map::iterator& dataPtr, int key) {
 		trialData.openGL = grasp::to<Data>(queryDataPtr)->openGL;
 		poseDataPtr = dataMap.insert(dataMap.begin(), TrialData::Map::value_type("1", trialData));
 			
-		// save noise parameter of the trial
-		poseDataPtr->second.gtNoiseEnable = ragDesc.gtNoiseEnable;
-		poseDataPtr->second.noiseLin = v;
-		poseDataPtr->second.noiseAng = q;
+		// //save noise parameter of the trial
+		//poseDataPtr->second.gtNoiseEnable = ragDesc.gtNoiseEnable;
+		//poseDataPtr->second.noiseLin = v;
+		//poseDataPtr->second.noiseAng = q;
 
 		// set the home pose of the robot
 		poseDataPtr->second.homeStates.push_back(robot->recvState());
@@ -1100,7 +1078,7 @@ MOVING_BACK:
 			candidates.push_back(poseMaxLhd);
 			size_t iter = 1;
 			while (candidates.size() < K && iter++ < maxSamplingIter)
-				candidates.push_back(pBelief->sampleHypothesis());
+				candidates.push_back(pBelief->sample());
 			//candidates = pBelief->sampleHypotheses(poseMaxLhd);
 
 			context.write("done!\n");
@@ -1336,6 +1314,9 @@ void spam::XMLData(RagPlanner::Desc &val, Context* context, XMLContext* xmlconte
 	golem::XMLData("single_grasp_attempt", val.singleGrasp, xmlcontext);
 	golem::XMLData("withdraw_to_home_pose", val.withdrawToHomePose, xmlcontext);
 	val.sampleAppearance.xmlData(xmlcontext->getContextFirst("point_appearance"), create);
+	try {
+		golem::XMLData(&val.trnModelPointCloud[0], &val.trnModelPointCloud[grasp::RBCoord::N], "c", xmlcontext->getContextFirst("model_points_trn"), create);
+	} catch (const golem::MsgXMLParser& msg) {}
 	XMLData(val.objectBounds, val.objectBounds.max_size(), xmlcontext->getContextFirst("object_bounding_box"), "bounds", create);
 	golem::XMLData("enable_noise", val.gtNoiseEnable, xmlcontext->getContextFirst("point_cloud_noise"), create);
 	grasp::XMLData(val.gtPoseStddev, xmlcontext->getContextFirst("point_cloud_noise gt_pose_stddev"), create);

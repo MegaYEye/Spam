@@ -71,59 +71,72 @@ bool Belief::create(const Desc& desc) {
 void Belief::createQuery(const grasp::Cloud::PointSeq& points) {
 	mfsePoses.clear();
 
-	if (myDesc.tactile.test) {
-		/* To save time TEST generates only one query and then estimates the max score fitting as many time as KERNELS */
-		grasp::RBPose::createQuery(points);
-		const grasp::RBPose::Sample maximum = grasp::RBPose::maximum();
-		for (size_t i = 0; i < myDesc.tactile.kernels; ++i)
-			mfsePoses.push_back(grasp::RBPose::Sample(sample(maximum)));
-		// mean and covariance
-		if (!mfseProperties.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.tactile.covariance, mfsePoses))
-			throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
-		
-		context.write("spam::Belief::createQuery(TEST): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", mfseProperties.covariance[0], mfseProperties.covariance[1], mfseProperties.covariance[2], mfseProperties.covariance[3], mfseProperties.covariance[4], mfseProperties.covariance[5], mfseProperties.covariance[6]);
-		return;
+	// generate a query distribution
+	grasp::RBPose::createQuery(points);
+	mfsePoses.push_back(grasp::RBPose::maximum());
+	for (size_t i = 1; i < myDesc.tactile.kernels; ++i) {
+		mfsePoses.push_back(grasp::RBPose::sample());	
 	}
-
-	/* Right way of proceeding. For each kernel a new query is computed
-	*/
-	SecTmReal init = context.getTimer().elapsed();
-	for (size_t i = 0; i < myDesc.tactile.kernels; ++i) {
-			grasp::RBPose::createQuery(points);
-			grasp::RBPose::Sample s = grasp::RBPose::maximum();
-			mfsePoses.push_back(s);
-			initPoses.push_back(s);
-		}
-	std::printf("Belief::createQuery(): computational time %.7f\n", context.getTimer().elapsed() - init);
-
-	//SecTmReal init = context.getTimer().elapsed();
-	//CriticalSection cs;
-	//size_t index = 0;
-	//grasp::ParallelsTask((golem::Parallels*)context.getParallels(), [&] (grasp::ParallelsTask*) {
-	//	for (size_t i = 0;;) {
-	//		{
-	//			CriticalSectionWrapper csw(cs);
-	//			if (index == myDesc.tactile.kernels)
-	//				break;
-	//			i = index++;
-	//		}	
-	//		pRBPose->createQuery(points, label);
-	//		grasp::RBPose::Sample s = pRBPose->maximum();
-	//		mfsePoses.push_back(s);
-	//		initPoses.push_back(s);
-	//	}
-	//}); // end parallel task
-	//std::printf("Belief::createQuery(): computational time %.7f\n", context.getTimer().elapsed() - init);
-	
-	// mean and covariance
-	if (!mfseProperties.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.tactile.covariance, mfsePoses))
+	if (!mfseProperties.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.tactile.covariance, mfsePoses))	
 		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
-	// copy initial distribution properties
+	
+	initPoses = mfsePoses;
 	initProperties = mfseProperties;
 	
-	// generate new (noisy) samples out of selected subset of poses 
-	for (size_t i = 0; i < myDesc.tactile.kernels; ++i)
-		rand.nextGaussianArray<golem::Real>(&(mfsePoses[i])[0], &(mfsePoses[i])[0] + grasp::RBCoord::N, &((mfsePoses[i]))[0], &mfseProperties.covarianceSqrt[0]); // normalised multivariate Gaussian
+	//if (myDesc.tactile.test) {
+	//	/* To save time TEST generates only one query and then estimates the max score fitting as many time as KERNELS */
+	//	grasp::RBPose::createQuery(points);
+	//	const grasp::RBPose::Sample maximum = grasp::RBPose::maximum();
+	//	for (size_t i = 0; i < myDesc.tactile.kernels; ++i)
+	//		mfsePoses.push_back(grasp::RBPose::Sample(sample(maximum)));
+	//	// mean and covariance
+	//	if (!mfseProperties.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.tactile.covariance, mfsePoses))
+	//		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
+	//	
+	//	context.write("spam::Belief::createQuery(TEST): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", mfseProperties.covariance[0], mfseProperties.covariance[1], mfseProperties.covariance[2], mfseProperties.covariance[3], mfseProperties.covariance[4], mfseProperties.covariance[5], mfseProperties.covariance[6]);
+	//	return;
+	//}
+
+	///* Right way of proceeding. For each kernel a new query is computed
+	//*/
+	//SecTmReal init = context.getTimer().elapsed();
+	//for (size_t i = 0; i < myDesc.tactile.kernels; ++i) {
+	//	grasp::RBPose::createQuery(points);
+	//	grasp::RBPose::Sample s = grasp::RBPose::maximum();
+	//	context.write("Maximum: <%f %f %f> <%f %f %f %f>\n", s.p.x, s.p.y, s.p.z, s.q.w, s.q.x, s.q.y, s.q.z);
+	//	mfsePoses.push_back(s);
+	//	initPoses.push_back(s);
+	//}
+	//std::printf("Belief::createQuery(): computational time %.7f\n", context.getTimer().elapsed() - init);
+
+	////SecTmReal init = context.getTimer().elapsed();
+	////CriticalSection cs;
+	////size_t index = 0;
+	////grasp::ParallelsTask((golem::Parallels*)context.getParallels(), [&] (grasp::ParallelsTask*) {
+	////	for (size_t i = 0;;) {
+	////		{
+	////			CriticalSectionWrapper csw(cs);
+	////			if (index == myDesc.tactile.kernels)
+	////				break;
+	////			i = index++;
+	////		}	
+	////		pRBPose->createQuery(points, label);
+	////		grasp::RBPose::Sample s = pRBPose->maximum();
+	////		mfsePoses.push_back(s);
+	////		initPoses.push_back(s);
+	////	}
+	////}); // end parallel task
+	////std::printf("Belief::createQuery(): computational time %.7f\n", context.getTimer().elapsed() - init);
+	//
+	//// mean and covariance
+	//if (!mfseProperties.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.tactile.covariance, mfsePoses))
+	//	throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
+	//// copy initial distribution properties
+	//initProperties = mfseProperties;
+	//
+	//// generate new (noisy) samples out of selected subset of poses 
+	////for (size_t i = 0; i < myDesc.tactile.kernels; ++i)
+	////	rand.nextGaussianArray<golem::Real>(&(mfsePoses[i])[0], &(mfsePoses[i])[0] + grasp::RBCoord::N, &((mfsePoses[i]))[0], &mfseProperties.covarianceSqrt[0]); // normalised multivariate Gaussian
 
 	context.write("spam::Belief::createQuery(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", mfseProperties.covariance[0], mfseProperties.covariance[1], mfseProperties.covariance[2], mfseProperties.covariance[3], mfseProperties.covariance[4], mfseProperties.covariance[5], mfseProperties.covariance[6]);
 }
