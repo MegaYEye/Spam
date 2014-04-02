@@ -17,13 +17,30 @@
       <gravity v1="0.0" v2="0.0" v3="-9.81"></gravity>
     </physx>
     <opengl view_name="Default" view_inc="0.2">
+      <view_point v1="4.1155" v2="10.1337" v3="10.0000"/>
+      <view_dir v1="-0.4614" v2="-0.3739" v3="-0.8046"/>
+      <view_up v1="0.0000" v2="0.0000" v3="1.0000"/>
+      <!--<clear_color R="55" G="55" B="60" A="255"/>-->
+      <clear_color R="255" G="255" B="255" A="255"/>
+      <draw solid="1" wire="0" shadow="0" physx="0" normals="0"/>
+    </opengl>
+    <opengl view_name="Object" view_inc="0.2">
+      <view_point v1="-0.1117" v2="7.2135" v3="4.3441"/>
+      <view_dir v1="0.1842" v2="-0.6145" v3="-0.7671"/>
+      <view_up v1="0.0000" v2="0.0000" v3="1.0000"/>
+      <!--<clear_color R="55" G="55" B="60" A="255"/>-->
+      <clear_color R="255" G="255" B="255" A="255"/>
+      <draw solid="1" wire="0" shadow="0" physx="0" normals="0"/>
+    </opengl>
+
+    <!--<opengl view_name="Default" view_inc="0.2">
       <view_point v1="6.0" v2="7.0" v3="10.0"></view_point>
       <view_dir v1="-1.5" v2="-0.5" v3="-1.0"></view_dir>
       <view_up v1="0.0000" v2="0.0000" v3="1.0000"/>
-      <!--<clear_color R="0" G="0" B="0" A="255"></clear_color>-->
+      --><!--<clear_color R="0" G="0" B="0" A="255"></clear_color>--><!--
       <clear_color R="55" G="55" B="60" A="255"></clear_color>
       <draw solid="0" wire="1" shadow="0" physx="0" normals="0"/>
-    </opengl>
+    </opengl>-->
   </scene>
 
   <rag_planner num_sampled_poses="3" imp_weights_threshold="0.0001" max_sampling_iterations="100" timestamp_factor="0.15" planning_uncertainty="0" single_grasp_attempt="0" withdraw_to_home_pose="1">
@@ -51,9 +68,12 @@
         <pose v1="0.0" v2="0.0" v3="0.0" roll="0.0" pitch="0.0" yaw="0.0"/>
       </bounds>
     </obstacles>
-    <tactile_model kernels="7" test="0">
+    <!--<tactile_model kernels="7" test="0">
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.001" c5="0.001" c6="0.001" c7="0.001"/>
       <test_stddev lin="0.01" ang="100"/>
+    </tactile_model>-->
+    <tactile_model num_hypotheses="5" max_surface_points="5000">
+      <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
     </tactile_model>
     <point_cloud_noise enable_noise="0">
       <!--<mean dim="7" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="0.0"/>-->
@@ -63,7 +83,7 @@
     </point_cloud_noise>
   </rag_planner>
 
-  <pose_planner features="500000" attempts="10" kernels="500000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
+  <pose_planner num_poses="10" num_hypotheses="5" features="500000" attempts="10" kernels="500000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
     <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
     <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
     <pose_stddev lin="0.01" ang="100.0"/>
@@ -81,8 +101,11 @@
       </query>
     </appearance>
     <action_manip v1="0.0" v2="0.0" v3="-0.15" roll="0.0" pitch="0.0" yaw="0.0"/>
+    <tactile_model num_hypotheses="5" max_surface_points="5000">
+      <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
+    </tactile_model>
   </pose_planner>
-
+  
   <player>
     <trajectory scan_idle="1.0" approach_duration="3.0" approach_idle="1.0" approach_extrapol_fac="0.5" manip_duration="2.0" manip_idle="2.0" manip_perf_off="0.0" average="0.2">
       <velocity dim="27" c1="0.1" c2="0.1" c3="0.1" c4="0.1" c5="0.1" c6="0.1" c7="0.1" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5" c21="0.5" c22="0.5" c23="0.5" c24="0.5" c25="0.5" c26="0.5" c27="0.5"/>
@@ -247,7 +270,7 @@
         <bounds type="box" group="1">
           <!--<dimensions v1="0.3" v2="0.3" v3="0.2"/>
           <pose v1="0.0" v2="0.55" v3="0.315" roll="0.0" pitch="0.0" yaw="0.0"/>-->
-          <dimensions v1="0.1" v2="0.1" v3="0.2"/>
+          <dimensions v1="0.3" v2="0.2" v3="0.2"/>
           <pose v1="0.0" v2="0.55" v3="0.315" roll="0.0" pitch="0.0" yaw="0.0"/>
         </bounds>
       </object_region>

@@ -41,12 +41,12 @@
 //! @Date:     27/10/2012
 //------------------------------------------------------------------------------
 #pragma once
-#ifndef _SPAM_RAGPLANNER_SHAPEPLANNER_H_
-#define _SPAM_RAGPLANNER_SHAPEPLANNER_H_
+#ifndef _SPAM_RAGPLANNER_RAGPLANNER_H_
+#define _SPAM_RAGPLANNER_RAGPLANNER_H_
 
 //------------------------------------------------------------------------------
 
-#include <Grasp/PosePlanner/PosePlanner.h>
+#include <Spam/ShapePlanner/ShapePlanner.h>
 #include <Grasp/Grasp/Grasp.h>
 #include <Spam/Spam/Belief.h>
 #include <Spam/Spam/Data.h>
@@ -67,9 +67,62 @@ namespace spam {
 	Based on Platt R. et al. "A hypothesis-based algorithm for planning and
 	control in non-Gaussian belief spaces", 2011.
 */
-class RagPlanner : public grasp::PosePlanner {
+class RagPlanner : public PosePlanner {
 public:
-	class Desc : public grasp::PosePlanner::Desc {
+	/** Data */
+	class Data : public PosePlanner::Data {
+	public:
+		/** Cache (local): OpenGL settings */
+		golem::Scene::OpenGL openGL;
+		
+		/** Specifies if guard have been triggered during the perform of the action */
+		int triggered;
+		/** Contains the index of the triggered guards */
+		grasp::FTGuard::Seq triggeredGuards;
+		/** State of the robot at the time a contact occurred */
+		golem::Controller::State::Seq triggeredStates;
+
+		/** Cache (local): action */
+//		golem::Controller::State::Seq action;
+		/** Approach action waypoints */
+//		grasp::RobotState::List approachAction;
+		/** Manipulation action waypoints */
+//		grasp::RobotState::List manipAction;
+		/** Withdraw action waypoints */
+		grasp::RobotState::List actionWithdraw;
+		/** Combined action waypoints */
+		golem::Controller::State::Seq executedTrajectory;
+
+		/** Safety configurations of the robot */
+		grasp::RobotState::Seq homeStates;
+
+		/** Specifies if the replanning should be triggered */
+		bool replanning;
+
+		/** Reset data during construction */
+		Data() {
+			setToDefault();
+		}
+
+		/** Sets the parameters to the default values */
+		virtual void setToDefault() {
+			PosePlanner::Data::setToDefault();
+			triggered = 0;
+			replanning = false;
+		}
+		/** Assert that the description is valid. */
+		virtual void assertValid(const grasp::Assert::Context& ac) const {
+			Player::Data::assertValid(ac);
+		}
+
+		/** Reads/writes object from/to a given XML context */
+		virtual void xmlData(golem::XMLContext* context, bool create = false) const;
+
+		/** Creates new data */
+		virtual Ptr clone() const;
+	};
+
+	class Desc : public PosePlanner::Desc {
 	protected:
 		CREATE_FROM_OBJECT_DESC1(RagPlanner, golem::Object::Ptr, golem::Scene&)
 
@@ -116,7 +169,7 @@ public:
 		}
 		/** Sets the parameters to the default values */
 		virtual void setToDefault() {
-			grasp::PosePlanner::Desc::setToDefault();
+			PosePlanner::Desc::setToDefault();
 			robotDesc.reset(new Robot::Desc);
 			pRBPoseDesc.reset(new Belief::Desc);
 			K = 5;
@@ -136,7 +189,7 @@ public:
 		}
 		/** Checks if the description is valid. */
 		virtual bool isValid() const {
-			if (!grasp::PosePlanner::Desc::isValid())
+			if (!PosePlanner::Desc::isValid())
 				return false;
 			for (golem::Bounds::Desc::Seq::const_iterator i = objectBounds.begin(); i != objectBounds.end(); ++i)
 				if (!(*i)->isValid())
@@ -169,9 +222,9 @@ protected:
 	FTDrivenHeuristic* pHeuristic;
 
 	/** Data copllector */
-	TrialData::Map dataMap;
+//	Data::Map dataMap;
 	/** Object pose data */
-	TrialData::Map::iterator poseDataPtr;
+	Data::Map::iterator poseDataPtr;
 	
 	/** Description file */
 	Desc ragDesc;
@@ -246,28 +299,28 @@ protected:
 	}
 
 	/** Generates high dimension pdf */
-	void generate(grasp::RBPose::Sample::Seq::const_iterator begin, grasp::RBPose::Sample::Seq::const_iterator end, TrialData::Map::iterator dataPtr, grasp::RBPose::Sample::Seq &candidates) const;
+//	void generate(grasp::RBPose::Sample::Seq::const_iterator begin, grasp::RBPose::Sample::Seq::const_iterator end, TrialData::Map::iterator dataPtr, grasp::RBPose::Sample::Seq &candidates) const;
 	/** Updates belief state */
-	void updateAndResample(TrialData::Map::iterator dataPtr);
+	void updateAndResample(Data::Map::iterator dataPtr);
 //	void updateAndResample(const std::vector<golem::Configspace::Index> &triggeredGuards, const golem::Controller::State &pose, TrialData::Map::iterator dataPtr, grasp::RBPose::Sample::Seq &candidates) const;
 	/** Evaluate the likelihood of reading a contact between robot's pose and the sample */
-	golem::Real evaluate(const grasp::RBCoord &Pose, const grasp::RBPose::Sample &sample) const;
+//	golem::Real evaluate(const grasp::RBCoord &Pose, const grasp::RBPose::Sample &sample) const;
 
 	/** Builds and performs reach and grasp actions */
-	virtual void performApproach(TrialData::Map::iterator dataPtr);
+	virtual void performApproach(Data::Map::iterator dataPtr);
 	/** Builds and performs a moving back trajectory */
-	virtual void performWithdraw(TrialData::Map::iterator dataPtr);
+	virtual void performWithdraw(Data::Map::iterator dataPtr);
 	/** Builds and performs a moving back trajectory */
-	virtual void performManip(TrialData::Map::iterator dataPtr);
+	virtual void performManip(Data::Map::iterator dataPtr);
 	/** Builds and performs single attempt to grasp */
-	virtual void performSingleGrasp(TrialData::Map::iterator dataPtr);
+	virtual void performSingleGrasp(Data::Map::iterator dataPtr);
 	/** Performs trial action (trajectory) */
-	virtual void perform(TrialData::Map::iterator dataPtr);
+	virtual void perform(Data::Map::iterator dataPtr);
 	/** Profiles state sequence */
-	virtual void profile(TrialData::Map::iterator dataPtr, const golem::Controller::State::Seq& inp, golem::SecTmReal dur, golem::SecTmReal idle) const;
+//	virtual void profile(Data::Map::iterator dataPtr, const golem::Controller::State::Seq& inp, golem::SecTmReal dur, golem::SecTmReal idle) const;
 
 	/** Render trial data */
-	virtual void renderTrialData(TrialData::Map::const_iterator dataPtr);
+	virtual void renderTrialData(Data::Map::const_iterator dataPtr);
 	/** Overwrite pose planner render trial data */
 	virtual void renderData(Data::Map::const_iterator dataPtr);
 	void renderContacts();
@@ -310,4 +363,4 @@ protected:
 
 };	// namespace
 
-#endif /*_SPAM_RAGPLANNER_SHAPEPLANNER_H_*/
+#endif /*_SPAM_RAGPLANNER_RAGPLANNER_H_*/

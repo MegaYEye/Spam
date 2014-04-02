@@ -41,7 +41,7 @@
 //! @Date:     25/03/2014
 //------------------------------------------------------------------------------
 #pragma once
-#ifndef _SPAM__SHAPEPLANNER_SHAPEPLANNER_H_
+#ifndef _SPAM_SHAPEPLANNER_SHAPEPLANNER_H_
 #define _SPAM_SHAPEPLANNER_SHAPEPLANNER_H_
 
 //------------------------------------------------------------------------------
@@ -275,8 +275,8 @@ public:
 
 			data.reset(new Data);
 			
-			//graspDescMap.insert(GraspDescMap::value_type(GRASP_NAME_DFLT, GraspDesc()));
-			//classifierDescMap.insert(ClassifierDescMap::value_type(CLASSIFIER_NAME_DFLT, ClassifierDesc()));
+			//graspDescMap.insert(GraspDescMap::value_type(GRASP_NAME_DFLT, grasp::Grasp::Desc::Ptr()));
+			//classifierDescMap.insert(ClassifierDescMap::value_type(CLASSIFIER_NAME_DFLT, grasp::Classifier::Desc::Ptr()));
 			
 			demoDescMap.clear();
 			appearance.setToDefault();
@@ -422,4 +422,4 @@ protected:
 
 };	// namespace
 
-#endif /*_GRASP_SHAPEPLANNER_SHAPEPLANNER_H_*/
+#endif /*_SPAM_SHAPEPLANNER_SHAPEPLANNER_H_*/

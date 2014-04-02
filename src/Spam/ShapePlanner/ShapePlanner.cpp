@@ -764,13 +764,13 @@ void spam::XMLData(ShapePlanner::Appearance &val, golem::XMLContext* xmlcontext,
 void spam::XMLData(ShapePlanner::GraspDescMap::value_type &val, golem::XMLContext* xmlcontext, bool create) {
 	golem::XMLData("name", const_cast<std::string&>(val.first), xmlcontext, create);
 	val.second.reset(new grasp::Grasp::Desc());
-	XMLData((grasp::Grasp::Desc&)*val.second, xmlcontext, create);
+	grasp::XMLData(*val.second, xmlcontext, create);
 }
 
 void spam::XMLData(ShapePlanner::ClassifierDescMap::value_type &val, golem::XMLContext* xmlcontext, bool create) {
 	golem::XMLData("name", const_cast<std::string&>(val.first), xmlcontext, create);
 	val.second.reset(new grasp::Classifier::Desc());
-	XMLData((grasp::Classifier::Desc&)*val.second, xmlcontext, create);
+	grasp::XMLData(*val.second, xmlcontext, create);
 }
 
 void spam::XMLData(ShapePlanner::DemoDesc &val, golem::XMLContext* xmlcontext, bool create) {

@@ -20,22 +20,22 @@
       <view_point v1="12.6729" v2="2.9922" v3="10.1857"/>
       <view_dir v1="-0.7612" v2="-0.3427" v3="-0.5505"/>
       <view_up v1="0.0000" v2="0.0000" v3="1.0000"/>
-      <clear_color R="55" G="55" B="60" A="255"></clear_color>
-      <draw solid="0" wire="1" shadow="0" physx="0" normals="0"/>
+      <clear_color R="55" G="55" B="55" A="255"/>
+      <draw solid="1" wire="0" shadow="0" physx="0" normals="0"/>
     </opengl>
     <opengl view_name="Queried object" view_inc="0.2">
       <view_point v1="10.1790" v2="-2.6855" v3="5.7804"/>
       <view_dir v1="-0.7308" v2="-0.0480" v3="-0.6809"/>
       <view_up v1="0.0000" v2="0.0000" v3="1.0000"/>
-      <clear_color R="55" G="55" B="60" A="255"></clear_color>
-      <draw solid="0" wire="1" shadow="0" physx="0" normals="0"/>
+      <clear_color R="255" G="255" B="255" A="255"/>
+      <draw solid="1" wire="0" shadow="0" physx="0" normals="0"/>
     </opengl>
     <opengl view_name="Recording view" view_inc="0.2">
       <view_point v1="8.0100" v2="0.7698" v3="4.0419"/>
       <view_dir v1="-0.5676" v2="-0.7651" v3="-0.3041"/>
       <view_up v1="0.0000" v2="0.0000" v3="1.0000"/>
-      <clear_color R="55" G="55" B="60" A="255"></clear_color>
-      <draw solid="0" wire="1" shadow="0" physx="0" normals="0"/>
+      <clear_color R="255" G="255" B="255" A="255"/>
+      <draw solid="1" wire="0" shadow="0" physx="0" normals="0"/>
     </opengl>
   </scene>
 
@@ -63,14 +63,18 @@
         <pose v1="0.0" v2="0.0" v3="0.0" roll="0.0" pitch="0.0" yaw="0.0"/>
       </bounds>
     </obstacles>
-    <tactile_model kernels="50" test="0">
-      <!--<covariance dim="7" c1="0.02" c2="0.02" c3="0.02" c4="0.005" c5="0.005" c6="0.005" c7="0.005"/>-->
-      <!--if text=1-->
-      <!--<covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.001" c6="0.01" c7="0.001"/>-->
-      <!--if text=0-->
+    <!--<tactile_model kernels="50" test="0">
+      --><!--<covariance dim="7" c1="0.02" c2="0.02" c3="0.02" c4="0.005" c5="0.005" c6="0.005" c7="0.005"/>--><!--
+      --><!--if text=1--><!--
+      --><!--<covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.001" c6="0.01" c7="0.001"/>--><!--
+      --><!--if text=0--><!--
       <covariance dim="7" c1="0.001" c2="0.001" c3="0.001" c4="0.001" c5="0.0001" c6="0.001" c7="0.0001"/>
-      <!--no uncertainty-->
-      <!--<covariance dim="7" c1="0.00" c2="0.00" c3="0.00" c4="0.00" c5="0.00" c6="0.00" c7="0.00"/>-->
+      --><!--no uncertainty--><!--
+      --><!--<covariance dim="7" c1="0.00" c2="0.00" c3="0.00" c4="0.00" c5="0.00" c6="0.00" c7="0.00"/>--><!--
+      <test_stddev lin="0.025" ang="0"/>
+    </tactile_model>-->
+    <tactile_model num_hypotheses="5" max_surface_points="5000">
+      <covariance dim="7" c1="0.001" c2="0.001" c3="0.001" c4="0.001" c5="0.0001" c6="0.001" c7="0.0001"/>
       <test_stddev lin="0.025" ang="0"/>
     </tactile_model>
     <point_cloud_noise enable_noise="0">
@@ -81,11 +85,11 @@
     </point_cloud_noise>
   </rag_planner>
 
-  <pose_planner features="2000000" attempts="10" kernels="100000" neighbours="10000" distance_range="10.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
+  <pose_planner num_poses="10" num_hypotheses="5" features="500000" attempts="10" kernels="500000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
     <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
-    <mean_shift population_size="100" generations_min="10" generations_max="100" distance_diff="1e-4"/>
+    <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
     <pose_stddev lin="0.01" ang="100.0"/>
-    <dist prod="1" lin="1.0" ang="1.0" feature="0"/>
+    <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
     <appearance distrib_samples="100">
       <model>
         <line show="1" R="255" G="255" B="0" A="255"/>
@@ -99,6 +103,9 @@
       </query>
     </appearance>
     <action_manip v1="0.0" v2="0.0" v3="-0.15" roll="0.0" pitch="0.0" yaw="0.0"/>
+    <tactile_model num_hypotheses="5" max_surface_points="5000">
+      <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
+    </tactile_model>
   </pose_planner>
 
   <player>
@@ -325,8 +332,8 @@
 
     <import size="100000" scale="1.0" clockwise="1" delim=" &#10;&#13;,;" label="1">
       <!--<frame v1="0.0" v2="0.0" v3="0.0" q0="1.0" q1="0.0" q2="0.0" q3="0.0"/>-->
-      <!--<frame v1="0.653760" v2="-0.363143" v3="0.110231" q0="0.997094" q1="-0.013287" q2="0.004461" q3="0.074874"/>-->
-      <frame v1="0.0" v2="0.5" v3="0.1" roll="-1.5707963267949" pitch="0.0" yaw="0.0"/>
+      <frame v1="0.653760" v2="-0.363143" v3="0.110231" q0="0.997094" q1="-0.013287" q2="0.004461" q3="0.074874"/>
+      <!--<frame v1="0.0" v2="0.5" v3="0.1" roll="-1.5707963267949" pitch="0.0" yaw="0.0"/>-->
       <colour R="255" G="255" B="255" A="255"/>
     </import>
 

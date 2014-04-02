@@ -380,7 +380,6 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 #endif
 	// generate global graph only for the arm
 	disableHandPlanning();
-	context.verbose("Rag::findGlobalTrajectory: %s\n", grasp::plannerDebug(*this).c_str());
 	if (!pGlobalPathFinder->generateGraph(begin.cpos, end.cpos)) {
 		context.error("GraphPlanner::findTrajectory(): unable to generate global graph\n");
 		return false;

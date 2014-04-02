@@ -26,7 +26,7 @@
     </opengl>
   </scene>
 
-  <pose_planner num_poses="10" num_hypotheses="3" features="500000" attempts="10" kernels="500000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
+  <pose_planner num_poses="10" num_hypotheses="5" features="500000" attempts="10" kernels="500000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
     <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
     <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
     <pose_stddev lin="0.01" ang="100.0"/>
@@ -44,6 +44,9 @@
       </query>
     </appearance>
     <action_manip v1="0.0" v2="0.0" v3="-0.15" roll="0.0" pitch="0.0" yaw="0.0"/>
+    <tactile_model num_hypotheses="5" max_surface_points="5000">
+      <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
+    </tactile_model>
   </pose_planner>
 
   <player>

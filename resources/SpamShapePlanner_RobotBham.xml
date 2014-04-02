@@ -6,7 +6,7 @@
   <messages level="verbose"/><!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
   <library physx="0" normals="0"/>
 
-  <universe name="Grasp">
+  <universe name="SPAM">
     <!--<window x="0" y="0" width="800" height="600"></window>-->
     <!--<window x="0" y="0" width="1200" height="900"></window>-->
     <window x="0" y="0" width="1288" height="964"></window>
@@ -14,7 +14,7 @@
     <recorder frame_drop="1" file_name="screen" file_ext=".png" leading_zeros="1" encoder_str="image/png" buffer_len="100"></recorder>
   </universe>
 
-  <scene name="ShapePlanner">
+  <scene name="Spam Shape Planner">
     <physx restitution="0.0" static_friction="0.2" dynamic_friction="0.1">
       <gravity v1="0.0" v2="0.0" v3="-9.81"></gravity>
     </physx>
@@ -176,7 +176,7 @@
     </appearance>
   </shape_planner>
 
-  <pose_planner features="500000" attempts="10" kernels="500000" neighbours="20000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
+  <pose_planner num_poses="10" num_hypotheses="3" features="500000" attempts="10" kernels="500000" neighbours="20000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
     <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
     <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
     <pose_stddev lin="0.01" ang="100.0"/>

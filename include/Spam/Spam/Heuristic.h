@@ -49,20 +49,20 @@
 #include <Golem/PhysCtrl/PhysPlanner.h>
 #include <Golem/Device/SingleCtrl/Data.h>
 #include <Grasp/Grasp/Grasp.h>
-#include <Grasp/Grasp/RBPose.h>
+#include <Spam/Spam/Belief.h>
 #include <Grasp/Grasp/Robot.h>
 
 //------------------------------------------------------------------------------
 
-namespace flann {
-	template <typename T> struct L2_Simple;
-};
-
-namespace pcl {
-	struct PointXYZ;
-	template <typename T, typename Dist> class KdTreeFLANN;
-	struct PolygonMesh;
-};
+//namespace flann {
+//	template <typename T> struct L2_Simple;
+//};
+//
+//namespace pcl {
+//	struct PointXYZ;
+//	template <typename T, typename Dist> class KdTreeFLANN;
+//	struct PolygonMesh;
+//};
 
 //------------------------------------------------------------------------------
 
@@ -83,46 +83,46 @@ public:
 	friend class FTModelDesc;
 
 	/** Hypothesis over object poses */
-	class HypSample {
-	public:
-		friend class FTDrivenHeuristic;
-		typedef golem::shared_ptr<HypSample> Ptr;
-		typedef std::map<golem::U32, Ptr> Map;
+	//class HypSample {
+	//public:
+	//	friend class FTDrivenHeuristic;
+	//	typedef golem::shared_ptr<HypSample> Ptr;
+	//	typedef std::map<golem::U32, Ptr> Map;
 
-		/** Default construtor */
-		HypSample() {}
-		/** Complete constructor */
-		HypSample(const golem::U32 idx, const grasp::RBPose::Sample &s, grasp::Cloud::PointSeq &p) {
-			index = idx;
-			sample = s;
-			for (grasp::Cloud::PointSeq::const_iterator i = p.begin(); i != p.end(); ++i)
-				points.push_back(*i);
-			build();
-			//buildMesh();
-		}
-		/** Destrutor */
-		~HypSample() {
-			pTree.release();
-			pTriangles.release();
-		}
-		
-	protected:
-		/** Builds a pcl::PointCloud and its kd tree */
-		bool build();
-		/** Builds a pcl::PointCloud and its mesh */
-		bool buildMesh();
+	//	/** Default construtor */
+	//	HypSample() {}
+	//	/** Complete constructor */
+	//	HypSample(const golem::U32 idx, const grasp::RBPose::Sample &s, grasp::Cloud::PointSeq &p) {
+	//		index = idx;
+	//		sample = s;
+	//		for (grasp::Cloud::PointSeq::const_iterator i = p.begin(); i != p.end(); ++i)
+	//			points.push_back(*i);
+	//		build();
+	//		//buildMesh();
+	//	}
+	//	/** Destrutor */
+	//	~HypSample() {
+	//		pTree.release();
+	//		pTriangles.release();
+	//	}
+	//	
+	//protected:
+	//	/** Builds a pcl::PointCloud and its kd tree */
+	//	bool build();
+	//	/** Builds a pcl::PointCloud and its mesh */
+	//	bool buildMesh();
 
-		/** Identifier */
-		golem::U32 index;
-		/** Hypothesis */
-		grasp::RBPose::Sample sample;
-		/** Point cloud */
-		grasp::Cloud::PointSeq points;
-		/** Kd tree */
-		golem::shared_ptr<pcl::KdTreeFLANN<pcl::PointXYZ, flann::L2_Simple<float>>> pTree;
-		/** Polygon mesh */
-		golem::shared_ptr<pcl::PolygonMesh> pTriangles;
-	};
+	//	/** Identifier */
+	//	golem::U32 index;
+	//	/** Hypothesis */
+	//	grasp::RBPose::Sample sample;
+	//	/** Point cloud */
+	//	grasp::Cloud::PointSeq points;
+	//	/** Kd tree */
+	//	golem::shared_ptr<pcl::KdTreeFLANN<pcl::PointXYZ, flann::L2_Simple<float>>> pTree;
+	//	/** Polygon mesh */
+	//	golem::shared_ptr<pcl::PolygonMesh> pTriangles;
+	//};
 	/** Observational model for force/torque model of arm/hand robot 
 		Describes a cone over the normal of the end effector in which
 		the likelihood of sensing a contact is greater than zero.
@@ -257,16 +257,18 @@ public:
 		return ftDrivenDesc;
 	}
 
+	/** Acquires pose distribution **/
+	inline void setBelief(Belief *belief) { pBelief.reset(belief); };
 	/** Sets model cloud points */
-	void setModel(grasp::Cloud::PointSeq::const_iterator begin, grasp::Cloud::PointSeq::const_iterator end, const golem::Mat34 &transform);
+//	void setModel(grasp::Cloud::PointSeq::const_iterator begin, grasp::Cloud::PointSeq::const_iterator end, const golem::Mat34 &transform);
 	/** Sets the current belief state */
-	void setBeliefState(grasp::RBPose::Sample::Seq &samples, const golem::Mat34 &transform);
+//	void setBeliefState(grasp::RBPose::Sample::Seq &samples, const golem::Mat34 &transform);
 	/** Evaluate the likelihood of reading a contact between robot's pose and the sample */
-	golem::Real evaluate(const grasp::Manipulator *manipulator, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<golem::Configspace::Index> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const;
+//	golem::Real evaluate(const grasp::Manipulator *manipulator, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<golem::Configspace::Index> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const;
 	/** Evaluate the likelihood of reading a contact between robot's pose and the sample */
-	golem::Real evaluate(const grasp::Manipulator *manipulator, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<grasp::FTGuard> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const;
+//	golem::Real evaluate(const grasp::Manipulator *manipulator, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<grasp::FTGuard> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const;
 	/** Evaluate the likelihood of reading a contact between robot's pose and the sample */
-	golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const golem::Real &force, const golem::Mat34 &trn, bool &interect) const;
+//	golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const golem::Real &force, const golem::Mat34 &trn, bool &interect) const;
 
 	/** Overwrite the collision detection method to check collision with the ML pose */
 	bool collides(const golem::Waypoint &w) const;
@@ -278,8 +280,6 @@ public:
 
 	/** test observational model */
 	golem::Real testObservations(const grasp::RBCoord &pose, const bool normal = false) const;
-	/** Probability density value=p(x|p) for x given the sampled particle p */
-	golem::Real density(const golem::Real dist) const;
 
 	/** virtual destructor */
 	virtual ~FTDrivenHeuristic() {}
@@ -293,8 +293,11 @@ protected:
 	/** Generator of pseudo random numbers */
 	golem::Rand rand;
 
+	/** Pose distribution **/
+	Belief::Ptr pBelief;
+
 	/** Sampled poses */
-	HypSample::Map samples;
+//	HypSample::Map samples;
 	/** Transformation samples properties */
 	golem::SampleProperty<golem::Real, grasp::RBCoord, grasp::RBCoord::N> sampleProperties;
 	///** Inverse covariance matrix associated with the samples */
@@ -330,25 +333,25 @@ protected:
 	/** Observational cost function over a trajectory */
 	golem::Real expectedObservationCost(const golem::Waypoint &wi, const golem::Waypoint &wj) const;
 	/** Computes the distance between future observations */
-	golem::Real psi(const golem::Waypoint& wi, const golem::Waypoint& wj, HypSample::Map::const_iterator p) const;
+	golem::Real psi(const golem::Waypoint& wi, const golem::Waypoint& wj, Belief::Hypothesis::Seq::const_iterator p) const;
 	/** Pair observational function over a trajectory */
-	void h(const golem::Waypoint &wi, const golem::Waypoint &wj, HypSample::Map::const_iterator p, std::vector<golem::Real> &y) const;
+//	void h(const golem::Waypoint &wi, const golem::Waypoint &wj, Belief::Hypothesis::Seq::const_iterator p, std::vector<golem::Real> &y) const;
 	/** Pair observational function over a trajectory */
 	void h(const golem::Waypoint &wi, const golem::Waypoint &wj, std::vector<golem::Real> &y) const;
 
 	/** Distance to nearest k points on the object's surface */
-	golem::Real dist2NearestKPoints(const grasp::RBCoord &pose, HypSample::Map::const_iterator p, const bool normal = true) const;
+//	golem::Real dist2NearestKPoints(const grasp::RBCoord &pose, Belief::Hypothesis::Seq::const_iterator p, const bool normal = true) const;
 	/** Distance to nearest point on the object's surface */
-	golem::Real dist2NearestPoint(const grasp::RBCoord &pose, HypSample::Map::const_iterator p, const bool normal = true) const;
+//	golem::Real dist2NearestPoint(const grasp::RBCoord &pose, Belief::Hypothesis::Seq::const_iterator p, const bool normal = true) const;
 	/** Distance to nearest k points using trimesh */
-	golem::Real dist2NearestTriangle(const grasp::RBCoord &pose, HypSample::Map::const_iterator p, const bool normal = true) const;
+//	golem::Real dist2NearestTriangle(const grasp::RBCoord &pose, Belief::Hypothesis::Seq::const_iterator p, const bool normal = true) const;
 	/** Kernel function */
-	golem::Real kernel(golem::Real x, golem::Real lambda = golem::REAL_ONE) const;
+//	golem::Real kernel(golem::Real x, golem::Real lambda = golem::REAL_ONE) const;
 	/** Probability density value=p(x|p) for x given the sampled particle p */
-	golem::Real density(const grasp::RBCoord &x, const grasp::RBCoord &p) const;
+//	golem::Real density(const grasp::RBCoord &x, const grasp::RBCoord &p) const;
 
 	/** Penalises configurations which collide with the mean hypothesis */
-	golem::Real getCollisionCost(const golem::Waypoint &wi, const golem::Waypoint &wj, HypSample::Map::const_iterator p) const;
+	golem::Real getCollisionCost(const golem::Waypoint &wi, const golem::Waypoint &wj, Belief::Hypothesis::Seq::const_iterator p) const;
 
 	/** Create heuristic from the description */
 	bool create(const Desc &desc);

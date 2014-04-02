@@ -42,14 +42,13 @@
 //------------------------------------------------------------------------------
 #pragma once
 #ifndef _SPAM_POSEPLANNER_POSEPLANNER_H_
-#define _SPAMP_POSEPLANNER_POSEPLANNER_H_
+#define _SPAM_POSEPLANNER_POSEPLANNER_H_
 
 //------------------------------------------------------------------------------
 
 #include <Grasp/Player/Player.h>
-#include <Grasp/Grasp/RBPose.h>
+#include <Spam/Spam/Belief.h>
 #include <Golem/Phys/Application.h>
-#include <Spam/Spam/Data.h>
 
 //------------------------------------------------------------------------------
 
@@ -178,6 +177,7 @@ protected:
 
 	/** Pose distribution */
 	grasp::RBPose::Ptr pRBPose;
+	Belief* pBelief; //grasp::RBPose::Ptr pRBPose;
 
 	/** Model feature appearance */
 	grasp::RBPose::Feature::Appearance modelAppearance;
@@ -195,6 +195,9 @@ protected:
 
 	/** Feature renderer */
 	golem::DebugRenderer pointFeatureRenderer;
+	/** Particles renderer */
+	golem::DebugRenderer sampleRenderer;
+
 
 	/** Model data */
 	Data::Map::iterator modelDataPtr;
@@ -205,6 +208,9 @@ protected:
 
 	/** Query data */
 	Data::Map::iterator queryDataPtr;
+
+		/** 3d surface samples' point feature appearance */
+	grasp::Director::Data::Appearance sampleAppearance;
 	/** Show model points */
 	bool showModelPoints;
 	/** Show model features */
@@ -214,7 +220,7 @@ protected:
 	/** Show pose distribution **/
 	bool showPoseDistrib;
 	/** Show hypothesis distribution **/
-	bool showHypothesisDistrib;
+	bool showSamplePoints;
 	/** Displayed feature index */
 	golem::U32 featureIndex;
 
@@ -233,6 +239,9 @@ protected:
 	virtual void renderData(Data::Map::const_iterator dataPtr);
 	/** Reset data pointers */
 	void resetDataPointers();
+
+	/** Point selection */
+	grasp::Cloud::PointSeqMap::iterator getPointsTrn(Data::Map::iterator dataPtr, golem::Mat34 &trn);
 
 	/** User interface: menu function */
 	virtual void function(Data::Map::iterator& dataPtr, int key);

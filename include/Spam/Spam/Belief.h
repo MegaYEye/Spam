@@ -48,6 +48,27 @@
 
 #include <Grasp/Grasp/Cloud.h>
 #include <Grasp/Grasp/RBPose.h>
+#include <Grasp/Grasp/Robot.h>
+
+//------------------------------------------------------------------------------
+
+namespace flann {
+	template <typename T> struct L2_Simple;
+};
+
+namespace pcl {
+	struct PointXYZ;
+	template <typename T, typename Dist> class KdTreeFLANN;
+	struct PolygonMesh;
+};
+
+namespace grasp {
+	class Manipulator;
+};
+
+namespace spam {
+	class FTDrivenHeuristic;
+};
 
 //------------------------------------------------------------------------------
 
@@ -58,6 +79,7 @@ namespace spam {
 /** Pose distribution and estimation with tactile and visual feedback */
 class Belief : public grasp::RBPose {
 public:
+	friend class FTDrivenHeuristic;
 	typedef golem::shared_ptr<Belief> Ptr;
 
 	/** Forward model to describe hand-object interactions */
@@ -79,57 +101,107 @@ public:
 		golem::Mat34 pose;
 	};
 
-	/** Description file of tactile observational model */
-	class TactileDesc {
+		/** Hypothesis over object poses */
+	class Hypothesis {
 	public:
-		typedef golem::shared_ptr<TactileDesc> Ptr;
+		friend class FTDrivenHeuristic;
+		typedef golem::shared_ptr<Hypothesis> Ptr;
+		typedef std::map<golem::U32, Ptr> Map;
+		typedef std::vector<Ptr> Seq;
 
-		/** Number of distribution kernels */
-		size_t kernels;
-		/** Posteriori (after contact) kernel diagonal covariance scale metaparameter */
-		grasp::RBCoord covariance;
+		/** Default construtor */
+		Hypothesis() {}
+		/** Complete constructor */
+		Hypothesis(const golem::U32 idx, const golem::Mat34 &trn, const grasp::RBPose::Sample &s, grasp::Cloud::PointSeq &p) {
+			index = idx;
+			modelFrame = trn;
+			sample = s;
+			for (grasp::Cloud::PointSeq::const_iterator i = p.begin(); i != p.end(); ++i)
+				points.push_back(*i);
+			build();
+			//buildMesh();
+		}
+		/** Destrutor */
+		~Hypothesis() {
+			pTree.release();
+			pTriangles.release();
+		}
+
+		/** Distance to nearest k points on the object's surface */
+		golem::Real dist2NearestKPoints(const grasp::RBCoord &pose, const golem::Real &maxDist = golem::Real(1.0), const size_t clusters = 10, const size_t &nIndeces = 100, const bool normal = true) const;
+
+
+		/** Returns this sample in model frame **/
+		inline grasp::RBPose::Sample getSample() { return sample; };
+		/** Returns this sample in global frame (default: robot frame) **/
+		inline grasp::RBPose::Sample getSampleGF() { return grasp::RBPose::Sample(sample.toMat34() * modelFrame, sample.weight, sample.cdf); };
 		
-		/** Enables/disables building a fake distribution for testing porpuses */
-		bool test;
-		/** Noise lin/ang components */
-		grasp::RBDist stddev;
+	protected:
+		/** Builds a pcl::PointCloud and its kd tree */
+		bool build();
+		/** Builds a pcl::PointCloud and its mesh */
+		bool buildMesh();
+
+		/** Identifier */
+		golem::U32 index;
+		/** Model frame **/
+		golem::Mat34 modelFrame;
+		/** Hypothesis. NOTE: contains the query (or sample) frame w.r.t model frame **/
+		grasp::RBPose::Sample sample;
+		/** Point cloud */
+		grasp::Cloud::PointSeq points;
+		/** Kd tree */
+		golem::shared_ptr<pcl::KdTreeFLANN<pcl::PointXYZ, flann::L2_Simple<float>>> pTree;
+		/** Polygon mesh */
+		golem::shared_ptr<pcl::PolygonMesh> pTriangles;
+	};
+
+	/** Description file of tactile observational model */
+	class SensoryDesc {
+	public:
+		/** Max distance rancge for the sensory model **/
+		golem::Real sensoryRange;
+		/** Importance weight for contacts **/
+		golem::Real contactFac;
+		/** Importance weight for non contacts **/
+		golem::Real noContactFac;
 
 		/** Constructs description. */
-		TactileDesc() {
+		SensoryDesc() {
 			setToDefault();
 		}
 		/** Sets the parameters to the default values. */
 		void setToDefault() {
-			kernels = 10000;
-			std::fill(&covariance[0], &covariance[3], golem::Real(0.0001)); // Vec3
-			std::fill(&covariance[3], &covariance[7], golem::Real(0.0001)); // Quat
-			test = false;
-			stddev.set();
+			sensoryRange = golem::Real(1);
+			contactFac = golem::Real(.75);
+			noContactFac = golem::Real(.25);
 		}
 		/** Checks if the description is valid. */
 		bool isValid() const {
-			if (kernels < 1)
-				return false;
 			//for (size_t i = 0; i < grasp::RBCoord::N; ++i)
 			//	if (!golem::Math::isPositive(covariance[i]))
 			//		return false;
 			return true;
 		}
 	};
+
 	/** Description file */
 	class Desc : public grasp::RBPose::Desc {
 	public:
 		typedef golem::shared_ptr<Desc> Ptr;
 
-		/** Tactile description file */
-		TactileDesc tactile;
+		/** Sensory model description file */
+		SensoryDesc sensory;
 
-		/** Max number of clusters for the sampling algorithm */
-		size_t kmeans;
-		/** Rejection threashold for clusters */
-		golem::Real rejection;
-		/** Max number of iteration */
-		size_t iterMax;
+		/** Number of hypothesis per model **/
+		size_t numHypotheses;
+		/** Max number of surface points in the kd-trees **/
+		size_t maxSurfacePoints;
+		/** Sample covariance metaparameters **/
+		grasp::RBCoord covariance;
+
+		/** Metaparameter for density function, e.g. e^(lambda*x) **/
+		golem::Real lambda;
 
 		/** Constructs description. */
 		Desc() {
@@ -140,59 +212,63 @@ public:
 		/** Sets the parameters to the default values. */
 		void setToDefault() {
 			grasp::RBPose::Desc::setToDefault();
-			tactile.setToDefault();
-			kmeans = 0;
-			rejection = golem::Real(0.01);
-			iterMax = 10;
+//			tactile.setToDefault();
+			numHypotheses = 5;
+			maxSurfacePoints = 10000;
+			std::fill(&covariance[0], &covariance[3], golem::Real(0.02)); // Vec3
+			std::fill(&covariance[3], &covariance[7], golem::Real(0.005)); // Quat
+			lambda = 1;
 		}
 		/** Checks if the description is valid. */
 		bool isValid() const {
 			if (!grasp::RBPose::Desc::isValid())
 				return false;
-			if (!tactile.isValid())
-				return false;
+			//if (!tactile.isValid())
+			//	return false;
 			return true;
 		}
 	};
-
-	/** Sample pose from distribution */
-	grasp::RBCoord sample() const;
-	/** Sample pose from distribution */
-	grasp::RBCoord sample(const grasp::RBCoord &kernel) const;
-
-	/** Maximum likelihood estimation */
-	Sample maximum();
 
 	/** Probability density value=p(s) for c */
 	golem::Real density(const grasp::RBCoord &c) const;
 
 	/** Transformation samples */
-	const Sample::Seq& getHypotheses() const {
-		return mfsePoses;
+	inline const Hypothesis::Seq& getHypotheses() const {
+		return hypotheses;
 	}
 	/** Transformation samples */
-	Sample::Seq& getHypotheses() {
-		return mfsePoses;
+	inline Hypothesis::Seq& getHypotheses() {
+		return hypotheses;
 	}
-	/** Samples hypothesis as ML pose plus noise */
-	Sample sampleHypothesis();
 	/** Returns samples properties */
-	inline golem::SampleProperty<golem::Real, grasp::RBCoord, grasp::RBCoord::N> getSampleProperties() { return mfseProperties; };
+	inline golem::SampleProperty<golem::Real, grasp::RBCoord, grasp::RBCoord::N> getSampleProperties() { return sampleProperties; };
+
+	/** Sets the hypothesis for planning. NOTE: returns the action frame **/
+	grasp::RBPose::Sample createHypotheses(const grasp::Cloud::PointSeq& model, const golem::Mat34 &transform);
+	/** Gets samples from hypotheses **/
+	grasp::RBPose::Sample::Seq getSamples();
+
 
 	/** Creates query object pose distribution */
 	void createQuery(const grasp::Cloud::PointSeq& points);
-	/** Creates a new set of weights for the current poses */
-	virtual void createUpdate(const golem::Mat34 &trn);
 	/** Creates a new set of poses (resampling wheel algorithm) */
 	virtual void createResample();
+	/** Creates belief update (on importance weights) given the robot's pose and the current belief state. NOTE: weights are normalised. */
+	void createUpdate(const grasp::Manipulator *manipulator, const golem::Waypoint &w, const grasp::FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force);
+	/** Evaluates the likelihood of reading a contact between robot's pose and the sample */
+	golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const golem::Real &force, bool &interect);
+
+	/** Probability density value=p(d) for a given distance between finger and hypothesis */
+	golem::Real density(const golem::Real dist) const;
+
 
 	/** Resets the high representation distribution */
 	inline void reset() {
-		mfseProperties = initProperties;
-		mfsePoses.clear();
+		sampleProperties = initProperties;
+		poses.clear();
 		for (grasp::RBPose::Sample::Seq::const_iterator i = initPoses.begin(); i != initPoses.end(); ++i)
-			mfsePoses.push_back(*i);
-		context.write("spam::Belief::createQuery(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", mfseProperties.covariance[0], mfseProperties.covariance[1], mfseProperties.covariance[2], mfseProperties.covariance[3], mfseProperties.covariance[4], mfseProperties.covariance[5], mfseProperties.covariance[6]);
+			poses.push_back(*i);
+		context.write("spam::Belief::createQuery(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", sampleProperties.covariance[0], sampleProperties.covariance[1], sampleProperties.covariance[2], sampleProperties.covariance[3], sampleProperties.covariance[4], sampleProperties.covariance[5], sampleProperties.covariance[6]);
 	}
 
 	/** Sets initial pose to the forward model */
@@ -204,6 +280,9 @@ public:
 	inline golem::Mat34 transform(golem::Mat34 &p) {
 		return trn.transform(p);
 	};
+
+	/** Gets the covariance det associated with the hypotheses **/
+	inline golem::Real getCovarianceDet() { return covarianceDet; };
 
 	/** Pose description */
 	Desc myDesc;
@@ -217,17 +296,23 @@ protected:
 	/** Forward model of hand-object interaction */
 	RigidBodyTransformation trn;
 
-	/** Returns the max weight associated to the corrent samples */
-	golem::Real maxWeight() const;
+	/** Model point cloud **/
+	grasp::Cloud::PointSeq modelPoints;
+	/** Model frme reference **/
+	golem::Mat34 modelFrame;
 
-	/** Transformation samples for the maximum likelihood estimation */
-	grasp::RBPose::Sample::Seq mfsePoses, initPoses;
+	/** Hypothesis container **/
+	Hypothesis::Seq hypotheses;
+	/** Covariance det associated with the samples **/
+	golem::Real covarianceDet;
+
+	/** Kernel function */
+	golem::Real kernel(golem::Real x, golem::Real lambda = golem::REAL_ONE) const;
+
+	/** Initial belief distribution. NOTE: Used for the reset method. */
+	grasp::RBPose::Sample::Seq initPoses;
 	/** Transformation samples properties */
-	golem::SampleProperty<golem::Real, grasp::RBCoord, grasp::RBCoord::N> mfseProperties, initProperties;
-	/** Transformation samples for the low dimentional representation */
-	grasp::RBPose::Sample::Seq ldPoses;
-	/** Transformation samples properties */
-	golem::SampleProperty<golem::Real, grasp::RBCoord, grasp::RBCoord::N> ldpose;
+	golem::SampleProperty<golem::Real, grasp::RBCoord, grasp::RBCoord::N> sampleProperties, initProperties;
 
 	/** Creates/initialises the object */
 	bool create(const Desc& desc);

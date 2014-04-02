@@ -11,6 +11,7 @@
 #include <Golem/Plan/Data.h>
 #include <Spam/PosePlanner/PosePlanner.h>
 #include <Golem/Device/RobotJustin/RobotJustin.h>
+#include <Grasp/Grasp/Grasp.h>
 
 using namespace golem;
 using namespace spam;
@@ -46,6 +47,8 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	grasp::Player::create(desc); // throws
 	
 	pRBPose = desc.pRBPoseDesc->create(context); // throws
+	pBelief = dynamic_cast<Belief*>(pRBPose.get());
+
 	modelAppearance = desc.modelAppearance;
 	queryAppearance = desc.queryAppearance;
 
@@ -78,6 +81,7 @@ void spam::PosePlanner::render() {
 	{
 		golem::CriticalSectionWrapper csw(csDataRenderer);
 		pointFeatureRenderer.render();
+		sampleRenderer.render();
 	}
 }
 
@@ -90,6 +94,7 @@ void spam::PosePlanner::resetDataPointers() {
 	showModelPoints = false;
 	showModelFeatures = false;
 	showQueryDistrib = false;
+	showSamplePoints = false;
 	featureIndex = -1;
 }
 
@@ -100,6 +105,7 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 		golem::CriticalSectionWrapper csw(csDataRenderer);
 	
 		pointFeatureRenderer.reset();
+		sampleRenderer.reset();
 		const bool showmodel = modelDataPtr == dataPtr;
 		const bool showquery = queryDataPtr == dataPtr;
 
@@ -109,8 +115,25 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 			}
 		
 			if (showquery) {
-				if (featureIndex >= (golem::U32)pRBPose->getQueryFeatures().size()) {
-					featureIndex = (golem::U32)rand.next()%pRBPose->getQueryFeatures().size();
+				if (featureIndex >= (golem::U32)pBelief->getQueryFeatures().size()) {
+					featureIndex = (golem::U32)rand.next()%pBelief->getQueryFeatures().size();
+				}
+				if (showSamplePoints) {
+					grasp::RBPose::Sample::Seq samples = pBelief->getSamples();
+					for (grasp::RBPose::Sample::Seq::iterator i = samples.begin(); i != samples.end(); ++i) {
+						const Mat34 actionFrame(i->q, i->p);
+						const Mat34 sampleFrame(actionFrame * modelFrame);
+						grasp::Cloud::PointSeq sample; // = modelPoints;
+						sample.reserve(modelPoints.size());
+						for (grasp::Cloud::PointSeq::const_iterator point = modelPoints.begin(); point != modelPoints.end(); ++point) {
+							grasp::Cloud::Point p = *point;
+							grasp::Cloud::setColour(i == samples.begin() ? golem::RGBA::WHITE : golem::RGBA::BLUE, p);
+							sample.push_back(p);
+						}
+						grasp::Cloud::transform(actionFrame, sample, sample);
+						sampleRenderer.addAxes(sampleFrame, distribFrameSize);
+						sampleAppearance.draw(sample, sampleRenderer);
+					}
 				}
 				if (showQueryDistrib) {
 					for (size_t i = 0; i < distribSamples; ++i) {
@@ -119,14 +142,14 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 				}
 				if (!showModelPoints) {
 					if (showModelFeatures) {
-						const grasp::RBPose::Feature& queryFeature = pRBPose->getQueryFeatures()[featureIndex];
+						const grasp::RBPose::Feature& queryFeature = pBelief->getQueryFeatures()[featureIndex];
 						queryFeature.draw(pointFeatureRenderer, queryAppearance);
 					}
 				}
 				if (showModelPoints) {
 					if (showModelFeatures) {
-						const I32 modelFeatureIndex = pRBPose->getIndices()[featureIndex];
-						grasp::RBPose::Feature modelFeature = pRBPose->getModelFeatures()[modelFeatureIndex];
+						const I32 modelFeatureIndex = pBelief->getIndices()[featureIndex];
+						grasp::RBPose::Feature modelFeature = pBelief->getModelFeatures()[modelFeatureIndex];
 						modelFeature.frame.multiply(grasp::to<Data>(dataPtr)->actionFrame, modelFeature.frame);
 						modelFeature.draw(pointFeatureRenderer, modelAppearance);
 					}
@@ -145,8 +168,8 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 //------------------------------------------------------------------------------
 
 void spam::PosePlanner::profile(Data::Map::iterator dataPtr, const golem::Controller::State::Seq& inp, golem::SecTmReal dur, golem::SecTmReal idle) const {
-	if (!grasp::to<Data>(dataPtr)->queryPoints.empty()) {
-		context.debug("PosePlanner::profile(): Computing trajectory in a new frame...\n");
+	if (!grasp::to<Data>(queryDataPtr)->queryPoints.empty()) {
+		context.write("PosePlanner::profile(): Computing trajectory in a new frame...\n");
 		golem::Controller::State::Seq seq;
 		robot->createTrajectory(grasp::to<Data>(dataPtr)->actionFrame, inp.begin(), inp.end(), seq);
 		grasp::Player::profile(dataPtr, seq, dur, idle);
@@ -185,19 +208,28 @@ void spam::PosePlanner::profileManip(Data::Map::iterator dataPtr, const golem::C
 	out.push_back(Controller::State(out.back(), out.back().t + idle));
 }
 
+grasp::Cloud::PointSeqMap::iterator PosePlanner::getPointsTrn(Data::Map::iterator dataPtr, Mat34 &trn) {
+	for (grasp::Cloud::PointSeqMap::iterator p = grasp::to<Data>(dataPtr)->points.begin(); p != grasp::to<Data>(dataPtr)->points.end(); ++p) 
+		grasp::Cloud::transform(trn, p->second, p->second);
+	return grasp::Director::getPoints(dataPtr);
+}
+
+
 void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 	switch (key) {
 	case 'M':
 	{
-		grasp::Cloud::PointSeqMap::const_iterator points = getPoints(dataPtr);
+		grasp::Cloud::PointSeqMap::iterator points = getPointsTrn(dataPtr, grasp::Director::Import::make(grasp::to<Import>(import)->frames));
 		// model create
 		context.write("Creating %s model...\n", grasp::to<Data>(dataPtr)->getLabelName(points->first).c_str());
-		pRBPose->createModel(points->second);
+		pBelief->createModel(points->second);
+
 		// update model settings
 		modelDataPtr = dataPtr;
-		modelFrame = grasp::RBPose::createFrame(points->second);
+		modelFrame = Belief::createFrame(points->second);
 		modelPoints = points->second;
 		resetDataPointers();
+
 		// done
 		context.write("Done!\n");
 		renderData(dataPtr);
@@ -208,22 +240,23 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 		grasp::Cloud::PointSeqMap::const_iterator points = getPoints(dataPtr);
 		// query create
 		context.write("Creating %s query...\n", grasp::to<Data>(dataPtr)->getLabelName(points->first).c_str());
-		pRBPose->createQuery(points->second);
-		// create pose distribution
-		grasp::to<Data>(dataPtr)->poses.clear();
-		grasp::to<Data>(dataPtr)->poses.resize(numPoses);
-		for (size_t i = 0; i < numPoses; ++i)
-			grasp::to<Data>(dataPtr)->poses.push_back(grasp::RBPose::Sample(pRBPose->sample()));
-		// compute frame
-		const grasp::RBPose::Sample frame = pRBPose->maximum();
+		pBelief->createQuery(points->second);
+		// create hypotheses and return the action frame for this query
+		const grasp::RBPose::Sample frame = pBelief->createHypotheses(modelPoints, modelFrame);
+		//// create pose distribution
+		//grasp::to<Data>(dataPtr)->poses.clear();
+		//grasp::to<Data>(dataPtr)->poses.resize(numPoses);
+		//for (size_t i = 0; i < numPoses; ++i)
+		//	grasp::to<Data>(dataPtr)->poses.push_back(grasp::RBPose::Sample(pRBPose->sample()));
 		// create hypothesis distribution (first element is the MLE)
-		grasp::to<Data>(dataPtr)->hypotheses.clear();
-		grasp::to<Data>(dataPtr)->hypotheses.resize(numHypotheses);
-		grasp::to<Data>(dataPtr)->hypotheses.push_back(frame);
-		for (size_t i = 1; i < numHypotheses; ++i)
-			grasp::to<Data>(dataPtr)->hypotheses.push_back(*grasp::RBPose::Sample::sample<golem::Ref1, grasp::RBPose::Sample::Seq::const_iterator>(grasp::to<Data>(dataPtr)->poses, rand));
+		//grasp::to<Data>(dataPtr)->hypotheses.clear();
+		//grasp::to<Data>(dataPtr)->hypotheses.resize(numHypotheses);
+		//grasp::to<Data>(dataPtr)->hypotheses.push_back(frame);
+		//for (size_t i = 1; i < numHypotheses; ++i)
+		//	grasp::to<Data>(dataPtr)->hypotheses.push_back(*grasp::RBPose::Sample::sample<golem::Ref1, grasp::RBPose::Sample::Seq::const_iterator>(grasp::to<Data>(dataPtr)->poses, rand));
 
 		grasp::to<Data>(dataPtr)->actionFrame = frame.toMat34();
+		context.write("action frame <%f %f %f>\n", grasp::to<Data>(dataPtr)->actionFrame.p.x, grasp::to<Data>(dataPtr)->actionFrame.p.y, grasp::to<Data>(dataPtr)->actionFrame.p.z);
 		// update query settings
 		resetDataPointers();
 		queryDataPtr = dataPtr;
@@ -235,8 +268,43 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 		// done
 		context.info("<pose v1=\"%.7f\" v2=\"%.7f\" v3=\"%.7f\" q0=\"%.7f\" q1=\"%.7f\" q2=\"%.7f\" q3=\"%.7f\"/>\n", frame.p.x, frame.p.y, frame.p.z, frame.q.q0, frame.q.q1, frame.q.q2, frame.q.q3);
 		context.write("Done!\n");
+		showSamplePoints = true;
 		renderData(dataPtr);
 		return;
+	}
+	case 'T':
+	{
+		// update approach and manip actions
+		context.write("Update approach actions (size %d)...\n", grasp::to<Data>(modelDataPtr)->actionApproach.size());
+		if (!grasp::to<Data>(modelDataPtr)->actionApproach.empty()) {
+			for(grasp::RobotState::List::iterator state = grasp::to<Data>(dataPtr)->actionApproach.begin(); state != grasp::to<Data>(dataPtr)->actionApproach.end(); ++state) {
+				const golem::Chainspace::Index armChain = robot->getStateArmInfo().getChains().begin();
+				
+				GenWorkspaceChainState gwcs;
+				robot->getController()->chainForwardTransform(state->config.cpos, gwcs.wpos);
+				gwcs.wpos[armChain].multiply(gwcs.wpos[armChain], robot->getController()->getChains()[armChain]->getReferencePose()); // 1:1
+				gwcs.wpos[armChain].multiply(modelFrame, gwcs.wpos[armChain]); // new waypoint frame
+
+				GenWorkspaceChainState wend;
+				wend.setToDefault(robot->getStateInfo().getChains().begin(), robot->getStateInfo().getChains().end()); // all used chains
+				wend.wpos[armChain] = gwcs.wpos[armChain];
+				context.write("wend ,%f %f %f>\n", wend.wpos[armChain].p.x, wend.wpos[armChain].p.y, wend.wpos[armChain].p.z);
+				// lock controller
+				golem::CriticalSectionWrapper csw(robot->getControllerCS());
+				// Find end position
+				grasp::Robot::State pose = robot->recvState();
+				if (!robot->getPlanner()->findTarget(pose.config, wend, state->config))
+					throw Message(Message::LEVEL_CRIT, "RagPlanner:Creating Model: unable to find grasp configuration");
+				state->command = state->config;
+				// error
+				WorkspaceChainCoord wcc;
+				robot->getController()->chainForwardTransform(state->config.cpos, wcc);
+				wcc[armChain].multiply(wcc[armChain], robot->getController()->getChains()[armChain]->getReferencePose());
+				context.write("wcc ,%f %f %f>\n", wcc[armChain].p.x, wcc[armChain].p.y, wcc[armChain].p.z);
+				const grasp::RBDist error(grasp::RBCoord(wcc[armChain]), grasp::RBCoord(wend.wpos[armChain]));
+				context.write("RagPlanner:Creating Model: Pose error: lin=%.9f, ang=%.9f\n", error.lin, error.ang);
+			}
+		}
 	}
 	case '4':
 		showModelPoints = !showModelPoints;
@@ -254,6 +322,12 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 		context.write("Query distribution %s\n", showQueryDistrib ? "ON" : "OFF");
 		renderData(dataPtr);
 		return;
+	case '7':
+		showSamplePoints = !showSamplePoints;
+		context.write("Hypotheses distribution %s\n", showSamplePoints ? "ON" : "OFF");
+		renderData(dataPtr);
+		return;
+
 	}
 
 	Player::function(dataPtr, key);
@@ -265,7 +339,13 @@ void spam::XMLData(PosePlanner::Desc &val, Context* context, XMLContext* xmlcont
 	grasp::XMLData((grasp::Player::Desc&)val, context, xmlcontext, create);
 
 	xmlcontext = xmlcontext->getContextFirst("pose_planner");
+
 	XMLData((grasp::RBPose::Desc&)*val.pRBPoseDesc, xmlcontext, create);
+	Belief::Desc* pBeliefDesc(new Belief::Desc);
+	(grasp::RBPose::Desc&)*pBeliefDesc = *val.pRBPoseDesc;
+	val.pRBPoseDesc.reset(pBeliefDesc);
+	spam::XMLData((Belief::Desc&)*val.pRBPoseDesc, xmlcontext, create);
+
 	golem::XMLData("num_poses", val.numPoses, xmlcontext);
 	golem::XMLData("num_hypotheses", val.numHypotheses, xmlcontext);
 	golem::XMLData("distrib_samples", val.distribSamples, xmlcontext->getContextFirst("appearance"), create);
