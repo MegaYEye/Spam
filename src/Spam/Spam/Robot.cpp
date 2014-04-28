@@ -87,64 +87,79 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 
 //------------------------------------------------------------------------------
 
-int Robot::getTriggeredGuards(std::vector<golem::Configspace::Index> &triggeredJoints, golem::Controller::State &state) {
-	triggeredJoints.clear();
-	std::vector<int> triggeredIndeces;
-	const int NUM_JOINTS_CTRL = handInfo.getJoints(handInfo.getChains().begin()).size() - 1;
-	int ret = 0;
-	// in case justin moves with enable guards
-	if ((ret = grasp::Robot::getTriggeredGuards(triggeredIndeces, state)) > 0 || !staticObject) {
-		context.write("spam::Robot::getTriggeredGuards(): num=%d triggered joint(s):", triggeredIndeces.size());
-		for (std::vector<int>::const_iterator i = triggeredIndeces.begin(); i != triggeredIndeces.end(); ++i) {
-			const int index = *i;//*i - 6;
-			const int chain = index/NUM_JOINTS_CTRL;
-			triggeredJoints.push_back(handInfo.getJoints(handInfo.getChains().begin() + chain).begin() + (index - chain*NUM_JOINTS_CTRL));
-			if (index - chain*NUM_JOINTS_CTRL == 2)
-				triggeredJoints.push_back(handInfo.getJoints(handInfo.getChains().begin() + chain).begin() + (index - chain*NUM_JOINTS_CTRL) + 1);
-			context.write(" <chain=%d joint=%d>", chain, index - chain*NUM_JOINTS_CTRL);
-		}
-		context.write("\n");
-		return !staticObject && ret < 0 ? triggeredIndeces.size() : ret; // return ret;
-	}
-	//else {
-	//	// in case justin tried to grasp with no guards enabled
-	//	const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
-	//	state = recvState().config;
-	//
-	//	context.write("spam::Robot::getTriggeredGuards(): retrieving forces from state\n");
-	//	grasp::RealSeq force;
-	//	force.assign(handInfo.getJoints().size(), REAL_ZERO);
-	//	if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
-	//		for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
-	//			const size_t k = j - handInfo.getJoints().begin();
-	//			force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
-	//			if (Math::abs(state.get<ConfigspaceCoord>(forceOffset)[j]) > ftHandGuards[k]) {
-	//				context.write("hand joint %d force=%f\n", k, force[k]);
-	//				triggeredJoints.push_back(j);
-	//			}
-	//		}
-	//	}
-	//	if (!triggeredJoints.empty())
-	//		return true;
-	//}
-	context.write("spam::Robot::getTriggeredGuards(): no triggered guards\n");
-	return ret;
-}
+//int Robot::getTriggeredGuards(std::vector<golem::Configspace::Index> &triggeredJoints, golem::Controller::State &state) {
+//	triggeredJoints.clear();
+//	std::vector<int> triggeredIndeces;
+//	const int NUM_JOINTS_CTRL = handInfo.getJoints(handInfo.getChains().begin()).size() - 1;
+//	int ret = 0;
+//	// in case justin moves with enable guards
+//	if ((ret = grasp::Robot::getTriggeredGuards(triggeredIndeces, state)) > 0/* || !staticObject*/) {
+//		context.write("spam::Robot::getTriggeredGuards(): num=%d triggered joint(s):", triggeredIndeces.size());
+//		for (std::vector<int>::const_iterator i = triggeredIndeces.begin(); i != triggeredIndeces.end(); ++i) {
+//			const int index = *i;//*i - 6;
+//			const int chain = index/NUM_JOINTS_CTRL;
+//			triggeredJoints.push_back(handInfo.getJoints(handInfo.getChains().begin() + chain).begin() + (index - chain*NUM_JOINTS_CTRL));
+//			if (index - chain*NUM_JOINTS_CTRL == 2)
+//				triggeredJoints.push_back(handInfo.getJoints(handInfo.getChains().begin() + chain).begin() + (index - chain*NUM_JOINTS_CTRL) + 1);
+//			context.write(" <chain=%d joint=%d>", chain, index - chain*NUM_JOINTS_CTRL);
+//		}
+//		context.write("\n");
+//		return /*!staticObject &&*/ ret < 0 ? triggeredIndeces.size() : ret; // return ret;
+//	}
+//	//else {
+//	//	// in case justin tried to grasp with no guards enabled
+//	//	const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
+//	//	state = recvState().config;
+//	//
+//	//	context.write("spam::Robot::getTriggeredGuards(): retrieving forces from state\n");
+//	//	grasp::RealSeq force;
+//	//	force.assign(handInfo.getJoints().size(), REAL_ZERO);
+//	//	if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
+//	//		for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
+//	//			const size_t k = j - handInfo.getJoints().begin();
+//	//			force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
+//	//			if (Math::abs(state.get<ConfigspaceCoord>(forceOffset)[j]) > ftHandGuards[k]) {
+//	//				context.write("hand joint %d force=%f\n", k, force[k]);
+//	//				triggeredJoints.push_back(j);
+//	//			}
+//	//		}
+//	//	}
+//	//	if (!triggeredJoints.empty())
+//	//		return true;
+//	//}
+//	context.write("spam::Robot::getTriggeredGuards(): no triggered guards\n");
+//	return ret;
+//}
 
-int Robot::getTriggeredGuards(std::vector<grasp::FTGuard> &triggeredJoints, golem::Controller::State &state) {
+int Robot::getTriggeredGuards(grasp::FTGuard::Seq &triggeredJoints, golem::Controller::State &state) {
+	
+	std::cout << "Robot::getTriggeredGuards 1\n";
 	triggeredJoints.clear();
+	std::cout << "Robot::getTriggeredGuards 2\n";
+	triggeredJoints.reserve(ftGuards.size());
+	std::cout << "Robot::getTriggeredGuards 3\n";
 	std::vector<int> triggeredIndeces;
+	std::cout << "Robot::getTriggeredGuards 4\n";
+	triggeredIndeces.reserve(ftGuards.size());
+	std::cout << "Robot::getTriggeredGuards 5\n";
 	const int NUM_JOINTS_CTRL = handInfo.getJoints(handInfo.getChains().begin()).size() - 1;
+	std::cout << "Robot::getTriggeredGuards 6\n";
 	int ret = 0;
+	std::cout << "Robot::getTriggeredGuards 7\n";
 	// in case justin moves with enable guards
-	if ((ret = grasp::Robot::getTriggeredGuards(triggeredIndeces, state)) > 0 || !staticObject) {
+	if ((ret = grasp::Robot::getTriggeredGuards(triggeredIndeces, state)) > 0 /*|| !staticObject*/) {
 		context.write("spam::Robot::getTriggeredGuards(): num=%d triggered joint(s):", triggeredIndeces.size());
+	std::cout << "Robot::getTriggeredGuards 8\n";
 		for (std::vector<int>::const_iterator i = triggeredIndeces.begin(); i != triggeredIndeces.end(); ++i) {
+	std::cout << "Robot::getTriggeredGuards 9\n";
 			triggeredJoints.push_back(ftGuards[*i]);
+	std::cout << "Robot::getTriggeredGuards 10\n";
 			context.write(" <chain=%d joint=%d>", ftGuards[*i].chainIdx, ftGuards[*i].jointIdx);
+	std::cout << "Robot::getTriggeredGuards 11\n";
 		}
 		context.write("\n");
-		return !staticObject && ret < 0 ? triggeredIndeces.size() : ret; // return ret;
+	std::cout << "Robot::getTriggeredGuards 12\n";
+		return triggeredIndeces.size(); // return ret;
 	}
 	//else {
 	//	// in case justin tried to grasp with no guards enabled
@@ -167,87 +182,155 @@ int Robot::getTriggeredGuards(std::vector<grasp::FTGuard> &triggeredJoints, gole
 	//	if (!triggeredJoints.empty())
 	//		return true;
 	//}
-	context.write("spam::Robot::getTriggeredGuards(): no triggered guards\n");
+	std::cout << "Robot::getTriggeredGuards 13\n";
+	context.write("spam::Robot::getTriggeredGuards(): no triggered guards (ret=%d)\n", ret);
 	return ret;
 }
 
 void Robot::readFT(const Controller::State &state, grasp::RealSeq &force) const {
+	std::cout << "robot::readFT(): retrieve torques\n";
 	const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
 	const Chainspace::Index handChain = state.getInfo().getChains().begin()+1;
 
-	force.assign(state.getInfo().getJoints().size(), REAL_ZERO);
+	force.assign(handInfo.getJoints().size(), REAL_ZERO);
+	std::cout << "forces \n";
 	if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
-		for (Configspace::Index j = state.getInfo().getJoints(handChain).begin(); j < state.getInfo().getJoints().end(); ++j) {
-			const size_t k = j - state.getInfo().getJoints(handChain).begin();
+		for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
+			const size_t k = j - handInfo.getJoints().begin();
 			force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
+			std::cout << "hand joint " << k << " force=" << force[k] << " guard=" << ftHandGuards[k] << "\n";
 		}
 	}
 
 }
 
-size_t Robot::isGrasping(std::vector<golem::Configspace::Index> &triggeredJoints, golem::Controller::State &state) {
+//size_t Robot::isGrasping(std::vector<golem::Configspace::Index> &triggeredJoints, golem::Controller::State &state) {
+//	// in case justin tried to grasp with no guards enabled
+//	triggeredJoints.clear();
+//	const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
+//	state = recvState().config;
+//	
+//	context.write("spam::Robot::isGrasping(): retrieving forces from state (hand joints size %d, guards size %d)\n", handInfo.getJoints().size(), ftHandGuards.size());
+//	grasp::RealSeq force;
+//	readFT(state, force);
+//	force.assign(handInfo.getJoints().size(), REAL_ZERO);
+//	if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
+//		for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
+//			const size_t k = j - handInfo.getJoints().begin();
+//			//force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
+//			//if (Math::abs(state.get<ConfigspaceCoord>(forceOffset)[j]) > ftHandGuards[k]) {
+//			if (Math::abs(force[k]) > ftHandGuards[k]) {
+//				context.write("hand joint %d force=%f guard=%f\n", k, force[k], ftHandGuards[k]);
+//				triggeredJoints.push_back(j);
+//			}
+//		}
+//	}
+//	context.write("robot:isGrasping: done./n");
+//	return triggeredJoints.size();
+//
+//	// Read forces at the hand
+//	//const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
+//	//const Controller::State s = recvState().config;
+//	//
+//	//grasp::RealSeq force;
+//	//force.assign(s.getInfo().getJoints().size(), REAL_ZERO);
+//	//if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
+//	//	for (Configspace::Index j = s.getInfo().getJoints().begin(); j < s.getInfo().getJoints().end(); ++j) {
+//	//		const size_t k = j - s.getInfo().getJoints().begin();
+//	//		force[k] = s.get<ConfigspaceCoord>(forceOffset)[j];
+//	//	}
+//	//}
+//	//for (grasp::RealSeq::const_iterator i = force.begin(), j = ftHandGuards.begin(); i != force.end() && j != ftHandGuards.end(); ++i, ++j)
+//	//	if (Math::abs(*i) >= *j ) 
+//	//		return true;
+//	//
+//	//return false;
+//}
+
+size_t Robot::isGrasping(grasp::FTGuard::Seq &triggeredJoints, golem::Controller::State &state) {
 	// in case justin tried to grasp with no guards enabled
 	triggeredJoints.clear();
 	const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
 	state = recvState().config;
 	
-	context.write("spam::Robot::isGrasping(): retrieving forces from state\n");
+	context.write("spam::Robot::isGrasping(): retrieving forces from state (hand joints size %d, guards size %d)\n", handInfo.getJoints().size(), ftHandGuards.size());
 	grasp::RealSeq force;
 	force.assign(handInfo.getJoints().size(), REAL_ZERO);
+	size_t res = 0; // counts the triggered guards. but leaves triggeredjoint empty to avoid the belief update.
 	if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
 		for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
 			const size_t k = j - handInfo.getJoints().begin();
 			force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
 			if (Math::abs(state.get<ConfigspaceCoord>(forceOffset)[j]) > ftHandGuards[k]) {
 				context.write("hand joint %d force=%f guard=%f\n", k, force[k], ftHandGuards[k]);
-				triggeredJoints.push_back(j);
-			}
-		}
-	}
-
-	return triggeredJoints.size();
-
-	// Read forces at the hand
-	//const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
-	//const Controller::State s = recvState().config;
-	//
-	//grasp::RealSeq force;
-	//force.assign(s.getInfo().getJoints().size(), REAL_ZERO);
-	//if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
-	//	for (Configspace::Index j = s.getInfo().getJoints().begin(); j < s.getInfo().getJoints().end(); ++j) {
-	//		const size_t k = j - s.getInfo().getJoints().begin();
-	//		force[k] = s.get<ConfigspaceCoord>(forceOffset)[j];
-	//	}
-	//}
-	//for (grasp::RealSeq::const_iterator i = force.begin(), j = ftHandGuards.begin(); i != force.end() && j != ftHandGuards.end(); ++i, ++j)
-	//	if (Math::abs(*i) >= *j ) 
-	//		return true;
-	//
-	//return false;
-}
-
-size_t Robot::isGrasping(std::vector<grasp::FTGuard> &triggeredJoints, golem::Controller::State &state) {
-	// in case justin tried to grasp with no guards enabled
-	triggeredJoints.clear();
-	const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
-	state = recvState().config;
-	
-	context.write("spam::Robot::isGrasping(): retrieving forces from state\n");
-	grasp::RealSeq force;
-	force.assign(handInfo.getJoints().size(), REAL_ZERO);
-	if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
-		for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
-			const size_t k = j - handInfo.getJoints().begin();
-			force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
-			if (Math::abs(state.get<ConfigspaceCoord>(forceOffset)[j]) > ftHandGuards[k]) {
-				context.write("hand joint %d force=%f guard=%f\n", k, force[k], ftHandGuards[k]);
+				res++;
 //				triggeredJoints.push_back(j);
 				// TODO generate ftguards for each contact
 			}
 		}
 	}
 
-	return triggeredJoints.size();
+	return res; //triggeredJoints.size();
 }
 
 //------------------------------------------------------------------------------
+
+grasp::RBDist Robot::trnTrajectory(const golem::Mat34& actionFrame, const golem::Mat34& modelFrame, const golem::Mat34& trn, golem::Controller::State::Seq::const_iterator begin, golem::Controller::State::Seq::const_iterator end, golem::Controller::State::Seq& trajectory) {
+	if (begin == end)
+		throw Message(Message::LEVEL_ERROR, "Robot::createTrajectory(2): Empty input trajectory");
+	// arm chain and joints pointers
+	const golem::Chainspace::Index armChain = armInfo.getChains().begin();
+	const golem::Configspace::Range armJoints = armInfo.getJoints();
+	// Compute a sequence of targets corresponding to the transformed arm end-effector
+	GenWorkspaceChainState::Seq seq;
+	for (Controller::State::Seq::const_iterator i = begin; i != end; ++i) {
+		GenWorkspaceChainState gwcs;
+		controller->chainForwardTransform(i->cpos, gwcs.wpos);
+		gwcs.wpos[armChain].multiply(gwcs.wpos[armChain], controller->getChains()[armChain]->getReferencePose()); // 1:1
+		// define the grasp frame
+		Mat34 poseFrameInv, graspFrame, graspFrameInv;
+		poseFrameInv.setInverse(gwcs.wpos[armChain]);
+		graspFrame.multiply(poseFrameInv, actionFrame * modelFrame);
+		graspFrameInv.setInverse(graspFrame);
+		gwcs.wpos[armChain].multiply(modelFrame, graspFrameInv);
+		context.write("trnTrajectory(): grasp frame at model <%f %f %f>\n", gwcs.wpos[armChain].p.x, gwcs.wpos[armChain].p.y, gwcs.wpos[armChain].p.z);
+		gwcs.wpos[armChain].multiply(trn, gwcs.wpos[armChain]); // new waypoint frame
+		context.write("trnTrajectory(): grasp frame at new query <%f %f %f>\n", gwcs.wpos[armChain].p.x, gwcs.wpos[armChain].p.y, gwcs.wpos[armChain].p.z);
+		gwcs.t = i->t;
+		seq.push_back(gwcs);
+	}
+	// planner debug
+	//context.verbose("%s\n", plannerDebug(*planner).c_str());
+	Controller::State::Seq ctrajectory;
+	{
+		// lock controller
+		golem::CriticalSectionWrapper csw(csController);
+		// Find initial target position
+		Controller::State cend = *begin;
+		// planner debug
+		//context.verbose("%s\n", plannerWorkspaceDebug(*planner, &seq[0].wpos).c_str());
+		if (!planner->findTarget(*begin, seq[0], cend))
+			throw Message(Message::LEVEL_ERROR, "Robot::createTrajectory(2): Unable to find initial target configuration");
+		// Find remaining position sequence
+		if (seq.size() == 1)
+			ctrajectory.push_back(cend);
+		else if (seq.size() > 1 && !planner->findLocalTrajectory(cend, ++seq.begin(), seq.end(), ctrajectory, ctrajectory.end()))
+			throw Message(Message::LEVEL_ERROR, "Robot::createTrajectory(2): Unable to find trajectory");
+	}
+	// update arm configurations and compute average error
+	grasp::RBDist err;
+	Controller::State::Seq::const_iterator j = begin;
+	for (size_t i = 0; i < ctrajectory.size(); ++i, ++j) {
+		// copy config
+		trajectory.push_back(*j);
+		trajectory.back().set(armInfo.getJoints().begin(), armInfo.getJoints().end(), ctrajectory[i]);
+		// error
+		WorkspaceChainCoord wcc;
+		controller->chainForwardTransform(trajectory.back().cpos, wcc);
+		wcc[armChain].multiply(wcc[armChain], controller->getChains()[armChain]->getReferencePose());
+		err.add(err, grasp::RBDist(grasp::RBCoord(wcc[armChain]), grasp::RBCoord(seq[i].wpos[armChain])));
+	}
+	context.write("Robot::createTrajectory(2): Pose error: lin=%.9f, ang=%.9f\n", err.lin, err.ang);
+	return err;
+}
+

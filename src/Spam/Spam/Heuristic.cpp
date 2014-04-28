@@ -415,6 +415,8 @@ Real FTDrivenHeuristic::cost(const Waypoint &w0, const Waypoint &w1, const Waypo
 //		if (r < 1) context.write("rewarded trajectory dist=%f reward %f (enalbe=%s)\n", bound < Node::COST_INF ? bound : -1, r, enable ? "ON" : "OFF");
 		c += desc.costDesc.distPathFac*d*r;
 	}
+	// rewards more natural approaches (palm towards object)
+//	c *= directionApproach(w1);
 
 	if (desc.costDesc.distGoalFac > REAL_ZERO) {
 		const Real w = (enable) ? getMahalanobisDist(w1, goal) : getWorkspaceDist(w1, goal);
@@ -1189,6 +1191,20 @@ void FTDrivenHeuristic::h(const golem::Waypoint &wi, const golem::Waypoint &wj, 
 
 //------------------------------------------------------------------------------
 
+Real FTDrivenHeuristic::directionApproach(const Waypoint &w) const {
+	const Chainspace::Index armIndex = armInfo.getChains().begin();
+	
+	Vec3 v;
+	Mat34 tcpFrameInv, hypothesis;
+	hypothesis = (*pBelief->getHypotheses().begin())->getSampleGF().toMat34();
+	tcpFrameInv.setInverse(w.wpos[armIndex]);
+	tcpFrameInv.multiply(v, hypothesis.p);
+	v.normalise();
+	return v.z > 0 ? REAL_ONE - ftDrivenDesc.directionFac : REAL_ONE;
+}
+
+//------------------------------------------------------------------------------
+
 bool FTDrivenHeuristic::collides(const Waypoint &w) const {
 	// check if the waypoint collides with objects in the scene
 	if (Heuristic::collides(w))
@@ -1295,7 +1311,7 @@ Real FTDrivenHeuristic::testObservations(const grasp::RBCoord &pose, const bool 
 		v.normalise();
 //		const Real thx(Math::atan2(v.z, v.x)), thy(Math::atan2(v.z, v.y));
 //		if (v.z < 0 || Math::abs(thx) > ftDrivenDesc.ftModelDesc.coneTheta1 || Math::abs(thy) > ftDrivenDesc.ftModelDesc.coneTheta2) 
-		if (v.z < 0 || v.z < ftDrivenDesc.ftModelDesc.coneTheta1)
+		if (v.z < 0 /*|| v.z < ftDrivenDesc.ftModelDesc.coneTheta1*/)
 			result = ftDrivenDesc.ftModelDesc.distMax + 1;
 
 		context.write("joint pose <%f %f %f> mug frame <%f %f %f> v <%f %f %f> distance=%f result=%f density=%f\n",
@@ -1310,6 +1326,11 @@ Real FTDrivenHeuristic::testObservations(const grasp::RBCoord &pose, const bool 
 		//	std::printf("nearest(): pose [%.4f,%.4f,%.4f]<%.4f,%.4f,%.4f>; median <%.4f,%.4f,%.4f>, thx %.4f, thy %.4f\n",
 		//		roll, pitch, yaw, pose.p.x, pose.p.y, pose.p.z, median.x, median.y, median.z, thx, thy);
 		//}
+	}
+	else {
+	context.write("joint pose <%f %f %f> mug frame <%f %f %f> distance=%f result=%f density=%f\n",
+		pose.p.x, pose.p.y, pose.p.z, (*pBelief->getHypotheses().begin())->sample.p.x, (*pBelief->getHypotheses().begin())->sample.p.y, (*pBelief->getHypotheses().begin())->sample.p.z,
+		pose.p.distance(median), result, norm*pBelief->density(result));
 	}
 	return result;
 }

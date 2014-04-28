@@ -46,7 +46,7 @@
 
 //------------------------------------------------------------------------------
 
-#include <Spam/ShapePlanner/ShapePlanner.h>
+#include <Spam/PosePlanner/PosePlanner.h>
 #include <Grasp/Grasp/Grasp.h>
 #include <Spam/Spam/Belief.h>
 #include <Spam/Spam/Data.h>
@@ -72,15 +72,17 @@ public:
 	/** Data */
 	class Data : public PosePlanner::Data {
 	public:
+		friend class RagPlanner;
+
 		/** Cache (local): OpenGL settings */
 		golem::Scene::OpenGL openGL;
 		
 		/** Specifies if guard have been triggered during the perform of the action */
 		int triggered;
 		/** Contains the index of the triggered guards */
-		grasp::FTGuard::Seq triggeredGuards;
+//		grasp::FTGuard::Seq triggeredGuards;
 		/** State of the robot at the time a contact occurred */
-		golem::Controller::State::Seq triggeredStates;
+//		golem::Controller::State::Seq triggeredStates;
 
 		/** Cache (local): action */
 //		golem::Controller::State::Seq action;
@@ -89,15 +91,17 @@ public:
 		/** Manipulation action waypoints */
 //		grasp::RobotState::List manipAction;
 		/** Withdraw action waypoints */
-		grasp::RobotState::List actionWithdraw;
+//		grasp::RobotState::List actionWithdraw;
 		/** Combined action waypoints */
-		golem::Controller::State::Seq executedTrajectory;
+//		golem::Controller::State::Seq executedTrajectory;
 
 		/** Safety configurations of the robot */
 		grasp::RobotState::Seq homeStates;
 
 		/** Specifies if the replanning should be triggered */
 		bool replanning;
+		/** Enable the release of the object before withdrawing */
+		bool release;
 
 		/** Reset data during construction */
 		Data() {
@@ -109,10 +113,17 @@ public:
 			PosePlanner::Data::setToDefault();
 			triggered = 0;
 			replanning = false;
+			release = false;
+
+//			triggeredGuards.clear();
+//			triggeredStates.clear();
+//			actionWithdraw.clear();
+//			executedTrajectory.clear();
+			homeStates.clear();
 		}
 		/** Assert that the description is valid. */
 		virtual void assertValid(const grasp::Assert::Context& ac) const {
-			Player::Data::assertValid(ac);
+			PosePlanner::Data::assertValid(ac);
 		}
 
 		/** Reads/writes object from/to a given XML context */
@@ -152,6 +163,8 @@ public:
 
 		/** Bounding box for the graspable object */
 		golem::Bounds::Desc::Seq objectBounds;
+		/** Bounding box for obstacles */
+		golem::Bounds::Desc::Seq obstacleBounds;
 		/** Real pose of the object. Ground truth for testing */
 		golem::Mat34 objectPose;
 		
@@ -182,6 +195,7 @@ public:
 			singleGrasp = false;
 			withdrawToHomePose = false;
 			objectBounds.clear();
+			obstacleBounds.clear();
 			objectPose.setId();
 			gtNoiseEnable = false;
 			gtPoseStddev.set();
@@ -215,6 +229,8 @@ protected:
 	golem::DebugRenderer sampleRenderer;
 	/** ground truth renderer */
 	golem::DebugRenderer gtRenderer;
+	/** Debug renderer */
+	golem::DebugRenderer debugRenderer;
 
 	/** Smart pointer to the belief state */
 	Belief* pBelief;
@@ -263,11 +279,19 @@ protected:
 	bool withdrawToHomePose;
 	/** Shows the posterior distribution */
 	bool posterior;
+
 	/** Ground truth points */
 	grasp::Cloud::PointSeq groundTruthPoints;
 
 	/** Enables/disables the transformation in the action frame */
 	bool trnEnable;
+
+	/** Safety configurations of the robot */
+	grasp::RobotState::Seq homeStates;
+	/** Combined action waypoints */
+	golem::Controller::State::Seq executedTrajectory;
+	/** Contains the index of the triggered guards */
+	grasp::FTGuard::Seq triggeredGuards;
 
 	/** Model point transformation **/
 	grasp::RBCoord trnModelPointCloud;
@@ -280,6 +304,8 @@ protected:
 
 	/** Bounding box for the graspable object */
 	golem::Bounds::Desc::SeqPtr objectBounds;
+	/** Bounding box for obstacles */
+	golem::Bounds::Desc::SeqPtr obstacleBounds;
 
 	/** Object real pose on the scene (ground truth) */
 	grasp::RBCoord objectRealPose;
@@ -306,6 +332,22 @@ protected:
 	/** Evaluate the likelihood of reading a contact between robot's pose and the sample */
 //	golem::Real evaluate(const grasp::RBCoord &Pose, const grasp::RBPose::Sample &sample) const;
 
+	/** Transforms action to a new reference frame */
+	grasp::RobotState::List make(const grasp::RobotState::List &action, const golem::Mat34 &trn) const;
+
+	/** Action frame w.r.t. point cloud used to teach the grasp */
+	golem::Mat34 actionFrameT;
+	/** Grasp frame w.r.t. model frame */
+	golem::Mat34 graspFrameM;
+	golem::Mat34 pregraspFrameM;
+	golem::Mat34 graspFrameQ;
+	golem::Mat34 pregraspFrameQ;
+
+	/** Creates grasp pose w.r.t. the query */
+	void createGrasp(Data::Map::iterator dataPtr);
+	/** Creates the grasp frame w.r.t. the model */
+	golem::Mat34 getGraspFrame(Data::Map::iterator dataPtr);
+
 	/** Builds and performs reach and grasp actions */
 	virtual void performApproach(Data::Map::iterator dataPtr);
 	/** Builds and performs a moving back trajectory */
@@ -317,7 +359,7 @@ protected:
 	/** Performs trial action (trajectory) */
 	virtual void perform(Data::Map::iterator dataPtr);
 	/** Profiles state sequence */
-//	virtual void profile(Data::Map::iterator dataPtr, const golem::Controller::State::Seq& inp, golem::SecTmReal dur, golem::SecTmReal idle) const;
+	virtual void profile(Data::Map::iterator dataPtr, const golem::Controller::State::Seq& inp, golem::SecTmReal dur, golem::SecTmReal idle);
 
 	/** Render trial data */
 	virtual void renderTrialData(Data::Map::const_iterator dataPtr);
@@ -334,7 +376,7 @@ protected:
 	/** Prints out a trajectory */
 	void printTrajectory(const golem::Controller::State::Seq &trajectory, const golem::Configspace::Index &begin, const golem::Configspace::Index &end) const;
 	/** Prints out a state of the robot */
-	void printState(const golem::Controller::State &state, const golem::Configspace::Index &begin, const golem::Configspace::Index &end, const std::string &label = "") const;
+	void printState(const golem::Controller::State &state, const golem::Configspace::Index &begin, const golem::Configspace::Index &end, const std::string &label = "", const bool readForce = false) const;
 
 	/** User interface: menu function */
 	virtual void function(Data::Map::iterator& dataPtr, int key);
@@ -342,6 +384,8 @@ protected:
 //	virtual std::string help() const;
 
 	virtual void render();
+	/** Render data */
+//	virtual void renderData(Data::Map::const_iterator dataPtr);
 
 	RagPlanner(golem::Scene &scene);
 	bool create(const Desc& desc);

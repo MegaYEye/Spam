@@ -172,7 +172,7 @@ public:
 		}
 		/** Sets the parameters to the default values. */
 		void setToDefault() {
-			sensoryRange = golem::Real(1);
+			sensoryRange = golem::Real(.75);
 			contactFac = golem::Real(.75);
 			noContactFac = golem::Real(.25);
 		}
@@ -193,6 +193,8 @@ public:
 		/** Sensory model description file */
 		SensoryDesc sensory;
 
+		/** Number of hypothesis per model **/
+		size_t numPoses;
 		/** Number of hypothesis per model **/
 		size_t numHypotheses;
 		/** Max number of surface points in the kd-trees **/
@@ -244,7 +246,7 @@ public:
 	inline golem::SampleProperty<golem::Real, grasp::RBCoord, grasp::RBCoord::N> getSampleProperties() { return sampleProperties; };
 
 	/** Sets the hypothesis for planning. NOTE: returns the action frame **/
-	grasp::RBPose::Sample createHypotheses(const grasp::Cloud::PointSeq& model, const golem::Mat34 &transform);
+	grasp::RBPose::Sample createHypotheses(const grasp::Cloud::PointSeq& model, const golem::Mat34 &transform, const bool init = true);
 	/** Gets samples from hypotheses **/
 	grasp::RBPose::Sample::Seq getSamples();
 
@@ -254,9 +256,10 @@ public:
 	/** Creates a new set of poses (resampling wheel algorithm) */
 	virtual void createResample();
 	/** Creates belief update (on importance weights) given the robot's pose and the current belief state. NOTE: weights are normalised. */
-	void createUpdate(const grasp::Manipulator *manipulator, const golem::Waypoint &w, const grasp::FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force);
+	void createUpdate(const grasp::Manipulator *manipulator, const grasp::Robot *robot, const golem::Waypoint &w, const grasp::FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force);
 	/** Evaluates the likelihood of reading a contact between robot's pose and the sample */
-	golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const golem::Real &force, bool &interect);
+	golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const grasp::RealSeq &forces, std::vector<bool> &triggered, bool intersect = true);
+	//golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const golem::Real &force, bool jointZero, bool intersect = true);
 
 	/** Probability density value=p(d) for a given distance between finger and hypothesis */
 	golem::Real density(const golem::Real dist) const;

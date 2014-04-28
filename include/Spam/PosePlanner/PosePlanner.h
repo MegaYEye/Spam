@@ -62,6 +62,8 @@ public:
 	/** Data */
 	class Data : public grasp::Player::Data {
 	public:
+		friend class PosePlanner;
+
 		/** Action frame */
 		golem::Mat34 actionFrame;
 		/** Query frame */
@@ -131,6 +133,9 @@ public:
 		/** Default manipulation action */
 		grasp::RobotPose actionManip;
 
+		/** Model point transformation **/
+		golem::Mat34 modelTrn;
+
 		/** Constructs from description object */
 		Desc() {
 			Desc::setToDefault();
@@ -155,6 +160,8 @@ public:
 
 			numPoses = 100;
 			numHypotheses = 5;
+
+			modelTrn.setToDefault();
 		}
 		/** Checks if the description is valid. */
 		virtual bool isValid() const {
@@ -197,6 +204,7 @@ protected:
 	golem::DebugRenderer pointFeatureRenderer;
 	/** Particles renderer */
 	golem::DebugRenderer sampleRenderer;
+	golem::DebugRenderer testRenderer;
 
 
 	/** Model data */
@@ -205,6 +213,11 @@ protected:
 	golem::Mat34 modelFrame;
 	/** Model points */
 	grasp::Cloud::PointSeq modelPoints;
+	/** Model transformation frame **/
+	golem::Mat34 modelTrn;
+
+	golem::Mat34 mygraspFrame, r, r2;
+	bool showTest;
 
 	/** Query data */
 	Data::Map::iterator queryDataPtr;

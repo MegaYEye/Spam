@@ -92,12 +92,12 @@ public:
 		}
 	};
 	/** (Local search) trajectory of the arm only from a sequence of configuration space targets in a new reference frame */
-//	virtual void createTrajectory(const golem::Mat34& trn, golem::Controller::State::Seq::const_iterator begin, golem::Controller::State::Seq::const_iterator end, golem::Controller::State::Seq& trajectory);
+	grasp::RBDist trnTrajectory(const golem::Mat34& actionFrame, const golem::Mat34& modelFrame, const golem::Mat34& trn, golem::Controller::State::Seq::const_iterator begin, golem::Controller::State::Seq::const_iterator end, golem::Controller::State::Seq& trajectory);
 
 	/** Checks and returns triggered guards for the hand */
-	int getTriggeredGuards(std::vector<golem::Configspace::Index> &triggeredJoints, golem::Controller::State &state);
+//	int getTriggeredGuards(std::vector<golem::Configspace::Index> &triggeredJoints, golem::Controller::State &state);
 	/** Checks if triggered and return in case a vector of indeces */
-	virtual int getTriggeredGuards(std::vector<grasp::FTGuard> &triggeredGuards, golem::Controller::State &state);
+	virtual int getTriggeredGuards(grasp::FTGuard::Seq &triggeredGuards, golem::Controller::State &state);
 
 	/** Reads torque/force values from the state */
 	void readFT(const golem::Controller::State &state, grasp::RealSeq &force) const;
@@ -112,9 +112,9 @@ public:
 	}
 
 	/** Checks if the object is in the hand */
-	size_t isGrasping(std::vector<golem::Configspace::Index> &triggeredJoints, golem::Controller::State &state);
+//	size_t isGrasping(std::vector<golem::Configspace::Index> &triggeredJoints, golem::Controller::State &state);
 	/** Checks if the object is in the hand */
-	size_t isGrasping(std::vector<grasp::FTGuard> &triggeredJoints, golem::Controller::State &state);
+	size_t isGrasping(grasp::FTGuard::Seq &triggeredJoints, golem::Controller::State &state);
 
 	/** Finds a target in configuration space in a new reference frame */
 	void findTarget(const golem::Mat34 &trn, const golem::Controller::State &target, golem::Controller::State &cend);

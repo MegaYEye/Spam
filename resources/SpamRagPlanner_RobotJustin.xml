@@ -3,13 +3,14 @@
 <golem>
   <rand seed="0"></rand>
   <parallels threads="4"></parallels>
-  <messages level="error"/><!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
+  <messages level="error"/>
+  <!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
   <library physx="0" normals="0"/>
 
   <universe name="Spam RagPlanner">
     <window x="0" y="0" width="800" height="600"></window>
     <physx fps="30" skin_width="0.005" sleep_lin_vel_squared="0.0025" sleep_ang_vel_squared="0.0025" max_angular_velocity="7.0" bounce_threshold="-2.0"></physx>
-    <recorder frame_drop="1" file_name="data/rag/screen_capture_1/screen" file_ext=".png" leading_zeros="1" encoder_str="image/png" buffer_len="100"></recorder>
+    <recorder frame_drop="1" file_name="data/video/graspIG/object/trial/screen" file_ext=".png" leading_zeros="1" encoder_str="image/png" buffer_len="100"></recorder>
   </universe>
 
   <scene name="Spam Reach-and-Grasp planner">
@@ -39,7 +40,7 @@
     </opengl>
   </scene>
 
-  <rag_planner num_sampled_poses="5" imp_weights_threshold="0.0001" max_sampling_iterations="100" timestamp_factor="0.15" planning_uncertainty="1" single_grasp_attempt="0" withdraw_to_home_pose="1">
+  <rag_planner num_sampled_poses="3" imp_weights_threshold="0.0001" max_sampling_iterations="100" timestamp_factor="0.15" planning_uncertainty="1" single_grasp_attempt="0" withdraw_to_home_pose="1">
     <point_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="10" camera_frame="1" camera_frame_size="0.05">
       <frame_size v1="5e-1" v2="5e-1" v3="1e-2"/>
       <colour override="0" R="127" G="127" B="127" A="255"/>
@@ -59,21 +60,33 @@
     <!--<real_object_pose v1="0.6673" v2="-0.3617" v3="0.1157" roll="0.0" pitch="0.0" yaw="0.0"/>-->
     <obstacles>
       <bounds type="box" group="1">
-        <dimensions v1="0.3" v2="0.6" v3="0.005"/>
-        <pose v1="0.0" v2="0.0" v3="0.0" roll="0.0" pitch="0.0" yaw="0.0"/>
+        <dimensions v1="0.34" v2="0.635" v3="0.38"/>
+        <pose v1="0.7719" v2="0.0045" v3="-0.28" roll="0.0" pitch="0.0" yaw="0.0"/>
       </bounds>
     </obstacles>
     <!--<tactile_model kernels="50" test="0">
-      --><!--<covariance dim="7" c1="0.02" c2="0.02" c3="0.02" c4="0.005" c5="0.005" c6="0.005" c7="0.005"/>--><!--
-      --><!--if text=1--><!--
-      --><!--<covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.001" c6="0.01" c7="0.001"/>--><!--
-      --><!--if text=0--><!--
+      -->
+    <!--<covariance dim="7" c1="0.02" c2="0.02" c3="0.02" c4="0.005" c5="0.005" c6="0.005" c7="0.005"/>-->
+    <!--
+      -->
+    <!--if text=1-->
+    <!--
+      -->
+    <!--<covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.001" c6="0.01" c7="0.001"/>-->
+    <!--
+      -->
+    <!--if text=0-->
+    <!--
       <covariance dim="7" c1="0.001" c2="0.001" c3="0.001" c4="0.001" c5="0.0001" c6="0.001" c7="0.0001"/>
-      --><!--no uncertainty--><!--
-      --><!--<covariance dim="7" c1="0.00" c2="0.00" c3="0.00" c4="0.00" c5="0.00" c6="0.00" c7="0.00"/>--><!--
+      -->
+    <!--no uncertainty-->
+    <!--
+      -->
+    <!--<covariance dim="7" c1="0.00" c2="0.00" c3="0.00" c4="0.00" c5="0.00" c6="0.00" c7="0.00"/>-->
+    <!--
       <test_stddev lin="0.025" ang="0"/>
     </tactile_model>-->
-    <tactile_model num_hypotheses="5" max_surface_points="5000">
+    <tactile_model num_poses="50" num_hypotheses="3" max_surface_points="5000">
       <covariance dim="7" c1="0.001" c2="0.001" c3="0.001" c4="0.001" c5="0.0001" c6="0.001" c7="0.0001"/>
       <test_stddev lin="0.025" ang="0"/>
     </tactile_model>
@@ -85,11 +98,13 @@
     </point_cloud_noise>
   </rag_planner>
 
-  <pose_planner num_poses="10" num_hypotheses="5" features="500000" attempts="10" kernels="500000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
+  <pose_planner num_poses="50" num_hypotheses="5" features="800000" attempts="10" kernels="800000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
     <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
     <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
     <pose_stddev lin="0.01" ang="100.0"/>
     <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
+    <!--<model_trn_frame v1="0.0" v2="0.0" v3="0.0" q0="1.0" q1="0.0" q2="0.0" q3="0.0"/>-->
+    <model_trn_frame v1="0.653760" v2="-0.363143" v3="0.110231" q0="0.997094" q1="-0.013287" q2="0.004461" q3="0.074874"/>
     <appearance distrib_samples="100">
       <model>
         <line show="1" R="255" G="255" B="0" A="255"/>
@@ -103,7 +118,7 @@
       </query>
     </appearance>
     <action_manip v1="0.0" v2="0.0" v3="-0.15" roll="0.0" pitch="0.0" yaw="0.0"/>
-    <tactile_model num_hypotheses="5" max_surface_points="5000">
+    <tactile_model num_poses="10" num_hypotheses="5" max_surface_points="5000">
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
     </tactile_model>
   </pose_planner>
@@ -116,6 +131,11 @@
     </trajectory>
 
     <pose dim="23" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0"/>
+    <!--funnel grasp pose-->
+    <pose dim="23" c1="0.4509" c2="-1.23" c3="-0.2093" c4="1.5645" c5="-0.5872" c6="0.0693" c7="1.2512" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0"/>
+    <!--bowl large grasp pose-->
+    <pose dim="23" c1="0.0605" c2="-1.9485" c3="0.353" c4="1.9277" c5="-1.0841" c6="-0.7567" c7="1.3132" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0"/>
+    <pose dim="23" c1="0.697927" c2="-0.872634" c3="-0.778353" c4="1.6851" c5="-0.104767" c6="0.599906" c7="1.08582" c8="-0.244346" c9="0.117259" c10="0.196345" c11="0.196345" c12="8.43859e-040" c13="0.0599844" c14="0.610865" c15="0.610865" c16="3.08598e-039" c17="0.0599844" c18="0.523599" c19="0.523599" c20="-4.05625e-039" c21="0.0599844" c22="0.610865" c23="0.610865"/>
     <pose dim="23" c1="-0.790730" c2="-1.471339" c3="0.238979" c4="1.617946" c5="0.710470" c6="-0.616314" c7="0.626091" c8="0.455844" c9="0.456985" c10="0.782229" c11="0.782229" c12="-0.052385" c13="0.284712" c14="1.057750" c15="1.057750" c16="-0.011364" c17="0.673765" c18="1.379509" c19="1.379509" c20="0.190139" c21="1.037176" c22="1.347333" c23="1.347333"/>
     <pose dim="23" c1="-0.785400" c2="-1.396300" c3="0.000000" c4="1.483500" c5="0.436300" c6="-0.523600" c7="0.523600" c8="0.000000" c9="0.000000" c10="0.000000" c11="0.000000" c12="0.000000" c13="0.000000" c14="0.000000" c15="0.000000" c16="0.000000" c17="0.000000" c18="0.000000" c19="0.000000" c20="0.000000" c21="0.000000" c22="0.000000" c23="0.000000"/>
     <pose dim="23" c1="-0.785400" c2="-1.396300" c3="0.000000" c4="1.483500" c5="0.436300" c6="-0.523600" c7="0.523600" c8="0.000000" c9="0.5236" c10="0.000000" c11="0.000000" c12="0.000000" c13="0.5236" c14="0.000000" c15="0.000000" c16="0.000000" c17="0.5236" c18="0.000000" c19="0.000000" c20="0.000000" c21="0.5236" c22="0.000000" c23="0.000000"/>
@@ -138,7 +158,45 @@
       <limit v1="30.0" v2="30.0" v3="80.0" w1="2.0" w2="2.0" w3="2.0"/>
       <guards_tcp v1="30.0" v2="30.0" v3="80.0" w1="2.0" w2="2.0" w3="2.0"/>
       <!--<guards_hand dim="12" c1="3.0" c2="3.0" c3="3.0" c4="3.0" c5="3.0" c6="3.0" c7="3.0" c8="3.0" c9="3.0" c10="3.0" c11="3.0" c12="3.0"/>-->
-      <guards_hand dim="12" c1="0.3" c2="0.3" c3="0.3" c4="0.3" c5="0.3" c6="0.3" c7="0.3" c8="0.3" c9="0.3" c10="0.3" c11="0.3" c12="0.3"/>
+      <guards_hand dim="16" c1="0.2" c2="0.2" c3="0.2" c4="0.2" c5="0.2" c6="0.2" c7="0.2" c8="0.2" c9="0.2" c10="0.2" c11="0.2" c12="0.2" c13="0.2" c14="0.2" c15="0.2" c16="0.2"/>
+
+      <ft_guard name="right_thumb" joint="0" type="1" value="-0.2"/>
+      <ft_guard name="right_thumb" joint="0" type="2" value="0.2"/>
+      <ft_guard name="right_thumb" joint="1" type="1" value="-0.2"/>
+      <ft_guard name="right_thumb" joint="1" type="2" value="0.2"/>
+      <ft_guard name="right_thumb" joint="2" type="1" value="-0.2"/>
+      <ft_guard name="right_thumb" joint="2" type="2" value="0.2"/>
+      <ft_guard name="right_tip" joint="0" type="1" value="-0.2"/>
+      <ft_guard name="right_tip" joint="0" type="2" value="0.2"/>
+      <ft_guard name="right_tip" joint="1" type="1" value="-0.2"/>
+      <ft_guard name="right_tip" joint="1" type="2" value="0.2"/>
+      <ft_guard name="right_tip" joint="2" type="1" value="-0.2"/>
+      <ft_guard name="right_tip" joint="2" type="2" value="0.2"/>
+      <ft_guard name="right_middle" joint="0" type="1" value="-0.2"/>
+      <ft_guard name="right_middle" joint="0" type="2" value="0.2"/>
+      <ft_guard name="right_middle" joint="1" type="1" value="-0.2"/>
+      <ft_guard name="right_middle" joint="1" type="2" value="0.2"/>
+      <ft_guard name="right_middle" joint="2" type="1" value="-0.2"/>
+      <ft_guard name="right_middle" joint="2" type="2" value="0.2"/>
+      <ft_guard name="right_ring" joint="0" type="1" value="-0.2"/>
+      <ft_guard name="right_ring" joint="0" type="2" value="0.2"/>
+      <ft_guard name="right_ring" joint="1" type="1" value="-0.2"/>
+      <ft_guard name="right_ring" joint="1" type="2" value="0.2"/>
+      <ft_guard name="right_ring" joint="2" type="1" value="-0.2"/>
+      <ft_guard name="right_ring" joint="2" type="2" value="0.2"/>
+      <!--<ft_guard name="right_thumb" joint="0" type="0" value="0.4"/>
+      <ft_guard name="right_thumb" joint="1" type="0" value="0.4"/>
+      <ft_guard name="right_thumb" joint="2" type="0" value="0.4"/>
+      <ft_guard name="right_tip" joint="0" type="0" value="0.4"/>
+      <ft_guard name="right_tip" joint="1" type="0" value="0.4"/>
+      <ft_guard name="right_tip" joint="2" type="0" value="0.4"/>
+      <ft_guard name="right_middle" joint="0" type="0" value="0.4"/>
+      <ft_guard name="right_middle" joint="1" type="0" value="0.4"/>
+      <ft_guard name="right_middle" joint="2" type="0" value="0.4"/>
+      <ft_guard name="right_ring" joint="0" type="0" value="0.4"/>
+      <ft_guard name="right_ring" joint="1" type="0" value="0.4"/>
+      <ft_guard name="right_ring" joint="2" type="0" value="0.4"/>-->
+
       <stiffness_hand dim="12" c1="1.0" c2="1.0" c3="0.5" c4="1.0" c5="1.0" c6="0.5" c7="1.0" c8="1.0" c9="0.5" c10="1.0" c11="1.0" c12="0.5"/>
     </ft_sensor>
 
@@ -173,10 +231,10 @@
       <pose v1="0.0" v2="0.22" v3="0.0" roll="0.0" pitch="2.74889357189" yaw="0.0"/>
     </arm_tool_bounds>
 
-    <!--<obstacle_bounds type="box" group="1">
+    <obstacle_bounds type="box" group="1">
       <dimensions v1="0.34" v2="0.635" v3="0.38"/>
       <pose v1="0.75" v2="0.0" v3="-0.27" roll="0.0" pitch="0.0" yaw="0.0"/>
-    </obstacle_bounds>-->
+    </obstacle_bounds>
     <obstacle_bounds type="sphere" group="1" radius="0.12">
       <pose v1="0.3" v2="0.0" v3="0.8" roll="0.0" pitch="0.0" yaw="0.0"/>
     </obstacle_bounds>
@@ -255,8 +313,8 @@
       <outrem_segmentation enabled="1" enabled_radius="0" enabled_statistical="1" radius="0.005" min_neighbors_in_radius="20" mean_k="50" stddev_mul_threshold="1.0"/>
       <normal enabled_pca="1" enabled_ii="0" enabled_mls="0" normal_eps="1e-5" polynomial_fit="1" radius_search="0.01" max_depth_change_factor="0.02" normal_smoothing_size="0.02"/>
       <curvature normals="1" radius_search="0.02"/>
-      <registration_alignment enabled="0" enabled_icp="1" enabled_icpnl="0" max_correspondence_distance="0.05" ransac_outlier_rejection_threshold="0.05" transformation_epsilon="1e-7" max_iterations="50"/>
-      <registration_segmentation enabled="0" enabled_icp="1" enabled_icpnl="0" max_correspondence_distance="0.05" ransac_outlier_rejection_threshold="0.05" transformation_epsilon="1e-7" max_iterations="50"/>
+      <registration_alignment enabled="1" enabled_icp="1" enabled_icpnl="0" max_correspondence_distance="0.05" ransac_outlier_rejection_threshold="0.05" transformation_epsilon="1e-7" max_iterations="50"/>
+      <registration_segmentation enabled="1" enabled_icp="1" enabled_icpnl="0" max_correspondence_distance="0.05" ransac_outlier_rejection_threshold="0.05" transformation_epsilon="1e-7" max_iterations="50"/>
       <downsample_alignment enabled="0" enabled_voxel_grid="1" grid_leaf_size="0.002"/>
       <downsample_segmentation enabled="0" enabled_voxel_grid="1" grid_leaf_size="0.002"/>
       <segmentation incremental="0" distance_threshold="0.00001"/>
@@ -272,8 +330,8 @@
       </scan_region>
       <object_region>
         <bounds type="box" group="1">
-          <dimensions v1="1.0" v2="1.0" v3="0.09"/>
-          <pose v1="0.72" v2="-0.29" v3="0.21" roll="0.0" pitch="0.0" yaw="0.0"/>
+          <dimensions v1="0.34" v2="0.635" v3="0.09"/>
+          <pose v1="0.75" v2="0.0" v3="0.21" roll="0.0" pitch="0.0" yaw="0.0"/>
         </bounds>
       </object_region>
       <region_colour R="255" G="0" B="255" A="255"/>
@@ -308,15 +366,15 @@
     <!-- FlyCapture2::PixelFormat: MONO8=0x80000000, 411YUV8=0x40000000, 422YUV8=0x20000000, RGB8=0x08000000, ... -->
     <!-- Fly2 Firewire: format=0x40000000 (536870912) -->
     <!-- Chameleon USB2.0: format=0x00400000 (4194304) -->
-    <!--<camera type="pointgrey" name="externPointGrey" index="0" calibration_file="GraspCameraExternPointGrey.xml" buffer_len="90" thread_timeout="10000" in_hand="0" recording="1" recording_app="1" video="1" codec="XVID">
-      <property width="0" height="0" fps="0" mode="0" format="536870912"/>
+    <camera type="pointgrey" name="externPointGrey" index="0" calibration_file="GraspCameraExternPointGrey.xml" buffer_len="90" thread_timeout="10000" in_hand="0" recording="1" recording_app="1" video="1" codec="XVID">
+      <property width="0" height="0" fps="0" mode="0" format="4194304"/>
       <optimisation minimum="1" population_size="100" generations_num="10000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest">
         <distance_weights lin="10.0" ang="1.0"/>
         <sample_magnitude lin="0.5" ang="1.0"/>
       </optimisation>
-    </camera>-->
+    </camera>
 
-    <pose_estimation features="500000" attempts="10" kernels="500000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
+    <pose_estimation features="800000" attempts="10" kernels="800000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
       <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
       <pose_stddev lin="0.01" ang="100.0"/>
@@ -331,8 +389,8 @@
     </data>
 
     <import size="100000" scale="1.0" clockwise="1" delim=" &#10;&#13;,;" label="1">
-      <!--<frame v1="0.0" v2="0.0" v3="0.0" q0="1.0" q1="0.0" q2="0.0" q3="0.0"/>-->
-      <frame v1="0.653760" v2="-0.363143" v3="0.110231" q0="0.997094" q1="-0.013287" q2="0.004461" q3="0.074874"/>
+      <frame v1="0.0" v2="0.0" v3="0.0" q0="1.0" q1="0.0" q2="0.0" q3="0.0"/>
+      <!--<frame v1="0.653760" v2="-0.363143" v3="0.110231" q0="0.997094" q1="-0.013287" q2="0.004461" q3="0.074874"/>-->
       <!--<frame v1="0.0" v2="0.5" v3="0.1" roll="-1.5707963267949" pitch="0.0" yaw="0.0"/>-->
       <colour R="255" G="255" B="255" A="255"/>
     </import>

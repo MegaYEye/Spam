@@ -31,6 +31,7 @@
     <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
     <pose_stddev lin="0.01" ang="100.0"/>
     <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
+    <model_trn_frame v1="0.0" v2="0.0" v3="0.0" q0="1.0" q1="0.0" q2="0.0" q3="0.0"/>
     <appearance distrib_samples="100">
       <model>
         <line show="1" R="255" G="255" B="0" A="255"/>
@@ -44,7 +45,7 @@
       </query>
     </appearance>
     <action_manip v1="0.0" v2="0.0" v3="-0.15" roll="0.0" pitch="0.0" yaw="0.0"/>
-    <tactile_model num_hypotheses="5" max_surface_points="5000">
+    <tactile_model num_poses="10" num_hypotheses="5" max_surface_points="5000">
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
     </tactile_model>
   </pose_planner>

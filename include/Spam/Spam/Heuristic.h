@@ -196,6 +196,9 @@ public:
 		/** Non contact factor in belief update */
 		golem::Real nonContactFac;
 
+		/** Rewards directions for a confortable grasp (approaching with the palm towards the object) */
+		golem::Real directionFac;
+
 		/** Enables/disable using k nearest neighbours */
 		bool knearest;
 		/** Enables/disables use of trimesh */
@@ -219,6 +222,7 @@ public:
 			covarianceDetMin = 0.00001;
 			contactFac = golem::REAL_ONE;
 			nonContactFac = golem::REAL_ONE;
+			directionFac = golem::Real(0.25);
 			numIndeces = 5;
 			knearest = true;
 			trimesh = false;
@@ -325,6 +329,9 @@ protected:
 	golem::Controller::State::Info armInfo;
 	/** Controller state info */
 	golem::Controller::State::Info handInfo;
+
+	/** Check the approaching direction of the grasp */
+	golem::Real directionApproach(const golem::Waypoint &w) const;
 
 	/** Bounded distance between a waypoint and the set of samples */
 	golem::Real getBoundedDist(const golem::Waypoint& w) const;

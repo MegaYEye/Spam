@@ -2,9 +2,9 @@
 
 <golem>
   <controller name="DLR Justin robot">
-    <!--<bham_planner_interface host="192.168.132.254" port="54363" request="bham_grasp"/>-->
-    <bham_planner_interface host="10.211.55.10" port="54363" request="bham_grasp"/>
-    <telemetry_reader port="54454" remote="0" host="192.168.132.254"/>
+    <!--<bham_planner_interface simulate="0" host="192.168.132.253" port="54363" request="bham_grasp"/>-->
+    <bham_planner_interface simulate="0" host="10.211.55.10" port="54363" request="bham_grasp"/>
+    <telemetry_reader port="54454" remote="0" host="192.168.132.253"/>
 
     <!--<bham_planner_interface host="188.174.55.149" port="21950" request="bham_grasp"/>
     <telemetry_reader port="21951" remote="1" host="188.174.55.149"/>-->
@@ -15,7 +15,7 @@
     <global_pose v1="0.08800000" v2="-0.08280000" v3="0.58120000" m11="-0.00000000" m12="1.00000000" m13="-0.00000000" m21="-0.50002200" m22="-0.00000000" m23="-0.86601270" m31="-0.86601270" m32="-0.00000000" m33="0.50002200"/>
 
     <controller library_path="GolemDeviceKukaLWRSim" config_path="GolemDeviceKukaLWRDLRSim" linked_chain_index="-1" enable_io="1" sync_begin="1" sync_end="1">
-        <local_pose v1="0.0" v2="0.0" v3="0.0" roll="0.0" pitch="0.0" yaw="0.0"></local_pose>
+      <local_pose v1="0.0" v2="0.0" v3="0.0" roll="0.0" pitch="0.0" yaw="0.0"></local_pose>
     </controller>
     <controller library_path="GolemDeviceDLRHandIISim" config_path="GolemDeviceDLRHandIISim" linked_chain_index="0" enable_io="1" sync_begin="1" sync_end="1">
       <local_pose v1="0.0" v2="0.0" v3="0.1041" m11="1.0" m12="0.0" m13="0.0" m21="0.0" m22="1.0" m23="0.0" m31="0.0" m32="0.0" m33="1.0"/>
@@ -37,30 +37,30 @@
       <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.01" dist_max="3.0" collision_bounds="1" collision_joints=""></joint>
       <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.01" dist_max="3.0" collision_bounds="1" collision_joints=""></joint>
 
-      <chain enabled_obs="0" enabled_lin="0" enabled_ang="0" dist_norm="0.9" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
+      <chain enabled_obs="1" enabled_lin="0" enabled_ang="0" dist_norm="0.9" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
       <chain enabled_obs="1" enabled_lin="0" enabled_ang="0" dist_norm="0.8" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
       <chain enabled_obs="1" enabled_lin="0" enabled_ang="0" dist_norm="0.9" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
       <chain enabled_obs="1" enabled_lin="0" enabled_ang="0" dist_norm="0.8" dist_linear_max="0.5" dist_angular_max="0.5" dist_configspace_workspace_norm="0.5"></chain>
 
-      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="6.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="6.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="6.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="6.0" collision_bounds="0" collision_joints=""></joint>
       <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="14"></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="14"></joint>
 
       <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="6.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="6.0" collision_bounds="0" collision_joints=""></joint>
       <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="18"></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="18"></joint>
 
       <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="6.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="6.0" collision_bounds="0" collision_joints=""></joint>
       <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="22"></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints="22"></joint>
 
       <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="6.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="6.0" collision_bounds="0" collision_joints=""></joint>
       <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
-      <joint enabled="0" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
+      <joint enabled="1" dflt_pos="0.0" dist_dflt_fac="0.1" dist_max="1.0" collision_bounds="0" collision_joints=""></joint>
     </heuristic>
 
     <global_finder dist_scale_fac="0.7" range_fac="0.5" num_iterations="4">
@@ -143,23 +143,33 @@
           <delta dim="23" c1="1.57079633" c2="6.28318531" c3="6.28318531" c4="6.28318531" c5="6.28318531" c6="6.28318531" c7="6.28318531" c8="6.28318531" c9="6.28318531" c10="6.28318531" c11="6.28318531" c12="6.28318531" c13="6.28318531" c14="6.28318531" c15="6.28318531" c16="6.28318531" c17="6.28318531" c18="6.28318531" c19="6.28318531" c20="6.28318531" c21="6.28318531" c22="6.28318531" c23="6.28318531"/>
         </generator_root>
         <generator_goal weight="1.0">
-          --><!--<delta dim="23" c1="1.57079633" c2="6.28318531" c3="6.28318531" c4="6.28318531" c5="6.28318531" c6="6.28318531" c7="6.28318531" c8="6.28318531" c9="6.28318531" c10="6.28318531" c11="6.28318531" c12="6.28318531" c13="6.28318531" c14="6.28318531" c15="6.28318531" c16="6.28318531" c17="6.28318531" c18="6.28318531" c19="6.28318531" c20="6.28318531" c21="6.28318531" c22="6.28318531" c23="6.28318531"/>--><!--
+          -->
+  <!--<delta dim="23" c1="1.57079633" c2="6.28318531" c3="6.28318531" c4="6.28318531" c5="6.28318531" c6="6.28318531" c7="6.28318531" c8="6.28318531" c9="6.28318531" c10="6.28318531" c11="6.28318531" c12="6.28318531" c13="6.28318531" c14="6.28318531" c15="6.28318531" c16="6.28318531" c17="6.28318531" c18="6.28318531" c19="6.28318531" c20="6.28318531" c21="6.28318531" c22="6.28318531" c23="6.28318531"/>-->
+  <!--
           <delta dim="23" c1="0.157079633" c2="0.314159266" c3="0.314159266" c4="0.314159266" c5="0.314159266" c6="0.314159266" c7="0.314159266" c8="3.14159266" c9="3.14159266" c10="3.14159266" c11="3.14159266" c12="3.14159266" c13="3.14159266" c14="3.14159266" c15="3.14159266" c16="3.14159266" c17="3.14159266" c18="3.14159266" c19="3.14159266" c20="3.14159266" c21="3.14159266" c22="3.14159266" c23="3.14159266"/>
-          --><!--<delta dim="23" c1="0.00157079633" c2="0.00157079633" c3="0.00157079633" c4="0.00157079633" c5="0.00157079633" c6="0.00157079633" c7="0.00157079633" c8="3.14159266" c9="0.314159266" c10="0.314159266" c11="0.314159266" c12="0.314159266" c13="0.314159266" c14="0.314159266" c15="0.314159266" c16="0.314159266" c17="0.314159266" c18="0.314159266" c19="0.314159266" c20="0.314159266" c21="0.314159266" c22="0.314159266" c23="0.314159266"/>--><!--
+          -->
+  <!--<delta dim="23" c1="0.00157079633" c2="0.00157079633" c3="0.00157079633" c4="0.00157079633" c5="0.00157079633" c6="0.00157079633" c7="0.00157079633" c8="3.14159266" c9="0.314159266" c10="0.314159266" c11="0.314159266" c12="0.314159266" c13="0.314159266" c14="0.314159266" c15="0.314159266" c16="0.314159266" c17="0.314159266" c18="0.314159266" c19="0.314159266" c20="0.314159266" c21="0.314159266" c22="0.314159266" c23="0.314159266"/>-->
+  <!--
         </generator_goal>
       </global_path_finder>
       <local_path_finder graph_size="1000" waypoint_init_trials="100">
         <generator_root weight="1.0">
           <delta dim="23" c1="1.57079633" c2="1.57079633" c3="1.57079633" c4="1.57079633" c5="1.57079633" c6="1.57079633" c7="1.57079633" c8="1.57079633" c9="1.57079633" c10="1.57079633" c11="1.57079633" c12="1.57079633" c13="1.57079633" c14="1.57079633" c15="1.57079633" c16="1.57079633" c17="1.57079633" c18="1.57079633" c19="1.57079633" c20="1.57079633" c21="1.57079633" c22="1.57079633" c23="1.57079633"/>
-          --><!--<delta dim="23" c1="0.78539816" c2="0.78539816" c3="0.78539816" c4="0.78539816" c5="0.78539816" c6="0.78539816" c7="0.78539816" c8="0.78539816" c9="0.78539816" c10="0.78539816" c11="0.78539816" c12="0.78539816" c13="0.78539816" c14="0.78539816" c15="0.78539816" c16="0.78539816" c17="0.78539816" c18="0.78539816" c19="0.78539816" c20="0.78539816" c21="0.78539816" c22="0.78539816" c23="0.78539816"/>--><!--
+          -->
+  <!--<delta dim="23" c1="0.78539816" c2="0.78539816" c3="0.78539816" c4="0.78539816" c5="0.78539816" c6="0.78539816" c7="0.78539816" c8="0.78539816" c9="0.78539816" c10="0.78539816" c11="0.78539816" c12="0.78539816" c13="0.78539816" c14="0.78539816" c15="0.78539816" c16="0.78539816" c17="0.78539816" c18="0.78539816" c19="0.78539816" c20="0.78539816" c21="0.78539816" c22="0.78539816" c23="0.78539816"/>-->
+  <!--
         </generator_root>
         <generator_goal weight="1.0">
           <delta dim="23" c1="1.57079633" c2="1.57079633" c3="1.57079633" c4="1.57079633" c5="1.57079633" c6="1.57079633" c7="1.57079633" c8="1.57079633" c9="1.57079633" c10="1.57079633" c11="1.57079633" c12="1.57079633" c13="1.57079633" c14="1.57079633" c15="1.57079633" c16="1.57079633" c17="1.57079633" c18="1.57079633" c19="1.57079633" c20="1.57079633" c21="1.57079633" c22="1.57079633" c23="1.57079633"/>
-          --><!--<delta dim="23" c1="0.78539816" c2="0.78539816" c3="0.78539816" c4="0.78539816" c5="0.78539816" c6="0.78539816" c7="0.78539816" c8="0.78539816" c9="0.78539816" c10="0.78539816" c11="0.78539816" c12="0.78539816" c13="0.78539816" c14="0.78539816" c15="0.78539816" c16="0.78539816" c17="0.78539816" c18="0.78539816" c19="0.78539816" c20="0.78539816" c21="0.78539816" c22="0.78539816" c23="0.78539816"/>--><!--
+          -->
+  <!--<delta dim="23" c1="0.78539816" c2="0.78539816" c3="0.78539816" c4="0.78539816" c5="0.78539816" c6="0.78539816" c7="0.78539816" c8="0.78539816" c9="0.78539816" c10="0.78539816" c11="0.78539816" c12="0.78539816" c13="0.78539816" c14="0.78539816" c15="0.78539816" c16="0.78539816" c17="0.78539816" c18="0.78539816" c19="0.78539816" c20="0.78539816" c21="0.78539816" c22="0.78539816" c23="0.78539816"/>-->
+  <!--
         </generator_goal>
         <generator weight="1.0">
           <delta dim="23" c1="0.314159266" c2="0.314159266" c3="0.314159266" c4="0.314159266" c5="0.314159266" c6="0.314159266" c7="0.314159266" c8="3.14159266" c9="3.14159266" c10="3.14159266" c11="3.14159266" c12="3.14159266" c13="3.14159266" c14="3.14159266" c15="3.14159266" c16="3.14159266" c17="3.14159266" c18="3.14159266" c19="3.14159266" c20="3.14159266" c21="3.14159266" c22="3.14159266" c23="3.14159266"/>
-          --><!--<delta dim="23" c1="0.314159266" c2="0.314159266" c3="0.314159266" c4="0.314159266" c5="0.314159266" c6="0.314159266" c7="0.314159266" c8="0.314159266" c9="0.314159266" c10="0.314159266" c11="0.314159266" c12="0.314159266" c13="0.314159266" c14="0.314159266" c15="0.314159266" c16="0.314159266" c17="0.314159266" c18="0.314159266" c19="0.314159266" c20="0.314159266" c21="0.314159266" c22="0.314159266" c23="0.314159266"/>--><!--
+          -->
+  <!--<delta dim="23" c1="0.314159266" c2="0.314159266" c3="0.314159266" c4="0.314159266" c5="0.314159266" c6="0.314159266" c7="0.314159266" c8="0.314159266" c9="0.314159266" c10="0.314159266" c11="0.314159266" c12="0.314159266" c13="0.314159266" c14="0.314159266" c15="0.314159266" c16="0.314159266" c17="0.314159266" c18="0.314159266" c19="0.314159266" c20="0.314159266" c21="0.314159266" c22="0.314159266" c23="0.314159266"/>-->
+  <!--
         </generator>
         <generator weight="1.0">
           <delta dim="23" c1="0.314159266" c2="0.314159266" c3="0.314159266" c4="0.314159266" c5="0.314159266" c6="0.314159266" c7="0.314159266" c8="3.14159266" c9="3.14159266" c10="3.14159266" c11="3.14159266" c12="3.14159266" c13="3.14159266" c14="3.14159266" c15="3.14159266" c16="3.14159266" c17="3.14159266" c18="3.14159266" c19="3.14159266" c20="3.14159266" c21="3.14159266" c22="3.14159266" c23="3.14159266"/>

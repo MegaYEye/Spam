@@ -31,6 +31,28 @@ using namespace spam;
 
 //------------------------------------------------------------------------------
 
+void spam::RagPlanner::Data::xmlData(golem::XMLContext* context, bool create) const {
+	spam::PosePlanner::Data::xmlData(context, create);
+
+	//try {
+	//	if (!create || !queryPoints.empty()) {
+	//		golem::XMLData(const_cast<golem::Mat34&>(actionFrame), context->getContextFirst("action_frame", create), create);
+	//		golem::XMLData(const_cast<golem::Mat34&>(queryFrame), context->getContextFirst("query_frame", create), create);
+	//		xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(queryPoints), std::string("query_points"), context, create);
+	//	}
+	//}
+	//catch (const golem::MsgXMLParser& msg) {
+	//	if (create)
+	//		throw msg;
+	//}
+}
+
+spam::RagPlanner::Data::Ptr spam::RagPlanner::Data::clone() const {
+	return Ptr(new Data(*this));
+}
+
+//------------------------------------------------------------------------------
+
 RagPlanner::RagPlanner(Scene &scene) : PosePlanner(scene), pBelief(nullptr), pHeuristic(nullptr) {
 }
 
@@ -44,6 +66,8 @@ bool RagPlanner::create(const Desc& desc) {
 	if (robot == NULL)
 		throw Message(Message::LEVEL_CRIT, "Player::create(): unable to cast to Robot");
 
+	poseDataPtr = getData().end();
+
 	Mat34 objectPose;
 	objectPose = desc.objectPose;
 	robot->getFrameObject(objectPose);
@@ -55,6 +79,17 @@ bool RagPlanner::create(const Desc& desc) {
 	pBelief = dynamic_cast<Belief*>(pRBPose.get());
 	pHeuristic = dynamic_cast<FTDrivenHeuristic*>(&robot->getPlanner()->getHeuristic());
 	pHeuristic->setBelief(pBelief);
+
+	objectBounds.reset(new Bounds::Desc::Seq());
+	objectBounds->insert(objectBounds->begin(), desc.objectBounds.begin(), desc.objectBounds.end());
+
+	//obstacleBounds.reset(new Bounds::Desc::Seq());
+	//obstacleBounds->insert(obstacleBounds->begin(), desc.obstacleBounds.begin(), desc.obstacleBounds.end());
+	//Bounds::SeqPtr obstacles(new Bounds::Seq());
+	//for (Bounds::Desc::Seq::iterator i = obstacleBounds->begin(); i != obstacleBounds->end(); ++i)
+	//	obstacles->push_back((*i)->create());
+	//pHeuristic->setCollisionBounds(obstacles);
+
 	uncEnable = desc.uncEnable;
 	singleGrasp = desc.singleGrasp;
 	withdrawToHomePose = desc.withdrawToHomePose;
@@ -68,16 +103,25 @@ bool RagPlanner::create(const Desc& desc) {
 
 	trnModelPointCloud = desc.trnModelPointCloud;
 
-	objectBounds.reset(new Bounds::Desc::Seq());
-	objectBounds->insert(objectBounds->begin(), desc.objectBounds.begin(), desc.objectBounds.end());
+	homeStates.clear();
+	executedTrajectory.clear();
+	triggeredGuards.clear();
 
 	// actionFrame should be the identity if no query have been done
 	//actionFrame.setId();
 
+	pregraspFrameM.setId();
+	graspFrameM.setId();
+	graspFrameQ.setId();
+	pregraspFrameQ.setId();
+	showTest = true;
+
+	actionFrameT.setId();
+
 	manipulator.reset(new grasp::Manipulator(robot->getController()));
 	handBounds.clear();
 
-	trnEnable = true;
+	trnEnable = false;
 	ragDesc = desc;
 
 	return true;
@@ -91,6 +135,9 @@ void RagPlanner::render() {
 		handRenderer.setWireColour(RGBA(golem::U8(255), golem::U8(255), golem::U8(0), golem::U8(255)));
 		handRenderer.setLineWidth(Real(2.0));
 		handRenderer.renderWire(handBounds.begin(), handBounds.end());
+		testPose.render();
+		testUpdate.render();
+		debugRenderer.render();
 	}
 }
 
@@ -107,7 +154,13 @@ void RagPlanner::renderTrialData(Data::Map::const_iterator dataPtr) {
 void RagPlanner::renderData(Data::Map::const_iterator dataPtr) {
 	{
 		golem::CriticalSectionWrapper csw(csDataRenderer);
-	
+		debugRenderer.reset();
+		if (showTest) {
+			debugRenderer.addAxes(pregraspFrameM, featureFrameSize*5);
+			debugRenderer.addAxes(graspFrameM, featureFrameSize*5);
+			debugRenderer.addAxes(pregraspFrameQ, featureFrameSize*5);
+			debugRenderer.addAxes(graspFrameQ, featureFrameSize*5);
+		}
 	}
 	PosePlanner::renderData(dataPtr);
 }
@@ -184,33 +237,44 @@ void RagPlanner::renderHand(const golem::Controller::State &state) {
 
 //------------------------------------------------------------------------------
 
-//void RagPlanner::profile(Data::Map::iterator dataPtr, const golem::Controller::State::Seq& inp, golem::SecTmReal dur, golem::SecTmReal idle) const {
-//	if (!grasp::to<Data>(dataPtr)->queryPoints.empty()) {
-//		context.debug("RagPlanner::profile(): Computing trajectory in a new frame...\n");
-//		golem::Controller::State::Seq seq;
-//		//context.write("approaching trajectory before\n");
-//		//printTrajectory(inp, robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());
-//		robot->createTrajectory(grasp::to<Data>(dataPtr)->actionFrame, inp.begin(), inp.end(), seq);
-//		context.write("approaching trajectory after\n");
-//		printTrajectory(seq, robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());
-//	}
-//	if (inp.size() < 2)
-//		throw Message(Message::LEVEL_ERROR, "RagPlanner::profile(): At least two waypoints required");
-//
-//	golem::Controller::State::Seq& out = grasp::to<Data>(dataPtr)->action;
-//	golem::Controller::State::Seq::iterator ptr = out.end(), tmpend;
-//	const golem::SecTmReal t = out.empty() ? context.getTimer().elapsed() : out.back().t;
-//	const Controller::State begin(inp.front(), t), end(inp.back(), begin.t + dur);
-//
-//	// create trajectory
-//	tmpend = out.end();
-//	pProfile->create(inp.begin(), inp.end(), begin, end, out, ptr, tmpend);
-//	// profile trajectory
-//	tmpend = out.end();
-//	pProfile->profile(out, ptr, tmpend);
-//	// stationary waypoint in the end
-//	out.push_back(Controller::State(end, end.t + idle));
-//}
+void RagPlanner::profile(Data::Map::iterator dataPtr, const golem::Controller::State::Seq& inp, golem::SecTmReal dur, golem::SecTmReal idle) {
+	if (inp.size() < 2)
+	throw Message(Message::LEVEL_ERROR, "RagPlanner::profile(): At least two waypoints required");
+
+	if (!grasp::to<Data>(dataPtr)->queryPoints.empty() && trnEnable) {
+		context.write("RagPlanner::profile(): Computing trajectory in a new frame...\n");
+		golem::Controller::State::Seq seq;
+		grasp::RBPose::Sample s = *pBelief->getSamples().begin();
+		context.write("action frame teach <%f %f %f> model frame <%f %f %f> action frame <%f %f %f> hypothesis <%f %f %f>\n", 
+			actionFrameT.p.x, actionFrameT.p.y, actionFrameT.p.z,
+			modelFrame.p.x, modelFrame.p.y, modelFrame.p.z,
+			grasp::to<Data>(dataPtr)->actionFrame.p.x, grasp::to<Data>(dataPtr)->actionFrame.p.y, grasp::to<Data>(dataPtr)->actionFrame.p.z,
+			s.p.x, s.p.y, s.p.z);
+		robot->trnTrajectory(actionFrameT, modelFrame, grasp::to<Data>(dataPtr)->actionFrame, inp.begin(), inp.end(), seq);
+		pregraspFrameQ.multiply(grasp::to<Data>(dataPtr)->actionFrame, pregraspFrameM);
+		graspFrameQ.multiply(grasp::to<Data>(dataPtr)->actionFrame, graspFrameM);
+		renderData(dataPtr);
+		context.write("approaching trajectory after\n");
+		printTrajectory(seq, robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());
+		//robot->createTrajectory(grasp::to<Data>(dataPtr)->actionFrame, inp.begin(), inp.end(), seq);
+		grasp::Player::profile(dataPtr, seq, dur, idle);
+	}
+	else
+		grasp::Player::profile(dataPtr, inp, dur, idle);
+	//golem::Controller::State::Seq& out = grasp::to<Data>(dataPtr)->action;
+	//golem::Controller::State::Seq::iterator ptr = out.end(), tmpend;
+	//const golem::SecTmReal t = out.empty() ? context.getTimer().elapsed() : out.back().t;
+	//const Controller::State begin(inp.front(), t), end(inp.back(), begin.t + dur);
+
+	//// create trajectory
+	//tmpend = out.end();
+	//pProfile->create(inp.begin(), inp.end(), begin, end, out, ptr, tmpend);
+	//// profile trajectory
+	//tmpend = out.end();
+	//pProfile->profile(out, ptr, tmpend);
+	//// stationary waypoint in the end
+	//out.push_back(Controller::State(end, end.t + idle));
+}
 
 void RagPlanner::perform(Data::Map::iterator dataPtr) {
 	context.write("RagPlanner::perform():\n");
@@ -220,8 +284,8 @@ void RagPlanner::perform(Data::Map::iterator dataPtr) {
 
 	golem::Controller::State::Seq initTrajectory;
 	SecTmReal init = context.getTimer().elapsed();
-	robot->createTrajectory(robot->recvState().command, &grasp::to<Data>(dataPtr)->action.front(), NULL, 0, initTrajectory);
-	grasp::to<Data>(dataPtr)->executedTrajectory = initTrajectory;
+	robot->createTrajectory(robot->recvState().config, &grasp::to<Data>(dataPtr)->action.front(), NULL, 0, initTrajectory);
+	executedTrajectory = initTrajectory;
 
 	golem::Controller::State::Seq completeTrajectory = initTrajectory;
 	completeTrajectory.insert(completeTrajectory.end(), grasp::to<Data>(dataPtr)->action.begin(), grasp::to<Data>(dataPtr)->action.end());
@@ -229,10 +293,12 @@ void RagPlanner::perform(Data::Map::iterator dataPtr) {
 	//printTrajectory(initTrajectory, robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());
 	//context.write("action\n");
 	//printTrajectory(grasp::to<Data>(dataPtr)->action, robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());	
+//	std::cout << "spame:perform 7\n";
 	if (!testTrajectory(completeTrajectory.begin(), completeTrajectory.end()))
 		return;
 
 	std::stringstream prefix;
+//	std::cout << "spame:perform 9\n";
 	prefix << std::fixed << std::setprecision(3) << dataPtr->first << "-" << context.getTimer().elapsed();
 
 	// start recording the approach trajectory if isRecordingApp() is set
@@ -245,7 +311,9 @@ void RagPlanner::perform(Data::Map::iterator dataPtr) {
 //	robot->getController()->initControlCycle();
 	// go to initial state
 	universe.postScreenCaptureFrames(-1);
+//	std::cout << "spame:perform 10\n";
 	robot->sendTrajectory(initTrajectory, true);
+//	std::cout << "spame:perform 11\n";
 	robot->waitForEnd();
 	//renderContacts();
 	::Sleep(2000);
@@ -258,19 +326,19 @@ void RagPlanner::perform(Data::Map::iterator dataPtr) {
 	for (auto i: cameraSeq)
 		if (!i->isRecordingApp()) i->wait();
 
-	grasp::to<Data>(dataPtr)->triggeredGuards.clear();
 	Controller::State state = robot->getController()->createState();
-	grasp::to<Data>(dataPtr)->triggered = robot->getTriggeredGuards(grasp::to<Data>(dataPtr)->triggeredGuards, state);
+	grasp::to<Data>(dataPtr)->triggered = robot->getTriggeredGuards(/*grasp::to<Data>(dataPtr)->*/triggeredGuards, state); 
+
 	// -1 means no contact between the object and the hand (most likely a contact with the table).
 	if (grasp::to<Data>(dataPtr)->triggered == -1 && grasp::to<Data>(dataPtr)->replanning)
 		return;
 	
-	Controller::State command = robot->getController()->createState();
+	Controller::State command = robot->getController()->createState(), config = robot->getController()->createState();
+	robot->getController()->lookupState(state.t, config);
+	printState(config, robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end(), "config", true);
+	context.write("command state with triggered guards\n");
 	robot->getController()->lookupCommand(state.t, command);
-	//context.write("config state with triggered guards\n");
-	//printState(state, robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());
-	//context.write("command state with triggered guards\n");
-	//printState(command, robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());
+	printState(command, robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end(), "command", true);
 
 	// triggered == 0 means no unexpected contact (we can grasp)
 	if (grasp::to<Data>(dataPtr)->triggered == 0) {
@@ -297,13 +365,18 @@ void RagPlanner::perform(Data::Map::iterator dataPtr) {
 		}
 		::Sleep(100);
 		universe.postScreenCaptureFrames(0);	
-		grasp::to<Data>(dataPtr)->triggered = robot->isGrasping(grasp::to<Data>(dataPtr)->triggeredGuards, state);
-		grasp::to<Data>(dataPtr)->replanning = grasp::to<Data>(dataPtr)->triggered == 0;
-		context.write("Perform(): return (triggered=%d, replanning=%s)\n",grasp::to<Data>(dataPtr)->triggered, grasp::to<Data>(dataPtr)->replanning ? "true" : "false"); 
+		const int key = waitKey("YN", "Do you want to accept this grasp? (Y/N)...");
+		if (key == 'Y')
+			grasp::to<Data>(dataPtr)->triggered = robot->isGrasping(/*grasp::to<Data>(dataPtr)->*/triggeredGuards, state);
+
+		if (grasp::to<Data>(dataPtr)->replanning = grasp::to<Data>(dataPtr)->triggered == 0)
+			grasp::to<Data>(dataPtr)->release = true;
+		context.write("Perform(1): return (triggered=%d, replanning=%s)\n",grasp::to<Data>(dataPtr)->triggered, grasp::to<Data>(dataPtr)->replanning ? "true" : "false"); 
 	}
 	// if a contact occured but we do not want to trigger replanning
 	else if (!grasp::to<Data>(dataPtr)->replanning) {
 		// ensure that config and command are the same
+		::Sleep(2000);
 		robot->initControlCycle();
 		robot->enableGuards(false);
 		// clear states
@@ -316,7 +389,6 @@ void RagPlanner::perform(Data::Map::iterator dataPtr) {
 		seq.push_back(robot->recvState().config);
 		seq.push_back(graspPose);
 		// define the profile
-		grasp::to<Data>(dataPtr)->action.clear();
 		grasp::to<Data>(dataPtr)->action.clear();
 		Player::profile(dataPtr, seq, trjApproachDuration, trjApproachIdle);
 		// copy the planned trajectory in my trial data
@@ -347,13 +419,24 @@ void RagPlanner::perform(Data::Map::iterator dataPtr) {
 
 	// stop recording at the last frame
 	// HACK: comment out for Justin! (stop manually due to faulty sync)
-	for (auto i: cameraSeq)
-		i->stop(context.getTimer().elapsed() + trjManipPerfOff);//robotStates.back().config.t;
+	//for (auto i: cameraSeq)
+	//	i->stop(context.getTimer().elapsed() + trjManipPerfOff);//robotStates.back().config.t;
 
-	grasp::to<Data>(dataPtr)->triggeredStates.clear();
-	grasp::to<Data>(dataPtr)->triggeredStates.push_back(state);
+	//std::cout << "spame:perform 37\n";
+	//grasp::to<Data>(dataPtr)->triggeredStates.clear();
+	//std::cout << "spame:perform 38\n";
+	//grasp::to<Data>(dataPtr)->triggeredStates.push_back(robot->recvState().config/*state*/);
+	//std::cout << "spame:perform 39\n";
+	//grasp::to<Data>(dataPtr)->triggeredStates.push_back(Controller::State(state));
+	//std::cout << "spam:perform(): print config state with triggered guards (n. of states: " << grasp::to<Data>(dataPtr)->triggeredStates.size() << ")\n";
+	//std::cout << "spam:perform(): print first element config state with triggered guards\n";
+	//std::cout << "cpos[0]=" << /*grasp::to<Data>(dataPtr)->triggeredStates.begin()->*/robot->recvState().config.cpos[robot->getStateInfo().getJoints().begin()];
+	//printState(*grasp::to<Data>(dataPtr)->triggeredStates.begin(), robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());
+
 	universe.postScreenCaptureFrames(-1);
+	std::cout << "spame:perform 40\n";
 	updateAndResample(dataPtr);
+//	std::cout << "spame:perform 41\n";
 	::Sleep(100);
 	universe.postScreenCaptureFrames(0);	
 	//dataPtr->second.replanning = false;
@@ -364,12 +447,16 @@ void RagPlanner::perform(Data::Map::iterator dataPtr) {
 	//	}
 	//}
 
+//	std::cout << "spame:perform 42\n";
 	if (grasp::to<Data>(dataPtr)->triggered > 0/* && dataPtr->second.replanning*/) {
-		context.write("Perform(): return (triggered=%s, replanning=%s)\n", grasp::to<Data>(dataPtr)->triggered > 0 ? "true" : "false", grasp::to<Data>(dataPtr)->replanning ? "true" : "false"); 
+		context.write("Perform(2): return (triggered=%s, replanning=%s)\n", grasp::to<Data>(dataPtr)->triggered > 0 ? "true" : "false", grasp::to<Data>(dataPtr)->replanning ? "true" : "false"); 
+//	std::cout << "spame:perform 43\n";
 		robot->initControlCycle();
 //		return;
+//	std::cout << "spame:perform 44\n";
 	}	
 
+//	std::cout << "spame:perform 45\n";
 	
 	context.write("Performance finished!\n");
 }
@@ -381,6 +468,7 @@ void RagPlanner::performApproach(Data::Map::iterator dataPtr) {
 	context.write("RagPlanner::performApproach(): build and perform approach trajectory\n");
 	// fixed properties of the planner
 	pHeuristic->enableUnc = this->uncEnable;
+//	pHeuristic->setCollisionDetection(Bounds::GROUP_ALL);
 	robot->enableGuards();
 	grasp::to<Data>(dataPtr)->replanning = true;
 //	robot->setCollisionDetection(true);		
@@ -388,32 +476,48 @@ void RagPlanner::performApproach(Data::Map::iterator dataPtr) {
 	// handle the approaching action to generate a sequence of states 
 	//context.write("approaching trajetory (list)\n");
 	//printTrajectory(makeCommand(dataPtr->second.approachAction), robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());	
+//	createGrasp(dataPtr);
+	context.write("approaching trajetory (list)\n");
+	printTrajectory(makeCommand(grasp::to<Data>(dataPtr)->actionApproach), robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());	
 	Controller::State::Seq seq;
 	extrapolate(makeCommand(grasp::to<Data>(dataPtr)->actionApproach), trjApproachExtrapolFac, false, seq);
+	context.write("approaching trajetory (list) after extrapolate\n");
+	printTrajectory(seq, robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());	
+
+//	extrapolate(makeCommand(make(grasp::to<Data>(dataPtr)->actionApproach, trn)), trjApproachExtrapolFac, false, seq);
 	// compute the approach traectory in a new frame and its profile
 	grasp::to<Data>(dataPtr)->action.clear();
 //	grasp::to<Data>(queryDataPtr)->action.clear();
+	trnEnable = true;
 	profile(dataPtr, seq, trjApproachDuration, trjApproachIdle);
 	// copy the planned trajectory in my trial data
 	//poseDataPtr->second.action.clear();
 	//for (Controller::State::Seq::const_iterator i = grasp::to<Data>(queryDataPtr)->action.begin(); i != grasp::to<Data>(queryDataPtr)->action.end(); ++i)
 	//	poseDataPtr->second.action.push_back(*i);
-	Controller::State grasp = grasp::to<Data>(dataPtr)->action[grasp::to<Data>(dataPtr)->action.size()-1];
+	Controller::State grasp = *(--grasp::to<Data>(dataPtr)->action.end());
+	handBounds.clear();
 	renderHand(grasp);
 	// perform action
 	perform(dataPtr);
+	handBounds.clear();
+
 	//dataPtr->second.action.clear();
 	//queryDataPtr->second.action.clear();
 }
 
 void RagPlanner::performWithdraw(Data::Map::iterator dataPtr) {
-	context.write("RagPlanner::performWithdraw(): build and perform withdraw trajectory (vanilla version withdraw to initial state).\n");
+	context.debug("RagPlanner::performWithdraw(): build and perform withdraw trajectory (vanilla version withdraw to initial state).\n");
 	// handle the approaching action to generate a sequence of states 
 	Controller::State::Seq seq;
+//	std::cout << "performwithdraw: step 1 (size: " << grasp::to<Data>(dataPtr)->actionWithdraw.size() << ")\n";;
+	robot->initControlCycle();
 	extrapolate(makeCommand(grasp::to<Data>(dataPtr)->actionWithdraw), trjApproachExtrapolFac, false, seq);
 	// compute the approach traectory in a new frame and its profile
+//	std::cout << "performwithdraw: step 2\n";
 	grasp::to<Data>(dataPtr)->action.clear();
 //	grasp::to<Data>(queryDataPtr)->action.clear();
+//	std::cout << "performwithdraw: step 3\n";
+	trnEnable = false;
 	profile(dataPtr, seq, trjApproachDuration, trjApproachIdle);
 	// copy the planned trajectory in my trial data
 	//poseDataPtr->second.action.clear();
@@ -421,14 +525,18 @@ void RagPlanner::performWithdraw(Data::Map::iterator dataPtr) {
 	//	poseDataPtr->second.action.push_back(*i);
 
 	// fixed properties of the planner
+//	std::cout << "performwithdraw: step 4\n";
 	robot->enableGuards(false);
+//	std::cout << "performwithdraw: step 5\n";
 	pHeuristic->enableUnc = false;
 //	robot->setCollisionDetection(false);
 
+//	std::cout << "performwithdraw: step 6\n";
 	golem::Controller::State::Seq initTrajectory;
 	robot->createTrajectory(robot->recvState().command, &grasp::to<Data>(dataPtr)->action.front(), NULL, 0, initTrajectory);
 //	dataPtr->second.executedTrajectory = initTrajectory;
 
+//	std::cout << "performwithdraw: step 7\n";
 	if (!testTrajectory(initTrajectory.begin(), initTrajectory.end()))
 		return;
 
@@ -446,11 +554,14 @@ void RagPlanner::performWithdraw(Data::Map::iterator dataPtr) {
 void RagPlanner::performManip(Data::Map::iterator dataPtr) {
 	context.write("RagPlanner::performManip(): build and perform manipulative trajectory (vanilla version just lift the object up).\n");
 	// handle the approaching action to generate a sequence of states 
+	robot->initControlCycle();
 	Controller::State::Seq seq;
+//	extrapolate(makeCommand(make(grasp::to<Data>(dataPtr)->actionManip, grasp::to<Data>(dataPtr)->queryFrame)), trjApproachExtrapolFac, false, seq);
 	extrapolate(makeCommand(grasp::to<Data>(dataPtr)->actionManip), trjApproachExtrapolFac, false, seq);
 	// compute the approach traectory in a new frame and its profile
 	grasp::to<Data>(dataPtr)->action.clear();
 //	grasp::to<Data>(queryDataPtr)->action.clear();
+	trnEnable = false;
 	profile(dataPtr, seq, trjManipDuration, trjManipIdle);
 	// copy the planned trajectory in my trial data
 	//poseDataPtr->second.action.clear();
@@ -561,20 +672,27 @@ void RagPlanner::performSingleGrasp(Data::Map::iterator dataPtr) {
 //}
 
 void RagPlanner::updateAndResample(Data::Map::iterator dataPtr) {
-	context.debug("RagPlanner::updateAndResample(): %d triggered guards:", grasp::to<Data>(dataPtr)->triggeredGuards.size());
+	context.debug("RagPlanner::updateAndResample(): %d triggered guards:", /*grasp::to<Data>(dataPtr)->*/triggeredGuards.size());
 	//for (std::vector<Configspace::Index>::const_iterator i = dataPtr->second.triggeredGuards.begin(); i != dataPtr->second.triggeredGuards.end(); ++i)
 	//	context.write(" %d ", *i);
-	for (grasp::FTGuard::Seq::const_iterator i = grasp::to<Data>(dataPtr)->triggeredGuards.begin(); i != grasp::to<Data>(dataPtr)->triggeredGuards.end(); ++i)
-		context.write(" %s ", i->str());
+	std::cout << "spam:update&resample 1\n";
+	for (grasp::FTGuard::Seq::const_iterator i = /*grasp::to<Data>(dataPtr)->*/triggeredGuards.begin(); i != /*grasp::to<Data>(dataPtr)->*/triggeredGuards.end(); ++i)
+		context.write(" %s ", i->str().c_str());
 	context.write("\n");
 
-	golem::Waypoint w(*robot->getController(), grasp::to<Data>(dataPtr)->triggeredStates.begin()->cpos);
+	std::cout << "spam:update&resample 2\n";
+	//golem::Waypoint w(*robot->getController(), grasp::to<Data>(dataPtr)->triggeredStates.begin()->cpos);
+	std::cout << "spam:update&resample 3\n";
 	grasp::RealSeq force;
-	robot->readFT(*grasp::to<Data>(dataPtr)->triggeredStates.begin(), force);
-	context.write("force <");
+	force.assign(robot->getStateHandInfo().getJoints().size(), REAL_ZERO);
+	std::cout << "spam:update&resample 4\n";
+	std::cout << "spam:update&resample(): print config state with triggered guards\n";
+//	printState(*grasp::to<Data>(dataPtr)->triggeredStates.begin(), robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());
+	robot->readFT(robot->recvState().config, force);
+	std::cout << "spam:update&resample force <"; //context.write("force <");
 	for (grasp::RealSeq::const_iterator i = force.begin(); i != force.end(); ++i)
-		context.write("%f ", *i);
-	context.write(">\n");
+		std::cout << *i << " "; //context.write("%f ", *i);
+	std::cout << ">\n"; //context.write(">\n");
 
 //	context.write("update hypothesis poses/n");
 	// retrieve current object pose
@@ -597,13 +715,18 @@ void RagPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	
 	context.write("updating weigths\n");
 	// update samples' weights
+	std::cout << "spam:update&resample 5\n";
 	golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO;
-	pBelief->createUpdate(manipulator.get(), w, grasp::to<Data>(dataPtr)->triggeredGuards, force);
+	std::cout << "spam:update&resample 6\n";
+	golem::Waypoint w(*robot->getController(), robot->recvState().config.cpos/*grasp::to<Data>(dataPtr)->triggeredStates.begin()->cpos*/);
+	std::cout << "spam:update&resample 6bis\n";
+	pBelief->createUpdate(manipulator.get(), robot, w, /*grasp::to<Data>(dataPtr)->*/triggeredGuards, force);
+	std::cout << "spam:update&resample 7\n";
 	//for (grasp::RBPose::Sample::Seq::iterator sample = pBelief->getHypotheses().begin(); sample !=  pBelief->getHypotheses().end(); ++sample) {
 	//	sample->weight = pHeuristic->evaluate(manipulator.get(), w, *sample, dataPtr->second.triggeredGuards, force, modelFrame);
 	//	golem::kahanSum(norm, c, sample->weight);
 	//}
-	context.write("normalising weights norm=%f (%.30f)\n", golem::REAL_ONE/norm, norm);
+//	context.write("normalising weights norm=%f (%.30f)\n", golem::REAL_ONE/norm, norm);
 	// computes the normalised importance weight associated to each sample
 	//dataPtr->second.normFac = norm = golem::REAL_ONE/norm;
 	//for (grasp::RBPose::Sample::Seq::iterator sample = pBelief->getHypotheses().begin(); sample !=  pBelief->getHypotheses().end(); ++sample) 
@@ -611,24 +734,206 @@ void RagPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 
 	context.write("resampling (wheel algorithm)\n");
 	// resampling (wheel algorithm)
+	std::cout << "spam:update&resample 8\n";
 	pBelief->createResample();
+	std::cout << "spam:update&resample 9\n";
 	
 	//dataPtr->second.samples.clear();
 	//dataPtr->second.samples.reserve(K);
 
 	// update the query frame
-	mlFrame = pBelief->maximum();
-	grasp::to<Data>(poseDataPtr)->actionFrame = Mat34(mlFrame.q, mlFrame.p);
+	std::cout << "spam:update&resample 10\n";
+	mlFrame = pBelief->createHypotheses(modelPoints, modelFrame, false);;
+	std::cout << "spam:update&resample 11\n";
+	grasp::to<Data>(dataPtr)->actionFrame = grasp::to<Data>(queryDataPtr)->actionFrame = Mat34(mlFrame.q, mlFrame.p);
+	context.write("action frame poseData <%f %f %f> queryData <%f %f %f>\n", 
+		grasp::to<Data>(dataPtr)->actionFrame.p.x, grasp::to<Data>(dataPtr)->actionFrame.p.y, grasp::to<Data>(dataPtr)->actionFrame.p.z,
+		grasp::to<Data>(queryDataPtr)->actionFrame.p.x, grasp::to<Data>(queryDataPtr)->actionFrame.p.y, grasp::to<Data>(queryDataPtr)->actionFrame.p.z);
+
 	// update query settings
+	std::cout << "spam:update&resample 12\n";
 	grasp::to<Data>(queryDataPtr)->queryFrame.multiply(grasp::to<Data>(queryDataPtr)->actionFrame, modelFrame);
+	std::cout << "spam:update&resample 13\n";
 	grasp::Cloud::transform(grasp::to<Data>(queryDataPtr)->actionFrame, modelPoints, grasp::to<Data>(queryDataPtr)->queryPoints);
 	
 	//dataPtr->second.samples.push_back(mlFrame);
 	//for (size_t i = 1; i < K; ++i)
 	//	dataPtr->second.samples.push_back(pBelief->sampleHypothesis());
-	renderTrialData(dataPtr);
+	std::cout << "spam:update&resample 14\n";
+	showQueryDistrib = true;
+	renderData(dataPtr);
+	showQueryDistrib = false;
+	std::cout << "spam:update&resample 15\n";
 	
 	context.write("end\n");
+}
+
+//------------------------------------------------------------------------------
+
+grasp::RobotState::List RagPlanner::make(const grasp::RobotState::List &action, const Mat34 &trn) const {
+	// update approach and manip actions
+	context.write("Update approach actions (size %d)...\n", action.size());
+	grasp::RobotState::List stateList;
+	if (!action.empty()) {
+		for(grasp::RobotState::List::const_iterator i = action.begin(); i != action.end(); ++i) {
+			const golem::Chainspace::Index armChain = robot->getStateArmInfo().getChains().begin();
+				
+			GenWorkspaceChainState gwcs;
+			robot->getController()->chainForwardTransform(i->config.cpos, gwcs.wpos);
+			gwcs.wpos[armChain].multiply(gwcs.wpos[armChain], robot->getController()->getChains()[armChain]->getReferencePose()); // 1:1
+			gwcs.wpos[armChain].multiply(trn, gwcs.wpos[armChain]); // new waypoint frame
+
+			GenWorkspaceChainState wend;
+			wend.setToDefault(robot->getStateInfo().getChains().begin(), robot->getStateInfo().getChains().end()); // all used chains
+			wend.wpos[armChain] = gwcs.wpos[armChain];
+			context.write("wend ,%f %f %f>\n", wend.wpos[armChain].p.x, wend.wpos[armChain].p.y, wend.wpos[armChain].p.z);
+			// lock controller
+			golem::CriticalSectionWrapper csw(robot->getControllerCS());
+			// Find end position
+			grasp::RobotState state = robot->recvState();
+			if (!robot->getPlanner()->findTarget(state.config, wend, state.config))
+				throw Message(Message::LEVEL_CRIT, "RagPlanner:Creating Model: unable to find grasp configuration");
+			state.command = state.config;
+			stateList.push_back(state);
+			// error
+			WorkspaceChainCoord wcc;
+			robot->getController()->chainForwardTransform(state.config.cpos, wcc);
+			wcc[armChain].multiply(wcc[armChain], robot->getController()->getChains()[armChain]->getReferencePose());
+			context.write("wcc ,%f %f %f>\n", wcc[armChain].p.x, wcc[armChain].p.y, wcc[armChain].p.z);
+			const grasp::RBDist error(grasp::RBCoord(wcc[armChain]), grasp::RBCoord(wend.wpos[armChain]));
+			context.write("RagPlanner:Creating Model: Pose error: lin=%.9f, ang=%.9f\n", error.lin, error.ang);
+		}
+	}
+	return stateList;
+}
+
+//------------------------------------------------------------------------------
+
+Mat34 RagPlanner::getGraspFrame(Data::Map::iterator dataPtr) {
+	if (modelDataPtr._Ptr == NULL && queryDataPtr._Ptr == NULL)
+		throw Message(Message::LEVEL_ERROR, "RagPlanner::getGraspFrame(): create model and query for the grasp.");
+
+	if (grasp::to<Data>(modelDataPtr)->actionApproach.empty())
+		throw Message(Message::LEVEL_ERROR, "RagPlanner::getGraspFrame(): At least a waypont in action approach.");
+
+	const golem::Chainspace::Index armChain = robot->getStateArmInfo().getChains().begin();
+
+	// grasp pose for an object sittin in the query pose. NOTE: the query pose must be the pose in which the grasp has been tought
+	grasp::RobotState pose = *grasp::to<Data>(dataPtr)->actionApproach.begin();
+//	handBounds.clear();
+//	renderHand(pose.config);
+
+	// grasp frame (tcp) in global coordinates
+	GenWorkspaceChainState gwcs;
+	gwcs.setToDefault(robot->getStateInfo().getChains().begin(), robot->getStateInfo().getChains().end()); // all used chains
+	robot->getController()->chainForwardTransform(pose.config.cpos, gwcs.wpos);
+	//				gwcs.wpos[armChain].multiply(gwcs.wpos[armChain], robot->getController()->getChains()[armChain]->getReferencePose()); // 1:1
+	context.write("pose frame to teach pose (global) [[%f, %f, %f, %f], [%f, %f, %f, %f], [%f, %f, %f, %f], [0.0, 0.0, 0.0, 1.0]]\n", 
+		gwcs.wpos[armChain].R.m11, gwcs.wpos[armChain].R.m12, gwcs.wpos[armChain].R.m13, gwcs.wpos[armChain].p.x, 
+		gwcs.wpos[armChain].R.m21, gwcs.wpos[armChain].R.m22, gwcs.wpos[armChain].R.m23, gwcs.wpos[armChain].p.y, 
+		gwcs.wpos[armChain].R.m31, gwcs.wpos[armChain].R.m32, gwcs.wpos[armChain].R.m33, gwcs.wpos[armChain].p.z);
+//	r = gwcs.wpos[armChain];
+	Mat34 poseFrameInv, graspFrame, graspFrameInv;
+	poseFrameInv.setInverse(gwcs.wpos[armChain]);
+	graspFrame.multiply(poseFrameInv, actionFrameT * modelFrame);
+	graspFrameInv.setInverse(graspFrame);
+	//				gwcs.wpos[armChain].multiply(gwcs.wpos[armChain], modelFrameInv); // new waypoint frame
+	gwcs.wpos[armChain].multiply(modelFrame, graspFrameInv);
+	r2 = gwcs.wpos[armChain];
+	showTest = true;
+	renderData(dataPtr);
+	return gwcs.wpos[armChain];
+}
+
+void RagPlanner::createGrasp(Data::Map::iterator dataPtr) {
+	if (queryDataPtr._Ptr == NULL)
+		throw Message(Message::LEVEL_ERROR, "RagPlanner::createGrasp(): create a new query for the grasp.");
+	
+	if (grasp::to<Data>(dataPtr)->actionApproach.size() < 2)
+		throw Message(Message::LEVEL_ERROR, "RagPlanner::createGrasp(): At least a waypont in action approach.");
+				
+	const golem::Chainspace::Index armChain = robot->getStateArmInfo().getChains().begin();
+	grasp::RobotState grasp = *grasp::to<Data>(dataPtr)->actionApproach.begin();
+	printState(grasp.config, robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end(), "createGrasp(): grasp");
+	grasp::RobotState pregrasp = *(--grasp::to<Data>(dataPtr)->actionApproach.end());
+	printState(pregrasp.config, robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end(), "createGrasp(): pregrasp");
+	handBounds.clear();
+	renderHand(grasp.config);
+	renderHand(pregrasp.config);
+
+	Mat34 end/*(graspFrame)*/;
+	end.multiply(grasp::to<Data>(dataPtr)->actionFrame, end);
+	r = end;
+	renderData(dataPtr);
+	Robot::State state = robot->recvState();
+	{
+		// Setup target position
+		const golem::Chainspace::Index armChain = robot->getStateArmInfo().getChains().begin();
+		GenWorkspaceChainState wend;
+		wend.setToDefault(robot->getStateInfo().getChains().begin(), robot->getStateInfo().getChains().end()); // all used chains
+		wend.wpos[armChain] = end;
+		// lock controller
+		golem::CriticalSectionWrapper csw(robot->getControllerCS());
+		// Find end position
+		if (!robot->getPlanner()->findTarget(state.config, wend, state.config))
+			throw Message(Message::LEVEL_CRIT, "Import::actionJustinPreGrasp(): unable to find grasp configuration");
+		// error
+		WorkspaceChainCoord wcc;
+		robot->getController()->chainForwardTransform(state.config.cpos, wcc);
+		wcc[armChain].multiply(wcc[armChain], robot->getController()->getChains()[armChain]->getReferencePose());
+		const grasp::RBDist error(grasp::RBCoord(wcc[armChain]), grasp::RBCoord(wend.wpos[armChain]));
+		context.debug("Import::actionJustinPreGrasp(): Pose error: lin=%.9f, ang=%.9f\n", error.lin, error.ang);
+	}
+
+	//Mat34 frame;
+	//frame.multiply(grasp::to<Data>(dataPtr)->actionFrame, graspFrame);
+	//r = frame;
+	//renderData(dataPtr);
+	//context.write("RagPlanner::createGrasp(): action frame <%f %f %f>\n", grasp::to<Data>(dataPtr)->actionFrame.p.x, grasp::to<Data>(dataPtr)->actionFrame.p.y, grasp::to<Data>(dataPtr)->actionFrame.p.z);
+	//grasp::RobotState pose = pregrasp;
+	//{
+	//	GenWorkspaceChainState wend;
+	//	wend.setToDefault(robot->getStateInfo().getChains().begin(), robot->getStateInfo().getChains().end()); // all used chains
+	//	wend.wpos[armChain] = frame;
+	//	context.write("grasp frame to model (global) [[%f, %f, %f, %f], [%f, %f, %f, %f], [%f, %f, %f, %f], [0.0, 0.0, 0.0, 1.0]]\n", 
+	//		wend.wpos[armChain].R.m11, wend.wpos[armChain].R.m12, wend.wpos[armChain].R.m13, wend.wpos[armChain].p.x, 
+	//		wend.wpos[armChain].R.m21, wend.wpos[armChain].R.m22, wend.wpos[armChain].R.m23, wend.wpos[armChain].p.y, 
+	//		wend.wpos[armChain].R.m31, wend.wpos[armChain].R.m32, wend.wpos[armChain].R.m33, wend.wpos[armChain].p.z);
+	//	// lock controller
+	//	golem::CriticalSectionWrapper csw(robot->getControllerCS());
+	//	if (!robot->getPlanner()->findTarget(pose.config, wend, pose.config))
+	//		throw Message(Message::LEVEL_CRIT, "RagPlanner:Creating Model: unable to find grasp configuration");
+	//	pose.command = pose.config;
+	//	r2 = wend.wpos[armChain];
+	//	renderData(dataPtr);
+	//	//handBounds.clear();
+	//	//renderHand(pose.config);
+	//	// error
+	//	WorkspaceChainCoord wcc;
+	//	robot->getController()->chainForwardTransform(pose.config.cpos, wcc);
+	////				wcc[armChain].multiply(wcc[armChain], robot->getController()->getChains()[armChain]->getReferencePose());
+	//	context.write("New grasp frame to model (global) [[%f, %f, %f, %f], [%f, %f, %f, %f], [%f, %f, %f, %f], [0.0, 0.0, 0.0, 1.0]]\n", 
+	//		wcc[armChain].R.m11, wcc[armChain].R.m12, wcc[armChain].R.m13, wcc[armChain].p.x, 
+	//		wcc[armChain].R.m21, wcc[armChain].R.m22, wcc[armChain].R.m23, wcc[armChain].p.y, 
+	//		wcc[armChain].R.m31, wcc[armChain].R.m32, wcc[armChain].R.m33, wcc[armChain].p.z);
+	//	const grasp::RBDist error(grasp::RBCoord(wcc[armChain]), grasp::RBCoord(wend.wpos[armChain]));
+	//	context.write("RagPlanner:Creating Model: Pose error: lin=%.9f, ang=%.9f\n", error.lin, error.ang);
+	//}
+	//for (grasp::RobotState::List::iterator s = grasp::to<Data>(dataPtr)->actionApproach.begin(); s != grasp::to<Data>(dataPtr)->actionApproach.end(); ++s) {
+	//	for (Configspace::Index i = robot->getStateArmInfo().getJoints().begin(); i != robot->getStateArmInfo().getJoints().begin(); ++i)
+	//		s->config.cpos[i] = pose.config.cpos[i];
+	//	s->command = s->config;
+	//}
+
+	grasp::to<Data>(dataPtr)->actionApproach.clear();
+	handBounds.clear();
+	for(size_t k = 0; k < 2 ; ++k) {
+		for (Configspace::Index i = robot->getStateHandInfo().getJoints().begin(); i != robot->getStateHandInfo().getJoints().begin(); ++i)
+			state.config.cpos[i] = k == 0 ? grasp.config.cpos[i] : pregrasp.config.cpos[i];
+		state.command = state.config;
+		grasp::to<Data>(dataPtr)->actionApproach.push_back(state);
+		renderHand(state.config);
+	}
 }
 
 //------------------------------------------------------------------------------
@@ -716,37 +1021,73 @@ void RagPlanner::function(Data::Map::iterator& dataPtr, int key) {
 	}
 	case 'B':
 	{
-		if (poseDataPtr._Ptr == NULL) {
-			context.write("Unable to find the withdraw trajectory.\n");
-			return;
+		// retrieve robot pose from real justin
+		// print current robot joint position
+		Controller::State state = robot->recvState().config;
+		std::stringstream str;
+		for (golem::Configspace::Index i = state.getInfo().getJoints().begin(); i < state.getInfo().getJoints().end(); ++i)
+			str << " c" << (*i - *state.getInfo().getJoints().begin() + 1) << "=\"" << state.cpos[i] << "\"";
+		context.write("<pose dim=\"%d\"%s/>\n", state.getInfo().getJoints().size(), str.str().c_str());
+		golem::WorkspaceJointCoord wc;
+		robot->getController()->jointForwardTransform(state.cpos, wc);
+		for (golem::Chainspace::Index i = robot->getStateInfo().getChains().begin(); i < robot->getStateInfo().getChains().end(); ++i) {
+			context.write("Name: %s\n", robot->getController()->getChains()[i]->getName().c_str());
+			for (golem::Configspace::Index j = robot->getStateInfo().getJoints(i).begin(); j < robot->getStateInfo().getJoints(i).end(); ++j) {
+				const U32 k = U32(j - robot->getStateInfo().getJoints(i).begin());
+				const Mat34& m = wc[j];
+				context.write("Joint %d: p={(%f, %f, %f)}, R={(%f, %f, %f), (%f, %f, %f), (%f, %f, %f)}\n", k, m.p.x, m.p.y, m.p.z, m.R.m11, m.R.m12, m.R.m13, m.R.m21, m.R.m22, m.R.m23, m.R.m31, m.R.m32, m.R.m33);
+			}
 		}
-		performWithdraw(poseDataPtr);
-		return;
-		if (modelPoints.empty() || queryDataPtr == getData().end() || grasp::to<Data>(queryDataPtr)->queryPoints.empty()) {
-			context.write("Unable to find a model or query. Please make sure you have generated a model and query.\n");
-			return;
-		}
-		context.write("Learning observational model\n");
-		Controller::State::Seq seq;
-		extrapolate(makeCommand(grasp::to<Data>(dataPtr)->actionApproach), trjApproachExtrapolFac, false, seq);
-		// compute the approach traectory in a new frame and its profile
-		grasp::to<Data>(dataPtr)->action.clear();
-		grasp::to<Data>(queryDataPtr)->action.clear();
-		PosePlanner::profile(queryDataPtr, seq, trjApproachDuration, trjApproachIdle);
-		// copy the planned trajectory in my trial data
-		grasp::to<Data>(poseDataPtr)->action.clear();
-		const Controller::State pregrasp = *grasp::to<Data>(dataPtr)->action.begin();
-		for (Controller::State::Seq::const_iterator i = grasp::to<Data>(queryDataPtr)->action.begin(); i != grasp::to<Data>(queryDataPtr)->action.end(); ++i)
-			grasp::to<Data>(poseDataPtr)->action.push_back(*i);
-		
-		golem::Controller::State::Seq initTrajectory;
-		robot->createTrajectory(robot->recvState().command, &grasp::to<Data>(dataPtr)->action.front(), NULL, 0, initTrajectory);
-		robot->enableGuards(false);
-		robot->sendTrajectory(initTrajectory, true);
-		robot->waitForEnd();
+		break;
+		//if (poseDataPtr._Ptr == NULL) {
+		//	context.write("Unable to find the withdraw trajectory.\n");
+		//	return;
+		//}
+		//performWithdraw(poseDataPtr);
+		//return;
+		//if (modelPoints.empty() || queryDataPtr == getData().end() || grasp::to<Data>(queryDataPtr)->queryPoints.empty()) {
+		//	context.write("Unable to find a model or query. Please make sure you have generated a model and query.\n");
+		//	return;
+		//}
+		//context.write("Learning observational model\n");
+		//Controller::State::Seq seq;
+		//extrapolate(makeCommand(grasp::to<Data>(dataPtr)->actionApproach), trjApproachExtrapolFac, false, seq);
+		//// compute the approach traectory in a new frame and its profile
+		//grasp::to<Data>(dataPtr)->action.clear();
+		//grasp::to<Data>(queryDataPtr)->action.clear();
+		//PosePlanner::profile(queryDataPtr, seq, trjApproachDuration, trjApproachIdle);
+		//// copy the planned trajectory in my trial data
+		//grasp::to<Data>(poseDataPtr)->action.clear();
+		//const Controller::State pregrasp = *grasp::to<Data>(dataPtr)->action.begin();
+		//for (Controller::State::Seq::const_iterator i = grasp::to<Data>(queryDataPtr)->action.begin(); i != grasp::to<Data>(queryDataPtr)->action.end(); ++i)
+		//	grasp::to<Data>(poseDataPtr)->action.push_back(*i);
+		//
+		//golem::Controller::State::Seq initTrajectory;
+		//robot->createTrajectory(robot->recvState().command, &grasp::to<Data>(dataPtr)->action.front(), NULL, 0, initTrajectory);
+		//robot->enableGuards(false);
+		//robot->sendTrajectory(initTrajectory, true);
+		//robot->waitForEnd();
 
-		Controller::State state = pregrasp;
-		const Chainspace::Index i = robot->getStateHandInfo().getChains().begin() + 1;
+		//Controller::State state = pregrasp;
+		//const Chainspace::Index i = robot->getStateHandInfo().getChains().begin() + 1;
+		//return;
+	}
+	case 'G':
+	{
+		grasp::Cloud::PointSeqMap::const_iterator points = getPoints(dataPtr);
+		// query create
+		context.write("Creating %s query...\n", grasp::to<Data>(dataPtr)->getLabelName(points->first).c_str());
+		pBelief->createQuery(points->second);
+		// create hypotheses and return the action frame for this query
+		actionFrameT = pBelief->maximum().toMat34();
+		//context.write("action frame TEACH <%f %f %f>\n", actionFrameT.p.x, actionFrameT.p.y, actionFrameT.p.z);
+
+		//try {
+		//	graspFrame = getGraspFrame(dataPtr);
+		//}
+		//catch (const Message& msg) {
+		//	context.write("%s\n", msg.str().c_str());
+		//}		
 		return;
 	}
 	case 'U':
@@ -757,6 +1098,7 @@ void RagPlanner::function(Data::Map::iterator& dataPtr, int key) {
 		}
 		// update pose settings
 		poseDataPtr = dataPtr;
+		grasp::to<Data>(poseDataPtr)->actionFrame = grasp::to<Data>(queryDataPtr)->actionFrame;
 		grasp::to<Data>(poseDataPtr)->queryFrame = grasp::to<Data>(queryDataPtr)->queryFrame;
 		grasp::to<Data>(poseDataPtr)->actionApproach = grasp::to<Data>(queryDataPtr)->actionApproach;
 		grasp::to<Data>(poseDataPtr)->actionManip = grasp::to<Data>(queryDataPtr)->actionManip;
@@ -768,7 +1110,19 @@ void RagPlanner::function(Data::Map::iterator& dataPtr, int key) {
 		//	grasp::to<Data>(dataPtr)->queryPoints.push_back(*p);
 		//});
 
-		bool replanning = false, conclude = false;
+		// set home pose
+		//grasp::to<Data>(poseDataPtr)->homeStates.clear();
+		//std::cout << "spam:function: 7 bis\n";
+		//grasp::to<Data>(poseDataPtr)->homeStates.reserve(1);
+		//std::cout << "spam:function: 8 riceiving state\n";
+		//grasp::RobotState homeState = robot->recvState();
+		//std::cout << "spam:function: 8 bis\n";
+		//grasp::to<Data>(poseDataPtr)->homeStates.push_back(homeState);
+		homeStates.clear();
+		homeStates.push_back(robot->recvState());
+
+		bool conclude = false;
+		grasp::to<Data>(poseDataPtr)->replanning = false;
 		switch (waitKey("PE", "Press a key to (P)lan a reach-and-grasp trajectory, (E)nable/Disable planning with uncertainty...")) {
 		case 'P':
 		{			
@@ -778,21 +1132,44 @@ void RagPlanner::function(Data::Map::iterator& dataPtr, int key) {
 			// approach action is the entire trajectory taught to the robot
 			// NOTE: states are memorised from the last (pre grasp = begin()) to the first (initial pose = end())
 			// Generate a new approach action formed by [pregrasp, corrent conf of the robot]
+			const golem::Chainspace::Index armChain = robot->getStateArmInfo().getChains().begin();
+			GenWorkspaceChainState gwcs;
+			gwcs.setToDefault(robot->getStateInfo().getChains().begin(), robot->getStateInfo().getChains().end()); // all used chains
 			grasp::RobotState grasp = *grasp::to<Data>(poseDataPtr)->actionApproach.begin();
+			robot->getController()->chainForwardTransform(grasp.config.cpos, gwcs.wpos);
+			Mat34 poseFrameInv, graspFrame, graspFrameInv;
+			poseFrameInv.setInverse(gwcs.wpos[armChain]);
+			graspFrame.multiply(poseFrameInv, modelFrame/*grasp::to<Data>(poseDataPtr)->queryFrame*/);
+			graspFrameInv.setInverse(graspFrame);
+//				gwcs.wpos[armChain].multiply(gwcs.wpos[armChain], modelFrameInv); // new waypoint frame
+			graspFrameM.multiply(modelFrame, graspFrameInv);
+			renderHand(grasp.config);
+
 			grasp::RobotState pregrasp = *(--grasp::to<Data>(poseDataPtr)->actionApproach.end());			
+			robot->getController()->chainForwardTransform(pregrasp.config.cpos, gwcs.wpos);
+			Mat34 preposeFrameInv, pregraspFrame, pregraspFrameInv;
+			preposeFrameInv.setInverse(gwcs.wpos[armChain]);
+			pregraspFrame.multiply(preposeFrameInv, modelFrame/*grasp::to<Data>(poseDataPtr)->queryFrame*/);
+			pregraspFrameInv.setInverse(pregraspFrame);
+//				gwcs.wpos[armChain].multiply(gwcs.wpos[armChain], modelFrameInv); // new waypoint frame
+			pregraspFrameM.multiply(modelFrame, pregraspFrameInv);
 			renderHand(pregrasp.config);
+			showTest = true;
+			renderData(dataPtr);
 
 			trjApproachExtrapolFac = REAL_ZERO;
 			robot->setCollisionBoundsGroup(Bounds::GROUP_ALL);
 			robot->setCollisionDetection(true);		
-			const golem::Chainspace::Index armChain = robot->getStateArmInfo().getChains().begin();
+//			const golem::Chainspace::Index armChain = robot->getStateArmInfo().getChains().begin();
 			const golem::Configspace::Range armJoints = robot->getStateArmInfo().getJoints();
 			iterations = 1;
 
 REPLAN_TEST:
 			try {
-				if (!singleGrasp)
+				if (!singleGrasp) {
 					performApproach(poseDataPtr);
+					context.write("perform approach is over.\n");
+				}
 				else {
 					context.write("Single grasp performs\n");
 					performSingleGrasp(poseDataPtr);
@@ -803,41 +1180,61 @@ REPLAN_TEST:
 				context.write("%s\n", msg.str().c_str());
 			}
 			
+			std::cout << "check for computing the grasp quality.\n";
 			if (grasp::to<Data>(poseDataPtr)->triggered > 0 && !grasp::to<Data>(poseDataPtr)->replanning) {
 				// todo: compute if grasped
 GRASP_QUALITY:
+				std::cout << "grasp quality: step 1\n";
 				context.write("Check the grasp quality (triggered=%s, replanning=%s)\n", grasp::to<Data>(poseDataPtr)->triggered > 0 ? "true" : "false", grasp::to<Data>(poseDataPtr)->replanning ? "true" : "false"); 
 
+				std::cout << "grasp quality: step 2\n";
 				grasp::RealSeq force;
-				Real graspQuality = REAL_ZERO;
-				try {
-					graspQuality = robot->analyseGrasp(force);
-				}
-				catch (const golem::Message &msg) {
-					context.write("%s\n", msg.str().c_str());
-				}
-				replanning = !(graspQuality > 0);
-				context.write("Grasp %s. quality = %f\n", !replanning ? "succeess (no replanning)" : "failure (replanning)", graspQuality);
+				//Real graspQuality = REAL_ZERO;
+				//try {
+				//	graspQuality = robot->analyseGrasp(force);
+				//}
+				//catch (const golem::Message &msg) {
+				//	context.write("%s\n", msg.str().c_str());
+				//}
+				//std::cout << "grasp quality: step 3\n";
+				//replanning = !(graspQuality > 0);
+				//context.write("Grasp %s. quality = %f\n", !replanning ? "succeess (no replanning)" : "failure (replanning)", graspQuality);
 				//if (!replanning) {
 					const int key = waitKey("YN", "Do you want to exit? (Y/N)...");
 					if (key == 'Y')
 						conclude = true;
+					else {
+						const int key = waitKey("YN", "Do you want to replan a trajectory? (Y/N)...");
+						if (key == 'Y')
+							grasp::to<Data>(poseDataPtr)->replanning = true;
+						else return;
+					}
 				//}
 				goto MOVING_BACK;
 			}
 			else {
 MOVING_BACK:
+				std::cout << "moving back: step 1\n";
 				pHeuristic->enableUnc = false;
+				std::cout << "moving back: step 2\n";
 				grasp::to<Data>(poseDataPtr)->actionWithdraw.clear();
 				// if replanning is not required the robot is moved back to the home pose
-				if (!grasp::to<Data>(poseDataPtr)->replanning || withdrawToHomePose) 
-					while (grasp::to<Data>(poseDataPtr)->actionWithdraw.size() < 2 && !grasp::to<Data>(poseDataPtr)->executedTrajectory.empty())
-						grasp::to<Data>(poseDataPtr)->actionWithdraw.push_back(grasp::to<Data>(poseDataPtr)->homeStates.front());
+				std::cout << "moving back: step 3\n";
+				if (!grasp::to<Data>(poseDataPtr)->replanning || withdrawToHomePose) {
+					if (!/*grasp::to<Data>(poseDataPtr)->*/executedTrajectory.empty()) {
+						// set as first waypont the pregrasp pose or the home pose
+						grasp::to<Data>(poseDataPtr)->actionWithdraw.push_back(grasp::to<Data>(poseDataPtr)->release && !grasp::to<Data>(poseDataPtr)->actionApproach.empty() ? *(--grasp::to<Data>(poseDataPtr)->actionApproach.end()) : homeStates.front());
+						grasp::to<Data>(poseDataPtr)->actionWithdraw.push_back(homeStates.front());
+					}
+					grasp::to<Data>(poseDataPtr)->release = false;
+					//while (grasp::to<Data>(poseDataPtr)->actionWithdraw.size() < 2 && !grasp::to<Data>(poseDataPtr)->executedTrajectory.empty())
+					//	grasp::to<Data>(poseDataPtr)->actionWithdraw.push_back(grasp::to<Data>(poseDataPtr)->homeStates.front());
 				// otherwise the previous waypoint in the trajectory is withdrawn
-				else {
+				} else {
+				std::cout << "moving back: step 4\n";
 					Real distMin(REAL_MAX);
 					Controller::State robotConfig = robot->recvState().config, waypoint = robot->recvState().config;
-					for (Controller::State::Seq::const_iterator a = grasp::to<Data>(poseDataPtr)->executedTrajectory.begin(), b = grasp::to<Data>(poseDataPtr)->executedTrajectory.begin() + 1; b != grasp::to<Data>(poseDataPtr)->executedTrajectory.end(); ++a, ++b) {
+					for (Controller::State::Seq::const_iterator a = /*grasp::to<Data>(poseDataPtr)->*/executedTrajectory.begin(), b = /*grasp::to<Data>(poseDataPtr)->*/executedTrajectory.begin() + 1; b != /*grasp::to<Data>(poseDataPtr)->*/executedTrajectory.end(); ++a, ++b) {
 						Real dist(REAL_ZERO);
 						for (Configspace::Index i = robot->getStateInfo().getJoints().begin(); i != robot->getStateInfo().getJoints().end(); ++i)				
 							dist += Math::sqrt(Math::sqr(robotConfig.cpos[i] - (a->cpos[i] + (a->cpos[i] - b->cpos[i])/2))); //Math::sqrt(Math::sqr(robotConfig.cpos[i] - a->cpos[i]));
@@ -851,7 +1248,8 @@ MOVING_BACK:
 					while (grasp::to<Data>(poseDataPtr)->actionWithdraw.size() < 2)
 						grasp::to<Data>(poseDataPtr)->actionWithdraw.push_back(w);
 				}
-				renderTrialData(poseDataPtr);
+				std::cout << "moving back: step 5\n";
+//				renderTrialData(poseDataPtr);
 				// move back to home pose
 				performWithdraw(poseDataPtr);
 				//return;
@@ -930,7 +1328,7 @@ MOVING_BACK:
 				Mat34 pose;
 				pose.R.setId();
 				pose.R.rotX(-REAL_HALF*REAL_PI);
-				pose.p = Vec3(0.4, -0.60, 0.1);
+				pose.p = Vec3(-0.1, 0.40, 0.1);
 				for (Real i = 0; i < 60; ++i) {
 					pose.p.x += 0.001*i;
 					pHeuristic->testObservations(pose, true);
@@ -970,6 +1368,54 @@ MOVING_BACK:
 			return;
 		}
 		break;
+	}
+	//case 'T':
+	//{
+	//	switch (waitKey("OU", "Press a key to test (O)bservations or (U)pdate..")) {
+	//	case 'O':
+	//	{			
+	//		context.write("test observation\n");
+	//		Mat34 pose;
+	//		pose.R.setId();
+	//		pose.R.rotX(-REAL_HALF*REAL_PI);
+	//		pose.p = Vec3(-0.4, 0.70, 0.15);
+	//		for (Real i = 0; i < 60; ++i) {
+	//			pose.p.x += 0.001*i;
+	//			pHeuristic->testObservations(pose, true);
+	//			renderPose(pose);
+	//			::Sleep(1000);
+	//		}
+	//		return;
+	//	}
+	//	case 'U':
+	//	{
+	//		context.write("test update\n");
+	//		grasp::RBPose::Sample::Seq samples;
+	//		samples.push_back(grasp::RBPose::Sample(grasp::RBCoord(Vec3(0.80, -0.36, 0.01), Quat())));
+	//		samples.push_back(grasp::RBPose::Sample(grasp::RBCoord(Vec3(0.65, -0.36, 0.01), Quat())));
+	//		samples.push_back(grasp::RBPose::Sample(grasp::RBCoord(Vec3(0.50, -0.36, 0.01), Quat())));
+	//		samples.push_back(grasp::RBPose::Sample(grasp::RBCoord(Vec3(0.30, -0.36, 0.01), Quat())));
+	//		Mat34 pose;
+	//		pose.R.setId();
+	//		pose.R.rotX(REAL_HALF*REAL_PI);
+	//		pose.p = Vec3(0.4, -0.45, 0.1);
+	//		for (size_t i = 0; i < 20; ++i) {
+	//			pose.p.x += 0.01*i;
+	//			context.write("Iteration n.%d pose <%f %f %f>\n", i + 1, pose.p.x, pose.p.y, pose.p.z);
+	//			//for (grasp::RBPose::Sample::Seq::iterator j = samples.begin(); j != samples.end(); ++j)
+	//			//	j->weight = pHeuristic->evaluate(grasp::RBCoord(pose), *j, -0.5, modelFrame);
+	//			context.write("\n");
+	//			renderUpdate(pose, samples);
+	//			::Sleep(1000);
+	//		}
+	//		return;
+	//	}
+	//	}
+	//}
+	case ',':
+	{
+		handBounds.clear();
+		return;
 	}
 	case '.':
 	{
@@ -1020,11 +1466,27 @@ void RagPlanner::printTrajectory(const golem::Controller::State::Seq &trajectory
 		printState(*j, begin, end);
 }
 
-void RagPlanner::printState(const golem::Controller::State &state, const golem::Configspace::Index &begin, const golem::Configspace::Index &end, const std::string &label) const {
-	context.write("%s <", label.c_str());
-	for (Configspace::Index i = begin; i != end; ++i)
-		context.write("%f ", state.cpos[i]);
-	context.write(">\n");
+void RagPlanner::printState(const golem::Controller::State &state, const golem::Configspace::Index &begin, const golem::Configspace::Index &end, const std::string &label, const bool readForce) const {
+	context.write("%s cpos <", label.c_str()); //std::cout << label.c_str() << " cpos <"; //context.write("%s cpos <", label.c_str());
+	for (Configspace::Index i = begin; i != end; ++i) {
+		context.write("%f ", state.cpos[i]); //std::cout << state.cpos[i] << " "; //context.write("%f ", state.cpos[i]);
+	}
+	context.write(">\n"); //std::cout << ">\n"; //context.write(">\n");
+	
+	if (!readForce) 
+		return;
+
+	grasp::RealSeq forces;
+	forces.assign(robot->getStateInfo().getJoints().size(), REAL_ZERO);
+	robot->readFT(state, forces);
+	const Configspace::Index k = robot->getStateInfo().getJoints().begin();
+	std::cout << label.c_str() << " torques <"; //context.write("%s torques <", label.c_str());
+	for (Configspace::Index i = begin; i != end; ++i) {
+		const size_t idx = k - begin;
+		std::cout << forces[idx] << " "; //context.write("%f ", forces[idx]);
+	}
+	std::cout << ">\n"; //context.write(">\n");
+
 }
 
 
@@ -1032,7 +1494,7 @@ void RagPlanner::printState(const golem::Controller::State &state, const golem::
 
 void spam::XMLData(RagPlanner::Desc &val, Context* context, XMLContext* xmlcontext, bool create) {
 	// load PosePlanner description
-	grasp::XMLData((PosePlanner::Desc&)val, context, xmlcontext, create);
+	spam::XMLData((PosePlanner::Desc&)val, context, xmlcontext, create);
 
 	// Load spam::Robot
 	spam::XMLData((Robot::Desc&)*val.robotDesc, context, xmlcontext, create);
@@ -1050,8 +1512,9 @@ void spam::XMLData(RagPlanner::Desc &val, Context* context, XMLContext* xmlconte
 	val.sampleAppearance.xmlData(xmlcontext->getContextFirst("point_appearance"), create);
 	try {
 		golem::XMLData(&val.trnModelPointCloud[0], &val.trnModelPointCloud[grasp::RBCoord::N], "c", xmlcontext->getContextFirst("model_points_trn"), create);
+		XMLData(val.objectBounds, val.objectBounds.max_size(), xmlcontext->getContextFirst("object_bounding_box"), "bounds", create);
+		XMLData(val.obstacleBounds, val.obstacleBounds.max_size(), xmlcontext->getContextFirst("obstacles"), "bounds", create);
 	} catch (const golem::MsgXMLParser& msg) {}
-	XMLData(val.objectBounds, val.objectBounds.max_size(), xmlcontext->getContextFirst("object_bounding_box"), "bounds", create);
 	golem::XMLData("enable_noise", val.gtNoiseEnable, xmlcontext->getContextFirst("point_cloud_noise"), create);
 	grasp::XMLData(val.gtPoseStddev, xmlcontext->getContextFirst("point_cloud_noise gt_pose_stddev"), create);
 

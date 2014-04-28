@@ -41,6 +41,7 @@ void spam::XMLData(Belief::Desc& val, golem::XMLContext* context, bool create) {
 	//golem::XMLData("test", val.tactile.test, context, create);
 	//grasp::XMLData(val.tactile.stddev, context->getContextFirst("test_stddev"), create);
 	//golem::XMLData(&val.tactile.covariance[0], &val.tactile.covariance[grasp::RBCoord::N], "c", context->getContextFirst("covariance"), create);
+	golem::XMLData("num_poses", val.numPoses, context, create);
 	golem::XMLData("num_hypotheses", val.numHypotheses, context, create);
 	golem::XMLData("max_surface_points", val.maxSurfacePoints, context, create);
 	golem::XMLData(&val.covariance[0], &val.covariance[grasp::RBCoord::N], "c", context->getContextFirst("covariance"), create);
@@ -98,7 +99,7 @@ Real Belief::Hypothesis::dist2NearestKPoints(const grasp::RBCoord &pose,  const 
 		v.normalise();
 //		const Real thx(Math::atan2(v.z, v.x)), thy(Math::atan2(v.z, v.y));
 //		if (v.z < 0 || Math::abs(thx) > ftDrivenDesc.ftModelDesc.coneTheta1 || Math::abs(thy) > ftDrivenDesc.ftModelDesc.coneTheta2) 
-		if (v.z < 0 || v.z < golem::Real(.5))
+		if (v.z < 0/* || v.z < golem::Real(.5)*/)
 			result = maxDist + 1;
 		//else {
 		//	Mat33 rot;
@@ -216,7 +217,7 @@ bool Belief::create(const Desc& desc) {
 	return true;
 }
 
-grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& model, const golem::Mat34 &transform) {
+grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& model, const golem::Mat34 &transform, const bool init) {
 	U32 idx = 0;
 	// copy model and model frame. Note: it is done only the very first time.
 	if (modelPoints.empty()) {
@@ -258,12 +259,32 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 	if (!sampleProperties.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.covariance, getSamples()))
 		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
 		
-	context.write("spam::Belief::createQuery(TEST): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", sampleProperties.covariance[0], sampleProperties.covariance[1], sampleProperties.covariance[2], sampleProperties.covariance[3], sampleProperties.covariance[4], sampleProperties.covariance[5], sampleProperties.covariance[6]);
+	context.write("spam::Belief::createQuery(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", sampleProperties.covariance[0], sampleProperties.covariance[1], sampleProperties.covariance[2], sampleProperties.covariance[3], sampleProperties.covariance[4], sampleProperties.covariance[5], sampleProperties.covariance[6]);
 	
 	// compute determinant for the sampled hypotheses
 	covarianceDet = REAL_ONE;
 	for (golem::U32 j = 0; j < grasp::RBCoord::N; ++j)
 			covarianceDet *= sampleProperties.covariance[j];
+
+	// Reduce the number of poses to reduce the computational time of belief update
+	if (init) {
+		grasp::RBPose::Sample::Seq tmp;
+		for (size_t i = 0; i < myDesc.numPoses; ++i)
+			tmp.push_back(sample());
+		poses.clear();
+		poses.reserve(myDesc.numPoses);
+		for (size_t i = 0; i < myDesc.numPoses; ++i) {
+			poses.push_back(grasp::RBPose::Sample(grasp::RBCoord(tmp[i].p, tmp[i].q), REAL_ONE, i*REAL_ONE));
+		}
+	
+		// set initial belief
+		initPoses.clear();
+		initPoses.reserve(myDesc.numPoses);
+		for (grasp::RBPose::Sample::Seq::const_iterator i = poses.begin(); i != poses.end(); ++i) {
+			initPoses.push_back(*i);
+		}
+		initProperties = sampleProperties;
+	}
 
 	return actionFrame;
 }
@@ -283,12 +304,12 @@ void Belief::createQuery(const grasp::Cloud::PointSeq& points) {
 	// call the super class
 	grasp::RBPose::createQuery(points);
 	
-	// set initial belief
-	initPoses.clear();
-	for (grasp::RBPose::Sample::Seq::const_iterator i = poses.begin(); i != poses.end(); ++i)
-		initPoses.push_back(*i);
-	initProperties = sampleProperties;
-	
+	//// set initial belief
+	//initPoses.clear();
+	//for (grasp::RBPose::Sample::Seq::const_iterator i = poses.begin(); i != poses.end(); ++i)
+	//	initPoses.push_back(*i);
+	//initProperties = sampleProperties;
+	sampleProperties = pose;
 	context.write("spam::Belief::createQuery(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", sampleProperties.covariance[0], sampleProperties.covariance[1], sampleProperties.covariance[2], sampleProperties.covariance[3], sampleProperties.covariance[4], sampleProperties.covariance[5], sampleProperties.covariance[6]);
 }
 
@@ -341,7 +362,7 @@ void Belief::createResample() {
 	}
 	
 	// generate new set of hypotheses
-	createHypotheses(modelPoints, modelFrame);
+//	createHypotheses(modelPoints, modelFrame, false);
 }
 
 //------------------------------------------------------------------------------
@@ -354,23 +375,29 @@ Real Belief::density(const Real dist) const {
 	return (dist > myDesc.sensory.sensoryRange) ? REAL_ZERO : (dist < REAL_EPS) ? kernel(REAL_EPS, myDesc.lambda) : kernel(dist, myDesc.lambda); // esponential up to norm factor
 }
 
-void Belief::createUpdate(const grasp::Manipulator *manipulator, const golem::Waypoint &w, const grasp::FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force) {
+void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Robot *robot, const golem::Waypoint &w, const grasp::FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force) {
+	context.write("spam::Belief::createUpdate()...\n");
 	Real weight = golem::REAL_ONE;
 	bool intersect = false; 
 	// retrieve wrist's workspace pose and fingers configuration
 	//golem::Mat34 poses[grasp::Manipulator::JOINTS];
 	//manipulator->getPoses(manipulator->getPose(w.cpos), poses);
-	grasp::RealSeq forces(force);
-	for (Chainspace::Index i = manipulator->getController()->getStateInfo().getChains().begin(); i != manipulator->getController()->getStateInfo().getChains().end(); ++i) {
+//	grasp::RealSeq forces(force);
+	for (Chainspace::Index i = robot->getStateHandInfo().getChains().begin(); i != robot->getStateHandInfo().getChains().end(); ++i) {
 		// check if any of the joint in the current chain (finger) has been triggered
-		bool triggered = false;
+		std::vector<bool> triggered;
+		triggered.reserve(robot->getStateHandInfo().getJoints(i).size());
 //		context.write("Chain %d\n", i);
-		for (Configspace::Index j = manipulator->getController()->getStateInfo().getJoints(i).begin(); j != manipulator->getController()->getStateInfo().getJoints(i).end(); ++j) { 
-			const size_t idx = j - manipulator->getController()->getStateInfo().getJoints().begin();
-			triggered = triggered || [&] () -> bool {
+		// bounds of the entire finger
+		golem::Bounds::Seq bounds;
+		grasp::RealSeq forces;
+		forces.assign(robot->getStateHandInfo().getJoints(i).size(), REAL_ZERO);
+		for (Configspace::Index j = robot->getStateHandInfo().getJoints(i).begin(); j != robot->getStateHandInfo().getJoints(i).end(); ++j) { 
+			const size_t idx = j - robot->getStateHandInfo().getJoints(i).begin();
+			triggered[idx] = [&] () -> bool {
 				for (grasp::FTGuard::Seq::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
 					if (j == i->jointIdx) {
-						forces[idx] = i->type == grasp::FTGUARD_ABS ? 0 : i->type == grasp::FTGUARD_LESSTHAN ? -1 : 1;
+						forces[idx] = i->type == grasp::FTGUARD_ABS ? REAL_ZERO : i->type == grasp::FTGUARD_LESSTHAN ? -REAL_ONE : REAL_ONE;
 						return true;
 					}
 				return false;
@@ -378,31 +405,44 @@ void Belief::createUpdate(const grasp::Manipulator *manipulator, const golem::Wa
 			//const golem::U32 joint = manipulator->getArmJoints() + idx;
 			//golem::Bounds::Seq bounds;
 			//manipulator->getJointBounds(joint, poses[joint], bounds);
-			golem::Bounds::Seq bounds;
 			manipulator->getJointBounds(golem::U32(j - manipulator->getController()->getStateInfo().getJoints().begin()), w.wposex[j], bounds);
+		}
 			//for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b)
 			//		context.write("finger bound frame <%f %f %f>\n", (*b)->getPose().p.x, (*b)->getPose().p.y, (*b)->getPose().p.z);
-			golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO;
-			for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
-				const Real eval = evaluate(bounds, grasp::RBCoord(w.wposex[j]), *sampledPose, forces[idx], intersect);
-				sampledPose->weight *= (triggered ? myDesc.sensory.contactFac*eval : intersect ? myDesc.sensory.noContactFac*(REAL_ONE - eval) : 1);
-				golem::kahanSum(norm, c, sampledPose->weight);
-			}
+		golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO;
+		//context.write("Updating poses' weights for chain=%d\n", i);
+		for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
+			const Real eval = evaluate(bounds, grasp::RBCoord(w.wpos[i]), *sampledPose, forces, triggered, intersect);
+			const bool fingerTriggered = [&] () -> bool {
+				for (std::vector<bool>::const_iterator i = triggered.begin(); i != triggered.end(); ++i)
+					if (*i) return true;
+				return false;
+			}();
+			sampledPose->weight *= fingerTriggered ? myDesc.sensory.contactFac*eval : myDesc.sensory.noContactFac*(REAL_ONE - eval);
+			//const Real eval = evaluate(bounds, grasp::RBCoord(w.wposex[j]), *sampledPose, forces[idx], j == robot->getStateHandInfo().getJoints(i).begin(), intersect);
+			//sampledPose->weight *= (triggered ? myDesc.sensory.contactFac*eval : intersect ? myDesc.sensory.noContactFac*(REAL_ONE - eval) : REAL_ZERO);
+			//golem::kahanSum(norm, c, sampledPose->weight);
+		//}
 		}
+		//context.write("\n---------------------------------------------\n");
 	}
 
 	// normalise weights
 	golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO, cdf = golem::REAL_ZERO;
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose)
 		golem::kahanSum(norm, c, sampledPose->weight);
+	//context.write("norm=%f\n", norm);
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
 		sampledPose->weight /= norm;
+		//context.write("sample.weight = %f\n", sampledPose->weight);
 		cdf += sampledPose->weight;
 		sampledPose->cdf = cdf;
 	}
+	context.write("spam::Belief::createUpdate(): done!\n");
+
 }
 
-golem::Real Belief::evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const Real &force, bool &intersect) {
+golem::Real Belief::evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const grasp::RealSeq &forces, std::vector<bool> &triggered, bool intersect) {
 	Real distMin = myDesc.sensory.sensoryRange + REAL_ONE;	
 	const Real norm = REAL_ONE - density(myDesc.sensory.sensoryRange); //(ftDrivenDesc.ftModelDesc.enabledLikelihood)?/*REAL_ONE/*/(REAL_ONE - density(ftDrivenDesc.ftModelDesc.distMax)):REAL_ONE;
 	Mat34 actionFrame(sample.q, sample.p), queryFrame(Mat34(sample.q, sample.p) * modelFrame), queryFrameInv, fromQueryToJoint;
@@ -439,9 +479,6 @@ golem::Real Belief::evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCo
 		}
 		
 	}
-	//context.write(" -> dist(to shape)=%5.7f, bound <%f %f %f>, point <%f %f %f>, intersection %s, norm=%5.7f, density=%5.7f, prob of touching=%5.7f\n", distMin, 
-	//	boundFrame.x, boundFrame.y, boundFrame.z, surfaceFrame.x, surfaceFrame.y, surfaceFrame.z,
-	//	intersect ? "Y" : "N", norm, density(distMin), norm*density(distMin));
 	//return norm*density(distMin); // if uncomment here there is no notion of direction of contacts
 
 	// compute the direction of contact (from torques)
@@ -451,13 +488,27 @@ golem::Real Belief::evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCo
 	jointFrameInv.setInverse(jointFrame);
 	jointFrameInv.multiply(v, queryFrame.p);
 	v.normalise();
+	//context.write(" -> dist(to shape)=%5.7f, bound <%f %f %f>, point <%f %f %f>, v <%f %f %f>, intersection %s, triggered <%s %s %s %s>, forces <%f %f %f %f>, <norm=%5.7f, density=%5.7f, prob of touching=%5.7f\n", distMin, 
+	//	boundFrame.x, boundFrame.y, boundFrame.z, surfaceFrame.x, surfaceFrame.y, surfaceFrame.z, v.x, v.y, v.z,
+	//	intersect ? "Y" : "N", 
+	//	triggered[0] ? "Y" : "N", triggered[1] ? "Y" : "N", triggered[2] ? "Y" : "N", triggered[3] ? "Y" : "N",
+	//	forces[0], forces[1], forces[2], forces[3],
+	//	norm, density(distMin), norm*density(distMin));
+
 //		const Real thx(Math::atan2(v.z, v.x)), thy(Math::atan2(v.z, v.y));
 //		if (v.z < 0 || Math::abs(thx) > ftDrivenDesc.ftModelDesc.coneTheta1 || Math::abs(thy) > ftDrivenDesc.ftModelDesc.coneTheta2) 
-	if ((v.z < 0 && force > 0) || (v.z > 0 && force < 0)) {
+
+	// The first joint of the finger responds to side movements on the 'y' axis
+	if (triggered[0]) 
+		if ((v.y < 0 && forces[0] < 0) || (v.y > 0 && forces[0] > 0)) return REAL_ZERO;
+	// The other joint respond to movements on the 'z' axis
+	else 
+		for (size_t i = 1; i < triggered.size(); ++i) 
+			if ( triggered[i] && ((v.z < 0 && forces[i] < 0) || (v.z > 0 && forces[i] > 0))) return REAL_ZERO;
+		
 		//context.write("evaluation pose <%f %f %f> sample <%f %f %f> v.z=%f force=%f\n", 
-		//	pose.p.x, pose.p.y, pose.p.z, queryFrame.p.x, queryFrame.p.y, queryFrame.p.z, v.z, force);
-		return REAL_ZERO;
-	}
+		//	pose.p.x, pose.p.y, pose.p.z, queryFrame.p.x, queryFrame.p.y, queryFrame.p.z, v.z, force);	
+	
 	// return the likelihood of observing such a contact for the current joint
 	return norm*density(distMin);
 
@@ -488,3 +539,154 @@ golem::Real Belief::evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCo
 ////	context.write(" -> dist(to shape)=%5.7f, norm=%5.7f, density=%5.7f, prob of touching=%5.7f\n", distMin, norm, density(distMin), norm*density(distMin));
 //	return /*norm**/density(distMin);
 }
+
+
+//void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Robot *robot, const golem::Waypoint &w, const grasp::FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force) {
+//	context.write("spam::Belief::createUpdate()...\n");
+//	Real weight = golem::REAL_ONE;
+//	bool intersect = false; 
+//	// retrieve wrist's workspace pose and fingers configuration
+//	//golem::Mat34 poses[grasp::Manipulator::JOINTS];
+//	//manipulator->getPoses(manipulator->getPose(w.cpos), poses);
+//	grasp::RealSeq forces(force);
+//	for (Chainspace::Index i = robot->getStateHandInfo().getChains().begin(); i != robot->getStateHandInfo().getChains().end(); ++i) {
+//		// check if any of the joint in the current chain (finger) has been triggered
+//		bool triggered = false;
+////		context.write("Chain %d\n", i);
+//		for (Configspace::Index j = robot->getStateHandInfo().getJoints(i).begin(); j != robot->getStateHandInfo().getJoints(i).end(); ++j) { 
+//			const size_t idx = j - robot->getStateHandInfo().getJoints().begin();
+//			triggered = triggered || [&] () -> bool {
+//				for (grasp::FTGuard::Seq::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
+//					if (j == i->jointIdx) {
+//						forces[idx] = i->type == grasp::FTGUARD_ABS ? 0 : i->type == grasp::FTGUARD_LESSTHAN ? -1 : 1;
+//						return true;
+//					}
+//				return false;
+//			} ();
+//			//const golem::U32 joint = manipulator->getArmJoints() + idx;
+//			//golem::Bounds::Seq bounds;
+//			//manipulator->getJointBounds(joint, poses[joint], bounds);
+//			golem::Bounds::Seq bounds;
+//			manipulator->getJointBounds(golem::U32(j - manipulator->getController()->getStateInfo().getJoints().begin()), w.wposex[j], bounds);
+//			//for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b)
+//			//		context.write("finger bound frame <%f %f %f>\n", (*b)->getPose().p.x, (*b)->getPose().p.y, (*b)->getPose().p.z);
+//			golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO;
+//			context.write("Updating poses' weights for chain=%d joint=%d(%d) (triggered %s)\n", i, j - robot->getStateHandInfo().getJoints(i).begin(),j, triggered ? "Y" : "N");
+//			for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
+//				const Real eval = triggered ? evaluate(bounds, grasp::RBCoord(w.wposex[j]), *sampledPose, forces[idx], j == robot->getStateHandInfo().getJoints(i).begin(), intersect) : REAL_ONE;
+//				sampledPose->weight *= 
+//				//const Real eval = evaluate(bounds, grasp::RBCoord(w.wposex[j]), *sampledPose, forces[idx], j == robot->getStateHandInfo().getJoints(i).begin(), intersect);
+//				//sampledPose->weight *= (triggered ? myDesc.sensory.contactFac*eval : intersect ? myDesc.sensory.noContactFac*(REAL_ONE - eval) : REAL_ZERO);
+//				//golem::kahanSum(norm, c, sampledPose->weight);
+//			}
+//			context.write("\n---------------------------------------------\n");
+//		}
+//	}
+//
+//	// normalise weights
+//	golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO, cdf = golem::REAL_ZERO;
+//	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose)
+//		golem::kahanSum(norm, c, sampledPose->weight);
+//	context.write("norm=%f\n", norm);
+//	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
+//		sampledPose->weight /= norm;
+//		context.write("sample.weight = %f\n", sampledPose->weight);
+//		cdf += sampledPose->weight;
+//		sampledPose->cdf = cdf;
+//	}
+//	context.write("spam::Belief::createUpdate(): done!\n");
+//
+//}
+//
+//golem::Real Belief::evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const Real &force, bool jointZero, bool intersect) {
+//	Real distMin = myDesc.sensory.sensoryRange + REAL_ONE;	
+//	const Real norm = REAL_ONE - density(myDesc.sensory.sensoryRange); //(ftDrivenDesc.ftModelDesc.enabledLikelihood)?/*REAL_ONE/*/(REAL_ONE - density(ftDrivenDesc.ftModelDesc.distMax)):REAL_ONE;
+//	Mat34 actionFrame(sample.q, sample.p), queryFrame(Mat34(sample.q, sample.p) * modelFrame), queryFrameInv, fromQueryToJoint;
+//
+//	Vec3 boundFrame, surfaceFrame;
+//	if (pose.p.distance(queryFrame.p) < distMin) {
+//		const size_t size = modelPoints.size() < myDesc.maxSurfacePoints ? modelPoints.size() : myDesc.maxSurfacePoints;
+//		for (size_t i = 0; i < size; ++i) {
+//			// CHECK: Do you assume that a point has a full frame with **orientation**? Where does the orientation come from?
+//
+//			//const Point& point = size < modelPoints.size() ? modelPoints[size_t(rand.next())%
+//			//	modelPoints.size()] : modelPoints[i];
+//			//Mat34 pointFrame;
+//			//pointFrame.multiply(actionFrame, point.frame);
+//			const Vec3 point = grasp::Cloud::getPoint(size < modelPoints.size() ? modelPoints[size_t(rand.next())%modelPoints.size()] : modelPoints[i]);
+//			Mat34 pointFrame = actionFrame;
+//			pointFrame.p += point; // only position is updated
+//			const Real dist = [&] () -> Real {
+//				Real min = REAL_MAX;
+//				for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b) {
+//					const Real d = (*b)->getSurfaceDistance(pointFrame.p);
+//					if (d < min) {
+//						min = d;
+//						boundFrame = (*b)->getPose().p;
+//						surfaceFrame = pointFrame.p;
+//					}
+//				}
+//				return min;
+//			} ();
+//			if (dist <= REAL_ZERO) 
+//				intersect = true;
+//			if (dist > -REAL_EPS && dist < distMin)
+//				distMin = dist;
+//		}
+//		
+//	}
+//	//return norm*density(distMin); // if uncomment here there is no notion of direction of contacts
+//
+//	// compute the direction of contact (from torques)
+//	Vec3 v;
+//	Mat34 jointFrame(Mat33(pose.q), pose.p);
+//	Mat34 jointFrameInv;
+//	jointFrameInv.setInverse(jointFrame);
+//	jointFrameInv.multiply(v, queryFrame.p);
+//	v.normalise();
+//	context.write(" -> dist(to shape)=%5.7f, bound <%f %f %f>, point <%f %f %f>, v <%f %f %f>, intersection %s, first_joint %s, norm=%5.7f, density=%5.7f, prob of touching=%5.7f\n", distMin, 
+//		boundFrame.x, boundFrame.y, boundFrame.z, surfaceFrame.x, surfaceFrame.y, surfaceFrame.z, v.x, v.y, v.z,
+//		intersect ? "Y" : "N", jointZero ? "Y" : "N", norm, density(distMin), norm*density(distMin));
+//
+////		const Real thx(Math::atan2(v.z, v.x)), thy(Math::atan2(v.z, v.y));
+////		if (v.z < 0 || Math::abs(thx) > ftDrivenDesc.ftModelDesc.coneTheta1 || Math::abs(thy) > ftDrivenDesc.ftModelDesc.coneTheta2) 
+//
+//	// The first joint of the finger responds to side movements on the 'y' axis
+//	if (jointZero) 
+//		if ((v.y < 0 && force < 0) || (v.y > 0 && force > 0)) return REAL_ZERO;
+//	// The other joint respond to movements on the 'z' axis
+//	else 
+//		if ((v.z < 0 && force < 0) || (v.z > 0 && force > 0)) return REAL_ZERO;
+//		//context.write("evaluation pose <%f %f %f> sample <%f %f %f> v.z=%f force=%f\n", 
+//		//	pose.p.x, pose.p.y, pose.p.z, queryFrame.p.x, queryFrame.p.y, queryFrame.p.z, v.z, force);	
+//	
+//	// return the likelihood of observing such a contact for the current joint
+//	return norm*density(distMin);
+//
+//	
+////	queryFrameInv.setInverse(queryFrame);
+////	fromQueryToJoint.multiply(queryFrameInv, Mat34(pose.q, pose.p));
+////	//context.write("pose <%5.7f %5.7f %5.7f>\n sample <%5.7f %5.7f %5.7f>\n",
+////	//	pose.p.x, pose.p.y, pose.p.z, sample.p.x, sample.p.y, sample.p.z);
+////	//context.write("query-to-joint frame <%5.7f %5.7f %5.7f>\n",
+////	//	fromQueryToJoint.p.x, fromQueryToJoint.p.y, fromQueryToJoint.p.z);
+////
+////	//context.write(" -> magnitude=%5.7f\n", fromQueryToJoint.p.magnitude());
+////	//if (fromQueryToJoint.p.magnitude() > 2*ftDrivenDesc.ftModelDesc.distMax)
+////	//	return golem::REAL_ZERO; //norm*density(distMin);
+////
+////	fromQueryToJoint.multiply(trn, fromQueryToJoint);
+////	//context.write("new pose <%5.7f %5.7f %5.7f>,  model <%5.7f %5.7f %5.7f>, dist=%5.7f\n",
+////	//	fromQueryToJoint.p.x, fromQueryToJoint.p.y, fromQueryToJoint.p.z, trn.p.x, trn.p.y, trn.p.z, trn.p.distance(fromQueryToJoint.p));
+////	if (fromQueryToJoint.p.magnitude() < distMin) {
+////		const size_t size = modelPoints.size() < ftDrivenDesc.ftModelDesc.points ? modelPoints.size() : ftDrivenDesc.ftModelDesc.points;
+////		for (size_t i = 0; i < size; ++i) {
+////			const Point& point = size < modelPoints.size() ? modelPoints[size_t(rand.next())%modelPoints.size()] : modelPoints[i];
+////			const Real dist = fromQueryToJoint.p.distance(point.frame.p);
+////			if (dist < distMin)
+////				distMin = dist;
+////		}
+////	}
+//////	context.write(" -> dist(to shape)=%5.7f, norm=%5.7f, density=%5.7f, prob of touching=%5.7f\n", distMin, norm, density(distMin), norm*density(distMin));
+////	return /*norm**/density(distMin);
+//}
