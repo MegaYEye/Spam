@@ -71,10 +71,13 @@ public:
 		/** Model points */
 		grasp::Cloud::PointSeq queryPoints;
 
-		/** Pose distribution **/
+		/** High dim rep pose distribution **/
 		grasp::RBPose::Sample::Seq poses;
-		/** Low dim representation of the pose distribution **/
+		/** Low dim rep pose distribution **/
 		grasp::RBPose::Sample::Seq hypotheses;
+
+		/** Belief file name extension */
+		std::string extSamples;
 		
 		/** Reset data during construction */
 		Data() {
@@ -91,6 +94,8 @@ public:
 
 			poses.clear();
 			hypotheses.clear();
+
+			extSamples = ".rbs";
 		}
 		/** Assert that the description is valid. */
 		virtual void assertValid(const grasp::Assert::Context& ac) const {
@@ -250,6 +255,9 @@ protected:
 
 	/** Render data */
 	virtual void renderData(Data::Map::const_iterator dataPtr);
+	/** Render belief state */
+	void renderUncertainty(const grasp::RBPose::Sample::Seq &samples);
+	golem::DebugRenderer uncRenderer;
 	/** Reset data pointers */
 	void resetDataPointers();
 
@@ -280,5 +288,13 @@ protected:
 //------------------------------------------------------------------------------
 
 };	// namespace
+
+namespace golem {
+
+template <> void Stream::read(spam::PosePlanner::Data &data) const;
+template <> void Stream::write(const spam::PosePlanner::Data &data);
+
+};	// namespace
+
 
 #endif /*_GRASP_POSEPLANNER_POSEPLANNER_H_*/

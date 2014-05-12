@@ -454,7 +454,7 @@ golem::Real FTDrivenHeuristic::getBoundedDist(const golem::Waypoint& w) const {
 			const ChainDesc* cdesc = getChainDesc()[i];
 			if (cdesc->enabledObs) {
 				const RBCoord c(w.wpos[i]);
-				const Real dist = c.p.distance((*s)->getSampleGF().p);
+				const Real dist = c.p.distance((*s)->toRBPoseSampleGF().p);
 				if (!(dist > this->ftDrivenDesc.ftModelDesc.distMax))
 					return dist;
 			}
@@ -1196,7 +1196,7 @@ Real FTDrivenHeuristic::directionApproach(const Waypoint &w) const {
 	
 	Vec3 v;
 	Mat34 tcpFrameInv, hypothesis;
-	hypothesis = (*pBelief->getHypotheses().begin())->getSampleGF().toMat34();
+	hypothesis = (*pBelief->getHypotheses().begin())->toRBPoseSampleGF().toMat34();
 	tcpFrameInv.setInverse(w.wpos[armIndex]);
 	tcpFrameInv.multiply(v, hypothesis.p);
 	v.normalise();

@@ -132,9 +132,9 @@ public:
 
 
 		/** Returns this sample in model frame **/
-		inline grasp::RBPose::Sample getSample() { return sample; };
+		inline grasp::RBPose::Sample toRBPoseSample() { return sample; };
 		/** Returns this sample in global frame (default: robot frame) **/
-		inline grasp::RBPose::Sample getSampleGF() { return grasp::RBPose::Sample(sample.toMat34() * modelFrame, sample.weight, sample.cdf); };
+		inline grasp::RBPose::Sample toRBPoseSampleGF() { return grasp::RBPose::Sample(sample.toMat34() * modelFrame, sample.weight, sample.cdf); };
 		
 	protected:
 		/** Builds a pcl::PointCloud and its kd tree */
@@ -246,10 +246,9 @@ public:
 	inline golem::SampleProperty<golem::Real, grasp::RBCoord, grasp::RBCoord::N> getSampleProperties() { return sampleProperties; };
 
 	/** Sets the hypothesis for planning. NOTE: returns the action frame **/
-	grasp::RBPose::Sample createHypotheses(const grasp::Cloud::PointSeq& model, const golem::Mat34 &transform, const bool init = true);
-	/** Gets samples from hypotheses **/
-	grasp::RBPose::Sample::Seq getSamples();
-
+	grasp::RBPose::Sample createHypotheses(const grasp::Cloud::PointSeq& model, const golem::Mat34 &transform/*, const bool init = true*/);
+	/** Returns the low-dimensional representation of the density **/
+	grasp::RBPose::Sample::Seq getHypothesesToSample();
 
 	/** Creates query object pose distribution */
 	void createQuery(const grasp::Cloud::PointSeq& points);
@@ -328,7 +327,6 @@ protected:
 void XMLData(Belief::Desc& val, golem::XMLContext* context, bool create = false);
 
 //------------------------------------------------------------------------------
-
 
 }; // namespace spam
 

@@ -251,10 +251,10 @@ void RagPlanner::profile(Data::Map::iterator dataPtr, const golem::Controller::S
 			grasp::to<Data>(dataPtr)->actionFrame.p.x, grasp::to<Data>(dataPtr)->actionFrame.p.y, grasp::to<Data>(dataPtr)->actionFrame.p.z,
 			s.p.x, s.p.y, s.p.z);
 		robot->trnTrajectory(actionFrameT, modelFrame, grasp::to<Data>(dataPtr)->actionFrame, inp.begin(), inp.end(), seq);
-		pregraspFrameQ.multiply(grasp::to<Data>(dataPtr)->actionFrame, pregraspFrameM);
-		graspFrameQ.multiply(grasp::to<Data>(dataPtr)->actionFrame, graspFrameM);
-		renderData(dataPtr);
-		context.write("approaching trajectory after\n");
+		//pregraspFrameQ.multiply(grasp::to<Data>(dataPtr)->actionFrame, pregraspFrameM);
+		//graspFrameQ.multiply(grasp::to<Data>(dataPtr)->actionFrame, graspFrameM);
+		//renderData(dataPtr);
+		context.write("approaching trajectory after (dur+%f)\n", trjApproachDuration);
 		printTrajectory(seq, robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());
 		//robot->createTrajectory(grasp::to<Data>(dataPtr)->actionFrame, inp.begin(), inp.end(), seq);
 		grasp::Player::profile(dataPtr, seq, dur, idle);
@@ -311,22 +311,62 @@ void RagPlanner::perform(Data::Map::iterator dataPtr) {
 //	robot->getController()->initControlCycle();
 	// go to initial state
 	universe.postScreenCaptureFrames(-1);
-//	std::cout << "spame:perform 10\n";
+	std::cout << "spam:perform 1\n";
 	robot->sendTrajectory(initTrajectory, true);
-//	std::cout << "spame:perform 11\n";
+	std::cout << "spam:perform 2\n";
 	robot->waitForEnd();
-	//renderContacts();
-	::Sleep(2000);
-	universe.postScreenCaptureFrames(0);	
-
-	// start recording the remaining trajectory part
-	for (auto i: cameraSeq)
-		if (!i->isRecordingApp()) i->start(prefix.str().c_str());
-	// block until the first image arrives
-	for (auto i: cameraSeq)
-		if (!i->isRecordingApp()) i->wait();
-
+	// set the current state of the robot after the trajectory is over
 	Controller::State state = robot->getController()->createState();
+	robot->getController()->lookupState(context.getTimer().elapsed(), state);
+	//renderContacts();
+	std::cout << "spam:perform 3\n";
+	::Sleep(2000);
+	std::cout << "spam:perform 4\n";
+	universe.postScreenCaptureFrames(0);	
+	
+	handBounds.clear();
+	renderHand(state);
+	context.debug("init trajectory timesteps: %f - %f (state %f)\n", initTrajectory.front().t, initTrajectory.back().t, state.t);
+	return;
+
+	// reset guards allowing the bham to move again
+	golem::RobotJustin *justin = robot->getRobotJustin();
+	if (!justin) {
+		Controller::State::Seq seq, out;
+		robot->initControlCycle();
+		grasp::RobotState::List tmp;
+		grasp::RobotState s = robot->recvState(context.getTimer().elapsed());
+		s.config = state;
+		s.command = state;
+		tmp.push_back(s);
+		tmp.push_back(s);
+
+		extrapolate(makeCommand(tmp), trjApproachExtrapolFac, false, seq);
+		// compute profile
+		golem::Controller::State::Seq::iterator ptr = out.end(), tmpend;
+		const golem::SecTmReal t = out.empty() ? context.getTimer().elapsed() : out.back().t;
+		const Controller::State begin(seq.front(), t), end(seq.back(), begin.t + trjApproachDuration);
+
+		// create trajectory
+		tmpend = out.end();
+		pProfile->create(seq.begin(), seq.end(), begin, end, out, ptr, tmpend);
+		// profile trajectory
+		tmpend = out.end();
+		pProfile->profile(out, ptr, tmpend);
+
+		robot->resumeGuards(out);
+	}
+	// start recording the remaining trajectory part
+	std::cout << "spam:perform 5\n";
+	//for (auto i: cameraSeq)
+	//	if (!i->isRecordingApp()) i->start(prefix.str().c_str());
+	//// block until the first image arrives
+	//for (auto i: cameraSeq)
+	//	if (!i->isRecordingApp()) i->wait();
+
+	//std::cout << "spam:perform 6\n";
+	//Controller::State state = robot->getController()->createState();
+	std::cout << "spam:perform 7\n";
 	grasp::to<Data>(dataPtr)->triggered = robot->getTriggeredGuards(/*grasp::to<Data>(dataPtr)->*/triggeredGuards, state); 
 
 	// -1 means no contact between the object and the hand (most likely a contact with the table).
@@ -419,8 +459,8 @@ void RagPlanner::perform(Data::Map::iterator dataPtr) {
 
 	// stop recording at the last frame
 	// HACK: comment out for Justin! (stop manually due to faulty sync)
-	//for (auto i: cameraSeq)
-	//	i->stop(context.getTimer().elapsed() + trjManipPerfOff);//robotStates.back().config.t;
+	for (auto i: cameraSeq)
+		i->stop(context.getTimer().elapsed() + trjManipPerfOff);//robotStates.back().config.t;
 
 	//std::cout << "spame:perform 37\n";
 	//grasp::to<Data>(dataPtr)->triggeredStates.clear();
@@ -477,8 +517,8 @@ void RagPlanner::performApproach(Data::Map::iterator dataPtr) {
 	//context.write("approaching trajetory (list)\n");
 	//printTrajectory(makeCommand(dataPtr->second.approachAction), robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());	
 //	createGrasp(dataPtr);
-	context.write("approaching trajetory (list)\n");
-	printTrajectory(makeCommand(grasp::to<Data>(dataPtr)->actionApproach), robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());	
+	//context.write("approaching trajetory (list)\n");
+	//printTrajectory(makeCommand(grasp::to<Data>(dataPtr)->actionApproach), robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());	
 	Controller::State::Seq seq;
 	extrapolate(makeCommand(grasp::to<Data>(dataPtr)->actionApproach), trjApproachExtrapolFac, false, seq);
 	context.write("approaching trajetory (list) after extrapolate\n");
@@ -489,13 +529,16 @@ void RagPlanner::performApproach(Data::Map::iterator dataPtr) {
 	grasp::to<Data>(dataPtr)->action.clear();
 //	grasp::to<Data>(queryDataPtr)->action.clear();
 	trnEnable = true;
+	context.debug("approaching dur %f\n", trjApproachDuration);
 	profile(dataPtr, seq, trjApproachDuration, trjApproachIdle);
 	// copy the planned trajectory in my trial data
 	//poseDataPtr->second.action.clear();
 	//for (Controller::State::Seq::const_iterator i = grasp::to<Data>(queryDataPtr)->action.begin(); i != grasp::to<Data>(queryDataPtr)->action.end(); ++i)
 	//	poseDataPtr->second.action.push_back(*i);
-	Controller::State grasp = *(--grasp::to<Data>(dataPtr)->action.end());
 	handBounds.clear();
+	Controller::State pregrasp = *grasp::to<Data>(dataPtr)->action.begin();
+	renderHand(pregrasp);
+	Controller::State grasp = *(--grasp::to<Data>(dataPtr)->action.end());
 	renderHand(grasp);
 	// perform action
 	perform(dataPtr);
@@ -561,7 +604,7 @@ void RagPlanner::performManip(Data::Map::iterator dataPtr) {
 	// compute the approach traectory in a new frame and its profile
 	grasp::to<Data>(dataPtr)->action.clear();
 //	grasp::to<Data>(queryDataPtr)->action.clear();
-	trnEnable = false;
+	trnEnable = true;
 	profile(dataPtr, seq, trjManipDuration, trjManipIdle);
 	// copy the planned trajectory in my trial data
 	//poseDataPtr->second.action.clear();
@@ -743,7 +786,7 @@ void RagPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 
 	// update the query frame
 	std::cout << "spam:update&resample 10\n";
-	mlFrame = pBelief->createHypotheses(modelPoints, modelFrame, false);;
+	mlFrame = pBelief->createHypotheses(modelPoints, modelFrame);;
 	std::cout << "spam:update&resample 11\n";
 	grasp::to<Data>(dataPtr)->actionFrame = grasp::to<Data>(queryDataPtr)->actionFrame = Mat34(mlFrame.q, mlFrame.p);
 	context.write("action frame poseData <%f %f %f> queryData <%f %f %f>\n", 
@@ -760,9 +803,14 @@ void RagPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	//for (size_t i = 1; i < K; ++i)
 	//	dataPtr->second.samples.push_back(pBelief->sampleHypothesis());
 	std::cout << "spam:update&resample 14\n";
-	showQueryDistrib = true;
-	renderData(dataPtr);
-	showQueryDistrib = false;
+	//showQueryDistrib = true;
+	//renderData(dataPtr);
+	//showQueryDistrib = false;
+	renderUncertainty(pBelief->getSamples());
+	size_t p = 1;
+	std::cout << "density:\n";
+	for (grasp::RBPose::Sample::Seq::const_iterator i = pBelief->getSamples().begin(); i != pBelief->getSamples().end(); ++i, ++p)
+		std::cout << "pose " << p << " <" << i->p.x << ", " << i->p.y << ", " << i->p.z << "> w:" << i->weight << std::endl; 
 	std::cout << "spam:update&resample 15\n";
 	
 	context.write("end\n");
@@ -1167,6 +1215,7 @@ void RagPlanner::function(Data::Map::iterator& dataPtr, int key) {
 REPLAN_TEST:
 			try {
 				if (!singleGrasp) {
+					testTransformation(actionFrameT, modelFrame, grasp::to<Data>(dataPtr)->actionFrame, grasp::to<Data>(dataPtr)->actionApproach);
 					performApproach(poseDataPtr);
 					context.write("perform approach is over.\n");
 				}
@@ -1214,12 +1263,10 @@ GRASP_QUALITY:
 			}
 			else {
 MOVING_BACK:
-				std::cout << "moving back: step 1\n";
+				trnEnable = false;
 				pHeuristic->enableUnc = false;
-				std::cout << "moving back: step 2\n";
 				grasp::to<Data>(poseDataPtr)->actionWithdraw.clear();
 				// if replanning is not required the robot is moved back to the home pose
-				std::cout << "moving back: step 3\n";
 				if (!grasp::to<Data>(poseDataPtr)->replanning || withdrawToHomePose) {
 					if (!/*grasp::to<Data>(poseDataPtr)->*/executedTrajectory.empty()) {
 						// set as first waypont the pregrasp pose or the home pose
@@ -1231,7 +1278,6 @@ MOVING_BACK:
 					//	grasp::to<Data>(poseDataPtr)->actionWithdraw.push_back(grasp::to<Data>(poseDataPtr)->homeStates.front());
 				// otherwise the previous waypoint in the trajectory is withdrawn
 				} else {
-				std::cout << "moving back: step 4\n";
 					Real distMin(REAL_MAX);
 					Controller::State robotConfig = robot->recvState().config, waypoint = robot->recvState().config;
 					for (Controller::State::Seq::const_iterator a = /*grasp::to<Data>(poseDataPtr)->*/executedTrajectory.begin(), b = /*grasp::to<Data>(poseDataPtr)->*/executedTrajectory.begin() + 1; b != /*grasp::to<Data>(poseDataPtr)->*/executedTrajectory.end(); ++a, ++b) {
@@ -1248,7 +1294,6 @@ MOVING_BACK:
 					while (grasp::to<Data>(poseDataPtr)->actionWithdraw.size() < 2)
 						grasp::to<Data>(poseDataPtr)->actionWithdraw.push_back(w);
 				}
-				std::cout << "moving back: step 5\n";
 //				renderTrialData(poseDataPtr);
 				// move back to home pose
 				performWithdraw(poseDataPtr);
@@ -1436,6 +1481,13 @@ MOVING_BACK:
 //			}	
 //			return;
 	}
+	case '0':
+	{
+		Controller::State state = robot->getController()->createState();
+		robot->getController()->lookupState(SEC_TM_REAL_MAX, state);
+		printState(state, robot->getController()->getStateInfo().getJoints().begin(), robot->getController()->getStateInfo().getJoints().end(), "Current robot pose", true);
+		return;
+	}
 	case '_':
 		scene.getOpenGL(grasp::to<Data>(poseDataPtr)->openGL);
 		if (poseDataPtr == dataMap.begin()) poseDataPtr = --dataMap.end(); else --poseDataPtr;
@@ -1487,6 +1539,33 @@ void RagPlanner::printState(const golem::Controller::State &state, const golem::
 	}
 	std::cout << ">\n"; //context.write(">\n");
 
+}
+
+void RagPlanner::testTransformation(const golem::Mat34 &teachFrame, const golem::Mat34 &modelFrame, const golem::Mat34 &queryFrame, const grasp::RobotState::List &action) {
+	const golem::Chainspace::Index armChain = robot->getStateArmInfo().getChains().begin();
+	context.write("RagPlanner::testTransformation(): approaching trajetory (list)\n");
+	printTrajectory(makeCommand(action), robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());	
+	for (grasp::RobotState::List::const_iterator i = action.begin(); i != action.end(); ++i) {
+		GenWorkspaceChainState gwcs;
+		robot->getController()->chainForwardTransform(i->config.cpos, gwcs.wpos);
+		gwcs.wpos[armChain].multiply(gwcs.wpos[armChain], robot->getController()->getChains()[armChain]->getReferencePose()); // 1:1
+		// define the grasp frame
+		Mat34 poseFrameInv, graspFrame, graspFrameInv;
+		poseFrameInv.setInverse(gwcs.wpos[armChain]);
+		graspFrame.multiply(poseFrameInv, teachFrame * modelFrame);
+		graspFrameInv.setInverse(graspFrame);
+		gwcs.wpos[armChain].multiply(modelFrame, graspFrameInv);
+		context.write("trnTrajectory(): grasp frame at model <%f %f %f>\n", gwcs.wpos[armChain].p.x, gwcs.wpos[armChain].p.y, gwcs.wpos[armChain].p.z);
+		gwcs.wpos[armChain].multiply(queryFrame, gwcs.wpos[armChain]); // new waypoint frame
+		context.write("trnTrajectory(): grasp frame at new query <%f %f %f>\n", gwcs.wpos[armChain].p.x, gwcs.wpos[armChain].p.y, gwcs.wpos[armChain].p.z);
+		
+		if (i == action.begin())
+			graspFrameQ = gwcs.wpos[armChain];
+		else
+		pregraspFrameQ = gwcs.wpos[armChain];
+	}
+	handBounds.clear();
+	renderData(currentDataPtr);
 }
 
 

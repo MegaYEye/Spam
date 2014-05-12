@@ -13,6 +13,7 @@
 #include <Golem/Tools/XMLData.h>
 #include <Golem/Tools/Data.h>
 #include <Golem/PhysCtrl/Data.h>
+#include <Golem/Device/RobotJustin/RobotJustin.h>
 
 #ifdef WIN32
 	#pragma warning (push)
@@ -81,7 +82,7 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 	controller->chainForwardTransform(cend.cpos, wcc);
 	wcc[armChain].multiply(wcc[armChain], controller->getChains()[armChain]->getReferencePose());
 	err.add(err, grasp::RBDist(grasp::RBCoord(wcc[armChain]), grasp::RBCoord(gwcs.wpos[armChain])));
-	context.debug("spam::Robot::findTarget(): Pose error: lin=%.9f, ang=%.9f\n", err.lin, err.ang);
+	context.write("spam::Robot::findTarget(): Pose error: lin=%.9f, ang=%.9f\n", err.lin, err.ang);
 
 }
 
@@ -131,58 +132,80 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 //	return ret;
 //}
 
-int Robot::getTriggeredGuards(grasp::FTGuard::Seq &triggeredJoints, golem::Controller::State &state) {
+int Robot::checkGuards(std::vector<int> &triggeredGuards, golem::Controller::State &state) {
+	golem::RobotJustin *justin = getRobotJustin();
+	if (justin) 
+		return justin->getTriggeredGuards(triggeredGuards, state);
+	else {
+		const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
 	
-	std::cout << "Robot::getTriggeredGuards 1\n";
-	triggeredJoints.clear();
-	std::cout << "Robot::getTriggeredGuards 2\n";
-	triggeredJoints.reserve(ftGuards.size());
-	std::cout << "Robot::getTriggeredGuards 3\n";
-	std::vector<int> triggeredIndeces;
-	std::cout << "Robot::getTriggeredGuards 4\n";
-	triggeredIndeces.reserve(ftGuards.size());
-	std::cout << "Robot::getTriggeredGuards 5\n";
-	const int NUM_JOINTS_CTRL = handInfo.getJoints(handInfo.getChains().begin()).size() - 1;
-	std::cout << "Robot::getTriggeredGuards 6\n";
-	int ret = 0;
-	std::cout << "Robot::getTriggeredGuards 7\n";
-	// in case justin moves with enable guards
-	if ((ret = grasp::Robot::getTriggeredGuards(triggeredIndeces, state)) > 0 /*|| !staticObject*/) {
-		context.write("spam::Robot::getTriggeredGuards(): num=%d triggered joint(s):", triggeredIndeces.size());
-	std::cout << "Robot::getTriggeredGuards 8\n";
-		for (std::vector<int>::const_iterator i = triggeredIndeces.begin(); i != triggeredIndeces.end(); ++i) {
-	std::cout << "Robot::getTriggeredGuards 9\n";
-			triggeredJoints.push_back(ftGuards[*i]);
-	std::cout << "Robot::getTriggeredGuards 10\n";
-			context.write(" <chain=%d joint=%d>", ftGuards[*i].chainIdx, ftGuards[*i].jointIdx);
-	std::cout << "Robot::getTriggeredGuards 11\n";
+		context.write("spam::Robot::getTriggeredGuards(): retrieving forces from state\n");
+		grasp::RealSeq force;
+		force.assign(handInfo.getJoints().size(), REAL_ZERO);
+		if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
+			for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
+				const size_t k = j - handInfo.getJoints().begin();
+				const size_t z = j - armInfo.getJoints().begin();
+				force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
+				if (Math::abs(state.get<ConfigspaceCoord>(forceOffset)[j]) > ftHandGuards[k]) {
+					context.write("hand joint %d force=%f guard=%f\n", k, force[k], ftHandGuards[k]);
+					triggeredGuards.push_back(z);
+				}
+			}
 		}
-		context.write("\n");
-	std::cout << "Robot::getTriggeredGuards 12\n";
-		return triggeredIndeces.size(); // return ret;
+		return triggeredGuards.size();
 	}
-	//else {
-	//	// in case justin tried to grasp with no guards enabled
-	//	const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
-	//	state = recvState().config;
-	//
-	//	context.write("spam::Robot::getTriggeredGuards(): retrieving forces from state\n");
-	//	grasp::RealSeq force;
-	//	force.assign(handInfo.getJoints().size(), REAL_ZERO);
-	//	if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
-	//		for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
-	//			const size_t k = j - handInfo.getJoints().begin();
-	//			force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
-	//			if (Math::abs(state.get<ConfigspaceCoord>(forceOffset)[j]) > ftHandGuards[k]) {
-	//				context.write("hand joint %d force=%f\n", k, force[k]);
-	//				triggeredJoints.push_back(j);
-	//			}
-	//		}
-	//	}
+	return -1;
+
+}
+
+int Robot::getTriggeredGuards(grasp::FTGuard::Seq &triggeredJoints, golem::Controller::State &state) {	
+	triggeredJoints.clear();
+	triggeredJoints.reserve(ftGuards.size());
+
+	const int NUM_JOINTS_CTRL = handInfo.getJoints(handInfo.getChains().begin()).size() - 1;
+	int ret = 0;
+	// in case justin moves with enable guards
+	golem::RobotJustin *justin = getRobotJustin();
+	if (justin) {
+		std::vector<int> triggeredIndeces;
+		triggeredIndeces.reserve(ftGuards.size());
+		if ((ret = justin->getTriggeredGuards(triggeredIndeces, state)) > 0 /*|| !staticObject*/) {
+			context.write("spam::Robot::getTriggeredGuards(): num=%d triggered joint(s):", triggeredIndeces.size());
+			for (std::vector<int>::const_iterator i = triggeredIndeces.begin(); i != triggeredIndeces.end(); ++i) {
+				triggeredJoints.push_back(ftGuards[*i]);
+				context.write(" <chain=%d joint=%d>", ftGuards[*i].chainIdx, ftGuards[*i].jointIdx);
+			}
+			context.write("\n");
+//			return triggeredJoints.size(); // return ret;
+		}
+	}
+	else {
+		// in case robot bham
+		const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
+	
+		context.write("spam::Robot::getTriggeredGuards(): retrieving forces from state. triggered joint(s): joints=%d guards=%d\n", handInfo.getJoints().size(), ftGuards.size());
+		grasp::RealSeq force;
+		force.assign(handInfo.getJoints().size(), REAL_ZERO);
+		if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
+			for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
+				const size_t k = j - handInfo.getJoints().begin();
+				force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
+				if (state.get<ConfigspaceCoord>(forceOffset)[j] < ftGuards[2*k].value) {
+					context.write("hand chain %d joint %d (k=%d) force=%f guard=%f\n", ftGuards[2*k].chainIdx, ftGuards[2*k].joint, k, force[k], ftGuards[2*k].value);
+					triggeredJoints.push_back(ftGuards[2*k]);
+				}
+				else if (state.get<ConfigspaceCoord>(forceOffset)[j] > ftGuards[2*k+1].value) {
+					context.write("hand chain %d joint %d (k=%d) force=%f guard=%f\n", ftGuards[2*k+1].chainIdx, ftGuards[2*k+1].joint, k, force[k], ftGuards[2*k+1].value);
+					triggeredJoints.push_back(ftGuards[2*k+1]);
+				}
+			}
+		}
+		ret = triggeredJoints.size();
+	}
 	//	if (!triggeredJoints.empty())
 	//		return true;
 	//}
-	std::cout << "Robot::getTriggeredGuards 13\n";
 	context.write("spam::Robot::getTriggeredGuards(): no triggered guards (ret=%d)\n", ret);
 	return ret;
 }

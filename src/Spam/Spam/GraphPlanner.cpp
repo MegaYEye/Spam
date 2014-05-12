@@ -322,7 +322,6 @@ bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const 
 #ifdef _GRAPHPLANNER_PERFMON
 	PerfTimer t;
 #endif
-
 	getCallbackDataSync()->syncCollisionBounds();
 
 #ifdef _GRAPHPLANNER_PERFMON

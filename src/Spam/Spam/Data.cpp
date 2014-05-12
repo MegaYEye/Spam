@@ -100,10 +100,11 @@ template <> void golem::Stream::read(spam::TrialData& trialData) const {
 	//trialData.action.clear();
 	//read(trialData.action, trialData.action.begin(), trialData.controller.createState());
 
-	trialData.pdf.clear();
-	read(trialData.pdf, trialData.pdf.begin());
-	trialData.samples.clear();
-	read(trialData.samples, trialData.samples.begin());
+	trialData.density.clear();
+	read(trialData.density, trialData.density.begin());
+
+	trialData.hypotheses.clear();
+	read(trialData.hypotheses, trialData.hypotheses.begin());
 }
 
 template <> void golem::Stream::write(const spam::TrialData& trialData) {
@@ -114,8 +115,8 @@ template <> void golem::Stream::write(const spam::TrialData& trialData) {
 
 	write(trialData.approachWithdraw.begin(), trialData.approachWithdraw.end());
 	//write(trialData.action.begin(), trialData.action.end());
-	write(trialData.pdf.begin(), trialData.pdf.end());
-	write(trialData.samples.begin(), trialData.samples.end());
+	write(trialData.density.begin(), trialData.density.end());
+	write(trialData.hypotheses.begin(), trialData.hypotheses.end());
 }
 
 //------------------------------------------------------------------------------

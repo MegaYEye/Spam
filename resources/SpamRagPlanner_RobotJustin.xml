@@ -3,7 +3,7 @@
 <golem>
   <rand seed="0"></rand>
   <parallels threads="4"></parallels>
-  <messages level="error"/>
+  <messages level="debug"/>
   <!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
   <library physx="0" normals="0"/>
 
@@ -86,7 +86,7 @@
     <!--
       <test_stddev lin="0.025" ang="0"/>
     </tactile_model>-->
-    <tactile_model num_poses="50" num_hypotheses="3" max_surface_points="5000">
+    <tactile_model num_poses="10" num_hypotheses="3" max_surface_points="5000">
       <covariance dim="7" c1="0.001" c2="0.001" c3="0.001" c4="0.001" c5="0.0001" c6="0.001" c7="0.0001"/>
       <test_stddev lin="0.025" ang="0"/>
     </tactile_model>
@@ -98,11 +98,12 @@
     </point_cloud_noise>
   </rag_planner>
 
-  <pose_planner num_poses="50" num_hypotheses="5" features="800000" attempts="10" kernels="800000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
+  <pose_planner num_poses="10" num_hypotheses="5" points="100000" features="800000" attempts="10" kernels="800000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
     <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
     <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
     <pose_stddev lin="0.01" ang="100.0"/>
     <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
+    <optimisation minimum="1" population_size="10" generations_num="1000" de_diff_fac="0.5" de_cross_prob="0.1" test_generations="100" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest"/>
     <!--<model_trn_frame v1="0.0" v2="0.0" v3="0.0" q0="1.0" q1="0.0" q2="0.0" q3="0.0"/>-->
     <model_trn_frame v1="0.653760" v2="-0.363143" v3="0.110231" q0="0.997094" q1="-0.013287" q2="0.004461" q3="0.074874"/>
     <appearance distrib_samples="100">
@@ -374,11 +375,12 @@
       </optimisation>
     </camera>
 
-    <pose_estimation features="800000" attempts="10" kernels="800000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
+    <pose_estimation points="100000" features="800000" attempts="10" kernels="800000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
       <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
       <pose_stddev lin="0.01" ang="100.0"/>
       <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
+      <optimisation minimum="1" population_size="20" generations_num="2000" de_diff_fac="0.5" de_cross_prob="0.1" test_generations="100" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest"/>
     </pose_estimation>
 
     <data dir="data/" name="default" ext_data=".xml" ext_cloud=".pcd" ext_action=".act" ext_grasp_pose=".grasppose" ext_grasp_cluster=".graspcluster" sep_name="-" sep_field="&#x9;">

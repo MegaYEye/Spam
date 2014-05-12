@@ -84,19 +84,13 @@ public:
 		/** State of the robot at the time a contact occurred */
 //		golem::Controller::State::Seq triggeredStates;
 
-		/** Cache (local): action */
-//		golem::Controller::State::Seq action;
-		/** Approach action waypoints */
-//		grasp::RobotState::List approachAction;
-		/** Manipulation action waypoints */
-//		grasp::RobotState::List manipAction;
 		/** Withdraw action waypoints */
 //		grasp::RobotState::List actionWithdraw;
 		/** Combined action waypoints */
 //		golem::Controller::State::Seq executedTrajectory;
 
 		/** Safety configurations of the robot */
-		grasp::RobotState::Seq homeStates;
+//		grasp::RobotState::Seq homeStates;
 
 		/** Specifies if the replanning should be triggered */
 		bool replanning;
@@ -119,11 +113,14 @@ public:
 //			triggeredStates.clear();
 //			actionWithdraw.clear();
 //			executedTrajectory.clear();
-			homeStates.clear();
+//			homeStates.clear();
 		}
 		/** Assert that the description is valid. */
 		virtual void assertValid(const grasp::Assert::Context& ac) const {
 			PosePlanner::Data::assertValid(ac);
+
+			//for (grasp::RobotState::List::const_iterator i = actionWithdraw.begin(); i != actionWithdraw.end(); ++i)
+			//	i->assertValid(grasp::Assert::Context(ac, "actionWithdraw."));
 		}
 
 		/** Reads/writes object from/to a given XML context */
@@ -132,6 +129,50 @@ public:
 		/** Creates new data */
 		virtual Ptr clone() const;
 	};
+
+	///** Trial data for a single demonstration and/or test trial in a binary format (stored on disk) */
+	//class TrialData {
+	//public:
+	//	typedef std::map<std::string, TrialData> Map;
+	//	friend class golem::Stream;
+
+	//	/** Header name */
+	//	static const char headerName [];
+	//	/** Header version */
+	//	static const golem::U32 headerVersion;
+
+	//	/** Cache (local): OpenGL settings */
+	//	golem::Scene::OpenGL openGL;
+	//	/** Cache (local): action */
+	//	golem::Controller::State::Seq action;
+
+	//	/** Iteration index */
+	//	std::size_t iteration;
+
+	//	/** Data */
+	//	Data data;
+
+	//	/** Object label */
+	//	std::string objectLabel;
+	//	/** Grasps */
+	//	golem::Controller::State::Seq grasps;
+
+	//	/** Combined action waypoints */
+	//	golem::Controller::State::Seq executedTrajectory;
+
+	//	/** Normalise factor */
+	//	golem::Real normFac;
+
+	//	/** Specifies if the replanning should be triggered */
+	//	bool replanning;
+
+	//	/** Constructor */
+	//	TrialData(const golem::Controller& controller) : controller(controller) {
+	//	}
+
+	//protected:
+	//	const golem::Controller& controller;
+	//};
 
 	class Desc : public PosePlanner::Desc {
 	protected:
@@ -386,6 +427,9 @@ protected:
 	virtual void render();
 	/** Render data */
 //	virtual void renderData(Data::Map::const_iterator dataPtr);
+
+	/** Testing grasp transformations */
+	void testTransformation(const golem::Mat34 &teachFrame, const golem::Mat34 &modelFrame, const golem::Mat34 &queryFrame, const grasp::RobotState::List &action);
 
 	RagPlanner(golem::Scene &scene);
 	bool create(const Desc& desc);

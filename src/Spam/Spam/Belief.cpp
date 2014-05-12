@@ -207,7 +207,8 @@ bool Belief::create(const Desc& desc) {
 		throw Message(Message::LEVEL_CRIT, "spam::RBPose::create(): Invalid description");
 	
 	grasp::RBPose::create((grasp::RBPose::Desc&)desc);
-	
+
+	// reset container for the low-dim rep belief
 	hypotheses.clear();
 	hypotheses.reserve(desc.numHypotheses);
 
@@ -217,12 +218,12 @@ bool Belief::create(const Desc& desc) {
 	return true;
 }
 
-grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& model, const golem::Mat34 &transform, const bool init) {
+grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& model, const golem::Mat34 &transform/*, const bool init*/) {
 	U32 idx = 0;
 	// copy model and model frame. Note: it is done only the very first time.
 	if (modelPoints.empty()) {
 		modelPoints.clear();
-		modelPoints.reserve(model.size());
+		modelPoints.resize(model.size());
 		for (grasp::Cloud::PointSeq::const_iterator i = model.begin(); i != model.end(); ++i) 
 			modelPoints.push_back(*i);
 		modelFrame = transform;
@@ -256,7 +257,7 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 	}
 	
 	// mean and covariance
-	if (!sampleProperties.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.covariance, getSamples()))
+	if (!sampleProperties.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.covariance, getHypothesesToSample()))
 		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
 		
 	context.write("spam::Belief::createQuery(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", sampleProperties.covariance[0], sampleProperties.covariance[1], sampleProperties.covariance[2], sampleProperties.covariance[3], sampleProperties.covariance[4], sampleProperties.covariance[5], sampleProperties.covariance[6]);
@@ -266,35 +267,35 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 	for (golem::U32 j = 0; j < grasp::RBCoord::N; ++j)
 			covarianceDet *= sampleProperties.covariance[j];
 
-	// Reduce the number of poses to reduce the computational time of belief update
-	if (init) {
-		grasp::RBPose::Sample::Seq tmp;
-		for (size_t i = 0; i < myDesc.numPoses; ++i)
-			tmp.push_back(sample());
-		poses.clear();
-		poses.reserve(myDesc.numPoses);
-		for (size_t i = 0; i < myDesc.numPoses; ++i) {
-			poses.push_back(grasp::RBPose::Sample(grasp::RBCoord(tmp[i].p, tmp[i].q), REAL_ONE, i*REAL_ONE));
-		}
-	
-		// set initial belief
-		initPoses.clear();
-		initPoses.reserve(myDesc.numPoses);
-		for (grasp::RBPose::Sample::Seq::const_iterator i = poses.begin(); i != poses.end(); ++i) {
-			initPoses.push_back(*i);
-		}
-		initProperties = sampleProperties;
-	}
+	//// Reduce the number of poses to reduce the computational time of belief update
+	//if (init) {
+	//	grasp::RBPose::Sample::Seq tmp;
+	//	for (size_t i = 0; i < myDesc.numPoses; ++i)
+	//		tmp.push_back(sample());
+	//	poses.clear();
+	//	poses.reserve(myDesc.numPoses);
+	//	for (size_t i = 0; i < myDesc.numPoses; ++i) {
+	//		poses.push_back(grasp::RBPose::Sample(grasp::RBCoord(tmp[i].p, tmp[i].q), REAL_ONE, i*REAL_ONE));
+	//	}
+	//
+	//	// set initial belief
+	//	initPoses.clear();
+	//	initPoses.reserve(myDesc.numPoses);
+	//	for (grasp::RBPose::Sample::Seq::const_iterator i = poses.begin(); i != poses.end(); ++i) {
+	//		initPoses.push_back(*i);
+	//	}
+	//	initProperties = sampleProperties;
+	//}
 
 	return actionFrame;
 }
 
-grasp::RBPose::Sample::Seq Belief::getSamples() {
+grasp::RBPose::Sample::Seq Belief::getHypothesesToSample() {
 	// return the rbpose::sample associated with each hypothesis.
 	// NOTE: useful for creating mean and covariance in Belief::setHypotheses
 	grasp::RBPose::Sample::Seq samples;
 	for (Hypothesis::Seq::const_iterator h = hypotheses.begin(); h != hypotheses.end(); ++h)
-		samples.push_back((*h)->getSample());
+		samples.push_back((*h)->toRBPoseSample());
 	return samples;
 }
 
@@ -302,15 +303,39 @@ grasp::RBPose::Sample::Seq Belief::getSamples() {
 
 void Belief::createQuery(const grasp::Cloud::PointSeq& points) {
 	// call the super class
-	grasp::RBPose::createQuery(points);
+//	grasp::RBPose::createQuery(points);
 	
-	//// set initial belief
-	//initPoses.clear();
-	//for (grasp::RBPose::Sample::Seq::const_iterator i = poses.begin(); i != poses.end(); ++i)
-	//	initPoses.push_back(*i);
-	//initProperties = sampleProperties;
-	sampleProperties = pose;
-	context.write("spam::Belief::createQuery(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", sampleProperties.covariance[0], sampleProperties.covariance[1], sampleProperties.covariance[2], sampleProperties.covariance[3], sampleProperties.covariance[4], sampleProperties.covariance[5], sampleProperties.covariance[6]);
+	/* Right way of proceeding. For each kernel a new query is computed
+	*/
+	SecTmReal init = context.getTimer().elapsed();
+	for (size_t i = 0; i < myDesc.numPoses; ++i) {
+		// reset RBPose::poses for the fitting dist
+		//poses.clear();
+		//poses.reserve(myDesc.kernels);
+		grasp::RBPose::createQuery(points);
+		grasp::RBPose::Sample s = grasp::RBPose::maximum();
+		initPoses.push_back(s);
+	}
+	std::printf("Belief::createQuery(): computational time %.7f\n", context.getTimer().elapsed() - init);
+	
+	// mean and covariance
+	if (!pose.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.covariance, initPoses))
+		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
+	// copy initial distribution properties
+	initProperties = pose;
+	
+	// generate new (noisy) samples out of selected subset of poses 
+	for (size_t i = 0; i < myDesc.numPoses; ++i)
+		rand.nextGaussianArray<golem::Real>(&(initPoses[i])[0], &(initPoses[i])[0] + grasp::RBCoord::N, &((initPoses[i]))[0], &initProperties.covarianceSqrt[0]); // normalised multivariate Gaussian
+
+	// Overwriting RBPose::poses
+	poses.clear();
+	poses.reserve(myDesc.numPoses);
+	for (grasp::RBPose::Sample::Seq::const_iterator i = initPoses.begin(); i != initPoses.end(); ++i)
+		poses.push_back(*i);
+	pose = initProperties;
+
+	context.write("spam::Belief::createQuery(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", initProperties.covariance[0], initProperties.covariance[1], initProperties.covariance[2], initProperties.covariance[3], initProperties.covariance[4], initProperties.covariance[5], initProperties.covariance[6]);
 }
 
 //void Belief::createUpdate(const Mat34 &trn) {
@@ -377,7 +402,6 @@ Real Belief::density(const Real dist) const {
 
 void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Robot *robot, const golem::Waypoint &w, const grasp::FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force) {
 	context.write("spam::Belief::createUpdate()...\n");
-	Real weight = golem::REAL_ONE;
 	bool intersect = false; 
 	// retrieve wrist's workspace pose and fingers configuration
 	//golem::Mat34 poses[grasp::Manipulator::JOINTS];
@@ -410,15 +434,16 @@ void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Ro
 			//for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b)
 			//		context.write("finger bound frame <%f %f %f>\n", (*b)->getPose().p.x, (*b)->getPose().p.y, (*b)->getPose().p.z);
 		golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO;
-		//context.write("Updating poses' weights for chain=%d\n", i);
+		context.write("Updating poses' weights. poses size=%d\n", poses.size());
 		for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
-			const Real eval = evaluate(bounds, grasp::RBCoord(w.wpos[i]), *sampledPose, forces, triggered, intersect);
+			context.write("<%f %f %f> <%f %f %f %f>\n", sampledPose->p.x, sampledPose->p.y, sampledPose->p.z, sampledPose->q.w, sampledPose->q.x, sampledPose->q.y, sampledPose->q.z);
+			const Real eval = golem::Math::log10(evaluate(bounds, grasp::RBCoord(w.wpos[i]), *sampledPose, forces, triggered, intersect));
 			const bool fingerTriggered = [&] () -> bool {
 				for (std::vector<bool>::const_iterator i = triggered.begin(); i != triggered.end(); ++i)
 					if (*i) return true;
 				return false;
 			}();
-			sampledPose->weight *= fingerTriggered ? myDesc.sensory.contactFac*eval : myDesc.sensory.noContactFac*(REAL_ONE - eval);
+			sampledPose->weight += fingerTriggered ? myDesc.sensory.contactFac*eval : myDesc.sensory.noContactFac*(REAL_ONE - eval);
 			//const Real eval = evaluate(bounds, grasp::RBCoord(w.wposex[j]), *sampledPose, forces[idx], j == robot->getStateHandInfo().getJoints(i).begin(), intersect);
 			//sampledPose->weight *= (triggered ? myDesc.sensory.contactFac*eval : intersect ? myDesc.sensory.noContactFac*(REAL_ONE - eval) : REAL_ZERO);
 			//golem::kahanSum(norm, c, sampledPose->weight);
@@ -432,10 +457,11 @@ void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Ro
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose)
 		golem::kahanSum(norm, c, sampledPose->weight);
 	//context.write("norm=%f\n", norm);
+	c = golem::REAL_ZERO;
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
 		sampledPose->weight /= norm;
 		//context.write("sample.weight = %f\n", sampledPose->weight);
-		cdf += sampledPose->weight;
+		golem::kahanSum(cdf, c, sampledPose->weight);
 		sampledPose->cdf = cdf;
 	}
 	context.write("spam::Belief::createUpdate(): done!\n");
@@ -488,23 +514,25 @@ golem::Real Belief::evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCo
 	jointFrameInv.setInverse(jointFrame);
 	jointFrameInv.multiply(v, queryFrame.p);
 	v.normalise();
-	//context.write(" -> dist(to shape)=%5.7f, bound <%f %f %f>, point <%f %f %f>, v <%f %f %f>, intersection %s, triggered <%s %s %s %s>, forces <%f %f %f %f>, <norm=%5.7f, density=%5.7f, prob of touching=%5.7f\n", distMin, 
-	//	boundFrame.x, boundFrame.y, boundFrame.z, surfaceFrame.x, surfaceFrame.y, surfaceFrame.z, v.x, v.y, v.z,
-	//	intersect ? "Y" : "N", 
-	//	triggered[0] ? "Y" : "N", triggered[1] ? "Y" : "N", triggered[2] ? "Y" : "N", triggered[3] ? "Y" : "N",
-	//	forces[0], forces[1], forces[2], forces[3],
-	//	norm, density(distMin), norm*density(distMin));
+	context.write(" -> dist(to shape)=%5.7f, bound <%f %f %f>, point <%f %f %f>, v <%f %f %f>, intersection %s, triggered <%s %s %s %s>, forces <%f %f %f %f>, <norm=%5.7f, density=%5.7f, prob of touching=%5.7f\n", distMin, 
+		boundFrame.x, boundFrame.y, boundFrame.z, surfaceFrame.x, surfaceFrame.y, surfaceFrame.z, v.x, v.y, v.z,
+		intersect ? "Y" : "N", 
+		triggered[0] ? "Y" : "N", triggered[1] ? "Y" : "N", triggered[2] ? "Y" : "N", triggered[3] ? "Y" : "N",
+		forces[0], forces[1], forces[2], forces[3],
+		norm, density(distMin), norm*density(distMin));
 
 //		const Real thx(Math::atan2(v.z, v.x)), thy(Math::atan2(v.z, v.y));
 //		if (v.z < 0 || Math::abs(thx) > ftDrivenDesc.ftModelDesc.coneTheta1 || Math::abs(thy) > ftDrivenDesc.ftModelDesc.coneTheta2) 
 
 	// The first joint of the finger responds to side movements on the 'y' axis
 	if (triggered[0]) 
-		if ((v.y < 0 && forces[0] < 0) || (v.y > 0 && forces[0] > 0)) return REAL_ZERO;
+		//if ((v.y < 0 && forces[0] < 0) || (v.y > 0 && forces[0] > 0)) return REAL_ZERO; // justin robot
+		if ((v.x < 0 && forces[0] < 0) || (v.x > 0 && forces[0] > 0)) return REAL_ZERO; // bham robot
 	// The other joint respond to movements on the 'z' axis
 	else 
 		for (size_t i = 1; i < triggered.size(); ++i) 
-			if ( triggered[i] && ((v.z < 0 && forces[i] < 0) || (v.z > 0 && forces[i] > 0))) return REAL_ZERO;
+			//if ( triggered[i] && ((v.z < 0 && forces[i] < 0) || (v.z > 0 && forces[i] > 0))) return REAL_ZERO; // justin robot
+			if ( triggered[i] && ((v.z < 0 && forces[i] < 0) || (v.z > 0 && forces[i] > 0))) return REAL_ZERO; // bham robot
 		
 		//context.write("evaluation pose <%f %f %f> sample <%f %f %f> v.z=%f force=%f\n", 
 		//	pose.p.x, pose.p.y, pose.p.z, queryFrame.p.x, queryFrame.p.y, queryFrame.p.z, v.z, force);	

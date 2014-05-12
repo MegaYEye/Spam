@@ -9,7 +9,7 @@
   <universe name="SPAM RaGPlanner">
     <window x="0" y="0" width="800" height="600"></window>
     <physx fps="30" skin_width="0.005" sleep_lin_vel_squared="0.0025" sleep_ang_vel_squared="0.0025" max_angular_velocity="7.0" bounce_threshold="-2.0"></physx>
-    <recorder frame_drop="1" file_name="screen" file_ext=".png" leading_zeros="1" encoder_str="image/png" buffer_len="100"></recorder>
+    <recorder frame_drop="1" file_name="data/jar/capture/trial2" file_ext=".png" leading_zeros="1" encoder_str="image/png" buffer_len="100"></recorder>
   </universe>
 
   <scene name="Spam rag planner">
@@ -37,13 +37,15 @@
       <view_point v1="6.0" v2="7.0" v3="10.0"></view_point>
       <view_dir v1="-1.5" v2="-0.5" v3="-1.0"></view_dir>
       <view_up v1="0.0000" v2="0.0000" v3="1.0000"/>
-      --><!--<clear_color R="0" G="0" B="0" A="255"></clear_color>--><!--
+      -->
+    <!--<clear_color R="0" G="0" B="0" A="255"></clear_color>-->
+    <!--
       <clear_color R="55" G="55" B="60" A="255"></clear_color>
       <draw solid="0" wire="1" shadow="0" physx="0" normals="0"/>
     </opengl>-->
   </scene>
 
-  <rag_planner num_sampled_poses="3" imp_weights_threshold="0.0001" max_sampling_iterations="100" timestamp_factor="0.15" planning_uncertainty="0" single_grasp_attempt="0" withdraw_to_home_pose="1">
+  <rag_planner num_sampled_poses="3" imp_weights_threshold="0.0001" max_sampling_iterations="100" timestamp_factor="0.15" planning_uncertainty="1" single_grasp_attempt="0" withdraw_to_home_pose="1">
     <point_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="10" camera_frame="1" camera_frame_size="0.05">
       <frame_size v1="5e-1" v2="5e-1" v3="1e-2"/>
       <colour override="0" R="127" G="127" B="127" A="255"/>
@@ -72,7 +74,7 @@
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.001" c5="0.001" c6="0.001" c7="0.001"/>
       <test_stddev lin="0.01" ang="100"/>
     </tactile_model>-->
-    <tactile_model num_poses="10" num_hypotheses="5" max_surface_points="5000">
+    <tactile_model num_poses="2" num_hypotheses="2" max_surface_points="5000">
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
     </tactile_model>
     <point_cloud_noise enable_noise="0">
@@ -83,11 +85,12 @@
     </point_cloud_noise>
   </rag_planner>
 
-  <pose_planner num_poses="10" num_hypotheses="5" features="500000" attempts="10" kernels="500000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
+  <pose_planner num_poses="2" num_hypotheses="5" points="100000" features="500000" attempts="10" kernels="500000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
     <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
     <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
     <pose_stddev lin="0.01" ang="100.0"/>
     <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
+    <optimisation minimum="1" population_size="10" generations_num="1000" de_diff_fac="0.5" de_cross_prob="0.1" test_generations="100" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest"/>
     <appearance distrib_samples="100">
       <model>
         <line show="1" R="255" G="255" B="0" A="255"/>
@@ -105,18 +108,24 @@
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
     </tactile_model>
   </pose_planner>
-  
+
   <player>
-    <trajectory scan_idle="1.0" approach_duration="3.0" approach_idle="1.0" approach_extrapol_fac="0.5" manip_duration="2.0" manip_idle="2.0" manip_perf_off="0.0" average="0.2">
+    <trajectory scan_idle="1.0" approach_duration="15.0" approach_idle="1.0" approach_extrapol_fac="0.5" manip_duration="8.0" manip_idle="2.0" manip_perf_off="0.0" average="0.2">
       <velocity dim="27" c1="0.1" c2="0.1" c3="0.1" c4="0.1" c5="0.1" c6="0.1" c7="0.1" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5" c21="0.5" c22="0.5" c23="0.5" c24="0.5" c25="0.5" c26="0.5" c27="0.5"/>
       <acceleration dim="27" c1="0.05" c2="0.05" c3="0.05" c4="0.05" c5="0.05" c6="0.05" c7="0.05" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5" c21="0.5" c22="0.5" c23="0.5" c24="0.5" c25="0.5" c26="0.5" c27="0.5"/>
       <distance dim="27" c1="10.0" c2="10.0" c3="10.0" c4="10.0" c5="10.0" c6="10.0" c7="10.0" c8="1.0" c9="1.0" c10="1.0" c11="1.0" c12="1.0" c13="1.0" c14="1.0" c15="1.0" c16="1.0" c17="1.0" c18="1.0" c19="1.0" c20="1.0" c21="1.0" c22="1.0" c23="1.0" c24="1.0" c25="1.0" c26="1.0" c27="1.0"/>
     </trajectory>
-
-    <pose dim="26" c1="0.0" c2="-1.57079633" c3="+1.57079633" c4="0.0" c5="0.0" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
+    <!--starting pose-->
+    <pose dim="26" c1="0.0" c2="-1.57079633" c3="+1.57079633" c4="0.0" c5="+1.57079633" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
+    <!--pregrasp mug's handle-->
+    <pose dim="26" c1="0.147236" c2="-1.2462" c3="1.92803" c4="0.169293" c5="0.895701" c6="0.0741311" c7="-0.109148" c8="0.279834" c9="0.0554988" c10="0.554988" c11="0.0430363" c12="-0.00970373" c13="0.0127944" c14="0.0127944" c15="0.0588738" c16="0.137839" c17="0.0722568" c18="-0.00628319" c19="0.023236" c20="0.219432" c21="0.0198761" c22="0.0198761" c23="0.0298604" c24="0.360258" c25="0.0599388" c26="0.0599388"/>
+    <!-- grasp mug's handle-->
+    <pose dim="26" c1="0.147236" c2="-1.2462" c3="1.92803" c4="0.169293" c5="0.895701" c6="0.0741311" c7="-0.127579" c8="0.652357" c9="0.0554988" c10="0.0554988" c11="-0.0206333" c12="0.246092" c13="0.0127944" c14="0.0127944" c15="0.00190621" c16="0.527675" c17="0.0722568" c18="-0.00628319" c19="0.0235236" c20="0.219432" c21="0.0198761" c22="0.0198761" c23="0.0276264" c24="0.358024" c25="0.0599388" c26="0.0599388"/>
+    <!-- pick up mug's handle-->
+    <pose dim="26" c1="0.160333" c2="-1.5" c3="1.9287" c4="0.152161" c5="1.02185" c6="0.0709476" c7="-0.146568" c8="0.622198" c9="0.0554988" c10="0.0554988" c11="0.01176" c12="0.236039" c13="0.0203343" c14="0.0203343" c15="0.0560812" c16="0.499192" c17="0.0722568" c18="-0.00628319" c19="0.0190556" c20="0.208262" c21="0.0198761" c22="0.0198761" c23="0.0225998" c24="0.352998" c25="0.0599388" c26="0.0599388"/>
     <pose dim="26" c1="0.0" c2="-1.57079633" c3="+1.57079633" c4="0.0" c5="+1.57079633" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
     <pose dim="26" c1="-0.0379758" c2="-1.31591" c3="1.79694" c4="2.96318" c5="-0.847821" c6="-1.16174" c7="0" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0"/>
-
+    <pose dim="26" c1="0.0612244" c2="-1.01968" c3="1.58011" c4="0.127243" c5="1.0204" c6="-0.199716" c7="0.0246229" c8="0.159091" c9="0.0652197" c10="0.0652197" c11="0.0995263" c12="-0.00810221" c13="0.0501041" c14="0.0501041" c15="0.175843" c16="0.148965" c17="0.107186" c18="0.0286463" c19="0.0343787" c20="0.291187" c21="0.0673937" c22="0.0673937" c23="0.0436712" c24="0.223376" c25="0.0568619" c26="0.0568619"/>
     <pose dim="26" c1="0.764376" c2="-0.947911" c3="1.32172" c4="-0.634099" c5="1.95336" c6="0.0874253" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
     <pose dim="26" c1="0.939423" c2="-2.17826" c3="2.46344" c4="-0.778965" c5="1.46438" c6="-0.164736" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
     <!--<pose dim="26" c1="0.0" c2="-1.57079633" c3="+1.57079633" c4="0.0" c5="+1.57079633" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>-->
@@ -125,7 +134,7 @@
   </player>
 
   <robot force_disp_scale="0.2" trajectory_idle="0.5" trajectory_duration="1.0">
-    <ft_sensor use_ft_sensor_client="1">
+    <ft_sensor use_ft_sensor_client="0">
       <daq calibration_file="FT10731.cal" sampling_rate="10000" avg_window_size="10"/>
       <client host="localhost" port="26873"/>
       <!-- y = 80(kuka end-effector mounting) + 7+2+2(Rustam's F/T sensor and Kinect mounting plates) + 33.3(Gamma FT sensor) -->
@@ -133,10 +142,51 @@
       <frame_size v1="0.05" v2="0.05" v3="0.05"/>
       <gain v1="-0.2" v2="-0.2" v3="-0.2" w1="-1.0" w2="-1.0" w3="-1.0"/>
       <!--<limit v1="65.0" v2="65.0" v3="200.0" w1="5.0" w2="5.0" w3="5.0"/>-->
-      <limit v1="30.0" v2="30.0" v3="80.0" w1="2.0" w2="2.0" w3="2.0"/>
-      <guards_tcp v1="30.0" v2="30.0" v3="80.0" w1="2.0" w2="2.0" w3="2.0"/>
-      <guards_hand dim="12" c1="3.0" c2="3.0" c3="3.0" c4="3.0" c5="3.0" c6="3.0" c7="3.0" c8="3.0" c9="3.0" c10="3.0" c11="3.0" c12="3.0"/>
+      <limit_tcp v1="50.0" v2="50.0" v3="150.0" w1="4.0" w2="4.0" w3="4.0"/>
+      <limit_hand dim="20" c1="10.0" c2="10.0" c3="10.0" c4="10.0" c5="10.0" c6="10.0" c7="10.0" c8="10.0" c9="10.0" c10="10.0" c11="10.0" c12="10.0" c13="10.0" c14="10.0" c15="10.0" c16="10.0" c17="10.0" c18="10.0" c19="10.0" c20="10.0"/>
+      <guards_tcp v1="30.0" v2="30.0" v3="80.0" w1="3.0" w2="3.0" w3="3.0"/>
+      <guards_hand dim="20" c1="0.2" c2="0.2" c3="0.2" c4="0.2" c5="0.2" c6="0.2" c7="0.2" c8="0.2" c9="0.2" c10="0.2" c11="0.2" c12="0.2" c13="0.2" c14="0.2" c15="0.2" c16="0.2" c17="0.2" c18="0.2" c19="0.2" c20="0.2"/>
       <stiffness_hand dim="12" c1="1.0" c2="1.0" c3="0.5" c4="1.0" c5="1.0" c6="0.5" c7="1.0" c8="1.0" c9="0.5" c10="1.0" c11="1.0" c12="0.5"/>
+      <ft_guard name="right_thumb" joint="0" type="1" value="-0.2"/>
+      <ft_guard name="right_thumb" joint="0" type="2" value="0.2"/>
+      <ft_guard name="right_thumb" joint="1" type="1" value="-0.2"/>
+      <ft_guard name="right_thumb" joint="1" type="2" value="0.2"/>
+      <ft_guard name="right_thumb" joint="2" type="1" value="-0.2"/>
+      <ft_guard name="right_thumb" joint="2" type="2" value="0.2"/>
+      <ft_guard name="right_thumb" joint="3" type="1" value="-0.2"/>
+      <ft_guard name="right_thumb" joint="3" type="2" value="0.2"/>
+      <ft_guard name="right_tip" joint="0" type="1" value="-0.2"/>
+      <ft_guard name="right_tip" joint="0" type="2" value="0.2"/>
+      <ft_guard name="right_tip" joint="1" type="1" value="-0.2"/>
+      <ft_guard name="right_tip" joint="1" type="2" value="0.2"/>
+      <ft_guard name="right_tip" joint="2" type="1" value="-0.2"/>
+      <ft_guard name="right_tip" joint="2" type="2" value="0.2"/>
+      <ft_guard name="right_tip" joint="3" type="1" value="-0.2"/>
+      <ft_guard name="right_tip" joint="3" type="2" value="0.2"/>
+      <ft_guard name="right_middle" joint="0" type="1" value="-0.2"/>
+      <ft_guard name="right_middle" joint="0" type="2" value="0.2"/>
+      <ft_guard name="right_middle" joint="1" type="1" value="-0.2"/>
+      <ft_guard name="right_middle" joint="1" type="2" value="0.2"/>
+      <ft_guard name="right_middle" joint="2" type="1" value="-0.2"/>
+      <ft_guard name="right_middle" joint="2" type="2" value="0.2"/>
+      <ft_guard name="right_middle" joint="3" type="1" value="-0.2"/>
+      <ft_guard name="right_middle" joint="3" type="2" value="0.2"/>
+      <ft_guard name="right_ring" joint="0" type="1" value="-0.2"/>
+      <ft_guard name="right_ring" joint="0" type="2" value="0.2"/>
+      <ft_guard name="right_ring" joint="1" type="1" value="-0.2"/>
+      <ft_guard name="right_ring" joint="1" type="2" value="0.2"/>
+      <ft_guard name="right_ring" joint="2" type="1" value="-0.2"/>
+      <ft_guard name="right_ring" joint="2" type="2" value="0.2"/>
+      <ft_guard name="right_ring" joint="3" type="1" value="-0.2"/>
+      <ft_guard name="right_ring" joint="3" type="2" value="0.2"/>
+      <ft_guard name="right_little" joint="0" type="1" value="-0.2"/>
+      <ft_guard name="right_little" joint="0" type="2" value="0.2"/>
+      <ft_guard name="right_little" joint="1" type="1" value="-0.2"/>
+      <ft_guard name="right_little" joint="1" type="2" value="0.2"/>
+      <ft_guard name="right_little" joint="2" type="1" value="-0.2"/>
+      <ft_guard name="right_little" joint="2" type="2" value="0.2"/>
+      <ft_guard name="right_little" joint="3" type="1" value="-0.2"/>
+      <ft_guard name="right_little" joint="3" type="2" value="0.2"/>    
     </ft_sensor>
 
     <impedance stiff_steps="10" stiff_step_init="0" damp_steps="10" damp_step_init="0">
@@ -170,9 +220,13 @@
       <pose v1="0.025" v2="-0.005" v3="0.23" roll="0.0" pitch="0.0" yaw="0.16"/>
     </arm_tool_bounds>-->
 
+    <obstacle_bounds type="box" group="1">
+      <dimensions v1="0.3" v2="0.3" v3="0.04"/>
+      <pose v1="0.0" v2="0.6" v3="0.04" roll="0.0" pitch="0.0" yaw="0.0"/>
+    </obstacle_bounds>
     <obstacle_bounds type="plane" distance="0.0" grid_size="10" grid_delta="0.1" group="1">
       <normal v1="0.0" v2="0.0" v3="1.0"/>
-      <pose v1="0.0" v2="0.0" v3="0.0" roll="0.0" pitch="0.0" yaw="0.0"/>
+      <pose v1="0.0" v2="0.0" v3="0.2" roll="0.0" pitch="0.0" yaw="0.0"/>
     </obstacle_bounds>
   </robot>
 
@@ -183,7 +237,7 @@
   <!-- UIBK robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotUIBKSim" -->
   <!-- UIBK robot (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotUIBK" -->
 
-  <controller library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBhamSim">
+  <controller library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBham">
     <renderer>
       <joint_appearance line_width="1.0">
         <solid_colour R="192" G="192" B="0" A="100"></solid_colour>
@@ -204,7 +258,7 @@
     </renderer>
   </controller>
 
-  <planner library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBhamSim">
+  <planner library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBham">
     <renderer show_duration="600.0">
       <goal_renderer show="1" vertex_position_show="0" vertex_frame_show="1" edge_show="0">
         <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
@@ -257,6 +311,10 @@
       <downsample_segmentation enabled="0" enabled_voxel_grid="1" grid_leaf_size="0.002"/>
       <segmentation incremental="0" distance_threshold="0.00001"/>
       <scan_region>
+        <bounds type="box" group="1">
+          <dimensions v1="0.15" v2="0.15" v3="0.15"/>
+          <pose v1="0.0" v2="0.575" v3="0.265" roll="0.0" pitch="0.0" yaw="0.0"/>
+        </bounds>
         <!--<bounds type="box" group="1">
         <dimensions v1="0.15" v2="0.15" v3="0.2"/>
         <pose v1="0.0" v2="0.55" v3="0.1" roll="0.0" pitch="0.0" yaw="0.0"/>
@@ -277,28 +335,34 @@
       <region_colour R="255" G="0" B="255" A="255"/>
     </cloud>
 
-    <!-- codec="I420" codec="DIVX" codec="XVID" codec="X264" -->
-    <!--<camera type="depth" name="robotDepth" index="0" calibration_file="GraspCameraRobotDepth.xml" buffer_len="60" buffer_off="1" thread_timeout="20000" stream_timeout="1000" in_hand="1" recording="0" recording_app="0" video="1" codec="XVID">
-      <property width="640" height="480" fps="30" mode="colour" format="200"/>
-      <property width="320" height="240" fps="30" mode="depth colour" format="101 200"/>
+    <camera type="depth" name="robotDepth" index="1" calibration_file="GraspCameraRobotDepth.xml" buffer_len="60" buffer_off="1" thread_timeout="20000" stream_timeout="1000" in_hand="1" recording="0" recording_app="0" video="1" codec="XVID">
+      <property width="640" height="480" fps="30" mode="ir" format="203"/>
+      <!--<property width="640" height="480" fps="30" mode="colour" format="200"/>-->
+      <property width="640" height="480" fps="30" mode="depth" format="101"/>
+      <!--<property width="320" height="240" fps="30" mode="depth colour" format="101 200"/>-->
       <colour R="127" G="127" B="0" A="255"/>
-      <optimisation minimum="1" population_size="100" generations_num="1000000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-7" num_of_threads="-1" thread_priority="lowest">
+      <optimisation minimum="1" population_size="200" generations_num="1000000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="1000" test_variance="1e-7" num_of_threads="-1" thread_priority="lowest">
         <distance_weights lin="10.0" ang="1.0"/>
         <sample_magnitude lin="0.1" ang="0.5"/>
+        <!--<kuka offset_ang_range="0.0" offset_dist_weights="0.1" link_len_range="0.0" link_dist_weights="0.1"/>-->
       </optimisation>
-    </camera>-->
-    <!--<camera type="depth" name="externDepth" index="1" calibration_file="GraspCameraExternDepth.xml" buffer_len="60" buffer_off="1" thread_timeout="20000" stream_timeout="1000" in_hand="0" recording="1" recording_app="0" video="1" codec="XVID">
+      <deformation_dist dim="26" c1="10.0" c2="10.0" c3="10.0" c4="10.0" c5="10.0" c6="10.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
+    </camera>
+    <camera type="depth" name="externDepth" index="0" calibration_file="GraspCameraExternDepth.xml" buffer_len="60" buffer_off="1" thread_timeout="20000" stream_timeout="1000" in_hand="0" recording="1" recording_app="0" video="1" codec="XVID">
+      <!--<property width="640" height="480" fps="30" mode="ir" format="203"/>-->
       <property width="640" height="480" fps="30" mode="colour" format="200"/>
       <property width="640" height="480" fps="30" mode="depth" format="101"/>
+      <!--<property width="640" height="480" fps="30" mode="depth colour" format="101 200"/>-->
+      <!--<property width="320" height="240" fps="30" mode="depth colour" format="101 200"/>-->
       <colour R="127" G="127" B="0" A="255"/>
       <optimisation minimum="1" population_size="100" generations_num="1000000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-7" num_of_threads="-1" thread_priority="lowest">
         <distance_weights lin="10.0" ang="1.0"/>
         <sample_magnitude lin="0.1" ang="0.5"/>
       </optimisation>
-    </camera>-->
+    </camera>
     <!--<camera type="opencv" name="externOpenCV" index="0" calibration_file="GraspCameraExternOpenCV.xml" buffer_len="90" thread_timeout="10000" capture_index="0" in_hand="0" recording="1" recording_app="1" video="1" codec="XVID">
       <property width="0" height="0" fps="0" mode="0" format=""/>
-      <optimisation minimum="1" population_size="100" generations_num="10000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest">
+      <optimisation minimum="1" population_size="100" generations_num="10000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-7" num_of_threads="-1" thread_priority="lowest">
         <distance_weights lin="10.0" ang="1.0"/>
         <sample_magnitude lin="0.5" ang="1.0"/>
       </optimisation>
@@ -306,19 +370,32 @@
     <!-- FlyCapture2::PixelFormat: MONO8=0x80000000, 411YUV8=0x40000000, 422YUV8=0x20000000, RGB8=0x08000000, ... -->
     <!-- Fly2 Firewire: format=0x40000000 (536870912) -->
     <!-- Chameleon USB2.0: format=0x00400000 (4194304) -->
-    <!--<camera type="pointgrey" name="externPointGrey" index="0" calibration_file="GraspCameraExternPointGrey.xml" buffer_len="90" thread_timeout="10000" in_hand="0" recording="1" recording_app="1" video="1" codec="XVID">
+    <!--<camera type="pointgrey" name="externPointGrey" index="0" calibration_file="GraspCameraExternPointGrey.xml" buffer_len="10" thread_timeout="10000" in_hand="0" recording="1" recording_app="1" video="1" codec="XVID">
       <property width="0" height="0" fps="0" mode="0" format="536870912"/>
-      <optimisation minimum="1" population_size="100" generations_num="10000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest">
+      <optimisation minimum="1" population_size="100" generations_num="10000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-7" num_of_threads="-1" thread_priority="lowest">
+        <distance_weights lin="10.0" ang="1.0"/>
+        <sample_magnitude lin="0.5" ang="1.0"/>
+      </optimisation>
+    </camera>-->
+    <!--<camera type="depthsim" name="cameraSim" index="0" calibration_file="GraspCameraSim.xml" buffer_len="10" thread_timeout="10000" capture_index="0" in_hand="1" recording="1" recording_app="1" video="1" codec="XVID">
+      <property width="200" height="200" fps="10" mode="" format=""/>
+      <property width="200" height="200" fps="10" mode="" format=""/>
+      <colour R="0" G="0" B="0" A="255"/>
+      <sensor v1="0.004" v2="0.003" focal_length="0.004"/>
+      <clip near="0.1" far="10.0" inclination="0.342" epsilon="1e-10"/>
+      <deformation_dist dim="26" c1="10.0" c2="10.0" c3="10.0" c4="10.0" c5="10.0" c6="10.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
+      <optimisation minimum="1" population_size="100" generations_num="10000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-7" num_of_threads="-1" thread_priority="lowest">
         <distance_weights lin="10.0" ang="1.0"/>
         <sample_magnitude lin="0.5" ang="1.0"/>
       </optimisation>
     </camera>-->
 
-    <pose_estimation features="500000" attempts="10" kernels="500000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
+    <pose_estimation points="100000" features="500000" attempts="10" kernels="500000" neighbours="20000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="32" search_kdtrees="4">
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
       <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
-      <pose_stddev lin="0.01" ang="100.0"/>
+      <pose_stddev lin="0.001" ang="100.0"/>
       <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
+      <optimisation minimum="1" population_size="20" generations_num="2000" de_diff_fac="0.5" de_cross_prob="0.1" test_generations="100" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest"/>
     </pose_estimation>
 
     <data dir="data/" name="default" ext_data=".xml" ext_cloud=".pcd" ext_action=".act" sep_name="-" sep_field="&#x9;">
@@ -329,14 +406,18 @@
     </data>
 
     <import size="100000" scale="1.0" clockwise="1" delim=" &#10;&#13;,;" label="1">
-      <!--<frame v1="0.0" v2="0.0" v3="0.0" q0="1.0" q1="0.0" q2="0.0" q3="0.0"/>-->
+      <frame v1="0.0" v2="0.0" v3="0.0" q0="1.0" q1="0.0" q2="0.0" q3="0.0"/>
       <!--<frame v1="0.653760" v2="-0.363143" v3="0.110231" q0="0.997094" q1="-0.013287" q2="0.004461" q3="0.074874"/>-->
-      <frame v1="0.0" v2="0.5" v3="0.1" roll="-1.5707963267949" pitch="0.0" yaw="0.0"/>
+      <!--<frame v1="0.0" v2="0.5" v3="0.1" roll="-1.5707963267949" pitch="0.0" yaw="0.0"/>-->
       <colour R="127" G="127" B="127" A="255"/>
     </import>
 
     <pose_calb dim="15" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0"/>
 
-    <pose_scan dim="15" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0"/>
+    <pose_scan dim="26" c1="0.0" c2="-1.57079633" c3="+1.57079633" c4="0.0" c5="+1.57079633" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
+    <pose_scan dim="26" c1="0.764376" c2="-0.947911" c3="1.32172" c4="-0.634099" c5="1.95336" c6="0.0874253" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
+    <!--<pose_scan dim="26" c1="0.939423" c2="-2.17826" c3="2.46344" c4="-0.778965" c5="1.46438" c6="-0.164736" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>-->
+    <pose_scan dim="26" c1="-0.994729" c2="-2.10636" c3="2.66316" c4="1.0669" c5="1.45776" c6="-0.165368" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
+    <pose_scan dim="26" c1="-0.769612" c2="-0.852913" c3="1.31988" c4="0.654703" c5="1.97807" c6="-0.286445" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
   </director>
 </golem>

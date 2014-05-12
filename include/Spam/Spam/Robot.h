@@ -99,6 +99,9 @@ public:
 	/** Checks if triggered and return in case a vector of indeces */
 	virtual int getTriggeredGuards(grasp::FTGuard::Seq &triggeredGuards, golem::Controller::State &state);
 
+	/** Checks guards on justin and bham robot */
+	int checkGuards(std::vector<int> &triggeredGuards, golem::Controller::State &state);
+
 	/** Reads torque/force values from the state */
 	void readFT(const golem::Controller::State &state, grasp::RealSeq &force) const;
 

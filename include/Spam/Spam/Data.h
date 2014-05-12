@@ -86,21 +86,31 @@ public:
 	/** Cache (local): action */
 	golem::Controller::State::Seq action;
 
+	/** Ieration index */
+	std::size_t iteration;
+
+	/** Object label */
+	std::string objectLabel;
+	/** Grasps */
+	golem::Controller::State::Seq grasps;
+
 	/** Approach action waypoints */
 	grasp::RobotState::List approachAction;
 	/** Manipulation action waypoints */
 	grasp::RobotState::List manipAction;
+	/** Withdraw action waypoints */
+	grasp::RobotState::List approachWithdraw;
+	/** Combined action waypoints */
+	golem::Controller::State::Seq executedTrajectory;
 
 	/** High dim representation of pdf */
-	grasp::RBPose::Sample::Seq pdf;
-	/** Inverted covariance */
-	grasp::RBCoord covarianceInv;
-	/** Squared covariance */
-	grasp::RBCoord covarianceSqrt;
+	grasp::RBPose::Sample::Seq density;
+	/** High dim rep covariance */
+	grasp::RBCoord densityCov;
 	/** Low dim representation of pdf */
-	grasp::RBPose::Sample::Seq samples;
-	/** Low dim representation of pdf */
-	grasp::RBPose::Sample::Seq init;
+	grasp::RBPose::Sample::Seq hypotheses;
+	/** High dim rep covariance */
+	grasp::RBCoord hypothesesCov;
 	/** Normalise factor */
 	golem::Real normFac;
 
@@ -125,11 +135,6 @@ public:
 	/** Specifies if the replanning should be triggered */
 	bool replanning;
 
-	/** Combined action waypoints */
-	golem::Controller::State::Seq executedTrajectory;
-	/** Withdraw action waypoints */
-	grasp::RobotState::List approachWithdraw;
-
 	/** Constructor */
 	TrialData(const golem::Controller& controller) : controller(controller) {
 	}
@@ -142,12 +147,12 @@ protected:
 
 //------------------------------------------------------------------------------
 
-namespace golem {
-
-template <> void Stream::read(spam::TrialData& trialData) const;
-template <> void Stream::write(const spam::TrialData& trialData);
-
-};	// namespace
+//namespace golem {
+//
+//template <> void Stream::read(spam::TrialData& trialData) const;
+//template <> void Stream::write(const spam::TrialData& trialData);
+//
+//};	// namespace
 
 //------------------------------------------------------------------------------
 

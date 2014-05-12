@@ -26,6 +26,8 @@ void spam::PosePlanner::Data::xmlData(golem::XMLContext* context, bool create) c
 			golem::XMLData(const_cast<golem::Mat34&>(actionFrame), context->getContextFirst("action_frame", create), create);
 			golem::XMLData(const_cast<golem::Mat34&>(queryFrame), context->getContextFirst("query_frame", create), create);
 			xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(queryPoints), std::string("query_points"), context, create);
+			create ? xmlDataSave(name, grasp::makeString("%s%s%s%s%s", dir.c_str(), this->name.c_str(), sepName.c_str(), name.c_str(), extSamples.c_str()), context, poses) : xmlDataLoad(name, context,  const_cast<grasp::RBPose::Sample::Seq&>(poses), grasp::RBPose::Sample());
+			create ? xmlDataSave(name, grasp::makeString("%s%s%s%s%s", dir.c_str(), this->name.c_str(), sepName.c_str(), name.c_str(), extSamples.c_str()), context, hypotheses) : xmlDataLoad(name, context,  const_cast<grasp::RBPose::Sample::Seq&>(hypotheses), grasp::RBPose::Sample());
 		}
 	}
 	catch (const golem::MsgXMLParser& msg) {
@@ -88,10 +90,17 @@ void spam::PosePlanner::render() {
 		pointFeatureRenderer.render();
 		sampleRenderer.render();
 		testRenderer.render();
+		uncRenderer.render();
 	}
 }
 
 //------------------------------------------------------------------------------
+
+void spam::PosePlanner::renderUncertainty(const grasp::RBPose::Sample::Seq &samples) {
+	uncRenderer.reset();
+	for (grasp::RBPose::Sample::Seq::const_iterator i = samples.begin(); i != samples.end(); ++i)
+		uncRenderer.addAxes(Mat34(i->q, i->p) * modelFrame, featureFrameSize*i->weight);
+}
 
 void spam::PosePlanner::resetDataPointers() {
 	//auto ptr = getPtr<Data>(queryDataPtr);
@@ -185,11 +194,11 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 void spam::PosePlanner::profile(Data::Map::iterator dataPtr, const golem::Controller::State::Seq& inp, golem::SecTmReal dur, golem::SecTmReal idle) const {
 	if (!grasp::to<Data>(queryDataPtr)->queryPoints.empty()) {
 		context.write("PosePlanner::profile(): Computing trajectory in a new frame...\n");
-		//golem::Controller::State::Seq seq;
+		golem::Controller::State::Seq seq;
 		//Mat34 trn;
 		//trn.setInverse(grasp::to<Data>(dataPtr)->actionFrame);
-		//robot->createTrajectory(trn, inp.begin(), inp.end(), seq);
-		grasp::Player::profile(dataPtr, inp/*seq*/, dur, idle);
+		robot->createTrajectory(grasp::to<Data>(dataPtr)->actionFrame, inp.begin(), inp.end(), seq);
+		grasp::Player::profile(dataPtr, seq, dur, idle);
 	}
 	else
 		grasp::Player::profile(dataPtr, inp, dur, idle);
@@ -286,6 +295,14 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 		grasp::Cloud::transform(grasp::to<Data>(dataPtr)->actionFrame, modelPoints, grasp::to<Data>(dataPtr)->queryPoints);
 		// done
 		context.info("<pose v1=\"%.7f\" v2=\"%.7f\" v3=\"%.7f\" q0=\"%.7f\" q1=\"%.7f\" q2=\"%.7f\" q3=\"%.7f\"/>\n", frame.p.x, frame.p.y, frame.p.z, frame.q.q0, frame.q.q1, frame.q.q2, frame.q.q3);
+		
+		context.debug("Copy belief in data\n");
+		grasp::to<Data>(dataPtr)->poses.clear();
+		grasp::to<Data>(dataPtr)->poses = pBelief->getSamples();
+		grasp::to<Data>(dataPtr)->hypotheses.clear();
+		grasp::to<Data>(dataPtr)->hypotheses = pBelief->getHypothesesToSample();
+		renderUncertainty(grasp::to<Data>(dataPtr)->poses);
+
 		context.write("Done!\n");
 		showSamplePoints = true;
 		renderData(dataPtr);
@@ -415,6 +432,53 @@ void spam::XMLData(PosePlanner::Desc &val, Context* context, XMLContext* xmlcont
 
 	XMLData(val.actionManip, xmlcontext->getContextFirst("action_manip"), create);
 }
+
+//------------------------------------------------------------------------------
+
+//const char spam::PosePlanner::Data::headerName [] = "spam::PosePlanner::Data";
+//const golem::U32 spam::PosePlanner::Data::headerVersion = 1;
+
+template <> void golem::Stream::read(spam::PosePlanner::Data &trialData) const {
+	//char name[sizeof(trialData.headerName)];
+	//read(name, sizeof(trialData.headerName));
+	//name[sizeof(trialData.headerName) - 1] = '\0';
+	//if (strncmp(trialData.headerName, name, sizeof(trialData.headerName)) != 0)
+	//	throw Message(Message::LEVEL_CRIT, "Stream::read(spam::TrialData&): Unknown file name: %s", name);
+
+	//golem::U32 version;
+	//*this >> version;
+	//if (version != trialData.headerVersion)
+	//	throw Message(Message::LEVEL_CRIT, "Stream::read(spam::TrialData&): Unknown file version: %d", version);
+
+	//trialData.approachAction.clear();
+	//read(trialData.approachAction, trialData.approachAction.begin(), grasp::RobotState(trialData.controller));
+	//trialData.manipAction.clear();
+	//read(trialData.manipAction, trialData.manipAction.begin(), grasp::RobotState(trialData.controller));
+
+	//trialData.approachWithdraw.clear();
+	//read(trialData.approachWithdraw, trialData.approachWithdraw.begin(), grasp::RobotState(trialData.controller));
+	////trialData.action.clear();
+	////read(trialData.action, trialData.action.begin(), trialData.controller.createState());
+
+	trialData.poses.clear();
+	read(trialData.poses, trialData.poses.begin());
+
+	trialData.hypotheses.clear();
+	read(trialData.hypotheses, trialData.hypotheses.begin());
+}
+
+template <> void golem::Stream::write(const spam::PosePlanner::Data &trialData) {
+	//*this << trialData.headerName << trialData.headerVersion;
+
+	//write(trialData.approachAction.begin(), trialData.approachAction.end());
+	//write(trialData.manipAction.begin(), trialData.manipAction.end());
+
+	//write(trialData.approachWithdraw.begin(), trialData.approachWithdraw.end());
+	////write(trialData.action.begin(), trialData.action.end());
+	write(trialData.poses.begin(), trialData.poses.end());
+	write(trialData.hypotheses.begin(), trialData.hypotheses.end());
+}
+
 
 //------------------------------------------------------------------------------
 
