@@ -45,6 +45,8 @@ bool Robot::create(const Desc& desc) {
 	pFTDrivenHeuristic = dynamic_cast<FTDrivenHeuristic*>(&planner->getHeuristic());
 
 	staticObject = desc.staticObject;
+	triggeredGuards.clear();
+	triggeredGuards.reserve(desc.ftGuards.size());
 
 	return true;
 }
@@ -132,6 +134,53 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 //	return ret;
 //}
 
+void Robot::assertGuards(const Twist &wrench) {
+	// default behaviour: throw exception when F/T threshold limit is reached
+	for (size_t i = 0; i < 3; ++i) {
+		if (Math::abs(wrench.v[i]) >= ftTCPLimit.v[i] || Math::abs(wrench.w[i]) >= ftTCPLimit.w[i] || limitsAsserted) {
+			limitsAsserted = true;
+			throw Message(Message::LEVEL_NOTICE, "assertGuards(): TCP F/T limit: Fx=%6.2lf, Fy=%6.2lf, Fz=%6.2lf, Tx=%6.2lf, Ty=%6.2lf, Tz=%6.2lf", wrench.v.x, wrench.v.y, wrench.v.z, wrench.w.x, wrench.w.y, wrench.w.z);
+		}
+		if ((guardsEnable && (Math::abs(wrench.v[i]) >= ftTCPGuards.v[i] || Math::abs(wrench.w[i]) >= ftTCPGuards.w[i])) || guardsAsserted) {
+			guardsAsserted = true;
+			throw Message(Message::LEVEL_NOTICE, "assertGuards(): TCP F/T guards: Fx=%6.2lf, Fy=%6.2lf, Fz=%6.2lf, Tx=%6.2lf, Ty=%6.2lf, Tz=%6.2lf", wrench.v.x, wrench.v.y, wrench.v.z, wrench.w.x, wrench.w.y, wrench.w.z);
+		}	
+	}
+}
+
+void Robot::assertGuards(const grasp::RealSeq &force) {
+	size_t count = 0;
+	for (grasp::RealSeq::const_iterator i = force.begin(), j = ftHandLimit.begin(); i != force.end() && j != ftHandLimit.end(); ++i, ++j, ++count) {
+		if (Math::abs(*i) >= *j || limitsAsserted) {
+			limitsAsserted = true;
+			throw Message(Message::LEVEL_NOTICE, "assertGuards(): Hand F/T limit chain=%d joint=%d T=%6.2lf", count%4, count - (count%4)*4, *i);
+		}
+	}
+	if (!guardsEnable)
+		return;
+	
+	if(guardsAsserted)
+		throw Message(Message::LEVEL_NOTICE, "assertGuards(): Hand F/T guards asserted.");
+
+	triggeredGuards.clear();
+	for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
+		const size_t k = j - handInfo.getJoints().begin();
+		if (force[k] < ftGuards[2*k].value) {
+			context.debug("assertGuards(-1): Hand F/T guards chain %d joint %d (k=%d) force=%f guard=%f\n", ftGuards[2*k].chainIdx, ftGuards[2*k].joint, k, force[k], ftGuards[2*k].value);
+			triggeredGuards.push_back(ftGuards[2*k]);
+		}
+		else if (force[k] > ftGuards[2*k+1].value) {
+			context.debug("assertGuards(+1): Hand F/T guards chain %d joint %d (k=%d) force=%f guard=%f\n", ftGuards[2*k+1].chainIdx, ftGuards[2*k+1].joint, k, force[k], ftGuards[2*k+1].value);
+			triggeredGuards.push_back(ftGuards[2*k+1]);
+		}
+	}
+	if (!triggeredGuards.empty()) {
+		guardsAsserted = true;
+		throw Message(Message::LEVEL_NOTICE, "assertGuards(): Hand F/T guards asserted.");
+	}
+}
+
+
 int Robot::checkGuards(std::vector<int> &triggeredGuards, golem::Controller::State &state) {
 	golem::RobotJustin *justin = getRobotJustin();
 	if (justin) 
@@ -182,31 +231,34 @@ int Robot::getTriggeredGuards(grasp::FTGuard::Seq &triggeredJoints, golem::Contr
 	}
 	else {
 		// in case robot bham
-		const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
+		for (grasp::FTGuard::Seq::const_iterator i = triggeredGuards.begin(); i != triggeredGuards.end(); ++i)
+			triggeredJoints.push_back(*i);
+		
+		//const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
 	
-		context.write("spam::Robot::getTriggeredGuards(): retrieving forces from state. triggered joint(s): joints=%d guards=%d\n", handInfo.getJoints().size(), ftGuards.size());
-		grasp::RealSeq force;
-		force.assign(handInfo.getJoints().size(), REAL_ZERO);
-		if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
-			for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
-				const size_t k = j - handInfo.getJoints().begin();
-				force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
-				if (state.get<ConfigspaceCoord>(forceOffset)[j] < ftGuards[2*k].value) {
-					context.write("hand chain %d joint %d (k=%d) force=%f guard=%f\n", ftGuards[2*k].chainIdx, ftGuards[2*k].joint, k, force[k], ftGuards[2*k].value);
-					triggeredJoints.push_back(ftGuards[2*k]);
-				}
-				else if (state.get<ConfigspaceCoord>(forceOffset)[j] > ftGuards[2*k+1].value) {
-					context.write("hand chain %d joint %d (k=%d) force=%f guard=%f\n", ftGuards[2*k+1].chainIdx, ftGuards[2*k+1].joint, k, force[k], ftGuards[2*k+1].value);
-					triggeredJoints.push_back(ftGuards[2*k+1]);
-				}
-			}
-		}
+		//context.write("spam::Robot::getTriggeredGuards(): retrieving forces from state. triggered joint(s): joints=%d guards=%d\n", handInfo.getJoints().size(), ftGuards.size());
+		//grasp::RealSeq force;
+		//force.assign(handInfo.getJoints().size(), REAL_ZERO);
+		//if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
+		//	for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
+		//		const size_t k = j - handInfo.getJoints().begin();
+		//		force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
+		//		if (state.get<ConfigspaceCoord>(forceOffset)[j] < ftGuards[2*k].value) {
+		//			context.write("hand chain %d joint %d (k=%d) force=%f guard=%f\n", ftGuards[2*k].chainIdx, ftGuards[2*k].joint, k, force[k], ftGuards[2*k].value);
+		//			triggeredJoints.push_back(ftGuards[2*k]);
+		//		}
+		//		else if (state.get<ConfigspaceCoord>(forceOffset)[j] > ftGuards[2*k+1].value) {
+		//			context.write("hand chain %d joint %d (k=%d) force=%f guard=%f\n", ftGuards[2*k+1].chainIdx, ftGuards[2*k+1].joint, k, force[k], ftGuards[2*k+1].value);
+		//			triggeredJoints.push_back(ftGuards[2*k+1]);
+		//		}
+		//	}
+		//}
 		ret = triggeredJoints.size();
 	}
 	//	if (!triggeredJoints.empty())
 	//		return true;
 	//}
-	context.write("spam::Robot::getTriggeredGuards(): no triggered guards (ret=%d)\n", ret);
+	context.write("spam::Robot::getTriggeredGuards(): %d triggered guard(s).\n", ret);
 	return ret;
 }
 
@@ -316,9 +368,9 @@ grasp::RBDist Robot::trnTrajectory(const golem::Mat34& actionFrame, const golem:
 		graspFrame.multiply(poseFrameInv, actionFrame * modelFrame);
 		graspFrameInv.setInverse(graspFrame);
 		gwcs.wpos[armChain].multiply(modelFrame, graspFrameInv);
-		context.write("trnTrajectory(): grasp frame at model <%f %f %f>\n", gwcs.wpos[armChain].p.x, gwcs.wpos[armChain].p.y, gwcs.wpos[armChain].p.z);
+//		context.write("trnTrajectory(): grasp frame at model <%f %f %f>\n", gwcs.wpos[armChain].p.x, gwcs.wpos[armChain].p.y, gwcs.wpos[armChain].p.z);
 		gwcs.wpos[armChain].multiply(trn, gwcs.wpos[armChain]); // new waypoint frame
-		context.write("trnTrajectory(): grasp frame at new query <%f %f %f>\n", gwcs.wpos[armChain].p.x, gwcs.wpos[armChain].p.y, gwcs.wpos[armChain].p.z);
+//		context.write("trnTrajectory(): grasp frame at new query <%f %f %f>\n", gwcs.wpos[armChain].p.x, gwcs.wpos[armChain].p.y, gwcs.wpos[armChain].p.z);
 		gwcs.t = i->t;
 		seq.push_back(gwcs);
 	}

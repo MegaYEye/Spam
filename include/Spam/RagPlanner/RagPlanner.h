@@ -305,7 +305,7 @@ protected:
 	/** Show Sample frame */
 	bool showSampleFrame;
 	/** Show sample points */
-	bool showSamplePoints;
+//	bool showSamplePoints;
 	/** Show high dimension distribution */
 	bool showDistribution;
 	/** Show maximum likelihood estimation distribution */
@@ -411,7 +411,7 @@ protected:
 	golem::DebugRenderer testPose;
 	void renderUpdate(const golem::Mat34 &pose, const grasp::RBPose::Sample::Seq &samples);
 	golem::DebugRenderer testUpdate;
-	void renderHand(const golem::Controller::State &state);
+	void renderHand(const golem::Controller::State &state, bool clear = false);
 	golem::BoundsRenderer handRenderer;
 
 	/** Prints out a trajectory */

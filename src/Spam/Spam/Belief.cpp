@@ -99,7 +99,7 @@ Real Belief::Hypothesis::dist2NearestKPoints(const grasp::RBCoord &pose,  const 
 		v.normalise();
 //		const Real thx(Math::atan2(v.z, v.x)), thy(Math::atan2(v.z, v.y));
 //		if (v.z < 0 || Math::abs(thx) > ftDrivenDesc.ftModelDesc.coneTheta1 || Math::abs(thy) > ftDrivenDesc.ftModelDesc.coneTheta2) 
-		if (v.z < 0/* || v.z < golem::Real(.5)*/)
+		if (v.z > 0/* || v.z < golem::Real(.5)*/) // for justin v.z < 0
 			result = maxDist + 1;
 		//else {
 		//	Mat33 rot;
@@ -233,10 +233,13 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 	hypotheses.reserve(myDesc.numHypotheses);
 
 	const grasp::RBPose::Sample actionFrame = maximum();
-//	context.write("Heuristic:setBeliefState(model size = %d, max points = %d): samples: cont_fac = %f\n", model.size(), ftDrivenDesc.maxSurfacePoints, ftDrivenDesc.contactFac);
+	//Vec3 offset(-.1, .07, .0);
+	//grasp::RBPose::Sample actionFrame = maximum();
+	//	context.write("Heuristic:setBeliefState(model size = %d, max points = %d): samples: cont_fac = %f\n", model.size(), ftDrivenDesc.maxSurfacePoints, ftDrivenDesc.contactFac);
 	for (size_t i = 0; i < myDesc.numHypotheses; ++i) {
 		// sample hypothesis. NOTE: The first element is the max scoring pose
 		grasp::RBCoord sampleFrame = (i == 0) ? actionFrame : sample();
+		//sampleFrame.p += offset;
 		// transform the sample in the reference coordinate (default: robot's coordinate frame)
 //		sampleFrame.multiply(sampleFrame, grasp::RBCoord(transform));
 		// container for the point cloud of this sample (default: the same points of the model)
@@ -286,7 +289,7 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 	//	}
 	//	initProperties = sampleProperties;
 	//}
-
+	//actionFrame.p += offset;
 	return actionFrame;
 }
 
@@ -308,13 +311,16 @@ void Belief::createQuery(const grasp::Cloud::PointSeq& points) {
 	/* Right way of proceeding. For each kernel a new query is computed
 	*/
 	SecTmReal init = context.getTimer().elapsed();
+	size_t id = 1;
 	for (size_t i = 0; i < myDesc.numPoses; ++i) {
 		// reset RBPose::poses for the fitting dist
 		//poses.clear();
 		//poses.reserve(myDesc.kernels);
+		context.debug("RBPose::Query: %d/%d\n", id++, myDesc.numPoses);
 		grasp::RBPose::createQuery(points);
 		grasp::RBPose::Sample s = grasp::RBPose::maximum();
 		initPoses.push_back(s);
+		context.debug("----------------------------------------------------------\n");
 	}
 	std::printf("Belief::createQuery(): computational time %.7f\n", context.getTimer().elapsed() - init);
 	
@@ -366,12 +372,6 @@ void Belief::createResample() {
 		}
 		newPoses.push_back(poses.at(index));
 	}
-
-	// compute mean and covariance
-	if (!pose.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.covariance, newPoses))
-		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createResample(): Unable to create mean and covariance for the high dimensional representation");
-
-	context.write("spam::Belief::createResample(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", pose.covariance[0], pose.covariance[1], pose.covariance[2], pose.covariance[3], pose.covariance[4], pose.covariance[5], pose.covariance[6]);
 	
 	// add noise to the resampled elements and overwrite poses
 	poses.clear();
@@ -386,8 +386,11 @@ void Belief::createResample() {
 		poses.push_back(Sample(c, REAL_ONE, i*REAL_ONE));
 	}
 	
-	// generate new set of hypotheses
-//	createHypotheses(modelPoints, modelFrame, false);
+	// compute mean and covariance
+	if (!pose.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.covariance, poses))
+		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createResample(): Unable to create mean and covariance for the high dimensional representation");
+
+	context.write("spam::Belief::createResample(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", pose.covariance[0], pose.covariance[1], pose.covariance[2], pose.covariance[3], pose.covariance[4], pose.covariance[5], pose.covariance[6]);
 }
 
 //------------------------------------------------------------------------------
@@ -434,33 +437,35 @@ void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Ro
 			//for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b)
 			//		context.write("finger bound frame <%f %f %f>\n", (*b)->getPose().p.x, (*b)->getPose().p.y, (*b)->getPose().p.z);
 		golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO;
-		context.write("Updating poses' weights. poses size=%d\n", poses.size());
+		context.debug("Finger %d\n", i);
 		for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
-			context.write("<%f %f %f> <%f %f %f %f>\n", sampledPose->p.x, sampledPose->p.y, sampledPose->p.z, sampledPose->q.w, sampledPose->q.x, sampledPose->q.y, sampledPose->q.z);
-			const Real eval = golem::Math::log10(evaluate(bounds, grasp::RBCoord(w.wpos[i]), *sampledPose, forces, triggered, intersect));
-			const bool fingerTriggered = [&] () -> bool {
+//			context.debug("<%f %f %f> <%f %f %f %f>\n", sampledPose->p.x, sampledPose->p.y, sampledPose->p.z, sampledPose->q.w, sampledPose->q.x, sampledPose->q.y, sampledPose->q.z);
+			const Real eval = evaluate(bounds, grasp::RBCoord(w.wpos[i]), *sampledPose, forces, triggered, intersect);
+			const bool fingerTriggered = triggered[0] || triggered[1] || triggered[2] || triggered[3]; /*[&] () -> bool {
 				for (std::vector<bool>::const_iterator i = triggered.begin(); i != triggered.end(); ++i)
 					if (*i) return true;
 				return false;
-			}();
-			sampledPose->weight += fingerTriggered ? myDesc.sensory.contactFac*eval : myDesc.sensory.noContactFac*(REAL_ONE - eval);
+			}();*/
+//			sampledPose->weight += fingerTriggered ? myDesc.sensory.contactFac*eval : intersect ? myDesc.sensory.noContactFac*(REAL_ONE - eval) : REAL_ZERO;
+			context.debug("pose <%f %f %f>: eval=%f log=%f, trigguered %s intersect %s prob=%f\n", sampledPose->p.x, sampledPose->p.y, sampledPose->p.z, eval, -Math::log10(eval), fingerTriggered ? "Y" : "N", intersect ? "Y" : "N", fingerTriggered ? myDesc.sensory.contactFac*golem::Math::log10(eval) : intersect ? -REAL_MAX : REAL_ZERO);
+			golem::kahanSum(sampledPose->weight, c, fingerTriggered ? -myDesc.sensory.contactFac*golem::Math::log10(eval) : intersect ? -REAL_MAX : REAL_ZERO);
 			//const Real eval = evaluate(bounds, grasp::RBCoord(w.wposex[j]), *sampledPose, forces[idx], j == robot->getStateHandInfo().getJoints(i).begin(), intersect);
 			//sampledPose->weight *= (triggered ? myDesc.sensory.contactFac*eval : intersect ? myDesc.sensory.noContactFac*(REAL_ONE - eval) : REAL_ZERO);
 			//golem::kahanSum(norm, c, sampledPose->weight);
 		//}
 		}
-		//context.write("\n---------------------------------------------\n");
+		context.debug("\n---------------------------------------------\n");
 	}
 
 	// normalise weights
 	golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO, cdf = golem::REAL_ZERO;
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose)
-		golem::kahanSum(norm, c, sampledPose->weight);
+		golem::kahanSum(norm, c, sampledPose->weight > 0 ? sampledPose->weight : Math::log10(REAL_EPS));
 	//context.write("norm=%f\n", norm);
 	c = golem::REAL_ZERO;
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
 		sampledPose->weight /= norm;
-		//context.write("sample.weight = %f\n", sampledPose->weight);
+		context.write("sample.weight = %f\n", sampledPose->weight);
 		golem::kahanSum(cdf, c, sampledPose->weight);
 		sampledPose->cdf = cdf;
 	}
@@ -514,12 +519,12 @@ golem::Real Belief::evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCo
 	jointFrameInv.setInverse(jointFrame);
 	jointFrameInv.multiply(v, queryFrame.p);
 	v.normalise();
-	context.write(" -> dist(to shape)=%5.7f, bound <%f %f %f>, point <%f %f %f>, v <%f %f %f>, intersection %s, triggered <%s %s %s %s>, forces <%f %f %f %f>, <norm=%5.7f, density=%5.7f, prob of touching=%5.7f\n", distMin, 
-		boundFrame.x, boundFrame.y, boundFrame.z, surfaceFrame.x, surfaceFrame.y, surfaceFrame.z, v.x, v.y, v.z,
-		intersect ? "Y" : "N", 
-		triggered[0] ? "Y" : "N", triggered[1] ? "Y" : "N", triggered[2] ? "Y" : "N", triggered[3] ? "Y" : "N",
-		forces[0], forces[1], forces[2], forces[3],
-		norm, density(distMin), norm*density(distMin));
+	//context.write(" -> dist(to shape)=%5.7f, bound <%f %f %f>, point <%f %f %f>, v <%f %f %f>, intersection %s, triggered <%s %s %s %s>, forces <%f %f %f %f>, <norm=%5.7f, density=%5.7f, prob of touching=%5.7f\n", distMin, 
+	//	boundFrame.x, boundFrame.y, boundFrame.z, surfaceFrame.x, surfaceFrame.y, surfaceFrame.z, v.x, v.y, v.z,
+	//	intersect ? "Y" : "N", 
+	//	triggered[0] ? "Y" : "N", triggered[1] ? "Y" : "N", triggered[2] ? "Y" : "N", triggered[3] ? "Y" : "N",
+	//	forces[0], forces[1], forces[2], forces[3],
+	//	norm, density(distMin), norm*density(distMin));
 
 //		const Real thx(Math::atan2(v.z, v.x)), thy(Math::atan2(v.z, v.y));
 //		if (v.z < 0 || Math::abs(thx) > ftDrivenDesc.ftModelDesc.coneTheta1 || Math::abs(thy) > ftDrivenDesc.ftModelDesc.coneTheta2) 

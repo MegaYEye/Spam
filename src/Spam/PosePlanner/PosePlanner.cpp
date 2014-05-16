@@ -143,7 +143,7 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 					featureIndex = (golem::U32)rand.next()%pBelief->getQueryFeatures().size();
 				}
 				if (showSamplePoints) {
-					grasp::RBPose::Sample::Seq samples = pBelief->getSamples();
+					grasp::RBPose::Sample::Seq samples = pBelief->getHypothesesToSample();
 					for (grasp::RBPose::Sample::Seq::iterator i = samples.begin(); i != samples.end(); ++i) {
 						const Mat34 actionFrame(i->q, i->p);
 						const Mat34 sampleFrame(actionFrame * modelFrame);
@@ -151,7 +151,7 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 						sample.reserve(modelPoints.size());
 						for (grasp::Cloud::PointSeq::const_iterator point = modelPoints.begin(); point != modelPoints.end(); ++point) {
 							grasp::Cloud::Point p = *point;
-							grasp::Cloud::setColour(i == samples.begin() ? golem::RGBA::WHITE : golem::RGBA::BLUE, p);
+							grasp::Cloud::setColour(i == samples.begin() ? golem::RGBA::YELLOW : golem::RGBA::BLUE, p);
 							sample.push_back(p);
 						}
 						grasp::Cloud::transform(actionFrame, sample, sample);

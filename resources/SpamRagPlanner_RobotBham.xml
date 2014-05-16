@@ -7,7 +7,7 @@
   <!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
 
   <universe name="SPAM RaGPlanner">
-    <window x="0" y="0" width="800" height="600"></window>
+    <window x="0" y="0" width="1288" height="964"></window>
     <physx fps="30" skin_width="0.005" sleep_lin_vel_squared="0.0025" sleep_ang_vel_squared="0.0025" max_angular_velocity="7.0" bounce_threshold="-2.0"></physx>
     <recorder frame_drop="1" file_name="data/jar/capture/trial2" file_ext=".png" leading_zeros="1" encoder_str="image/png" buffer_len="100"></recorder>
   </universe>
@@ -74,7 +74,7 @@
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.001" c5="0.001" c6="0.001" c7="0.001"/>
       <test_stddev lin="0.01" ang="100"/>
     </tactile_model>-->
-    <tactile_model num_poses="2" num_hypotheses="2" max_surface_points="5000">
+    <tactile_model num_poses="10" num_hypotheses="4" max_surface_points="5000">
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
     </tactile_model>
     <point_cloud_noise enable_noise="0">
@@ -85,7 +85,7 @@
     </point_cloud_noise>
   </rag_planner>
 
-  <pose_planner num_poses="2" num_hypotheses="5" points="100000" features="500000" attempts="10" kernels="500000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
+  <pose_planner num_poses="4" num_hypotheses="5" points="100000" features="500000" attempts="10" kernels="500000" neighbours="10000" distance_range="20.0" feature_norm_eps="1e-7" search_checks="-1" search_kdtrees="1">
     <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
     <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
     <pose_stddev lin="0.01" ang="100.0"/>
@@ -110,7 +110,7 @@
   </pose_planner>
 
   <player>
-    <trajectory scan_idle="1.0" approach_duration="15.0" approach_idle="1.0" approach_extrapol_fac="0.5" manip_duration="8.0" manip_idle="2.0" manip_perf_off="0.0" average="0.2">
+    <trajectory scan_idle="1.0" approach_duration="8.0" approach_idle="1.0" approach_extrapol_fac="0.5" manip_duration="3.0" manip_idle="2.0" manip_perf_off="0.0" average="0.2">
       <velocity dim="27" c1="0.1" c2="0.1" c3="0.1" c4="0.1" c5="0.1" c6="0.1" c7="0.1" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5" c21="0.5" c22="0.5" c23="0.5" c24="0.5" c25="0.5" c26="0.5" c27="0.5"/>
       <acceleration dim="27" c1="0.05" c2="0.05" c3="0.05" c4="0.05" c5="0.05" c6="0.05" c7="0.05" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5" c21="0.5" c22="0.5" c23="0.5" c24="0.5" c25="0.5" c26="0.5" c27="0.5"/>
       <distance dim="27" c1="10.0" c2="10.0" c3="10.0" c4="10.0" c5="10.0" c6="10.0" c7="10.0" c8="1.0" c9="1.0" c10="1.0" c11="1.0" c12="1.0" c13="1.0" c14="1.0" c15="1.0" c16="1.0" c17="1.0" c18="1.0" c19="1.0" c20="1.0" c21="1.0" c22="1.0" c23="1.0" c24="1.0" c25="1.0" c26="1.0" c27="1.0"/>
@@ -145,7 +145,7 @@
       <limit_tcp v1="50.0" v2="50.0" v3="150.0" w1="4.0" w2="4.0" w3="4.0"/>
       <limit_hand dim="20" c1="10.0" c2="10.0" c3="10.0" c4="10.0" c5="10.0" c6="10.0" c7="10.0" c8="10.0" c9="10.0" c10="10.0" c11="10.0" c12="10.0" c13="10.0" c14="10.0" c15="10.0" c16="10.0" c17="10.0" c18="10.0" c19="10.0" c20="10.0"/>
       <guards_tcp v1="30.0" v2="30.0" v3="80.0" w1="3.0" w2="3.0" w3="3.0"/>
-      <guards_hand dim="20" c1="0.2" c2="0.2" c3="0.2" c4="0.2" c5="0.2" c6="0.2" c7="0.2" c8="0.2" c9="0.2" c10="0.2" c11="0.2" c12="0.2" c13="0.2" c14="0.2" c15="0.2" c16="0.2" c17="0.2" c18="0.2" c19="0.2" c20="0.2"/>
+      <guards_hand dim="20" c1="0.2" c2="0.2" c3="0.2" c4="0.2" c5="0.2" c6="0.2" c7="0.2" c8="0.2" c9="10.2" c10="10.2" c11="10.2" c12="10.2" c13="0.2" c14="0.2" c15="0.2" c16="0.2" c17="0.2" c18="0.2" c19="0.2" c20="0.2"/>
       <stiffness_hand dim="12" c1="1.0" c2="1.0" c3="0.5" c4="1.0" c5="1.0" c6="0.5" c7="1.0" c8="1.0" c9="0.5" c10="1.0" c11="1.0" c12="0.5"/>
       <ft_guard name="right_thumb" joint="0" type="1" value="-0.2"/>
       <ft_guard name="right_thumb" joint="0" type="2" value="0.2"/>
@@ -163,14 +163,14 @@
       <ft_guard name="right_tip" joint="2" type="2" value="0.2"/>
       <ft_guard name="right_tip" joint="3" type="1" value="-0.2"/>
       <ft_guard name="right_tip" joint="3" type="2" value="0.2"/>
-      <ft_guard name="right_middle" joint="0" type="1" value="-0.2"/>
-      <ft_guard name="right_middle" joint="0" type="2" value="0.2"/>
-      <ft_guard name="right_middle" joint="1" type="1" value="-0.2"/>
-      <ft_guard name="right_middle" joint="1" type="2" value="0.2"/>
-      <ft_guard name="right_middle" joint="2" type="1" value="-0.2"/>
-      <ft_guard name="right_middle" joint="2" type="2" value="0.2"/>
-      <ft_guard name="right_middle" joint="3" type="1" value="-0.2"/>
-      <ft_guard name="right_middle" joint="3" type="2" value="0.2"/>
+      <ft_guard name="right_middle" joint="0" type="1" value="-10.2"/>
+      <ft_guard name="right_middle" joint="0" type="2" value="10.2"/>
+      <ft_guard name="right_middle" joint="1" type="1" value="-10.2"/>
+      <ft_guard name="right_middle" joint="1" type="2" value="10.2"/>
+      <ft_guard name="right_middle" joint="2" type="1" value="-10.2"/>
+      <ft_guard name="right_middle" joint="2" type="2" value="10.2"/>
+      <ft_guard name="right_middle" joint="3" type="1" value="-10.2"/>
+      <ft_guard name="right_middle" joint="3" type="2" value="10.2"/>
       <ft_guard name="right_ring" joint="0" type="1" value="-0.2"/>
       <ft_guard name="right_ring" joint="0" type="2" value="0.2"/>
       <ft_guard name="right_ring" joint="1" type="1" value="-0.2"/>
@@ -186,7 +186,7 @@
       <ft_guard name="right_little" joint="2" type="1" value="-0.2"/>
       <ft_guard name="right_little" joint="2" type="2" value="0.2"/>
       <ft_guard name="right_little" joint="3" type="1" value="-0.2"/>
-      <ft_guard name="right_little" joint="3" type="2" value="0.2"/>    
+      <ft_guard name="right_little" joint="3" type="2" value="0.2"/>
     </ft_sensor>
 
     <impedance stiff_steps="10" stiff_step_init="0" damp_steps="10" damp_step_init="0">
@@ -237,7 +237,7 @@
   <!-- UIBK robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotUIBKSim" -->
   <!-- UIBK robot (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotUIBK" -->
 
-  <controller library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBham">
+  <controller library_path="GolemDeviceMultiCtrl" config_path="SpamDeviceRobotBham">
     <renderer>
       <joint_appearance line_width="1.0">
         <solid_colour R="192" G="192" B="0" A="100"></solid_colour>
@@ -258,7 +258,7 @@
     </renderer>
   </controller>
 
-  <planner library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBham">
+  <planner library_path="GolemDeviceMultiCtrl" config_path="SpamDeviceRobotBham">
     <renderer show_duration="600.0">
       <goal_renderer show="1" vertex_position_show="0" vertex_frame_show="1" edge_show="0">
         <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
@@ -335,31 +335,43 @@
       <region_colour R="255" G="0" B="255" A="255"/>
     </cloud>
 
-    <camera type="depth" name="robotDepth" index="1" calibration_file="GraspCameraRobotDepth.xml" buffer_len="60" buffer_off="1" thread_timeout="20000" stream_timeout="1000" in_hand="1" recording="0" recording_app="0" video="1" codec="XVID">
+    <!--<camera type="depth" name="robotDepth" index="1" calibration_file="GraspCameraRobotDepth.xml" buffer_len="60" buffer_off="1" thread_timeout="20000" stream_timeout="1000" in_hand="1" recording="0" recording_app="0" video="1" codec="XVID">
       <property width="640" height="480" fps="30" mode="ir" format="203"/>
-      <!--<property width="640" height="480" fps="30" mode="colour" format="200"/>-->
+      -->
+    <!--<property width="640" height="480" fps="30" mode="colour" format="200"/>-->
+    <!--
       <property width="640" height="480" fps="30" mode="depth" format="101"/>
-      <!--<property width="320" height="240" fps="30" mode="depth colour" format="101 200"/>-->
+      -->
+    <!--<property width="320" height="240" fps="30" mode="depth colour" format="101 200"/>-->
+    <!--
       <colour R="127" G="127" B="0" A="255"/>
       <optimisation minimum="1" population_size="200" generations_num="1000000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="1000" test_variance="1e-7" num_of_threads="-1" thread_priority="lowest">
         <distance_weights lin="10.0" ang="1.0"/>
         <sample_magnitude lin="0.1" ang="0.5"/>
-        <!--<kuka offset_ang_range="0.0" offset_dist_weights="0.1" link_len_range="0.0" link_dist_weights="0.1"/>-->
+        -->
+    <!--<kuka offset_ang_range="0.0" offset_dist_weights="0.1" link_len_range="0.0" link_dist_weights="0.1"/>-->
+    <!--
       </optimisation>
       <deformation_dist dim="26" c1="10.0" c2="10.0" c3="10.0" c4="10.0" c5="10.0" c6="10.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0"/>
-    </camera>
-    <camera type="depth" name="externDepth" index="0" calibration_file="GraspCameraExternDepth.xml" buffer_len="60" buffer_off="1" thread_timeout="20000" stream_timeout="1000" in_hand="0" recording="1" recording_app="0" video="1" codec="XVID">
-      <!--<property width="640" height="480" fps="30" mode="ir" format="203"/>-->
+    </camera>-->
+    <!--<camera type="depth" name="externDepth" index="0" calibration_file="GraspCameraExternDepth.xml" buffer_len="60" buffer_off="1" thread_timeout="20000" stream_timeout="1000" in_hand="0" recording="1" recording_app="0" video="1" codec="XVID">
+      -->
+    <!--<property width="640" height="480" fps="30" mode="ir" format="203"/>-->
+    <!--
       <property width="640" height="480" fps="30" mode="colour" format="200"/>
       <property width="640" height="480" fps="30" mode="depth" format="101"/>
-      <!--<property width="640" height="480" fps="30" mode="depth colour" format="101 200"/>-->
-      <!--<property width="320" height="240" fps="30" mode="depth colour" format="101 200"/>-->
+      -->
+    <!--<property width="640" height="480" fps="30" mode="depth colour" format="101 200"/>-->
+    <!--
+      -->
+    <!--<property width="320" height="240" fps="30" mode="depth colour" format="101 200"/>-->
+    <!--
       <colour R="127" G="127" B="0" A="255"/>
       <optimisation minimum="1" population_size="100" generations_num="1000000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-7" num_of_threads="-1" thread_priority="lowest">
         <distance_weights lin="10.0" ang="1.0"/>
         <sample_magnitude lin="0.1" ang="0.5"/>
       </optimisation>
-    </camera>
+    </camera>-->
     <!--<camera type="opencv" name="externOpenCV" index="0" calibration_file="GraspCameraExternOpenCV.xml" buffer_len="90" thread_timeout="10000" capture_index="0" in_hand="0" recording="1" recording_app="1" video="1" codec="XVID">
       <property width="0" height="0" fps="0" mode="0" format=""/>
       <optimisation minimum="1" population_size="100" generations_num="10000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-7" num_of_threads="-1" thread_priority="lowest">
@@ -370,7 +382,7 @@
     <!-- FlyCapture2::PixelFormat: MONO8=0x80000000, 411YUV8=0x40000000, 422YUV8=0x20000000, RGB8=0x08000000, ... -->
     <!-- Fly2 Firewire: format=0x40000000 (536870912) -->
     <!-- Chameleon USB2.0: format=0x00400000 (4194304) -->
-    <!--<camera type="pointgrey" name="externPointGrey" index="0" calibration_file="GraspCameraExternPointGrey.xml" buffer_len="10" thread_timeout="10000" in_hand="0" recording="1" recording_app="1" video="1" codec="XVID">
+    <!--<camera type="pointgrey" name="externPointGrey" index="2" calibration_file="GraspCameraExternPointGrey.xml" buffer_len="10" thread_timeout="10000" in_hand="0" recording="1" recording_app="1" video="1" codec="XVID">
       <property width="0" height="0" fps="0" mode="0" format="536870912"/>
       <optimisation minimum="1" population_size="100" generations_num="10000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-7" num_of_threads="-1" thread_priority="lowest">
         <distance_weights lin="10.0" ang="1.0"/>

@@ -99,6 +99,10 @@ public:
 	/** Checks if triggered and return in case a vector of indeces */
 	virtual int getTriggeredGuards(grasp::FTGuard::Seq &triggeredGuards, golem::Controller::State &state);
 
+	/** Checks if F/T limits and guards at TCP are satisfied */
+	virtual void assertGuards(const golem::Twist &wrench);
+	/** Checks if F/T limits and guards in the hand are satisfied */
+	virtual void assertGuards(const grasp::RealSeq &force);
 	/** Checks guards on justin and bham robot */
 	int checkGuards(std::vector<int> &triggeredGuards, golem::Controller::State &state);
 
@@ -133,6 +137,9 @@ protected:
 	FTDrivenHeuristic* pFTDrivenHeuristic;
 	/** Enables/disables object to be static */
 	bool staticObject;
+
+	/** Trigguered guards */
+	grasp::FTGuard::Seq triggeredGuards;
 
 	// golem::Object interface
 	virtual void render();
