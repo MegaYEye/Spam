@@ -141,6 +141,9 @@ public:
 		/** Model point transformation **/
 		golem::Mat34 modelTrn;
 
+		/** Enables/disable screen capture from simulation */
+		bool screenCapture;
+
 		/** Constructs from description object */
 		Desc() {
 			Desc::setToDefault();
@@ -167,6 +170,8 @@ public:
 			numHypotheses = 5;
 
 			modelTrn.setToDefault();
+
+			screenCapture = false;
 		}
 		/** Checks if the description is valid. */
 		virtual bool isValid() const {
@@ -247,6 +252,8 @@ protected:
 	/** Distibution num of hypotheses **/
 	size_t numHypotheses;
 
+	/** Enables/disable screen capture from simulation */
+	bool screenCapture;
 
 	/** Profile state sequence */
 	virtual void profile(Data::Map::iterator dataPtr, const golem::Controller::State::Seq& inp, golem::SecTmReal dur, golem::SecTmReal idle) const;

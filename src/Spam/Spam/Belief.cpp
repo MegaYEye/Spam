@@ -118,6 +118,34 @@ Real Belief::Hypothesis::dist2NearestKPoints(const grasp::RBCoord &pose,  const 
 	return result;
 }
 
+size_t Belief::Hypothesis::nearestKPoints(const grasp::RBCoord &pose, grasp::Cloud::PointSeq &points, std::vector<float> &distances, const size_t clusters) {
+	// sets the query point
+	pcl::PointXYZ searchPoint;
+	searchPoint.x = (float)pose.p.x;
+	searchPoint.y = (float)pose.p.y;
+	searchPoint.z = (float)pose.p.z;
+
+	// cleanns container
+	points.clear();
+
+	std::vector<int> indeces;
+	// retrieves the point cloud
+	pcl::KdTree<pcl::PointXYZ>::PointCloudConstPtr cloud = pTree->getInputCloud();
+	// returns a positive number if the query is successful
+	size_t ret;
+	if (ret = pTree->nearestKSearch(searchPoint, clusters, indeces, distances) > 0) {
+		points.reserve(indeces.size());
+		for (size_t i = 0; i < indeces.size(); ++i) {
+			grasp::Cloud::Point point;
+			point.x = cloud->points[indeces[i]].x;
+			point.y = cloud->points[indeces[i]].y;
+			point.z = cloud->points[indeces[i]].z;
+			points.push_back(point);
+		}
+	}
+	return ret;
+}
+
 bool Belief::Hypothesis::build() {
 	pTree.reset(new pcl::KdTreeFLANN<pcl::PointXYZ, flann::L2_Simple<float>>);
 
@@ -573,6 +601,50 @@ golem::Real Belief::evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCo
 //	return /*norm**/density(distMin);
 }
 
+bool Belief::intersect(const golem::Bounds::Seq &bounds, const golem::Mat34 &pose) const {
+	grasp::RBPose::Sample frame = (*hypotheses.begin())->toRBPoseSample();
+	Mat34 actionFrame(frame.q, frame.p);
+	grasp::Cloud::PointSeq points;
+	std::vector<float> distances;
+
+	if ((*hypotheses.begin())->nearestKPoints(grasp::RBCoord(pose), points, distances) > 0) {
+		//const Vec3 point = grasp::Cloud::getPoint(points[0]);
+		for (size_t i = 0; i < points.size(); ++i) {
+			const Vec3 point = grasp::Cloud::getPoint(points[i]);
+			//Mat34 pointFrame = actionFrame;
+			//pointFrame.p += point; // only position is updated
+			//context.debug("Joint at pose <%f %f %f>, point at pose <%f %f %f>\n", pose.p.x, pose.p.y, pose.p.z, pointFrame.p.x, pointFrame.p.y, pointFrame.p.z);
+			for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b) {
+				if ((*b)->intersect(point)) { 
+					context.debug("Joint at pose <%f %f %f> intersects point at pose <%f %f %f>\n", pose.p.x, pose.p.y, pose.p.z, point.x, point.y, point.z);
+					return true;
+				}
+			}
+		}
+		//context.debug("returns false\n--------------------------------------\n");
+	}
+
+	// quick check of intersection
+//	if (pose.p.distance(actionFrame.p) < myDesc.distanceRange) {
+//		const size_t size = modelPoints.size() < myDesc.maxSurfacePoints ? modelPoints.size() : myDesc.maxSurfacePoints;
+//		for (size_t i = 0; i < size; ++i) {
+//			const Vec3 point = grasp::Cloud::getPoint(size < modelPoints.size() ? modelPoints[size_t(rand.next())%modelPoints.size()] : modelPoints[i]);
+//			Mat34 pointFrame = actionFrame;
+//			pointFrame.p += point; // only position is updated
+////			std::cout << "dist ";
+//			for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b) {
+//				const Real d = (*b)->getSurfaceDistance(pointFrame.p);
+////				std::cout <<  d << " ";
+//				if (d < REAL_ZERO) { 
+//					context.debug("Joint at pose <%f %f %f> intersects estimated object at pose <%f %f %f>\n", pose.p.x, pose.p.y, pose.p.z, actionFrame.p.x, actionFrame.p.y, actionFrame.p.z);
+//					return true;
+//				}
+//			}
+////			std::cout << "\n";
+//		}
+//	}
+	return false;
+}
 
 //void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Robot *robot, const golem::Waypoint &w, const grasp::FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force) {
 //	context.write("spam::Belief::createUpdate()...\n");

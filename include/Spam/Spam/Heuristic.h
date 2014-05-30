@@ -276,6 +276,8 @@ public:
 
 	/** Overwrite the collision detection method to check collision with the ML pose */
 	bool collides(const golem::Waypoint &w) const;
+	/** Sets collision checking with the object to be grasped */
+	void setPointCloudCollision(const bool cloudCollision) { pointCloudCollision = cloudCollision; };
 
 	/** Mahalanobis distance between rigid bodies a and b */
 	golem::Real distance(const grasp::RBCoord &a, const grasp::RBCoord &b, bool enableAng = false) const;
@@ -329,6 +331,9 @@ protected:
 	golem::Controller::State::Info armInfo;
 	/** Controller state info */
 	golem::Controller::State::Info handInfo;
+
+	/** Enables/disables collision checking with the object to be grasped */
+	bool pointCloudCollision;
 
 	/** Check the approaching direction of the grasp */
 	golem::Real directionApproach(const golem::Waypoint &w) const;

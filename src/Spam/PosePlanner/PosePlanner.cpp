@@ -69,6 +69,8 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	r.setId();
 	r2.setId();
 
+	screenCapture = desc.screenCapture;
+
 	numPoses = desc.numPoses;
 	numHypotheses = desc.numHypotheses;
 	
@@ -260,7 +262,10 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 
 		// done
 		context.write("Done!\n");
+		if (screenCapture) universe.postScreenCaptureFrames(-1);
 		renderData(dataPtr);
+		::Sleep(100);
+		if (screenCapture) universe.postScreenCaptureFrames(0);	
 		return;
 	}
 	case 'Q':
@@ -305,7 +310,10 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 
 		context.write("Done!\n");
 		showSamplePoints = true;
+		if (screenCapture) universe.postScreenCaptureFrames(-1);
 		renderData(dataPtr);
+		::Sleep(100);
+		if (screenCapture) universe.postScreenCaptureFrames(0);	
 		return;
 	}
 	case 'T':
@@ -429,6 +437,8 @@ void spam::XMLData(PosePlanner::Desc &val, Context* context, XMLContext* xmlcont
 	golem::XMLData("distrib_samples", val.distribSamples, xmlcontext->getContextFirst("appearance"), create);
 	XMLData(val.modelAppearance, xmlcontext->getContextFirst("appearance model"), create);
 	XMLData(val.queryAppearance, xmlcontext->getContextFirst("appearance query"), create);
+
+	XMLData("screen_capture", val.screenCapture, xmlcontext);
 
 	XMLData(val.actionManip, xmlcontext->getContextFirst("action_manip"), create);
 }

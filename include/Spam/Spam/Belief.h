@@ -105,6 +105,7 @@ public:
 	class Hypothesis {
 	public:
 		friend class FTDrivenHeuristic;
+		friend class Belief;
 		typedef golem::shared_ptr<Hypothesis> Ptr;
 		typedef std::map<golem::U32, Ptr> Map;
 		typedef std::vector<Ptr> Seq;
@@ -130,6 +131,8 @@ public:
 		/** Distance to nearest k points on the object's surface */
 		golem::Real dist2NearestKPoints(const grasp::RBCoord &pose, const golem::Real &maxDist = golem::Real(1.0), const size_t clusters = 10, const size_t &nIndeces = 100, const bool normal = true) const;
 
+		/** Nearest K points */
+		size_t nearestKPoints(const grasp::RBCoord &pose, grasp::Cloud::PointSeq &points, std::vector<float> &distances, const size_t clusters = 50);
 
 		/** Returns this sample in model frame **/
 		inline grasp::RBPose::Sample toRBPoseSample() { return sample; };
@@ -259,6 +262,9 @@ public:
 	/** Evaluates the likelihood of reading a contact between robot's pose and the sample */
 	golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const grasp::RealSeq &forces, std::vector<bool> &triggered, bool intersect = true);
 	//golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const golem::Real &force, bool jointZero, bool intersect = true);
+
+	/** Checks collision with the max likelihood fitting estimation */
+	bool intersect(const golem::Bounds::Seq &bounds, const golem::Mat34 &pose) const;
 
 	/** Probability density value=p(d) for a given distance between finger and hypothesis */
 	golem::Real density(const golem::Real dist) const;

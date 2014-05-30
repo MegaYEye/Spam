@@ -259,6 +259,8 @@ bool FTDrivenHeuristic::create(const Desc &desc) {
 
 	enableUnc = false;
 
+	pointCloudCollision = false;
+
 	return true;
 }
 
@@ -1206,22 +1208,124 @@ Real FTDrivenHeuristic::directionApproach(const Waypoint &w) const {
 //------------------------------------------------------------------------------
 
 bool FTDrivenHeuristic::collides(const Waypoint &w) const {
-	// check if the waypoint collides with objects in the scene
-	if (Heuristic::collides(w))
-		return true;
+#ifdef _HEURISTIC_PERFMON
+	++waypointCollisionCounter;
+#endif
 
-	// check if the trajectory collides with the point cloud of the ML sample
-	if (pBelief->getHypotheses().empty()) 
+	if (!desc.collisionDesc.enabled)
 		return false;
 
-	Belief::Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
-	for (Chainspace::Index i = handInfo.getChains().begin(); i < handInfo.getChains().end(); ++i) {
-		const RBCoord c(w.wpos[i]);
-		if (c.p.distance((*maxLhdPose)->sample.p) < 0.045) //if (distance(maxLhdPose->second->sample, c) < 0.05)
-			return true;
+	// find data pointer for the current thread
+	ThreadData* data = getThreadData();
+
+	// all chains
+	//for (Chainspace::Index i = stateInfo.getChains().begin(); i < stateInfo.getChains().end(); ++i)
+	for (Chainspace::Index i = stateInfo.getChains().end() - 1; i >= stateInfo.getChains().begin(); --i)
+	{
+		// all joints in a chain
+		//for (Configspace::Index j = stateInfo.getJoints(i).begin(); j < stateInfo.getJoints(i).end(); ++j)
+		for (Configspace::Index j = stateInfo.getJoints(i).end() - 1; j >= stateInfo.getJoints(i).begin(); --j)
+		{
+			const JointDesc* jdesc = getJointDesc()[j];
+			Bounds::Seq& jointBounds = data->jointBounds[j];
+		
+			if (jointBounds.empty() || !jdesc->collisionBounds)
+				continue;
+
+			// reset to the current joint pose
+			setPose(data->jointBoundsPoses[j], w.wposex[j], jointBounds);
+
+			// check for collisions between the current joint and the environment bounds, test bounds groups
+			if (!collisionBounds.empty() && intersect(jointBounds, collisionBounds, true))
+				return true;
+
+			// check for collisions between the current joint and the collision joints, do not test bounds groups
+			const U32Seq& collisionJoints = jdesc->collisionJoints;
+			for (U32Seq::const_iterator k = collisionJoints.begin(); k != collisionJoints.end(); ++k) {
+				const Configspace::Index collisionIndex(*k);
+
+				golem::Bounds::Seq &collisionJointBounds = data->jointBounds[collisionIndex];
+				if (collisionJointBounds.empty())
+					continue;
+			
+				setPose(data->jointBoundsPoses[collisionIndex], w.wposex[collisionIndex], collisionJointBounds);
+				if (intersect(jointBounds, collisionJointBounds, false))
+					return true;
+			}
+
+			
+			//if (pointCloudCollision && pBelief.get() && i != stateInfo.getChains().begin())
+			//	if (pBelief->intersect(jointBounds, w.wposex[j]))
+			//		return true;
+
+			// TODO joint bounds - chain bounds collisions
+		}
+
+		// TODO bounds - chain bounds collisions
+	}
+
+	// check for collisions with the object to grasp. only the hand
+	if (pointCloudCollision && pBelief.get()) {
+//		context.write("Checking collision");
+		SecTmReal init = context.getTimer().elapsed();
+		//CriticalSection cs;
+		//Chainspace::Index handIndex = handInfo.getChains().begin();
+		grasp::Manipulator::Ptr manipulator(new grasp::Manipulator(&controller));
+		//bool collision = false;
+//		ParallelsTask((golem::Parallels*)context.getParallels(), [&] (ParallelsTask*) {
+			// evaluated all the joints of the hand
+		for (Chainspace::Index i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i) {
+				//{
+				//	CriticalSectionWrapper csw(cs);
+				//	if (handIndex == handInfo.getChains().end())
+				//		break;
+				//	i = handIndex++;
+				//}
+				// bounds of the entire finger
+//		context.write("chain\n");
+				golem::Bounds::Seq bounds;
+				for (Configspace::Index j = handInfo.getJoints(i).end()-1; j >= handInfo.getJoints(i).begin(); --j) { 
+//		context.write("joint\n");
+					manipulator->getJointBounds(golem::U32(j - manipulator->getController()->getStateInfo().getJoints().begin()), w.wposex[j], bounds);
+					if (pBelief->intersect(bounds, w.wposex[j])) {
+						context.debug("Collision checking: intersects. (time %.5f)\n", context.getTimer().elapsed() - init);
+						return true;
+					}
+					//{
+					//	CriticalSectionWrapper csw(cs);
+					//	if (!collision)
+					//		collision = pBelief->intersect(bounds, w.wposex[j]);
+					//	else
+					//		break; // collision is true. no need to keep looping
+					//}
+				}
+			}
+//		}); // end parallels task
+//		context.write("done(0). (time %.5f)\n", context.getTimer().elapsed() - init);
+//		return collision;
 	}
 
 	return false;
+
+
+
+
+	//// check if the waypoint collides with objects in the scene
+	//if (Heuristic::collides(w))
+	//	return true;
+
+	//// check if the trajectory collides with the point cloud of the ML sample
+	//if (pBelief->getHypotheses().empty()) 
+	//	return false;
+
+	//Belief::Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
+	//for (Chainspace::Index i = handInfo.getChains().begin(); i < handInfo.getChains().end(); ++i) {
+	//	const RBCoord c(w.wpos[i]);
+	//	if (c.p.distance((*maxLhdPose)->sample.p) < 0.045) //if (distance(maxLhdPose->second->sample, c) < 0.05)
+	//		return true;
+	//}
+
+	//return false;
 }
 
 //------------------------------------------------------------------------------
