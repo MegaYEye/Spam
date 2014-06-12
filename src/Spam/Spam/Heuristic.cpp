@@ -1288,7 +1288,7 @@ bool FTDrivenHeuristic::collides(const Waypoint &w) const {
 //		context.write("joint\n");
 					manipulator->getJointBounds(golem::U32(j - manipulator->getController()->getStateInfo().getJoints().begin()), w.wposex[j], bounds);
 					if (pBelief->intersect(bounds, w.wposex[j])) {
-						context.debug("Collision checking: intersects. (time %.5f)\n", context.getTimer().elapsed() - init);
+//						context.debug("Collision checking: intersects. (time %.5f)\n", context.getTimer().elapsed() - init);
 						return true;
 					}
 					//{

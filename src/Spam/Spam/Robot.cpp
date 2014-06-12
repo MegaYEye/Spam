@@ -263,17 +263,17 @@ int Robot::getTriggeredGuards(grasp::FTGuard::Seq &triggeredJoints, golem::Contr
 }
 
 void Robot::readFT(const Controller::State &state, grasp::RealSeq &force) const {
-	std::cout << "robot::readFT(): retrieve torques\n";
+	context.debug("robot::readFT(): retrieve torques\n");
 	const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
 	const Chainspace::Index handChain = state.getInfo().getChains().begin()+1;
 
 	force.assign(handInfo.getJoints().size(), REAL_ZERO);
-	std::cout << "forces \n";
+	context.debug("forces \n");
 	if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
 		for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
 			const size_t k = j - handInfo.getJoints().begin();
 			force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
-			std::cout << "hand joint " << k << " force=" << force[k] << " guard=" << ftHandGuards[k] << "\n";
+			context.debug("hand joint %d force=%f guard=%f\n", k, force[k], ftHandGuards[k]);
 		}
 	}
 

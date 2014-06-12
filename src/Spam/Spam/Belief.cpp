@@ -260,13 +260,13 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 	hypotheses.clear();
 	hypotheses.reserve(myDesc.numHypotheses);
 
-	const grasp::RBPose::Sample actionFrame = maximum();
+	const grasp::RBPose::Sample maximumFrame = maximum();
 	//Vec3 offset(-.1, .07, .0);
 	//grasp::RBPose::Sample actionFrame = maximum();
 	//	context.write("Heuristic:setBeliefState(model size = %d, max points = %d): samples: cont_fac = %f\n", model.size(), ftDrivenDesc.maxSurfacePoints, ftDrivenDesc.contactFac);
 	for (size_t i = 0; i < myDesc.numHypotheses; ++i) {
 		// sample hypothesis. NOTE: The first element is the max scoring pose
-		grasp::RBCoord sampleFrame = (i == 0) ? actionFrame : sample();
+		grasp::RBCoord actionFrame = (i == 0) ? maximumFrame : sample();
 		//sampleFrame.p += offset;
 		// transform the sample in the reference coordinate (default: robot's coordinate frame)
 //		sampleFrame.multiply(sampleFrame, grasp::RBCoord(transform));
@@ -278,12 +278,12 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 		const size_t size = model.size() < myDesc.maxSurfacePoints ? model.size() : myDesc.maxSurfacePoints;
 		for (size_t i = 0; i < size; ++i) {
 			grasp::Cloud::Point p = size < model.size() ? model[size_t(rand.next())%model.size()] : model[i]; // make a copy here
-			grasp::Cloud::setPoint(sampleFrame.toMat34() * transform * grasp::Cloud::getPoint(p), p);
+			grasp::Cloud::setPoint(actionFrame.toMat34() * grasp::Cloud::getPoint(p)/* + actionFrame.p*/, p);
 			sampleCloud.push_back(p);
 		}
 //		hypotheses.insert(Hypothesis::Map::value_type(idx, Hypothesis::Ptr(new Hypothesis(idx, grasp::RBPose::Sample(sampleFrame), sampleCloud))));
-		hypotheses.push_back(Hypothesis::Ptr(new Hypothesis(idx, transform, grasp::RBPose::Sample(sampleFrame), sampleCloud)));
-		context.write(" - sample n.%d <%.4f %.4f %.4f> <%.4f %.4f %.4f %.4f>\n", idx, sampleFrame.p.x, sampleFrame.p.y, sampleFrame.p.z, sampleFrame.q.w, sampleFrame.q.x, sampleFrame.q.y, sampleFrame.q.z); 
+		hypotheses.push_back(Hypothesis::Ptr(new Hypothesis(idx, transform, grasp::RBPose::Sample(actionFrame), sampleCloud)));
+		context.write(" - sample n.%d <%.4f %.4f %.4f> <%.4f %.4f %.4f %.4f>\n", idx, actionFrame.p.x, actionFrame.p.y, actionFrame.p.z, actionFrame.q.w, actionFrame.q.x, actionFrame.q.y, actionFrame.q.z); 
 		idx++;
 	}
 	
@@ -318,7 +318,7 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 	//	initProperties = sampleProperties;
 	//}
 	//actionFrame.p += offset;
-	return actionFrame;
+	return maximumFrame;
 }
 
 grasp::RBPose::Sample::Seq Belief::getHypothesesToSample() {
@@ -616,7 +616,7 @@ bool Belief::intersect(const golem::Bounds::Seq &bounds, const golem::Mat34 &pos
 			//context.debug("Joint at pose <%f %f %f>, point at pose <%f %f %f>\n", pose.p.x, pose.p.y, pose.p.z, pointFrame.p.x, pointFrame.p.y, pointFrame.p.z);
 			for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b) {
 				if ((*b)->intersect(point)) { 
-					context.debug("Joint at pose <%f %f %f> intersects point at pose <%f %f %f>\n", pose.p.x, pose.p.y, pose.p.z, point.x, point.y, point.z);
+//					context.debug("Joint at pose <%f %f %f> intersects point at pose <%f %f %f>\n", pose.p.x, pose.p.y, pose.p.z, point.x, point.y, point.z);
 					return true;
 				}
 			}

@@ -643,7 +643,8 @@ void RagPlanner::performApproach(Data::Map::iterator dataPtr) {
 	// compute the approach traectory in a new frame and its profile
 	context.debug("RagPlanner::performApproach(): Computing trajectory in a new frame and generating profile...\n");
 	Controller::State::Seq seqTrn, trjApproach, trjGrasp;
-	robot->trnTrajectory(actionFrameT, modelFrame, grasp::to<Data>(dataPtr)->actionFrame, seq.begin(), seq.end(), seqTrn);
+	// compute trajectory to the pre-grasp pose with point cloud collision detection ON
+	robot->trnTrajectory(actionFrameT, modelFrame, grasp::to<Data>(dataPtr)->actionFrame, seq.begin(), seq.begin() + 1, seqTrn);
 
 	// debug: shows pregrasp and grasp poses of the hand
 	context.debug("RagPlanner::performApproach(): render pre-grasp pose.\n");
@@ -677,13 +678,17 @@ void RagPlanner::performApproach(Data::Map::iterator dataPtr) {
 	if (grasp::to<Data>(dataPtr)->triggered == 0) {
 		context.debug("RagPlanner::performApproach(): No unexpected contact:. we grasp! (disable guards)\n");
 		pHeuristic->setPointCloudCollision(false);
-		pHeuristic->setCollisionDetection(false);
-		robot->createTrajectory(robot->recvState().command, &seqTrn.back(), NULL, 0, trjGrasp);
+//		pHeuristic->setCollisionDetection(false);
+		// compute trajectory to the grasp pose with point cloud collision detection OFF
+		seqTrn.clear();
+		robot->trnTrajectory(actionFrameT, modelFrame, grasp::to<Data>(dataPtr)->actionFrame, seq.end() - 1, seq.end(), seqTrn);
+		robot->createTrajectory(robot->recvState().command, &seqTrn.front(), NULL, 0, trjGrasp);
 		grasp::to<Data>(dataPtr)->action.clear();
 		profile(dataPtr, trjGrasp, SecTmReal(5.0), trjApproachIdle);
 		robot->enableGuards(false);
 		// perform grasping action
 		perform(dataPtr);
+		printTrajectory(grasp::to<Data>(dataPtr)->action, robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());
 		if (grasp::to<Data>(dataPtr)->triggered = robot->isGrasping(/*grasp::to<Data>(dataPtr)->*/triggeredGuards, robot->recvState().config) > 0) {
 			const int key = waitKey("YN", "Do you accept this grasp? (Y/N)...");
 			grasp::to<Data>(dataPtr)->replanning = key == 'Y'? false : true;
@@ -736,23 +741,24 @@ void RagPlanner::performWithdraw(Data::Map::iterator dataPtr) {
 	// fixed properties of the planner
 	robot->enableGuards(false);
 	pHeuristic->enableUnc = false;
-//	robot->setCollisionDetection(false);
+	pHeuristic->setPointCloudCollision(false);
+	robot->setCollisionDetection(true);
 //	extrapolate(makeCommand(grasp::to<Data>(dataPtr)->actionWithdraw), trjApproachExtrapolFac, false, seq);
 
-	robot->resumeGuards();
-	if (screenCapture) universe.postScreenCaptureFrames(-1);
-	robot->set(grasp::to<Data>(dataPtr)->actionWithdraw.front());
-	::Sleep(100);
-	if (screenCapture) universe.postScreenCaptureFrames(0);	
+	//robot->resumeGuards();
+	//if (screenCapture) universe.postScreenCaptureFrames(-1);
+	//robot->set(grasp::to<Data>(dataPtr)->actionWithdraw.front());
+	//::Sleep(100);
+	//if (screenCapture) universe.postScreenCaptureFrames(0);	
 
-//	// compute the approach traectory in a new frame and its profile
-//	robot->createTrajectory(robot->recvState().config, &grasp::to<Data>(dataPtr)->actionWithdraw.front().command, NULL, 0, trjWithdraw);
-//	
-//	grasp::to<Data>(dataPtr)->action.clear();
-////	profile(dataPtr, trjWithdraw, trjApproachDuration, trjApproachIdle);
-//
-//	// perform manip action
-////	perform(dataPtr);
+	// compute the approach traectory in a new frame and its profile
+	robot->createTrajectory(robot->recvState().config, &grasp::to<Data>(dataPtr)->actionWithdraw.front().command, NULL, 0, trjWithdraw);
+	
+	grasp::to<Data>(dataPtr)->action.clear();
+	profile(dataPtr, trjWithdraw, trjApproachDuration, trjApproachIdle);
+
+	// perform manip action
+	perform(dataPtr);
 //
 //	//grasp::to<Data>(dataPtr)->action.clear();
 //	//golem::Controller::State::Seq trjWithdraw;
@@ -810,27 +816,41 @@ void RagPlanner::performSingleGrasp(Data::Map::iterator dataPtr) {
 
 	context.write("RagPlanner::performSingleGrasp(): build and perform approach trajectory\n");
 	// fixed properties of the planner
-	pHeuristic->enableUnc = this->uncEnable;
-	robot->enableGuards();
+	pHeuristic->enableUnc = false;
+	pHeuristic->setCollisionDetection(Bounds::GROUP_ALL);
+	pHeuristic->setPointCloudCollision(true);
+
+	robot->enableGuards(false);
 	grasp::to<Data>(dataPtr)->replanning = false;
-//	robot->setCollisionDetection(true);		
+	robot->setCollisionDetection(true);		
 
 	// handle the approaching action to generate a sequence of states 
 	//context.write("approaching trajetory (list)\n");
 	//printTrajectory(makeCommand(dataPtr->second.approachAction), robot->getStateInfo().getJoints().begin(), robot->getStateInfo().getJoints().end());		
 	Controller::State::Seq seq;
 	extrapolate(makeCommand(grasp::to<Data>(dataPtr)->actionApproach), trjApproachExtrapolFac, false, seq);
+	Controller::State::Seq seqTrn, trjApproach, trjGrasp;
+	robot->trnTrajectory(actionFrameT, modelFrame, grasp::to<Data>(dataPtr)->actionFrame, seq.begin(), seq.end(), seqTrn);
+
+	// debug: shows pregrasp and grasp poses of the hand
+	context.debug("RagPlanner::performApproach(): render pre-grasp pose.\n");
+	Controller::State pregrasp = seqTrn.front();
+	renderHand(pregrasp, true);
+	//Controller::State grasp = seqTrn.back();
+	//renderHand(grasp);
+
+	robot->createTrajectory(robot->recvState().config, &pregrasp, NULL, 0, trjApproach);
 	// compute the approach traectory in a new frame and its profile
 	grasp::to<Data>(dataPtr)->action.clear();
 	//grasp::to<Data>(poseDataPtr)->action.clear();
-	profile(dataPtr, seq, trjApproachDuration, trjApproachIdle);
+	profile(dataPtr, trjApproach, trjApproachDuration, trjApproachIdle);
 	//// copy the planned trajectory in my trial data
 	//grasp::to<Data>(poseDataPtr)->action.clear();
 	//for (Controller::State::Seq::const_iterator i = grasp::to<Data>(queryDataPtr)->action.begin(); i != grasp::to<Data>(queryDataPtr)->action.end(); ++i)
 	//	poseDataPtr->second.action.push_back(*i);
 
 	// perform action
-	grasp::Player::perform(dataPtr);
+	perform(dataPtr);
 
 	::Sleep(2000);
 	robot->initControlCycle();
@@ -846,7 +866,7 @@ void RagPlanner::performSingleGrasp(Data::Map::iterator dataPtr) {
 	seq.push_back(graspPose);
 	// define the profile
 	grasp::to<Data>(dataPtr)->action.clear();
-	Player::profile(dataPtr, seq, trjApproachDuration, trjApproachIdle);
+	profile(dataPtr, seq, trjApproachDuration, trjApproachIdle);
 
 	// move robot
 	robot->sendTrajectory(grasp::to<Data>(dataPtr)->action, true);
@@ -1335,7 +1355,21 @@ void RagPlanner::function(Data::Map::iterator& dataPtr, int key) {
 
 AGAIN:
 		context.debug("RagPlanner:function(X): performing approach trajectory\n");
-		performApproach(dataPtr);
+		try {
+			if (!singleGrasp) {
+				performApproach(dataPtr);
+				context.write("perform approach is over.\n");
+			}
+			else {
+				context.write("Single grasp performs\n");
+				performSingleGrasp(dataPtr);
+//				goto GRASP_QUALITY;
+			}
+		}
+		catch (const Message& msg) {
+			context.write("%s\n", msg.str().c_str());
+		}
+		//performApproach(dataPtr);
 		context.write("perform approach is over.\n");
 		
 		if (grasp::to<Data>(dataPtr)->replanning) {

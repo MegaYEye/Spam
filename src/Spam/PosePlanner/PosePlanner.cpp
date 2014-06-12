@@ -159,6 +159,8 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 						grasp::Cloud::transform(actionFrame, sample, sample);
 						sampleRenderer.addAxes(sampleFrame, distribFrameSize);
 						sampleAppearance.draw(sample, sampleRenderer);
+//						sampleAppearance.draw((*pBelief->getHypotheses().begin())->getCloud(), sampleRenderer);
+//						break;
 					}
 				}
 				if (showQueryDistrib) {

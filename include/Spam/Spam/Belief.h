@@ -138,7 +138,9 @@ public:
 		inline grasp::RBPose::Sample toRBPoseSample() { return sample; };
 		/** Returns this sample in global frame (default: robot frame) **/
 		inline grasp::RBPose::Sample toRBPoseSampleGF() { return grasp::RBPose::Sample(sample.toMat34() * modelFrame, sample.weight, sample.cdf); };
-		
+		/** Returns the point cloud in global frame */
+		inline grasp::Cloud::PointSeq getCloud() { return points; };
+
 	protected:
 		/** Builds a pcl::PointCloud and its kd tree */
 		bool build();
