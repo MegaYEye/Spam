@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<golem>
+  <rand seed="0"></rand>
+  <parallels threads="4"></parallels>
+  <messages level="verbose"/><!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
+  <library physx="0" normals="0"/>
+
+  <universe name="Spam">
+    <!--<window x="0" y="0" width="640" height="480"></window>-->
+    <!--<window x="0" y="0" width="800" height="600"></window>-->
+    <window x="0" y="0" width="1288" height="964"></window>
+    <physx fps="30" skin_width="0.005" sleep_lin_vel_squared="0.0025" sleep_ang_vel_squared="0.0025" max_angular_velocity="7.0" bounce_threshold="-2.0"></physx>
+    <recorder frame_drop="1" file_name="screen" file_ext=".png" leading_zeros="1" encoder_str="image/png" buffer_len="100"></recorder>
+  </universe>
+
+  <scene name="PosePlanner">
+    <physx restitution="0.0" static_friction="0.2" dynamic_friction="0.1">
+      <gravity v1="0.0" v2="0.0" v3="-9.81"></gravity>
+    </physx>
+    <opengl view_name="Robot" view_inc="0.2">
+      <view_point v1="21.0" v2="0.0" v3="10.0"/>
+      <view_dir v1="-1.0" v2="0.0" v3="-0.45"/>
+      <view_up v1="0.0000" v2="0.0000" v3="1.0000"/>
+      <!--<view_point v1="-1.9395" v2="-18.0957" v3="6.2906"/>
+      <view_dir v1="0.5068" v2="0.8601" v3="-0.0587"/>
+      <view_up v1="0.0000" v2="0.0000" v3="1.0000"/>-->
+      <!--<clear_color R="55" G="55" B="60" A="255"/>-->
+      <clear_color R="255" G="255" B="255" A="255"/>
+      <draw solid="1" wire="0" shadow="0" physx="0" normals="0"/>
+    </opengl>
+    <opengl view_name="Object front" view_inc="0.2">
+      <view_point v1="12.0" v2="-5.0" v3="2.0"/>
+      <view_dir v1="-0.8640" v2="0.0" v3="-0.7"/>
+      <view_up v1="0.0000" v2="0.0000" v3="1.0000"/>
+      <!--<clear_color R="55" G="55" B="60" A="255"/>-->
+      <clear_color R="255" G="255" B="255" A="255"/>
+      <draw solid="1" wire="0" shadow="0" physx="0" normals="0"/>
+    </opengl>
+    <opengl view_name="Camera" view_inc="0.2">
+      <view_point v1="1.8567" v2="-7.1327" v3="-0.0359"/>
+      <view_dir v1="0.7584" v2="0.4831" v3="-0.4375"/>
+      <view_up v1="0.0000" v2="0.0000" v3="1.0000"/>
+      <!--<clear_color R="55" G="55" B="60" A="255"/>-->
+      <clear_color R="255" G="255" B="255" A="255"/>
+      <draw solid="1" wire="0" shadow="0" physx="0" normals="0"/>
+    </opengl>
+  </scene>
+
+  <pose_planner points="100000" features="500000" attempts="10" kernels="500000" neighbours="20000" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7" search_checks="32" search_kdtrees="4">
+    <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
+    <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
+    <pose_stddev lin="0.001" ang="500.0"/>
+    <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
+    <optimisation minimum="1" population_size="10" generations_num="1000" de_diff_fac="0.5" de_cross_prob="0.1" test_generations="100" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest"/>
+    <model_trn_frame v1="0.0" v2="0.0" v3="0.0" q0="1.0" q1="0.0" q2="0.0" q3="0.0"/>
+    <appearance distrib_samples="100">
+      <model>
+        <line show="1" R="255" G="255" B="0" A="255"/>
+        <normal show="1" size="0.03" R="0" G="255" B="255" A="255"/>
+        <frame show="1" v1="0.02" v2="0.02" v3="0.02"/>
+      </model>
+      <query>
+        <line show="1" R="255" G="255" B="255" A="255"/>
+        <normal show="1" size="0.03" R="0" G="255" B="255" A="255"/>
+        <frame show="1" v1="0.02" v2="0.02" v3="0.02"/>
+      </query>
+    </appearance>
+    <action_manip v1="0.0" v2="0.0" v3="+0.15" roll="0.0" pitch="0.0" yaw="0.0"/>
+    <tactile_model num_poses="3" num_hypotheses="2" max_surface_points="5000">
+      <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
+    </tactile_model>
+  </pose_planner>
+
+  <player>
+    <trajectory scan_idle="1.0" duration="5.0" idle="2.0" extrapol_fac="0.5" perf_off="1.0" average="0.2">
+      <velocity dim="61"
+             c1="0.2" c2="0.2" c3="0.2" c4="0.2" c5="0.2" c6="0.2" c7="0.2" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5" c21="0.5" c22="0.5" c23="0.5" c24="0.5" c25="0.5" c26="0.5" c27="0.5"
+             c28="0.1" c29="0.1" c30="0.1" c31="0.1" c32="0.1" c33="0.1" c34="0.1" c35="0.5" c36="0.5" c37="0.5" c38="0.5" c39="0.5" c40="0.5" c41="0.5" c42="0.5" c43="0.5" c44="0.5" c45="0.5" c46="0.5" c47="0.5" c48="0.5" c49="0.5" c50="0.5" c51="0.5" c52="0.5" c53="0.5" c54="0.5"
+             c55="0.5" c56="0.5" c57="0.5" c58="0.5" c59="0.5" c60="0.5" c61="0.5"
+      />
+      <acceleration dim="61"
+             c1="0.1" c2="0.1" c3="0.1" c4="0.1" c5="0.1" c6="0.1" c7="0.1" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5" c21="0.5" c22="0.5" c23="0.5" c24="0.5" c25="0.5" c26="0.5" c27="0.5"
+             c28="0.05" c29="0.05" c30="0.05" c31="0.05" c32="0.05" c33="0.05" c34="0.05" c35="0.5" c36="0.5" c37="0.5" c38="0.5" c39="0.5" c40="0.5" c41="0.5" c42="0.5" c43="0.5" c44="0.5" c45="0.5" c46="0.5" c47="0.5" c48="0.5" c49="0.5" c50="0.5" c51="0.5" c52="0.5" c53="0.5" c54="0.5"
+             c55="0.5" c56="0.5" c57="0.5" c58="0.5" c59="0.5" c60="0.5" c61="0.5"
+      />
+      <distance dim="61"
+             c1="10.0" c2="10.0" c3="10.0" c4="10.0" c5="10.0" c6="10.0" c7="10.0" c8="1.0" c9="1.0" c10="1.0" c11="1.0" c12="1.0" c13="1.0" c14="1.0" c15="1.0" c16="1.0" c17="1.0" c18="1.0" c19="1.0" c20="1.0" c21="1.0" c22="1.0" c23="1.0" c24="1.0" c25="1.0" c26="1.0" c27="1.0"
+             c28="10.0" c29="10.0" c30="10.0" c31="10.0" c32="10.0" c33="10.0" c34="10.0" c35="1.0" c36="1.0" c37="1.0" c38="1.0" c39="1.0" c40="1.0" c41="1.0" c42="1.0" c43="1.0" c44="1.0" c45="1.0" c46="1.0" c47="1.0" c48="1.0" c49="1.0" c50="1.0" c51="1.0" c52="1.0" c53="1.0" c54="1.0"
+             c55="1.0" c56="1.0" c57="1.0" c58="1.0" c59="1.0" c60="1.0" c61="1.0"
+      />
+    </trajectory>
+
+    <pose dim="61" c1="0" c2="0" c3="0" c4="0" c5="0" c6="0" c7="0" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose dim="61" c1="1.37019" c2="-0.298179" c3="-0.110428" c4="1.19817" c5="0.362895" c6="-0.448772" c7="-1.4312" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose dim="61" c1="2.07687" c2="-0.957428" c3="-1.11267" c4="1.46676" c5="-0.866931" c6="-0.882791" c7="1.20531" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose dim="61" c1="1.97158" c2="-1.13671" c3="-1.13761" c4="1.41129" c5="-0.840601" c6="-0.916471" c7="1.38255" c8="0.169399" c9="0.0194243" c10="0.00202187" c11="0.00202187" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose dim="61" c1="1.95493" c2="-1.13883" c3="-1.13124" c4="1.40414" c5="-0.843384" c6="-0.91384" c7="1.38779" c8="0.169399" c9="0.733245" c10="0.0012063" c11="0.0012063" c12="0" c13="0.376592" c14="0.106163" c15="0.106163" c16="0" c17="0.597639" c18="0.0503237" c19="0.0503237" c20="0" c21="0.747146" c22="0.0870362" c23="0.0870362" c24="0.0557188" c25="0.789276" c26="0.158617" c27="0.158617" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+
+    <!--<pose v1="0.0" v2="0.0" v3="0.0" roll="0.0" pitch="0.0" yaw="0.0"/>-->
+  </player>
+
+  <robot force_disp_scale="0.2" trajectory_idle="0.5" trajectory_duration="5.0" trajectory_trials="5">
+    <ft_sensor use_ft_sensor_client="0">
+      <daq calibration_file="FT10731.cal" sampling_rate="10000" avg_window_size="10"/>
+      <client host="localhost" port="26873"/>
+      <!-- y = 80(kuka end-effector mounting) + 7+2+2(Rustam's F/T sensor and Kinect mounting plates) + 33.3(Gamma FT sensor) -->
+      <frame v1="0.0" v2="0.1243" v3="0.0" roll="-1.5707963267949" pitch="-0.3926990817" yaw="0.0"/>
+      <frame_size v1="0.05" v2="0.05" v3="0.05"/>
+      <gain v1="-0.2" v2="-0.2" v3="-0.2" w1="-1.0" w2="-1.0" w3="-1.0"/>
+      <limit v1="30.0" v2="30.0" v3="80.0" w1="2.0" w2="2.0" w3="2.0" dim="20" c1="5.0" c2="5.0" c3="5.0" c4="5.0" c5="5.0" c6="5.0" c7="5.0" c8="5.0" c9="5.0" c10="5.0" c11="5.0" c12="5.0" c13="5.0" c14="5.0" c15="5.0" c16="5.0" c17="5.0" c18="5.0" c19="5.0" c20="5.0"/>
+    </ft_sensor>
+
+    <impedance stiff_steps="10" stiff_step_init="0" damp_steps="10" damp_step_init="0">
+      <stiff_min dim="4" c1="0.5" c2="0.5" c3="0.5" c4="0.5"/>
+      <stiff_max dim="4" c1="100.0" c2="100.0" c3="100.0" c4="100.0"/>
+      <damp_min dim="4" c1="0.5" c2="0.5" c3="0.5" c4="0.5"/>
+      <damp_max dim="4" c1="100.0" c2="100.0" c3="100.0" c4="100.0"/>
+    </impedance>
+
+    <active_ctrl_arm start_steps="10" stop_steps="10">
+      <filter dim="7" c1="0.1" c2="0.1" c3="0.1" c4="0.1" c5="0.1" c6="0.1" c7="0.1"/>
+      <threshold dim="7" c1="0.05" c2="0.05" c3="0.05" c4="0.05" c5="0.05" c6="0.05" c7="0.05"/>
+      <velocity dim="7" c1="0.15707963" c2="0.15707963" c3="0.15707963" c4="0.15707963" c5="0.15707963" c6="0.15707963" c7="0.15707963"/>
+      <gain dim="7" c1="-0.001" c2="-0.001" c3="-0.001" c4="-0.001" c5="-0.001" c6="-0.001" c7="-0.001"/>
+    </active_ctrl_arm>
+
+    <active_ctrl_hand start_steps="10" stop_steps="10">
+      <filter dim="20" c1="0.02" c2="0.02" c3="0.02" c4="0.02" c5="0.02" c6="0.02" c7="0.02" c8="0.02" c9="0.02" c10="0.02" c11="0.02" c12="0.02" c13="0.02" c14="0.02" c15="0.02" c16="0.02" c17="0.02" c18="0.02" c19="0.02" c20="0.02"/>
+      <threshold dim="20" c1="0.02" c2="0.02" c3="0.02" c4="0.02" c5="0.02" c6="0.02" c7="0.02" c8="0.02" c9="0.02" c10="0.02" c11="0.02" c12="0.02" c13="0.02" c14="0.02" c15="0.02" c16="0.02" c17="0.02" c18="0.02" c19="0.02" c20="0.02"/>
+      <velocity dim="20" c1="0.15707963" c2="0.15707963" c3="0.15707963" c4="0.15707963" c5="0.15707963" c6="0.15707963" c7="0.15707963" c8="0.15707963" c9="0.15707963" c10="0.15707963" c11="0.15707963" c12="0.15707963" c13="0.15707963" c14="0.15707963" c15="0.15707963" c16="0.15707963" c17="0.15707963" c18="0.15707963" c19="0.15707963" c20="0.15707963"/>
+      <gain dim="20" c1="-0.001" c2="-0.001" c3="-0.001" c4="-0.001" c5="-0.001" c6="-0.001" c7="-0.001" c8="-0.001" c9="-0.001" c10="-0.001" c11="-0.001" c12="-0.001" c13="-0.001" c14="-0.001" c15="-0.001" c16="-0.001" c17="-0.001" c18="-0.001" c19="-0.001" c20="-0.001"/>
+    </active_ctrl_hand>
+
+    <active_workspace_ctrl_arm pred_time="0.4" reac_time="0.3">
+      <gain v1="0.00005" v2="0.00005" v3="0.0005" w1="0.0005" w2="0.0005" w3="0.005"/>
+      <frame_size v1="0.1" v2="0.1" v3="0.1"/>
+    </active_workspace_ctrl_arm>
+
+    <!--<arm_tool_bounds type="box" group="1">
+      <dimensions v1="0.07" v2="0.07" v3="0.15"/>
+      <pose v1="-0.035" v2="-0.035" v3="0.22" roll="0.0" pitch="0.0" yaw="-2.3561944901994329"/>
+    </arm_tool_bounds>-->
+    <arm_tool_bounds type="convex_mesh" group="1">
+      <pose v1="0.0" v2="0.0" v3="0.2" roll="0.0" pitch="0.0" yaw="-2.3561944901994329"/>
+      <vertex v1="-0.05" v2="-0.07" v3="-0.1"/>
+      <vertex v1="+0.05" v2="-0.07" v3="-0.1"/>
+      <vertex v1="-0.05" v2="+0.07" v3="-0.1"/>
+      <vertex v1="+0.05" v2="+0.07" v3="-0.1"/>
+      <vertex v1="-0.02" v2="-0.06" v3="+0.19"/>
+      <vertex v1="+0.14" v2="+0.01" v3="+0.12"/>
+      <vertex v1="-0.02" v2="+0.06" v3="+0.19"/>
+      <vertex v1="+0.14" v2="+0.07" v3="+0.12"/>
+      <triangle t1="0" t2="3" t3="1"/>
+      <triangle t1="0" t2="2" t3="3"/>
+      <triangle t1="0" t2="1" t3="5"/>
+      <triangle t1="0" t2="5" t3="4"/>
+      <triangle t1="0" t2="4" t3="6"/>
+      <triangle t1="0" t2="6" t3="2"/>
+      <triangle t1="7" t2="4" t3="5"/>
+      <triangle t1="7" t2="6" t3="4"/>
+      <triangle t1="7" t2="5" t3="1"/>
+      <triangle t1="7" t2="1" t3="3"/>
+      <triangle t1="7" t2="3" t3="2"/>
+      <triangle t1="7" t2="2" t3="6"/>
+    </arm_tool_bounds>
+
+    <obstacle_bounds type="plane" distance="0.0" grid_size="10" grid_delta="0.1" group="1">
+      <normal v1="0.0" v2="0.0" v3="1.0"/>
+      <pose v1="0.0" v2="0.0" v3="-0.345" roll="0.0" pitch="0.0" yaw="0.0"/>
+    </obstacle_bounds>
+  </robot>
+
+  <!-- Birmingham robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBhamSim" -->
+  <!-- Birmingham robot (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBham" -->
+  <!-- DLR Justin robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotJustin" -->
+  <!-- DLR Justin robot (controller, planner): library_path="GolemDeviceRobotJustin" config_path="GolemDeviceRobotJustin" -->
+  <!-- UIBK robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotUIBKSim" -->
+  <!-- UIBK robot (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotUIBK" -->
+
+  <controller library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBorisSim">
+    <renderer>
+      <joint_appearance line_width="1.0">
+        <solid_colour R="192" G="192" B="0" A="100"></solid_colour>
+        <wire_colour R="127" G="127" B="127" A="255"></wire_colour>
+        <shadow_colour R="12" G="25" B="37" A="255"></shadow_colour>
+      </joint_appearance>
+      <path_renderer show="1" vertex_position_show="0" vertex_frame_show="0" edge_show="1" path_time_past="0" path_time_future="1e10" path_segments="5000" path_segment_duration="0.1">
+        <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
+        <vertex_frame_size v1="0.02" v2="0.02" v3="0.02"></vertex_frame_size>
+        <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
+      </path_renderer>
+      <state_renderer show="1" vertex_position_show="1" vertex_frame_show="1" edge_show="0" state_use_commands="0" state_joint_frames_show="0">
+        <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
+        <vertex_frame_size v1="0.02" v2="0.02" v3="0.02"></vertex_frame_size>
+        <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
+        <state_joint_frames_size v1="0.03" v2="0.03" v3="0.03"/>
+      </state_renderer>
+    </renderer>
+  </controller>
+
+  <planner library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBorisSim">
+    <renderer show_duration="600.0">
+      <goal_renderer show="1" vertex_position_show="0" vertex_frame_show="1" edge_show="0">
+        <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
+        <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
+        <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
+      </goal_renderer>
+      <goal_population_renderer show="1" vertex_position_show="1" vertex_frame_show="0" edge_show="0">
+        <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
+        <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
+        <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
+      </goal_population_renderer>
+      <global_graph_renderer show="0" vertex_position_show="1" vertex_frame_show="0" edge_show="0">
+        <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
+        <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
+        <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
+      </global_graph_renderer>
+      <global_path_renderer show="0" vertex_position_show="0" vertex_frame_show="0" edge_show="1">
+        <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
+        <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
+        <edge_colour R="0" G="255" B="255" A="255"></edge_colour>
+      </global_path_renderer>
+      <local_graph_renderer show="0" vertex_position_show="1" vertex_frame_show="0" edge_show="0">
+        <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
+        <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
+        <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
+      </local_graph_renderer>
+      <local_path_renderer show="0" vertex_position_show="0" vertex_frame_show="0" edge_show="1">
+        <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
+        <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
+        <edge_colour R="255" G="0" B="255" A="255"></edge_colour>
+      </local_path_renderer>
+      <optimised_path_rendererex show="0" vertex_position_show="0" vertex_frame_show="1" edge_show="1">
+        <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
+        <vertex_frame_size v1="0.02" v2="0.02" v3="0.02"></vertex_frame_size>
+        <edge_colour R="0" G="0" B="0" A="255"></edge_colour>
+      </optimised_path_rendererex>
+    </renderer>
+  </planner>
+
+  <director move_idle="1.0">
+    <cloud remove_nans="0">
+      <filter enabled="1" window="10" samples="9"/>
+      <!--<outrem_image enabled_radius="0" enabled_statistical="1" radius="0.005" min_neighbors_in_radius="15" mean_k="50" stddev_mul_threshold="1.0"/>-->
+      <!--<outrem_alignment enabled_radius="0" enabled_statistical="1" radius="0.005" min_neighbors_in_radius="15" mean_k="50" stddev_mul_threshold="1.0"/>-->
+      <outrem_segmentation enabled_radius="1" enabled_statistical="0" radius="0.02" min_neighbors_in_radius="200" mean_k="50" stddev_mul_threshold="1.0"/>
+      <outrem_segmentation enabled_radius="1" enabled_statistical="0" radius="0.005" min_neighbors_in_radius="20" mean_k="50" stddev_mul_threshold="1.0"/>
+      <normal enabled_pca="0" enabled_ii="0" enabled_mls="1" normal_eps="1e-5" polynomial_fit="1" radius_search="0.015" max_depth_change_factor="0.02" normal_smoothing_size="0.02"/>
+      <curvature normals="1" radius_search="0.015"/>
+      <registration_alignment enabled="0" enabled_icp="1" enabled_icpnl="0" max_correspondence_distance="0.05" ransac_outlier_rejection_threshold="0.05" transformation_epsilon="1e-7" max_iterations="50"/>
+      <registration_segmentation enabled="0" enabled_icp="1" enabled_icpnl="0" max_correspondence_distance="0.05" ransac_outlier_rejection_threshold="0.05" transformation_epsilon="1e-7" max_iterations="50"/>
+      <downsample_alignment enabled="0" enabled_with_normals="1" enabled_voxel_grid="0" grid_leaf_size="0.0015"/>
+      <downsample_segmentation enabled="1" enabled_with_normals="1" enabled_voxel_grid="0" grid_leaf_size="0.0015"/>
+      <segmentation incremental="0" distance_threshold="0.00001"/>
+      <scan_region>
+        <bounds type="box" group="1">
+          <dimensions v1="0.3" v2="0.3" v3="0.2"/>
+          <pose v1="0.5" v2="-0.5" v3="-0.125" roll="0.014" pitch="-0.014" yaw="0.0"/>
+        </bounds>
+      </scan_region>
+      <object_region>
+        <bounds type="box" group="1">
+          <dimensions v1="0.3" v2="0.3" v3="0.2"/>
+          <pose v1="0.5" v2="-0.5" v3="-0.125" roll="0.014" pitch="-0.014" yaw="0.0"/>
+        </bounds>
+      </object_region>
+      <region_colour>
+        <solid R="0" G="0" B="255" A="32"/>
+        <wire R="0" G="0" B="255" A="255"/>
+      </region_colour>
+    </cloud>
+
+    <!-- codec="I420" codec="DIVX" codec="XVID" codec="X264" -->
+    <!--<camera type="depthsim" name="cameraSim" index="0" calibration_file="GraspCameraSim.xml" buffer_len="10" thread_timeout="10000" capture_index="0" in_hand="1" recording="1" recording_app="1" video="1" codec="XVID">
+      <property width="100" height="100" fps="10" mode="" format=""/>
+      <property width="100" height="100" fps="10" mode="" format=""/>
+      <colour R="0" G="0" B="0" A="255"/>
+      <sensor v1="0.004" v2="0.003" focal_length="0.004"/>
+      <clip near="0.1" far="10.0" inclination="0.342" epsilon="1e-10"/>
+      <optimisation minimum="1" population_size="100" generations_num="10000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-7" num_of_threads="-1" thread_priority="lowest">
+        <distance_weights lin="10.0" ang="1.0"/>
+        <sample_magnitude lin="0.5" ang="1.0"/>
+      </optimisation>
+      <deformation_dist dim="61" c1="10.0" c2="10.0" c3="10.0" c4="10.0" c5="10.0" c6="10.0" c7="10.0" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    </camera>-->
+    <camera type="depth" name="robotDepth" index="0" calibration_file="GraspCameraRobotDepth.xml" buffer_len="60" buffer_off="1" thread_timeout="20000" stream_timeout="1000" in_hand="1" recording="0" recording_app="0" video="1" codec="XVID">
+      <property width="640" height="480" fps="30" mode="ir" format="203"/>
+      <property width="640" height="480" fps="30" mode="depth" format="101"/>
+      <colour R="127" G="127" B="127" A="255"/>
+      <optimisation minimum="1" population_size="100" generations_num="1000000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-7" num_of_threads="-1" thread_priority="lowest">
+        <distance_weights lin="10.0" ang="1.0"/>
+        <sample_magnitude lin="0.1" ang="0.5"/>
+      </optimisation>
+      <deformation_dist dim="61" c1="10.0" c2="10.0" c3="10.0" c4="10.0" c5="10.0" c6="10.0" c7="10.0" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    </camera>
+    <!--<camera type="depth" name="externDepth" index="1" calibration_file="GraspCameraExternDepth.xml" buffer_len="60" buffer_off="1" thread_timeout="20000" stream_timeout="1000" in_hand="0" recording="1" recording_app="0" video="1" codec="XVID">
+      <property width="640" height="480" fps="30" mode="colour" format="200"/>
+      <property width="640" height="480" fps="30" mode="depth" format="101"/>
+      <colour R="127" G="127" B="127" A="255"/>
+      <optimisation minimum="1" population_size="100" generations_num="1000000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-7" num_of_threads="-1" thread_priority="lowest">
+        <distance_weights lin="10.0" ang="1.0"/>
+        <sample_magnitude lin="0.1" ang="0.5"/>
+      </optimisation>
+    </camera>-->
+    <!--<camera type="opencv" name="externOpenCV" index="0" calibration_file="GraspCameraExternOpenCV.xml" buffer_len="90" thread_timeout="10000" capture_index="0" in_hand="0" recording="1" recording_app="1" video="1" codec="XVID">
+      <property width="0" height="0" fps="0" mode="0" format=""/>
+      <optimisation minimum="1" population_size="100" generations_num="10000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest">
+        <distance_weights lin="10.0" ang="1.0"/>
+        <sample_magnitude lin="0.5" ang="1.0"/>
+      </optimisation>
+    </camera>-->
+    <!-- FlyCapture2::PixelFormat: MONO8=0x80000000, 411YUV8=0x40000000, 422YUV8=0x20000000, RGB8=0x08000000, ... -->
+    <!-- Fly2 Firewire: format=0x40000000 (536870912) -->
+    <!-- Chameleon USB2.0: format=0x00400000 (4194304) -->
+    <!--<camera type="pointgrey" name="externPointGrey" index="0" calibration_file="GraspCameraExternPointGrey.xml" buffer_len="90" thread_timeout="10000" in_hand="0" recording="1" recording_app="1" video="1" codec="XVID">
+      <property width="0" height="0" fps="0" mode="0" format="536870912"/>
+      <optimisation minimum="1" population_size="100" generations_num="10000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest">
+        <distance_weights lin="10.0" ang="1.0"/>
+        <sample_magnitude lin="0.5" ang="1.0"/>
+      </optimisation>
+    </camera>-->
+
+    <pose_estimation points="100000" features="1000000" attempts="10" kernels="500000" neighbours="20000" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7" search_checks="32" search_kdtrees="4">
+      <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
+      <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
+      <pose_stddev lin="0.001" ang="500.0"/>
+      <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
+      <optimisation minimum="1" population_size="10" generations_num="2000" de_diff_fac="0.5" de_cross_prob="0.1" test_generations="100" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest"/>
+    </pose_estimation>
+
+    <data path="./data/boris/" ext_data=".xml" ext_cloud=".pcd" ext_trajectory=".trj" ext_grasp_pose=".grasppose" ext_grasp_cluster=".graspcluster" sep_name="-" sep_field="&#x9;">
+      <appearance mode="point" mode_3d="0" mode_3d_a="177" point_size="1.0" frame_num="100" camera_frame="1" camera_frame_size="0.05" feature_curv_pow="1.0">
+        <frame_size v1="0.2" v2="0.2" v3="0.01"/>
+        <colour override="0" R="255" G="0" B="0" A="255"/>
+      </appearance>
+    </data>
+
+    <data path="./data/boris/mug1/data.xml"/>
+    <!--<data path="./data/boris/mug1/data.xml"/>
+    <data path="./data/boris/mug2/data2.xml"/>
+    <data path="./data/boris/mug3/data.xml"/>
+    <data path="./data/boris/mug4/data.xml"/>
+    <data path="./data/boris/mug5/data.xml"/>
+    <data path="./data/boris/cup1/data.xml"/>
+    <data path="./data/boris/cup2/data.xml"/>-->
+
+
+    <transform name="example" v1="0.0" v2="0.0" v3="0.0" roll="+1.57079633" pitch="0.0" yaw="0.0"/>
+
+    <import size="100000" scale="1.0" clockwise="1" delim=" &#10;&#13;,;" label="1">
+      <colour R="127" G="127" B="127" A="255"/>
+    </import>
+
+    <pose_calb dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_calb dim="61" c1="2.15357" c2="-1.44173" c3="2.41636" c4="-1.23597" c5="0.526307" c6="0.0401937" c7="-1.15166" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_calb dim="61" c1="2.11749" c2="-1.40559" c3="1.89855" c4="-1.20024" c5="0.972302" c6="-0.137083" c7="-1.02379" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_calb dim="61" c1="2.12903" c2="-0.979393" c3="1.61952" c4="-1.22827" c5="1.31727" c6="-0.160591" c7="-1.01719" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+
+    <!--<pose_calb dim="61" c1="2.95783" c2="-1.37913" c3="-1.62936" c4="2.03815" c5="0.16207" c6="-0.981502" c7="-0.231029" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_calb dim="61" c1="2.34516" c2="-1.68539" c3="-0.645952" c4="1.42653" c5="-0.782267" c6="-1.6209" c7="-0.449301" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_calb dim="61" c1="1.99134" c2="-1.42646" c3="-1.45483" c4="0.612975" c5="0.07864" c6="-1.92635" c7="-0.114275" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_calb dim="61" c1="1.85295" c2="-0.536286" c3="-1.31154" c4="0.699703" c5="0.202925" c6="-1.85695" c7="0.780268" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_calb dim="61" c1="2.19086" c2="-0.615082" c3="-2.65773" c4="1.82597" c5="1.20459" c6="-1.78497" c7="0.180716" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>-->
+
+    <pose_scan dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_scan dim="61" c1="1.98703" c2="-1.82022" c3="2.68371" c4="-0.993679" c5="-0.472118" c6="0.701058" c7="-0.601755" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_scan dim="61" c1="1.60132" c2="-1.8583" c3="1.77602" c4="-0.0109462" c5="0.450068" c6="1.04633" c7="-0.639206" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_scan dim="61" c1="1.65994" c2="-1.53044" c3="1.68963" c4="-0.361575" c5="0.208216" c6="0.61754" c7="-0.0829202" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_scan dim="61" c1="1.64565" c2="-1.20667" c3="1.61824" c4="-0.496629" c5="-0.143018" c6="0.587833" c7="0.634178" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_scan dim="61" c1="1.7097" c2="-0.944053" c3="1.20653" c4="-0.707639" c5="0.126298" c6="0.751986" c7="0.84115" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_scan dim="61" c1="2.05575" c2="-0.926678" c3="0.688772" c4="-1.6953" c5="0.721298" c6="0.410064" c7="0.531536" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+
+    <!--<pose_scan dim="61" c1="2.95783" c2="-1.37913" c3="-1.62936" c4="2.03815" c5="0.16207" c6="-0.981502" c7="-0.231029" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_scan dim="61" c1="2.37398" c2="-1.72785" c3="-0.686556" c4="1.42491" c5="-0.849379" c6="-1.66039" c7="-0.462826" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_scan dim="61" c1="1.93654" c2="-1.87235" c3="-1.02301" c4="0.398304" c5="-0.467473" c6="-2.09446" c7="-0.303752" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_scan dim="61" c1="1.94184" c2="-1.43404" c3="-1.44315" c4="0.612321" c5="0.0920531" c6="-1.94379" c7="-0.111323" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_scan dim="61" c1="1.93214" c2="-0.879744" c3="-1.0842" c4="0.922991" c5="0.0140962" c6="-1.71017" c7="0.464595" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_scan dim="61" c1="1.85641" c2="-0.497926" c3="-1.26141" c4="0.727168" c5="0.297171" c6="-1.79742" c7="0.80121" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_scan dim="61" c1="2.81607" c2="-0.239208" c3="-2.14454" c4="1.39035" c5="0.370687" c6="-1.40074" c7="0.694823" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+    <pose_scan dim="61" c1="2.2598" c2="-0.731139" c3="-2.57955" c4="2.01941" c5="1.31088" c6="-1.71892" c7="0.197858" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>-->
+  </director>
+</golem>

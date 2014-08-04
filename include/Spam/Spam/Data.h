@@ -94,13 +94,13 @@ public:
 	/** Grasps */
 	golem::Controller::State::Seq grasps;
 
-	/** Approach action waypoints */
-	grasp::RobotState::List approachAction;
-	/** Manipulation action waypoints */
-	grasp::RobotState::List manipAction;
-	/** Withdraw action waypoints */
-	grasp::RobotState::List approachWithdraw;
-	/** Combined action waypoints */
+	///** Approach action waypoints */
+	//grasp::RobotState::List approachAction;
+	///** Manipulation action waypoints */
+	//grasp::RobotState::List manipAction;
+	///** Withdraw action waypoints */
+	//grasp::RobotState::List approachWithdraw;
+	///** Combined action waypoints */
 	golem::Controller::State::Seq executedTrajectory;
 
 	/** High dim representation of pdf */

@@ -48,6 +48,7 @@
 
 #include <Grasp/Grasp/Robot.h>
 #include <Spam/Spam/Heuristic.h>
+#include <Grasp/Grasp/Cloud.h>
 
 //------------------------------------------------------------------------------
 
@@ -71,6 +72,9 @@ public:
 		/** Enables/disables object to be static */
 		bool staticObject;
 
+		/** Point cloud size threshold. Above this threshold the point cloud is randomly sampled */
+		size_t thrPointCloudSize;
+
 		/** Constructs from description object */
 		Desc() {
 			Desc::setToDefault();
@@ -79,6 +83,7 @@ public:
 		virtual void setToDefault() {
 			grasp::Robot::Desc::setToDefault();
 			staticObject = false;
+			thrPointCloudSize = 5000;
 //			physPlannerDesc->pPlannerDesc->pHeuristicDesc.reset(new FTDrivenHeuristic::Desc);
 		}
 		/** Checks if the description is valid. */
@@ -91,23 +96,21 @@ public:
 		virtual ~Desc() {
 		}
 	};
+
 	/** (Local search) trajectory of the arm only from a sequence of configuration space targets in a new reference frame */
 	grasp::RBDist trnTrajectory(const golem::Mat34& actionFrame, const golem::Mat34& modelFrame, const golem::Mat34& trn, golem::Controller::State::Seq::const_iterator begin, golem::Controller::State::Seq::const_iterator end, golem::Controller::State::Seq& trajectory);
 
-	/** Checks and returns triggered guards for the hand */
-//	int getTriggeredGuards(std::vector<golem::Configspace::Index> &triggeredJoints, golem::Controller::State &state);
-	/** Checks if triggered and return in case a vector of indeces */
-	virtual int getTriggeredGuards(grasp::FTGuard::Seq &triggeredGuards, golem::Controller::State &state);
+	/** Returns a seq of triggered guards if any */
+	grasp::FTGuard::Seq getTriggeredGuard() { return triggeredGuards; };
 
-	/** Checks if F/T limits and guards at TCP are satisfied */
-	virtual void assertGuards(const golem::Twist &wrench);
-	/** Checks if F/T limits and guards in the hand are satisfied */
-	virtual void assertGuards(const grasp::RealSeq &force);
-	/** Checks guards on justin and bham robot */
-	int checkGuards(std::vector<int> &triggeredGuards, golem::Controller::State &state);
+	///** Checks if triggered and return in case a vector of indeces */
+	//virtual int getTriggeredGuards(grasp::FTGuard::Seq &triggeredGuards, golem::Controller::State &state);
 
-	/** Reads torque/force values from the state */
-	void readFT(const golem::Controller::State &state, grasp::RealSeq &force) const;
+	///** Checks guards on justin and bham robot */
+	//int checkGuards(std::vector<int> &triggeredGuards, golem::Controller::State &state);
+
+	///** Reads torque/force values from the state */
+	//void readFT(const golem::Controller::State &state, grasp::RealSeq &force) const;
 
 	/** Activates collision detection with group of bounds */
 	inline void setCollisionBoundsGroup(golem::U32 collisionGroup) {
@@ -118,10 +121,8 @@ public:
 		pFTDrivenHeuristic->setCollisionDetection(collisionDetection);
 	}
 
-	/** Checks if the object is in the hand */
-//	size_t isGrasping(std::vector<golem::Configspace::Index> &triggeredJoints, golem::Controller::State &state);
-	/** Checks if the object is in the hand */
-	size_t isGrasping(grasp::FTGuard::Seq &triggeredJoints, golem::Controller::State &state);
+	///** Checks if the object is in the hand */
+	//size_t isGrasping(grasp::FTGuard::Seq &triggeredJoints, golem::Controller::State &state);
 
 	/** Finds a target in configuration space in a new reference frame */
 	void findTarget(const golem::Mat34 &trn, const golem::Controller::State &target, golem::Controller::State &cend);
@@ -132,15 +133,21 @@ public:
 		hand->initControlCycle();
 	}
 
+	// Object real point cloud (testing purposes)
+	golem::shared_ptr<grasp::Cloud::PointSeq> objectPointCloudPtr;
+
+	golem::Real simContacts(const golem::Bounds::Seq::const_iterator &begin, const golem::Bounds::Seq::const_iterator &end, const golem::Mat34 pose);
+
 protected:
 	/** Force/torque driven heuristic for robot controller */
 	FTDrivenHeuristic* pFTDrivenHeuristic;
-	/** Enables/disables object to be static */
-	bool staticObject;
 
-	/** Trigguered guards */
+
+	/** Trigguered F/T guards */
 	grasp::FTGuard::Seq triggeredGuards;
 
+	/** Robot descriptor */
+	Desc desc;
 	// golem::Object interface
 	virtual void render();
 

@@ -90,33 +90,33 @@ template <> void golem::Stream::read(spam::TrialData& trialData) const {
 	if (version != trialData.headerVersion)
 		throw Message(Message::LEVEL_CRIT, "Stream::read(spam::TrialData&): Unknown file version: %d", version);
 
-	trialData.approachAction.clear();
-	read(trialData.approachAction, trialData.approachAction.begin(), grasp::RobotState(trialData.controller));
-	trialData.manipAction.clear();
-	read(trialData.manipAction, trialData.manipAction.begin(), grasp::RobotState(trialData.controller));
+	//trialData.approachAction.clear();
+	//read(trialData.approachAction, trialData.approachAction.begin(), grasp::RobotState(trialData.controller));
+	//trialData.manipAction.clear();
+	//read(trialData.manipAction, trialData.manipAction.begin(), grasp::RobotState(trialData.controller));
 
-	trialData.approachWithdraw.clear();
-	read(trialData.approachWithdraw, trialData.approachWithdraw.begin(), grasp::RobotState(trialData.controller));
-	//trialData.action.clear();
-	//read(trialData.action, trialData.action.begin(), trialData.controller.createState());
+	//trialData.approachWithdraw.clear();
+	//read(trialData.approachWithdraw, trialData.approachWithdraw.begin(), grasp::RobotState(trialData.controller));
+	////trialData.action.clear();
+	////read(trialData.action, trialData.action.begin(), trialData.controller.createState());
 
-	trialData.density.clear();
-	read(trialData.density, trialData.density.begin());
+	//trialData.density.clear();
+	//read(trialData.density, trialData.density.begin());
 
-	trialData.hypotheses.clear();
-	read(trialData.hypotheses, trialData.hypotheses.begin());
+	//trialData.hypotheses.clear();
+	//read(trialData.hypotheses, trialData.hypotheses.begin());
 }
 
 template <> void golem::Stream::write(const spam::TrialData& trialData) {
 	*this << trialData.headerName << trialData.headerVersion;
 
-	write(trialData.approachAction.begin(), trialData.approachAction.end());
-	write(trialData.manipAction.begin(), trialData.manipAction.end());
+	//write(trialData.approachAction.begin(), trialData.approachAction.end());
+	//write(trialData.manipAction.begin(), trialData.manipAction.end());
 
-	write(trialData.approachWithdraw.begin(), trialData.approachWithdraw.end());
-	//write(trialData.action.begin(), trialData.action.end());
-	write(trialData.density.begin(), trialData.density.end());
-	write(trialData.hypotheses.begin(), trialData.hypotheses.end());
+	//write(trialData.approachWithdraw.begin(), trialData.approachWithdraw.end());
+	////write(trialData.action.begin(), trialData.action.end());
+	//write(trialData.density.begin(), trialData.density.end());
+	//write(trialData.hypotheses.begin(), trialData.hypotheses.end());
 }
 
 //------------------------------------------------------------------------------

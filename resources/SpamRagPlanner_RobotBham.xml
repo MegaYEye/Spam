@@ -6,13 +6,13 @@
   <messages level="debug"/>
   <!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
 
-  <universe name="SPAM RaGPlanner">
+  <universe name="SPAM">
     <window x="600" y="200" width="1288" height="964"></window>
     <physx fps="30" skin_width="0.005" sleep_lin_vel_squared="0.0025" sleep_ang_vel_squared="0.0025" max_angular_velocity="7.0" bounce_threshold="-2.0"></physx>
     <recorder frame_drop="1" file_name="data/pacman/dryer/screencapture/trial1/screenshot" file_ext=".png" leading_zeros="1" encoder_str="image/png" buffer_len="100"></recorder>
   </universe>
 
-  <scene name="Spam rag planner">
+  <scene name="Rag Planner">
     <physx restitution="0.0" static_friction="0.2" dynamic_friction="0.1">
       <gravity v1="0.0" v2="0.0" v3="-9.81"></gravity>
     </physx>

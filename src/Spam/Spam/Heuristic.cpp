@@ -1270,7 +1270,7 @@ bool FTDrivenHeuristic::collides(const Waypoint &w) const {
 		SecTmReal init = context.getTimer().elapsed();
 		//CriticalSection cs;
 		//Chainspace::Index handIndex = handInfo.getChains().begin();
-		grasp::Manipulator::Ptr manipulator(new grasp::Manipulator(&controller));
+//		grasp::Manipulator::Ptr manipulator(new grasp::Manipulator(&controller));
 		//bool collision = false;
 //		ParallelsTask((golem::Parallels*)context.getParallels(), [&] (ParallelsTask*) {
 			// evaluated all the joints of the hand
@@ -1283,11 +1283,18 @@ bool FTDrivenHeuristic::collides(const Waypoint &w) const {
 				//}
 				// bounds of the entire finger
 //		context.write("chain\n");
-				golem::Bounds::Seq bounds;
+				//golem::Bounds::Seq bounds;
 				for (Configspace::Index j = handInfo.getJoints(i).end()-1; j >= handInfo.getJoints(i).begin(); --j) { 
 //		context.write("joint\n");
-					manipulator->getJointBounds(golem::U32(j - manipulator->getController()->getStateInfo().getJoints().begin()), w.wposex[j], bounds);
-					if (pBelief->intersect(bounds, w.wposex[j])) {
+					//manipulator->getJointBounds(golem::U32(j - manipulator->getController()->getStateInfo().getJoints().begin()), w.wposex[j], bounds);
+					const size_t k = j - armInfo.getJoints().begin(); // from the first joint
+					Bounds::Seq boundsSeq;
+					golem::Bounds::Desc::SeqPtr boundsDescSeq = controller.getJoints()[armInfo.getJoints().begin() + k]->getBoundsDescSeq();
+					for (golem::Bounds::Desc::Seq::const_iterator b = boundsDescSeq->begin(); b != boundsDescSeq->end(); ++b) {
+						boundsSeq.push_back(b->get()->create());
+						boundsSeq.back()->multiplyPose(w.wposex[j], boundsSeq.back()->getPose());
+					}
+					if (pBelief->intersect(boundsSeq, w.wposex[j])) {
 //						context.debug("Collision checking: intersects. (time %.5f)\n", context.getTimer().elapsed() - init);
 						return true;
 					}

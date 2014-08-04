@@ -319,6 +319,9 @@ protected:
 	/** Kernel function */
 	golem::Real kernel(golem::Real x, golem::Real lambda = golem::REAL_ONE) const;
 
+	/** Returns the max weight associated to the corrent samples */
+	golem::Real maxWeight() const;
+
 	/** Initial belief distribution. NOTE: Used for the reset method. */
 	grasp::RBPose::Sample::Seq initPoses;
 	/** Transformation samples properties */
@@ -339,4 +342,12 @@ void XMLData(Belief::Desc& val, golem::XMLContext* context, bool create = false)
 }; // namespace spam
 
 //------------------------------------------------------------------------------
+
+namespace golem {
+	template <> void Stream::read(spam::Belief& belief) const;
+	template <> void Stream::write(const spam::Belief& belief);
+};	// namespace
+
+//------------------------------------------------------------------------------
+
 #endif /** _SPAM_SPAM_RBPOSE_H_ */

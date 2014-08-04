@@ -66,6 +66,8 @@ public:
 
 		/** Action frame */
 		golem::Mat34 actionFrame;
+		/** Query transformation */
+		golem::Mat34 queryTransform;
 		/** Query frame */
 		golem::Mat34 queryFrame;
 		/** Model points */
@@ -89,6 +91,7 @@ public:
 			grasp::Player::Data::setToDefault();
 			
 			actionFrame.setId();
+			queryTransform.setId();
 			queryFrame.setId();
 			queryPoints.clear();
 
@@ -130,10 +133,10 @@ public:
 		/** Distribution num of samples */
 		size_t distribSamples;
 
-		/** Distribution num of poses **/
-		size_t numPoses;
-		/** Distibution num of hypotheses **/
-		size_t numHypotheses;
+		///** Distribution num of poses **/
+		//size_t numPoses;
+		///** Distibution num of hypotheses **/
+		//size_t numHypotheses;
 
 		/** Default manipulation action */
 		grasp::RobotPose actionManip;
@@ -142,7 +145,7 @@ public:
 		golem::Mat34 modelTrn;
 
 		/** Enables/disable screen capture from simulation */
-		bool screenCapture;
+//		bool screenCapture;
 
 		/** Constructs from description object */
 		Desc() {
@@ -166,12 +169,12 @@ public:
 			actionManip.setId();
 			actionManip.p.z += -golem::Real(0.15);
 
-			numPoses = 100;
-			numHypotheses = 5;
+			//numPoses = 100;
+			//numHypotheses = 5;
 
 			modelTrn.setToDefault();
 
-			screenCapture = false;
+//			screenCapture = false;
 		}
 		/** Checks if the description is valid. */
 		virtual bool isValid() const {
@@ -226,9 +229,6 @@ protected:
 	/** Model transformation frame **/
 	golem::Mat34 modelTrn;
 
-	golem::Mat34 mygraspFrame, r, r2;
-	bool showTest;
-
 	/** Query data */
 	Data::Map::iterator queryDataPtr;
 
@@ -247,18 +247,26 @@ protected:
 	/** Displayed feature index */
 	golem::U32 featureIndex;
 
-	/** Distribution num of poses **/
-	size_t numPoses;
-	/** Distibution num of hypotheses **/
-	size_t numHypotheses;
+	///** Distribution num of poses **/
+	//size_t numPoses;
+	///** Distibution num of hypotheses **/
+	//size_t numHypotheses;
 
 	/** Enables/disable screen capture from simulation */
 	bool screenCapture;
 
-	/** Profile state sequence */
-	virtual void profile(Data::Map::iterator dataPtr, const golem::Controller::State::Seq& inp, golem::SecTmReal dur, golem::SecTmReal idle) const;
-	/** Profile state sequence */
-	virtual void profileManip(Data::Map::iterator dataPtr, const golem::Controller::State::Seq& inp, golem::SecTmReal dur, golem::SecTmReal idle) const;
+	///** Profile state sequence */
+	//virtual void profile(Data::Map::iterator dataPtr, const golem::Controller::State::Seq& inp, golem::SecTmReal dur, golem::SecTmReal idle) const;
+	///** Profile state sequence */
+	//virtual void profileManip(Data::Map::iterator dataPtr, const golem::Controller::State::Seq& inp, golem::SecTmReal dur, golem::SecTmReal idle) const;
+
+	/** Creates new data */
+	virtual Data::Ptr createData() const;
+
+	/** Create trajectory */
+	virtual void createWithManipulation(const golem::Controller::State::Seq& inp, golem::Controller::State::Seq& trajectory, bool silent = false) const;
+	/** Create trajectory */
+	virtual void create(const golem::Controller::State::Seq& inp, golem::Controller::State::Seq& trajectory, bool silent = false) const;
 
 	/** Render data */
 	virtual void renderData(Data::Map::const_iterator dataPtr);

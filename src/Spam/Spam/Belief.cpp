@@ -47,6 +47,19 @@ void spam::XMLData(Belief::Desc& val, golem::XMLContext* context, bool create) {
 	golem::XMLData(&val.covariance[0], &val.covariance[grasp::RBCoord::N], "c", context->getContextFirst("covariance"), create);
 }
 
+template <> void golem::Stream::read(spam::Belief& belief) const {
+	belief.getSamples().clear();
+	read(belief.getSamples(), belief.getSamples().begin());
+	belief.getHypotheses().clear();
+	read(belief.getHypotheses(), belief.getHypotheses().begin());
+}
+
+template <> void golem::Stream::write(const spam::Belief& belief) {
+	write(belief.getSamples().begin(), belief.getSamples().end());
+	write(belief.getHypotheses().begin(), belief.getHypotheses().end());
+}
+
+
 //------------------------------------------------------------------------------
 
 Mat34 Belief::RigidBodyTransformation::transform(Mat34 &p) {
@@ -385,6 +398,15 @@ void Belief::createQuery(const grasp::Cloud::PointSeq& points) {
 //	}
 //}
 
+Real Belief::maxWeight() const {
+	Real max = golem::REAL_ZERO;
+	for (Sample::Seq::const_iterator s = poses.begin(); s != poses.end(); ++s)
+		if (s->weight > max)
+			max = s->weight;
+	return max;
+}
+
+
 void Belief::createResample() {
 	size_t N = poses.size(), index = rand.nextUniform<size_t>(0, N);
 	Real beta = golem::REAL_ZERO;
@@ -460,7 +482,7 @@ void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Ro
 			//const golem::U32 joint = manipulator->getArmJoints() + idx;
 			//golem::Bounds::Seq bounds;
 			//manipulator->getJointBounds(joint, poses[joint], bounds);
-			manipulator->getJointBounds(golem::U32(j - manipulator->getController()->getStateInfo().getJoints().begin()), w.wposex[j], bounds);
+			manipulator->getJointBounds(golem::U32(j - manipulator->getController().getStateInfo().getJoints().begin()), w.wposex[j], bounds);
 		}
 			//for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b)
 			//		context.write("finger bound frame <%f %f %f>\n", (*b)->getPose().p.x, (*b)->getPose().p.y, (*b)->getPose().p.z);
