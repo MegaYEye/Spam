@@ -273,13 +273,13 @@ void Belief::set(const grasp::RBPose::Sample::Seq &poseSeq, const grasp::RBPose:
 		setHypotheses(hypothesisSeq);
 	}
 	catch (const Message &msg) {
-		context.notice("%s\n", msg.str().c_str());
+		context.write("%s\n", msg.str().c_str());
 	}
 }
 
 void Belief::setPoses(const grasp::RBPose::Sample::Seq &poseSeq) {
 	if (poseSeq.empty())
-		throw Message(golem::Message::LEVEL_ERROR, "Belief::setPoses(): Invalid samples.");
+		throw Message(golem::Message::LEVEL_ERROR, "Belief::setPoses(): Invalid samples. PoseSeq size = %d", poseSeq.size());
 
 	// reset containers
 	poses.clear();
@@ -303,7 +303,7 @@ void Belief::setPoses(const grasp::RBPose::Sample::Seq &poseSeq) {
 
 /** Sets hypotheses */
 void Belief::setHypotheses(const grasp::RBPose::Sample::Seq &hypothesisSeq) {
-	if (hypothesisSeq.empty() || modelFrame.isFinite() || modelPoints.empty())
+	if (hypothesisSeq.empty() || !modelFrame.isFinite() || modelPoints.empty())
 		throw Message(golem::Message::LEVEL_ERROR, "Belief::setHypotheses(): Invalid samples.");
 
 	// reset container for hypotheses

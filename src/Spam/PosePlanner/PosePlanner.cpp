@@ -20,21 +20,31 @@ using namespace spam;
 
 void spam::PosePlanner::Data::xmlData(golem::XMLContext* context, bool create) const {
 	grasp::Player::Data::xmlData(context, create);
-
+	std::cout << "PosePlanner:: data()\n";
 	try {
 		if (!create || !queryPoints.empty()) {
 			golem::XMLData(const_cast<golem::Mat34&>(modelFrame), context->getContextFirst("model_frame", create), create);
 			golem::XMLData(const_cast<golem::Mat34&>(queryTransform), context->getContextFirst("query_transform", create), create);
 			golem::XMLData(const_cast<golem::Mat34&>(queryFrame), context->getContextFirst("query_frame", create), create);
 			xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(queryPoints), std::string("query_points"), context, create);
-			const std::string name = "belief";
-			if (!poses.empty())
-				create ? xmlDataSave(context->createContext(name.c_str()), "pdf", grasp::makeString("%s%s%s%s%s%s", getName().c_str(), sepName.c_str(), name.c_str(), sepName.c_str(), "pdf", extSamples.c_str()), poses) : xmlDataLoad(context, "pdf", const_cast<grasp::RBPose::Sample::Seq&>(poses), grasp::RBPose::Sample());
-			if (!hypotheses.empty())
-			create ? xmlDataSave(context->createContext(name.c_str()), "hypotheses", grasp::makeString("%s%s%s%s%s%s", getName().c_str(), sepName.c_str(), name.c_str(), sepName.c_str(), "hypotheses", extSamples.c_str()), hypotheses) : xmlDataLoad(context, "hypotheses", const_cast<grasp::RBPose::Sample::Seq&>(hypotheses), grasp::RBPose::Sample());
 			//create ? xmlDataSave(context, this->name.c_str(), grasp::makeString("%s%s%s%s%s", dir.c_str(), this->name.c_str(), sepName.c_str(), name.c_str(), extSamples.c_str()), context, poses) : xmlDataLoad(name, context, const_cast<grasp::RBPose::Sample::Seq&>(poses), grasp::RBPose::Sample());
 			//create ? xmlDataSave(name, grasp::makeString("%s%s%s%s%s", dir.c_str(), this->name.c_str(), sepName.c_str(), name.c_str(), extSamples.c_str()), context, hypotheses) : xmlDataLoad(name, context,  const_cast<grasp::RBPose::Sample::Seq&>(hypotheses), grasp::RBPose::Sample());
 		}
+		const std::string name = "belief";
+		if (/*!poses.empty() &&*/ create) {
+			std::cout << "saving poses\n";
+			xmlDataSave(context->createContext(name.c_str()), "pdf", grasp::makeString("%s%s%s%s%s%s", getName().c_str(), sepName.c_str(), name.c_str(), sepName.c_str(), "pdf", extSamples.c_str()), poses);
+		}
+		if (/*!hypotheses.empty() &&*/ create){
+			std::cout << "saving hypotheses\n";
+			xmlDataSave(context->createContext(name.c_str()), "hypotheses", grasp::makeString("%s%s%s%s%s%s", getName().c_str(), sepName.c_str(), name.c_str(), sepName.c_str(), "hypotheses", extSamples.c_str()), hypotheses);
+		}
+		if (!create) {
+			std::cout << "reading poses and hypotheses\n";
+			xmlDataLoad(context, "pdf", const_cast<grasp::RBPose::Sample::Seq&>(poses), grasp::RBPose::Sample());
+			xmlDataLoad(context, "hypotheses", const_cast<grasp::RBPose::Sample::Seq&>(hypotheses), grasp::RBPose::Sample());
+		}
+
 	}
 	catch (const golem::MsgXMLParser& msg) {
 		if (create)
@@ -401,6 +411,8 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 			context.write("Load %s query...\n", grasp::to<Data>(dataPtr)->getLabelName(points->first).c_str());
 			// update query settings
 			queryDataPtr = dataPtr;
+			context.write("poses size = %d\n", grasp::to<Data>(dataPtr)->poses.size());
+			context.write("hypotheses size = %d\n", grasp::to<Data>(dataPtr)->hypotheses.size());
 			pBelief->set(grasp::to<Data>(dataPtr)->poses, grasp::to<Data>(dataPtr)->hypotheses, modelFrame, modelPoints);
 			resetDataPointers();
 			renderUncertainty(grasp::to<Data>(dataPtr)->poses);
