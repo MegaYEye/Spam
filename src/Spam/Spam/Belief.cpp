@@ -259,6 +259,79 @@ bool Belief::create(const Desc& desc) {
 	return true;
 }
 
+//------------------------------------------------------------------------------
+
+void Belief::set(const grasp::RBPose::Sample::Seq &poseSeq, const grasp::RBPose::Sample::Seq &hypothesisSeq, const Mat34 &trn, const grasp::Cloud::PointSeq &points) {
+	modelPoints.clear();
+	modelPoints.resize(points.size());
+	for (grasp::Cloud::PointSeq::const_iterator i = points.begin(); i != points.end(); ++i)
+		modelPoints.push_back(*i);
+	modelFrame = trn;
+
+	try {
+		setPoses(poseSeq);
+		setHypotheses(hypothesisSeq);
+	}
+	catch (const Message &msg) {
+		context.notice("%s\n", msg.str().c_str());
+	}
+}
+
+void Belief::setPoses(const grasp::RBPose::Sample::Seq &poseSeq) {
+	if (poseSeq.empty())
+		throw Message(golem::Message::LEVEL_ERROR, "Belief::setPoses(): Invalid samples.");
+
+	// reset containers
+	poses.clear();
+	poses.reserve(poseSeq.size());
+	initPoses.clear();
+	initPoses.reserve(poseSeq.size());
+
+	// copy items
+	for (grasp::RBPose::Sample::Seq::const_iterator p = poseSeq.begin(); p != poseSeq.end(); ++p) {
+		poses.push_back(*p);
+		initPoses.push_back(*p);
+	}
+
+	// mean and covariance
+	if (!pose.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.covariance, poses))
+		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
+	// copy initial distribution properties
+	initProperties = pose;
+	context.write("spam::Belief::setPoses(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", initProperties.covariance[0], initProperties.covariance[1], initProperties.covariance[2], initProperties.covariance[3], initProperties.covariance[4], initProperties.covariance[5], initProperties.covariance[6]);
+}
+
+/** Sets hypotheses */
+void Belief::setHypotheses(const grasp::RBPose::Sample::Seq &hypothesisSeq) {
+	if (hypothesisSeq.empty() || modelFrame.isFinite() || modelPoints.empty())
+		throw Message(golem::Message::LEVEL_ERROR, "Belief::setHypotheses(): Invalid samples.");
+
+	// reset container for hypotheses
+	hypotheses.clear();
+	hypotheses.reserve(myDesc.numHypotheses);
+	U32 idx = 0;
+	for (grasp::RBPose::Sample::Seq::const_iterator p = hypothesisSeq.begin(); p != hypothesisSeq.end(); ++p) {
+		// container for the point cloud of this sample (default: the same points of the model)
+		grasp::Cloud::PointSeq sampleCloud;
+		const size_t size = modelPoints.size() < myDesc.maxSurfacePoints ? modelPoints.size() : myDesc.maxSurfacePoints;
+		for (size_t i = 0; i < size; ++i) {
+			grasp::Cloud::Point point = size < modelPoints.size() ? modelPoints[size_t(rand.next()) % modelPoints.size()] : modelPoints[i]; // make a copy here
+			grasp::Cloud::setPoint(p->toMat34() * grasp::Cloud::getPoint(point)/* + actionFrame.p*/, point);
+			sampleCloud.push_back(point);
+		}
+		hypotheses.push_back(Hypothesis::Ptr(new Hypothesis(idx, modelFrame, *p, sampleCloud)));
+		context.write(" - sample n.%d <%.4f %.4f %.4f> <%.4f %.4f %.4f %.4f>\n", idx, p->p.x, p->p.y, p->p.z, p->q.w, p->q.x, p->q.y, p->q.z);
+		idx++;
+	}
+
+	// mean and covariance
+	if (!sampleProperties.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.covariance, getHypothesesToSample()))
+		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
+
+	context.write("spam::Belief::setHypotheses(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", sampleProperties.covariance[0], sampleProperties.covariance[1], sampleProperties.covariance[2], sampleProperties.covariance[3], sampleProperties.covariance[4], sampleProperties.covariance[5], sampleProperties.covariance[6]);
+}
+
+
 grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& model, const golem::Mat34 &transform/*, const bool init*/) {
 	U32 idx = 0;
 	// copy model and model frame. Note: it is done only the very first time.

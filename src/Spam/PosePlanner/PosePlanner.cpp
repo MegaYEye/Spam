@@ -23,7 +23,8 @@ void spam::PosePlanner::Data::xmlData(golem::XMLContext* context, bool create) c
 
 	try {
 		if (!create || !queryPoints.empty()) {
-			golem::XMLData(const_cast<golem::Mat34&>(actionFrame), context->getContextFirst("action_frame", create), create);
+			golem::XMLData(const_cast<golem::Mat34&>(modelFrame), context->getContextFirst("model_frame", create), create);
+			golem::XMLData(const_cast<golem::Mat34&>(queryTransform), context->getContextFirst("query_transform", create), create);
 			golem::XMLData(const_cast<golem::Mat34&>(queryFrame), context->getContextFirst("query_frame", create), create);
 			xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(queryPoints), std::string("query_points"), context, create);
 			const std::string name = "belief";
@@ -183,7 +184,7 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 					if (showModelFeatures) {
 						const I32 modelFeatureIndex = pBelief->getIndices()[featureIndex];
 						grasp::RBPose::Feature modelFeature = pBelief->getModelFeatures()[modelFeatureIndex];
-						modelFeature.frame.multiply(grasp::to<Data>(dataPtr)->actionFrame, modelFeature.frame);
+						modelFeature.frame.multiply(grasp::to<Data>(dataPtr)->queryTransform, modelFeature.frame);
 						modelFeature.draw(modelAppearance, pointFeatureRenderer);
 					}
 				}
@@ -290,7 +291,7 @@ grasp::Cloud::PointSeqMap::iterator PosePlanner::getPointsTrn(Data::Map::iterato
 void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 	switch (key) {
 	case 'P':
-		switch (waitKey("MQ", "Press a key to create (M)odel/(Q)uery...")) {
+		switch (waitKey("MQL", "Press a key to create (M)odel/(Q)uery/(L)oad...")) {
 		case 'M':
 		{
 			// model create
@@ -309,6 +310,7 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 				modelFrame = Belief::createFrame(points->second);
 				modelPoints = points->second;
 			}
+			grasp::to<Data>(dataPtr)->modelFrame = modelFrame;
 			resetDataPointers();
 			// done
 			context.write("Done!\n");
@@ -322,7 +324,7 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 			context.write("Creating %s query...\n", grasp::to<Data>(dataPtr)->getLabelName(points->first).c_str());
 			pBelief->createQuery(points->second);
 			// compute transformation model -> query
-			const grasp::RBPose::Sample trn = pBelief->createHypotheses(modelPoints, modelFrame);;
+			const grasp::RBPose::Sample trn = pBelief->createHypotheses(modelPoints, modelFrame);
 			grasp::to<Data>(dataPtr)->queryTransform = trn.toMat34();
 			// update query settings
 			resetDataPointers();
@@ -346,6 +348,65 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 			context.info("<trn v1=\"%.7f\" v2=\"%.7f\" v3=\"%.7f\" q0=\"%.7f\" q1=\"%.7f\" q2=\"%.7f\" q3=\"%.7f\"/>\n", trn.p.x, trn.p.y, trn.p.z, trn.q.q0, trn.q.q1, trn.q.q2, trn.q.q3);
 			context.write("Done!\n");
 			showSamplePoints = true; // shows hypotheses and mean pose
+			renderData(dataPtr);
+			return;
+		}
+		case 'L':
+		{
+			// load data
+			readPath("Enter data path or directory to load: ", this->data->path, this->data->extData.c_str());
+			std::function<void(const std::string&, const std::string&)> load = [&](const std::string& path, const std::string& ext) {
+				if (!boost::filesystem::is_directory(path)) {
+					if (ext != &path[path.length() - ext.length()])
+						return;
+					try {
+						this->data->path = path;
+#ifdef WIN32
+						boost::replace_all(this->data->path, "\\", "/");
+#endif
+						context.write("Loading %s...\n", this->data->path.c_str());
+						Data::Ptr data = createData();
+						data->load();
+						scene.getOpenGL(grasp::to<Data>(dataPtr)->openGL);
+						scene.getOpenGL(grasp::to<Data>(data)->openGL);
+						getData().erase(grasp::to<Data>(data)->path);
+						dataPtr = getData().insert(getData().begin(), Data::Map::value_type(grasp::to<Data>(data)->path, data));
+						grasp::to<Data>(data)->appearance.mode = data->appearance.mode; // reset mode
+						if (grasp::to<Data>(dataPtr)->points.empty() && !grasp::to<Data>(dataPtr)->pointsRaw.empty()) grasp::to<Data>(dataPtr)->ptrPoints = false;
+						renderData(dataPtr);
+					}
+					catch (const std::exception& ex) {
+						context.write("%s\n", ex.what());
+					}
+					return;
+				}
+				for (boost::filesystem::directory_iterator i(path), end; i != end; ++i)
+					load(i->path().string(), ext);
+			};
+			load(this->data->path, this->data->extData);
+			context.write("Done!\n");
+
+			// compute model and model frame
+			grasp::Cloud::PointSeqMap::const_iterator points = getPoints(dataPtr);
+			context.write("Creating %s model...\n", grasp::to<Data>(dataPtr)->getLabelName(points->first).c_str());
+//			pBelief->createModel(points->second);
+			// update model settings
+			modelDataPtr = dataPtr;
+			modelFrame = grasp::to<Data>(dataPtr)->modelFrame;
+			modelPoints = points->second;
+			resetDataPointers();
+			renderData(dataPtr);
+
+			// query create
+			context.write("Load %s query...\n", grasp::to<Data>(dataPtr)->getLabelName(points->first).c_str());
+			// update query settings
+			queryDataPtr = dataPtr;
+			pBelief->set(grasp::to<Data>(dataPtr)->poses, grasp::to<Data>(dataPtr)->hypotheses, modelFrame, modelPoints);
+			resetDataPointers();
+			renderUncertainty(grasp::to<Data>(dataPtr)->poses);
+			showSamplePoints = true; // shows hypotheses and mean pose
+			// done
+			context.write("Done!\n");
 			renderData(dataPtr);
 			return;
 		}

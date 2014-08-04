@@ -271,6 +271,14 @@ public:
 	/** Probability density value=p(d) for a given distance between finger and hypothesis */
 	golem::Real density(const golem::Real dist) const;
 
+	/** Sets belief */
+	void set(const grasp::RBPose::Sample::Seq &poseSeq, const grasp::RBPose::Sample::Seq &hypothesisSeq, const golem::Mat34 &trn, const grasp::Cloud::PointSeq &points);
+
+	/** Sets poses */
+	void setPoses(const grasp::RBPose::Sample::Seq &poseSeq); // throws exception
+
+	/** Sets hypotheses */
+	void setHypotheses(const grasp::RBPose::Sample::Seq &hypothesisSeq); // throws exception
 
 	/** Resets the high representation distribution */
 	inline void reset() {

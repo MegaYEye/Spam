@@ -65,7 +65,9 @@ public:
 		friend class PosePlanner;
 
 		/** Action frame */
-		golem::Mat34 actionFrame;
+//		golem::Mat34 actionFrame;
+		/** Query frame */
+		golem::Mat34 modelFrame;
 		/** Query transformation */
 		golem::Mat34 queryTransform;
 		/** Query frame */
@@ -90,7 +92,7 @@ public:
 		virtual void setToDefault() {
 			grasp::Player::Data::setToDefault();
 			
-			actionFrame.setId();
+//			actionFrame.setId();
 			queryTransform.setId();
 			queryFrame.setId();
 			queryPoints.clear();
