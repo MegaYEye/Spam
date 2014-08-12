@@ -46,10 +46,7 @@
 
 //------------------------------------------------------------------------------
 
-#include <Spam/PosePlanner/PosePlanner.h>
-#include <Grasp/Grasp/Grasp.h>
-#include <Spam/Spam/Belief.h>
-#include <Spam/Spam/Data.h>
+#include <Spam/ShapePlanner/ShapePlanner.h>
 
 //------------------------------------------------------------------------------
 
@@ -67,10 +64,10 @@ namespace spam {
 	Based on Platt R. et al. "A hypothesis-based algorithm for planning and
 	control in non-Gaussian belief spaces", 2011.
 */
-class RagPlanner : public PosePlanner {
+class RagPlanner : public ShapePlanner {
 public:
 	/** Data */
-	class Data : public PosePlanner::Data {
+	class Data : public ShapePlanner::Data {
 	public:
 		friend class RagPlanner;
 
@@ -79,18 +76,6 @@ public:
 		
 		/** Specifies if guard have been triggered during the perform of the action */
 		int triggered;
-		/** Contains the index of the triggered guards */
-//		grasp::FTGuard::Seq triggeredGuards;
-		/** State of the robot at the time a contact occurred */
-//		golem::Controller::State::Seq triggeredStates;
-
-		/** Withdraw action waypoints */
-//		grasp::RobotState::List actionWithdraw;
-		/** Combined action waypoints */
-//		golem::Controller::State::Seq executedTrajectory;
-
-		/** Safety configurations of the robot */
-//		grasp::RobotState::Seq homeStates;
 
 		/** Specifies if the replanning should be triggered */
 		bool replanning;
@@ -104,93 +89,27 @@ public:
 
 		/** Sets the parameters to the default values */
 		virtual void setToDefault() {
-			PosePlanner::Data::setToDefault();
+			ShapePlanner::Data::setToDefault();
 			triggered = 0;
 			replanning = false;
 			release = false;
-
-//			triggeredGuards.clear();
-//			triggeredStates.clear();
-//			actionWithdraw.clear();
-//			executedTrajectory.clear();
-//			homeStates.clear();
 		}
 		/** Assert that the description is valid. */
 		virtual void assertValid(const grasp::Assert::Context& ac) const {
-			PosePlanner::Data::assertValid(ac);
-
-			//for (grasp::RobotState::List::const_iterator i = actionWithdraw.begin(); i != actionWithdraw.end(); ++i)
-			//	i->assertValid(grasp::Assert::Context(ac, "actionWithdraw."));
+			ShapePlanner::Data::assertValid(ac);
 		}
 
 		/** Reads/writes object from/to a given XML context */
 		virtual void xmlData(golem::XMLContext* context, bool create = false) const;
-
-		/** Creates new data */
-		virtual Ptr clone() const;
 	};
 
-	///** Trial data for a single demonstration and/or test trial in a binary format (stored on disk) */
-	//class TrialData {
-	//public:
-	//	typedef std::map<std::string, TrialData> Map;
-	//	friend class golem::Stream;
-
-	//	/** Header name */
-	//	static const char headerName [];
-	//	/** Header version */
-	//	static const golem::U32 headerVersion;
-
-	//	/** Cache (local): OpenGL settings */
-	//	golem::Scene::OpenGL openGL;
-	//	/** Cache (local): action */
-	//	golem::Controller::State::Seq action;
-
-	//	/** Iteration index */
-	//	std::size_t iteration;
-
-	//	/** Data */
-	//	Data data;
-
-	//	/** Object label */
-	//	std::string objectLabel;
-	//	/** Grasps */
-	//	golem::Controller::State::Seq grasps;
-
-	//	/** Combined action waypoints */
-	//	golem::Controller::State::Seq executedTrajectory;
-
-	//	/** Normalise factor */
-	//	golem::Real normFac;
-
-	//	/** Specifies if the replanning should be triggered */
-	//	bool replanning;
-
-	//	/** Constructor */
-	//	TrialData(const golem::Controller& controller) : controller(controller) {
-	//	}
-
-	//protected:
-	//	const golem::Controller& controller;
-	//};
-
-	class Desc : public PosePlanner::Desc {
+	class Desc : public ShapePlanner::Desc {
 	protected:
 		CREATE_FROM_OBJECT_DESC1(RagPlanner, golem::Object::Ptr, golem::Scene&)
 
 	public:
 		/** Smart pointer */
 		typedef golem::shared_ptr<Desc> Ptr;
-
-		/** Default number of sampled object poses */
-		size_t K;
-		/** Minimum threshold required for the sampled importance weights */
-		golem::Real theta;
-		/** Maximum number of sampling iterations */
-		size_t maxSamplingIter;
-
-		/** Backward moving factor */
-		golem::Real timestampFac;
 
 		/** 3D surface samples' point feature appearance */
 		grasp::Director::Data::Appearance sampleAppearance;
@@ -202,21 +121,12 @@ public:
 		/** Enables/disables withdrawing to the home pose */
 		bool withdrawToHomePose;
 
-		/** Bounding box for the graspable object */
-		golem::Bounds::Desc::Seq objectBounds;
-		/** Bounding box for obstacles */
-		golem::Bounds::Desc::Seq obstacleBounds;
-		/** Real pose of the object. Ground truth for testing */
-		golem::Mat34 objectPose;
+		/** Downsampling parameter */
+		size_t maxModelPoints;
+
+		/** Query transformation */
+		grasp::RBCoord queryPointsTrn;
 		
-		/** Enables/disables adding noise to the estimated (query) point cloud */
-		bool gtNoiseEnable;
-		/** Noise lin/ang components */
-		grasp::RBDist gtPoseStddev;
-
-		/** Model point transformation **/
-		grasp::RBCoord trnModelPointCloud;
-
 		/** Constructs from description object */
 		Desc() {
 			Desc::setToDefault();
@@ -224,42 +134,32 @@ public:
 		/** Sets the parameters to the default values */
 		virtual void setToDefault() {
 			PosePlanner::Desc::setToDefault();
+
+			data.reset(new Data);
+
 			robotDesc.reset(new Robot::Desc);
 			pRBPoseDesc.reset(new Belief::Desc);
-			K = 5;
-			theta = golem::Real(0.20);
-			maxSamplingIter = 100;
-			timestampFac = 0.25;
-			//pointAppearance.setToDefault();
+
 			data->appearance.setToDefault();
+
 			uncEnable = true;
 			singleGrasp = false;
 			withdrawToHomePose = false;
-			objectBounds.clear();
-			obstacleBounds.clear();
-			objectPose.setId();
-			gtNoiseEnable = false;
-			gtPoseStddev.set();
-			trnModelPointCloud.set(golem::Vec3(golem::REAL_ZERO, golem::REAL_ZERO, golem::REAL_ZERO), golem::Quat(golem::Mat33::identity()));
+
+			maxModelPoints = 5000;
+
+			queryPointsTrn.fromMat34(golem::Mat34::identity());
 		}
 		/** Checks if the description is valid. */
 		virtual bool isValid() const {
 			if (!PosePlanner::Desc::isValid())
 				return false;
-			for (golem::Bounds::Desc::Seq::const_iterator i = objectBounds.begin(); i != objectBounds.end(); ++i)
-				if (!(*i)->isValid())
-					return false;
 			return true;
 		}
 	};
 
-	/** Returns the boundig box for the object to be grasped */
-	inline golem::Bounds::SeqPtr getObjectBounds() const { 
-		golem::Bounds::SeqPtr pBounds(new golem::Bounds::Seq());
-		for (golem::Bounds::Desc::Seq::iterator i = objectBounds->begin(); i != objectBounds->end(); ++i)
-			pBounds->push_back((*i)->create());
-		return pBounds; 
-	}
+	/** Profile state sequence */
+	virtual void profile(golem::SecTmReal duration, const golem::Controller::State::Seq& inp, golem::Controller::State::Seq& out) const;
 
 	virtual ~RagPlanner();
 
@@ -274,38 +174,22 @@ protected:
 	golem::DebugRenderer debugRenderer;
 
 	/** Smart pointer to the belief state */
-	Belief* pBelief;
+//	Belief* pBelief;
 	/** Smart pointer to the ft driven heuristic */
 	FTDrivenHeuristic* pHeuristic;
 
-	/** Data copllector */
-//	Data::Map dataMap;
 	/** Object pose data */
 	Data::Map::iterator poseDataPtr;
 	
 	/** Description file */
 	Desc ragDesc;
 
-	/** Maximum likelihood pose */
-	grasp::RBPose::Sample mlFrame;
-	/** Initial ML estimation */
-	golem::Mat34 initActionFrame;
-	/** Default number of sampled object poses */
-	size_t K;
-	/** Minimum threshold required for the sampled importance weights */
-	golem::Real theta;
-	/** Maximum number of sampling iterations */
-	size_t maxSamplingIter;
-	/** Backward moving factor */
-	golem::Real timestampFac;
 	/** 3d surface samples' point feature appearance */
 	grasp::Director::Data::Appearance sampleAppearance;
 	/** Show original colour of the point cloud */
 	bool showSampleColour;
 	/** Show Sample frame */
 	bool showSampleFrame;
-	/** Show sample points */
-//	bool showSamplePoints;
 	/** Show high dimension distribution */
 	bool showDistribution;
 	/** Show maximum likelihood estimation distribution */
@@ -321,11 +205,10 @@ protected:
 	/** Shows the posterior distribution */
 	bool posterior;
 
-	/** Ground truth points */
-	grasp::Cloud::PointSeq groundTruthPoints;
+	bool printing;
 
-	/** Enables/disables the transformation in the action frame */
-	bool trnEnable;
+	/** Query transformation */
+	grasp::RBCoord queryPointsTrn;
 
 	/** Safety configurations of the robot */
 	grasp::RobotState::Seq homeStates;
@@ -334,22 +217,6 @@ protected:
 	/** Contains the index of the triggered guards */
 	grasp::FTGuard::Seq triggeredGuards;
 
-	/** Model point transformation **/
-	grasp::RBCoord trnModelPointCloud;
-
-	grasp::Manipulator::Ptr manipulator;
-	golem::Bounds::Seq handBounds;
-
-	/** Sent trajectory */
-	golem::Controller::State::Seq currentTraj;
-
-	/** Bounding box for the graspable object */
-	golem::Bounds::Desc::SeqPtr objectBounds;
-	/** Bounding box for obstacles */
-	golem::Bounds::Desc::SeqPtr obstacleBounds;
-
-	/** Object real pose on the scene (ground truth) */
-	grasp::RBCoord objectRealPose;
 	/** Iterations counter */
 	size_t iterations;
 
@@ -365,29 +232,16 @@ protected:
 		return true;
 	}
 
-	/** Generates high dimension pdf */
-//	void generate(grasp::RBPose::Sample::Seq::const_iterator begin, grasp::RBPose::Sample::Seq::const_iterator end, TrialData::Map::iterator dataPtr, grasp::RBPose::Sample::Seq &candidates) const;
+	/** Get current points transformed */
+	grasp::Cloud::PointSeqMap::iterator getTrnPoints(Data::Map::iterator dataPtr, const golem::Mat34 &trn);
+
+	/** Simulates contacts between the robot's hand and object's partial point cloud */
+	golem::Real simContacts(const golem::Bounds::Seq::const_iterator &begin, const golem::Bounds::Seq::const_iterator &end, const golem::Mat34 pose);
+	// Object real point cloud (testing purposes)
+	golem::shared_ptr<grasp::Cloud::PointSeq> objectPointCloudPtr;
+
 	/** Updates belief state */
 	void updateAndResample(Data::Map::iterator dataPtr);
-//	void updateAndResample(const std::vector<golem::Configspace::Index> &triggeredGuards, const golem::Controller::State &pose, TrialData::Map::iterator dataPtr, grasp::RBPose::Sample::Seq &candidates) const;
-	/** Evaluate the likelihood of reading a contact between robot's pose and the sample */
-//	golem::Real evaluate(const grasp::RBCoord &Pose, const grasp::RBPose::Sample &sample) const;
-
-	/** Transforms action to a new reference frame */
-	grasp::RobotState::List make(const grasp::RobotState::List &action, const golem::Mat34 &trn) const;
-
-	/** Action frame w.r.t. point cloud used to teach the grasp */
-	golem::Mat34 actionFrameT;
-	/** Grasp frame w.r.t. model frame */
-	golem::Mat34 graspFrameM;
-	golem::Mat34 pregraspFrameM;
-	golem::Mat34 graspFrameQ;
-	golem::Mat34 pregraspFrameQ;
-
-	/** Creates grasp pose w.r.t. the query */
-	void createGrasp(Data::Map::iterator dataPtr);
-	/** Creates the grasp frame w.r.t. the model */
-	golem::Mat34 getGraspFrame(Data::Map::iterator dataPtr);
 
 	/** Builds and performs reach and grasp actions */
 	virtual void performApproach(Data::Map::iterator dataPtr);
@@ -398,12 +252,11 @@ protected:
 	/** Builds and performs single attempt to grasp */
 	virtual void performSingleGrasp(Data::Map::iterator dataPtr);
 	/** Performs trial action (trajectory) */
-	virtual void perform(Data::Map::iterator dataPtr);
-	/** Profiles state sequence */
-	virtual void profile(Data::Map::iterator dataPtr, const golem::Controller::State::Seq& inp, golem::SecTmReal dur, golem::SecTmReal idle);
+	virtual void perform(const std::string& name, const golem::Controller::State::Seq& trajectory, bool silent = false);
 
-	/** Render trial data */
-	virtual void renderTrialData(Data::Map::const_iterator dataPtr);
+	/** Creates new data */
+	virtual Data::Ptr createData() const;
+
 	/** Overwrite pose planner render trial data */
 	virtual void renderData(Data::Map::const_iterator dataPtr);
 	void renderContacts();
@@ -419,17 +272,13 @@ protected:
 	/** Prints out a state of the robot */
 	void printState(const golem::Controller::State &state, const golem::Configspace::Index &begin, const golem::Configspace::Index &end, const std::string &label = "", const bool readForce = false) const;
 
+	/** Shape planner demo */
+	void run(const Demo::Map::value_type& demo);
+
 	/** User interface: menu function */
 	virtual void function(Data::Map::iterator& dataPtr, int key);
-	/** User interface: help message */
-//	virtual std::string help() const;
 
 	virtual void render();
-	/** Render data */
-//	virtual void renderData(Data::Map::const_iterator dataPtr);
-
-	/** Testing grasp transformations */
-	void testTransformation(const golem::Mat34 &teachFrame, const golem::Mat34 &modelFrame, const golem::Mat34 &queryFrame, const grasp::RobotState::List &action);
 
 	RagPlanner(golem::Scene &scene);
 	bool create(const Desc& desc);

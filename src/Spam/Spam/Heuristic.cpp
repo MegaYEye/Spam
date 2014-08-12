@@ -245,7 +245,7 @@ bool FTDrivenHeuristic::create(const Desc &desc) {
 	if (multiCtrl == NULL)
 		throw Message(Message::LEVEL_CRIT, "Unknown controller");
 	// which has two other controllers: arm + hand
-	if (multiCtrl->getControllers().size() != 2)
+	if (multiCtrl->getControllers().size() < 2)
 		throw Message(Message::LEVEL_CRIT, "Arm and hand controllers expected");
 	arm = dynamic_cast<SingleCtrl*>(multiCtrl->getControllers()[0]);
 	hand = dynamic_cast<SingleCtrl*>(multiCtrl->getControllers()[1]);
@@ -620,7 +620,7 @@ void FTDrivenHeuristic::h(const golem::Waypoint &wi, const golem::Waypoint &wj, 
 				}
 				const ChainDesc* cdesc = getChainDesc()[i];
 				if (cdesc->enabledObs) {
-					// computes the workspace coordinate of the joint, if it should be in the obs
+					// computes the workspace coordinate of the relative chain, if it should be in the obs
 					const RBCoord c(w.wpos[i]);
 					// computes the likelihood of contacting the mean pose
 					const Real likelihood_p1 = norm*pBelief->density((*maxLhdPose)->dist2NearestKPoints(c, ftDrivenDesc.ftModelDesc.distMax, ftDrivenDesc.ftModelDesc.k, ftDrivenDesc.numIndeces));
@@ -1212,61 +1212,65 @@ bool FTDrivenHeuristic::collides(const Waypoint &w) const {
 	++waypointCollisionCounter;
 #endif
 
-	if (!desc.collisionDesc.enabled)
-		return false;
+	//if (!desc.collisionDesc.enabled)
+	//	return false;
 
 	// find data pointer for the current thread
 	ThreadData* data = getThreadData();
 
 	// all chains
 	//for (Chainspace::Index i = stateInfo.getChains().begin(); i < stateInfo.getChains().end(); ++i)
-	for (Chainspace::Index i = stateInfo.getChains().end() - 1; i >= stateInfo.getChains().begin(); --i)
-	{
-		// all joints in a chain
-		//for (Configspace::Index j = stateInfo.getJoints(i).begin(); j < stateInfo.getJoints(i).end(); ++j)
-		for (Configspace::Index j = stateInfo.getJoints(i).end() - 1; j >= stateInfo.getJoints(i).begin(); --j)
+	if (desc.collisionDesc.enabled) {
+		for (Chainspace::Index i = stateInfo.getChains().end() - 1; i >= stateInfo.getChains().begin(); --i)
 		{
-			const JointDesc* jdesc = getJointDesc()[j];
-			Bounds::Seq& jointBounds = data->jointBounds[j];
-		
-			if (jointBounds.empty() || !jdesc->collisionBounds)
-				continue;
+			// all joints in a chain
+			//for (Configspace::Index j = stateInfo.getJoints(i).begin(); j < stateInfo.getJoints(i).end(); ++j)
+			for (Configspace::Index j = stateInfo.getJoints(i).end() - 1; j >= stateInfo.getJoints(i).begin(); --j)
+			{
+				const JointDesc* jdesc = getJointDesc()[j];
+				Bounds::Seq& jointBounds = data->jointBounds[j];
 
-			// reset to the current joint pose
-			setPose(data->jointBoundsPoses[j], w.wposex[j], jointBounds);
-
-			// check for collisions between the current joint and the environment bounds, test bounds groups
-			if (!collisionBounds.empty() && intersect(jointBounds, collisionBounds, true))
-				return true;
-
-			// check for collisions between the current joint and the collision joints, do not test bounds groups
-			const U32Seq& collisionJoints = jdesc->collisionJoints;
-			for (U32Seq::const_iterator k = collisionJoints.begin(); k != collisionJoints.end(); ++k) {
-				const Configspace::Index collisionIndex(*k);
-
-				golem::Bounds::Seq &collisionJointBounds = data->jointBounds[collisionIndex];
-				if (collisionJointBounds.empty())
+				if (jointBounds.empty() || !jdesc->collisionBounds)
 					continue;
-			
-				setPose(data->jointBoundsPoses[collisionIndex], w.wposex[collisionIndex], collisionJointBounds);
-				if (intersect(jointBounds, collisionJointBounds, false))
+
+				// reset to the current joint pose
+				setPose(data->jointBoundsPoses[j], w.wposex[j], jointBounds);
+
+				// check for collisions between the current joint and the environment bounds, test bounds groups
+				if (!collisionBounds.empty() && intersect(jointBounds, collisionBounds, true)) {
+					//				context.debug("FTDrivenHeuristic::collides(): collisions between the current joint and the environment bounds. collision bounds %s empty\n", collisionBounds.empty()?"are":"are not");
 					return true;
+				}
+
+				// check for collisions between the current joint and the collision joints, do not test bounds groups
+				const U32Seq& collisionJoints = jdesc->collisionJoints;
+				for (U32Seq::const_iterator k = collisionJoints.begin(); k != collisionJoints.end(); ++k) {
+					const Configspace::Index collisionIndex(*k);
+
+					golem::Bounds::Seq &collisionJointBounds = data->jointBounds[collisionIndex];
+					if (collisionJointBounds.empty())
+						continue;
+
+					setPose(data->jointBoundsPoses[collisionIndex], w.wposex[collisionIndex], collisionJointBounds);
+					if (intersect(jointBounds, collisionJointBounds, false)) {
+						//					context.debug("FTDrivenHeuristic::collides(): collisions between the current joint and the collision joints\n");
+						return true;
+					}
+				}
+
+
+				//if (pointCloudCollision && pBelief.get() && i != stateInfo.getChains().begin())
+				//	if (pBelief->intersect(jointBounds, w.wposex[j]))
+				//		return true;
+
+				// TODO joint bounds - chain bounds collisions
 			}
 
-			
-			//if (pointCloudCollision && pBelief.get() && i != stateInfo.getChains().begin())
-			//	if (pBelief->intersect(jointBounds, w.wposex[j]))
-			//		return true;
-
-			// TODO joint bounds - chain bounds collisions
+			// TODO bounds - chain bounds collisions
 		}
-
-		// TODO bounds - chain bounds collisions
 	}
-
 	// check for collisions with the object to grasp. only the hand
 	if (pointCloudCollision && pBelief.get()) {
-//		context.write("Checking collision");
 		SecTmReal init = context.getTimer().elapsed();
 		//CriticalSection cs;
 		//Chainspace::Index handIndex = handInfo.getChains().begin();
@@ -1295,7 +1299,7 @@ bool FTDrivenHeuristic::collides(const Waypoint &w) const {
 						boundsSeq.back()->multiplyPose(w.wposex[j], boundsSeq.back()->getPose());
 					}
 					if (pBelief->intersect(boundsSeq, w.wposex[j])) {
-//						context.debug("Collision checking: intersects. (time %.5f)\n", context.getTimer().elapsed() - init);
+//						context.debug("FTDrivenHeuristic::collides(): collision between chain %d, joint %d and point cloud. (time %.5f)\n", i - handInfo.getChains().begin(), k, context.getTimer().elapsed() - init);
 						return true;
 					}
 					//{

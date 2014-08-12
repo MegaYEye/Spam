@@ -46,94 +46,8 @@ bool Robot::create(const Desc& desc) {
 	// overwrite the heuristic
 	pFTDrivenHeuristic = dynamic_cast<FTDrivenHeuristic*>(&planner->getHeuristic());
 
-	objectPointCloudPtr.reset(new grasp::Cloud::PointSeq());
 	triggeredGuards.clear();
 	triggeredGuards.reserve(fLimit.size());
-
-	handForceReader = [=](const golem::Controller::State& state, grasp::RealSeq& force) {
-		triggeredGuards.clear();
-		for (Chainspace::Index i = state.getInfo().getChains().begin(); i != state.getInfo().getChains().end(); ++i) {
-			for (Configspace::Index j = state.getInfo().getJoints(i).begin(); j < state.getInfo().getJoints(i).end(); ++j) {
-				const size_t k = j - state.getInfo().getJoints().begin(); // from the first joint
-				if (Math::abs(force[k]) > fLimit[k]) {
-					grasp::FTGuard guard;
-					guard.chainIdx = i;
-					guard.jointIdx = j;
-					guard.value = force[k];
-					triggeredGuards.push_back(guard);
-				}
-			}
-		}
-		if (!triggeredGuards.empty())
-			throw Message(Message::LEVEL_NOTICE, "spam::Robot::handForceReader(): Trigguered %d guard(s).", triggeredGuards.size());
-	};
-
-	desc.handCtrlDesc->forceReader = [=](const golem::Controller::State& state, grasp::RealSeq& force) {
-		// no force by default
-		force.assign(state.getInfo().getJoints().size(), REAL_ZERO);
-
-		// use simulated force
-		if (simHandForceMode != FORCE_MODE_DISABLED) {
-			const Vec3 simForce(simModeVec.z*simForceGain.v.z, simModeVec.x*simForceGain.v.x, simModeVec.y*simForceGain.v.y);
-			// used for checking collision with the object point cloud
-			Rand rand;
-
-			WorkspaceJointCoord wjc;
-			controller->jointForwardTransform(state.cpos, wjc);
-			Chainspace::Index i = state.getInfo().getChains().begin() + simHandForceMode - 1; // simHandForceMode corresponds to chain
-			for (Configspace::Index j = state.getInfo().getJoints(i).begin(); j < state.getInfo().getJoints(i).end(); ++j) {
-				const size_t k = j - state.getInfo().getJoints().begin(); // from the first joint
-				const size_t l = j - state.getInfo().getJoints(i).begin(); // from the first joint in the chain
-				 
-				Bounds::Seq boundsSeq;
-				golem::Bounds::Desc::SeqPtr boundsDescSeq = controller->getJoints()[armInfo.getJoints().begin() + k]->getBoundsDescSeq();
-				for (golem::Bounds::Desc::Seq::const_iterator b = boundsDescSeq->begin(); b != boundsDescSeq->end(); ++b) {
-					boundsSeq.push_back(b->get()->create());
-					boundsSeq.back()->multiplyPose(wjc[j], boundsSeq.back()->getPose());
-				}
-				Real sim = simContacts(boundsSeq.begin(), boundsSeq.end(), wjc[j]);
-				force[k] = sim != REAL_ZERO ? sim : simForce[std::min(size_t(2), l)];
-			}
-		}
-		// read from the state variable (if supported)
-		else {
-			const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
-			if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
-				for (Configspace::Index j = state.getInfo().getJoints().begin(); j < state.getInfo().getJoints().end(); ++j) {
-					const size_t k = j - state.getInfo().getJoints().begin();
-					force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
-				}
-			}
-		}
-
-		bool emergency = false;
-		try {
-			golem::CriticalSectionWrapper csw(csData);
-			// use customised force reader if available, otherwise the default one
-			handForceReader ? handForceReader(state, force) : handForceReaderDflt(state, force);
-		}
-		catch (const std::exception& ex) {
-			// if force threshold limit is reached
-			if (handCtrl->getMode() != grasp::ActiveCtrl::MODE_EMERGENCY) {
-				emergency = true;
-				// print exception
-				context.write("%s\n", ex.what());
-				// set emergency mode
-				armCtrl->setMode(grasp::ActiveCtrl::MODE_EMERGENCY);
-				handCtrl->setMode(grasp::ActiveCtrl::MODE_EMERGENCY);
-				// stop controller and cleanup the command queue
-				controller->stop();
-			}
-		}
-
-		{
-			golem::CriticalSectionWrapper csw(csData);
-			handForce = force;
-			// emergency mode handler
-			if (emergency && emergencyModeHandler) emergencyModeHandlerThread.start(emergencyModeHandler);
-		}
-	};
-	handCtrl = desc.handCtrlDesc->create(*hand); // create and install callback (throws)
 
 	return true;
 }
@@ -176,32 +90,6 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 }
 
 //------------------------------------------------------------------------------
-
-Real Robot::simContacts(const golem::Bounds::Seq::const_iterator &begin, const golem::Bounds::Seq::const_iterator &end, const golem::Mat34 pose) {
-	// if the point cloud is empty simContacts return the default behavior of force reader.
-	if (objectPointCloudPtr->empty())
-		return REAL_ZERO;
-	
-	Rand rand;
-	bool intersect = false;
-	for (Bounds::Seq::const_iterator b = begin; b != end; ++b) {
-		const size_t size = objectPointCloudPtr->size() < desc.thrPointCloudSize ? objectPointCloudPtr->size() : desc.thrPointCloudSize;
-		for (size_t i = 0; i < size; ++i) {
-			const Vec3 point = grasp::Cloud::getPoint(objectPointCloudPtr->at(objectPointCloudPtr->size() < desc.thrPointCloudSize ? i : size_t(rand.next())%size));
-			//context.write("force reader\n");
-			//context.write("bound pose <%f %f %f>\n", (*b)->getPose().p.x, (*b)->getPose().p.y, (*b)->getPose().p.z);
-			if ((*b)->intersect(point)) {
-				Vec3 v;
-				Mat34 jointFrameInv;
-				jointFrameInv.setInverse(pose);
-				jointFrameInv.multiply(v, point);
-				v.normalise();
-				return v.z > REAL_ZERO ? -REAL_ONE : REAL_ONE;
-			}
-		}
-	}
-	return REAL_ZERO;
-}
 
 //int Robot::checkGuards(std::vector<int> &triggeredGuards, golem::Controller::State &state) {
 //	//golem::RobotJustin *justin = getRobotJustin();

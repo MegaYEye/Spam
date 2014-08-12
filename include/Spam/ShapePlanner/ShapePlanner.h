@@ -38,7 +38,7 @@
 //
 //------------------------------------------------------------------------------
 //! @Author:   Claudio Zito
-//! @Date:     25/03/2014
+//! @Date:     08/05/2014
 //------------------------------------------------------------------------------
 #pragma once
 #ifndef _SPAM_SHAPEPLANNER_SHAPEPLANNER_H_
@@ -47,6 +47,7 @@
 //------------------------------------------------------------------------------
 
 #include <Spam/PosePlanner/PosePlanner.h>
+#include <Spam/Spam/Data.h>
 #include <Grasp/Grasp/Grasp.h>
 #include <Golem/Phys/Application.h>
 #include <Golem/Tools/XMLParser.h>
@@ -60,20 +61,43 @@ namespace spam {
 /** ShapePlanner. */
 class ShapePlanner : public PosePlanner {
 public:
+	/** Grasp mode */
+	enum Mode {
+		MODE_DISABLED,
+		MODE_DATA,
+		MODE_CLUSTER,
+		MODE_CONFIG,
+		MODE_CONFIG_MODEL,
+		MODE_CONTACT_MODEL,
+		MODE_SIZE = MODE_CONTACT_MODEL,
+	};
+	/** Mode default name */
+	static const char* ModeName[MODE_SIZE + 1];
+
 	/** Data */
 	class Data : public PosePlanner::Data {
 	public:
-		/** Hand grasp poses */
-		grasp::Grasp::Pose::Seq graspPoses;
-		/** Hand grasp pose clusters */
-		grasp::Grasp::Cluster::Seq graspClusters;
-		/** Hand grasp pose cluster pointer */
-		size_t graspClusterPtr, graspClusterSolutionPtr;
-		
-		/** Grasp poses file name extension */
-		std::string extGraspPose;
-		/** Grasp pose clusters file name extension */
+		/** Grasp configs */
+		grasp::Grasp::Config::Seq graspConfigs;
+		/** Grasp config clusters */
+		grasp::Cluster::Seq graspClusters;
+
+		/** Grasp configs file name extension */
+		std::string extGraspConfig;
+		/** Grasp config clusters file name extension */
 		std::string extGraspCluster;
+
+		/** Grasp mode */
+		golem::U32 graspMode;
+		/** Grasp data pointer */
+		mutable golem::U32 graspDataPtr;
+		/** Grasp config cluster pointer */
+		mutable golem::U32 graspClusterPtr, graspConfigPtr;
+		
+		/** Data appearance */
+		mutable grasp::Grasp::Data::Appearance appearanceData;
+		/** Config appearance */
+		mutable grasp::Grasp::Config::Appearance appearanceConfig;
 
 		/** Reset data during construction */
 		Data() {
@@ -84,162 +108,179 @@ public:
 		virtual void setToDefault() {
 			PosePlanner::Data::setToDefault();
 			
-			graspPoses.clear();
+			graspConfigs.clear();
 			graspClusters.clear();
 
-			resetDataPointers();
-
-			extGraspPose = ".grasppose";
+			extGraspConfig = ".graspconfig";
 			extGraspCluster = ".graspcluster";
+
+			resetDataPointers();
 		}
 		/** Assert that the description is valid. */
 		virtual void assertValid(const grasp::Assert::Context& ac) const {
-			Player::Data::assertValid(ac);
+			PosePlanner::Data::assertValid(ac);
 
-			grasp::Assert::valid(extGraspPose.length() > 0, ac, "extGraspPose: length 0");
-			grasp::Assert::valid(extGraspCluster.length() > 0, ac, "extGraspPose: length 0");
+			grasp::Assert::valid(extGraspConfig.length() > 0, ac, "extGraspConfig: length 0");
+			grasp::Assert::valid(extGraspCluster.length() > 0, ac, "extGraspCluster: length 0");
 		}
 
 		/** Reads/writes object from/to a given XML context */
 		virtual void xmlData(golem::XMLContext* context, bool create = false) const;
 
-		/** Creates new data */
-		virtual Ptr clone() const;
-
 		/** Reset data pointers */
 		void resetDataPointers() {
-			graspClusterPtr = graspClusterSolutionPtr = 0;
+			graspMode = MODE_DISABLED;
+			graspDataPtr = 0;
+			graspClusterPtr = graspConfigPtr = 0;
 		}
-		/** Grasp poses */
-		inline bool hasGraspPoses() const {
-			return !graspPoses.empty() && graspClusters.size() > graspClusterPtr && graspPoses.size() > graspClusters[graspClusterPtr].begin + graspClusterSolutionPtr;
+
+		/** Retrieve grasp data from pointer */
+		template <typename _GraspMap, typename _GraspMapIter, typename _GraspDataMapIter> bool getGraspData(_GraspMap& map, _GraspMapIter& grasp, _GraspDataMapIter& data) const {
+			golem::U32 n = -1;
+
+			// search for index
+			for (_GraspMapIter i = map.begin(); i != map.end(); ++i)
+				for (_GraspDataMapIter j = i->second->getDataMap().begin(); j != i->second->getDataMap().end(); ++j) {
+					grasp = i;
+					data = j;
+					if (++n == graspDataPtr)
+						return true;
+				}
+
+			// there is some data
+			if (n != -1) {
+				graspDataPtr = n;
+				return true;
+			}
+
+			return false;
 		}
-		/** Grasp pose begin */
-		inline grasp::Grasp::Pose::Seq::const_iterator getGraspPoseBegin() const {
-			return graspPoses.begin() + graspClusters[graspClusterPtr].begin;
+		/** Set grasp data pointer */
+		void setGraspData(const grasp::Grasp::Map& map, grasp::Grasp::Data::Map::const_iterator data);
+
+		/** Grasp configs */
+		inline void assertGraspConfigs() const {
+			graspClusterPtr = graspClusters.empty() ? 0 : graspClusterPtr >= (golem::U32)graspClusters.size() ? (golem::U32)graspClusters.size() - 1 : graspClusterPtr;
+			graspConfigPtr = graspClusters.empty() || graspConfigs.empty() || graspClusters[graspClusterPtr].end <= 0 ? 0 : graspConfigPtr >= graspClusters[graspClusterPtr].end ? graspClusters[graspClusterPtr].end - 1 : graspConfigPtr;
 		}
-		/** Grasp pose end */
-		inline grasp::Grasp::Pose::Seq::const_iterator getGraspPoseEnd() const {
-			return graspPoses.begin() + graspClusters[graspClusterPtr].end;
+		/** Grasp configs */
+		inline bool hasGraspConfigs() const {
+			assertGraspConfigs();
+			return !graspConfigs.empty() && (golem::U32)graspClusters.size() > graspClusterPtr && (golem::U32)graspConfigs.size() > graspClusters[graspClusterPtr].begin + graspConfigPtr;
+		}
+		/** Grasp config begin */
+		inline grasp::Grasp::Config::Seq::const_iterator getGraspConfigBegin() const {
+			return hasGraspConfigs() ? graspConfigs.begin() + graspClusters[graspClusterPtr].begin : graspConfigs.end();
+		}
+		/** Grasp config end */
+		inline grasp::Grasp::Config::Seq::const_iterator getGraspConfigEnd() const {
+			return hasGraspConfigs() ? graspConfigs.begin() + graspClusters[graspClusterPtr].end : graspConfigs.end();
+		}
+		/** Grasp config size */
+		inline golem::U32 getGraspConfigSize() const {
+			return hasGraspConfigs() ? graspClusters[graspClusterPtr].size() : 0;
 		}
 		/** Current grasp pose */
-		inline grasp::Grasp::Pose::Seq::const_iterator getGraspPose() const {
-			return hasGraspPoses() ? graspPoses.begin() + graspClusters[graspClusterPtr].begin + graspClusterSolutionPtr : graspPoses.end();
+		inline grasp::Grasp::Config::Seq::const_iterator getGraspConfig() const {
+			return hasGraspConfigs() ? graspConfigs.begin() + graspClusters[graspClusterPtr].begin + graspConfigPtr : graspConfigs.end();
 		}
+
+		/** Grasp info */
+		void printGraspInfo(const grasp::Manipulator& manipulator) const;
 	};
 
-	class Appearance {
+	/** Grasp demo */
+	class Demo {
 	public:
-		/** Grasp learning data appearance */
-		grasp::Grasp::Data::Appearance graspData;
+		typedef std::map<std::string, Demo> Map;
 
-		/** Distribution num of samples */
-		size_t distribSamples;
-		/** Distribution num of bounds */
-		size_t distribBounds;
-		/** Samples colour */
-		golem::RGBA samplesColour;
-		/** Samples point size */
-		golem::Real samplesPointSize;
+		/** Object detection */
+		class ObjectDetection {
+		public:
+			typedef std::vector<ObjectDetection> Seq;
 
-		/** Appearance, path segments */
-		golem::U32 pathSegments;
-		/** Qppearance, path colour */
-		golem::RGBA pathColour;
-
-		/** Show frames, not points */
-		bool showFrames;
-		/** Grip appearance, GRASP_MODE_GRIP solid/wireframe */
-		bool gripSolid;
-		/** Config appearance, GRASP_MODE_CONFIG solid/wireframe */
-		bool configDistribSolid;
-		/** Contact appearance, GRASP_MODE_CONTACT solid/wireframe */
-		bool contactDistribSolid;
-		/** Appearance, solid colour */
-		golem::RGBA solidColour, solidColourSelect;
-		/** Appearance, wire colour */
-		golem::RGBA wireColour, wireColourSelect;
-		/** Appearance, wireframe thickness */
-		golem::Real wireWidth;
-
-		/** Constructs from description object */
-		Appearance() {
-			setToDefault();
-		}
-		/** Sets the parameters to the default values */
-		void setToDefault() {
-			graspData.setToDefault();
-			distribSamples = 100;
-			distribBounds = 1;
-			samplesColour = golem::RGBA(golem::RGBA::RED._rgba.r, golem::RGBA::RED._rgba.g, golem::RGBA::RED._rgba.b, 50);
-			samplesPointSize = golem::Real(3.0);
-			pathSegments = 20;
-			pathColour = golem::RGBA::WHITE;
-			showFrames = false;
-			gripSolid = true;
-			configDistribSolid = false;
-			contactDistribSolid = false;
-			solidColour = golem::RGBA(golem::U8(255), golem::U8(255), golem::U8(0), golem::U8(127));
-			solidColourSelect = golem::RGBA(golem::U8(255), golem::U8(255), golem::U8(0), golem::U8(255));
-			wireColour = golem::RGBA(golem::U8(255), golem::U8(255), golem::U8(0), golem::U8(127));
-			wireColourSelect = golem::RGBA(golem::U8(255), golem::U8(255), golem::U8(0), golem::U8(255));
-			wireWidth = golem::Real(2.0);
-		}
-		/** Checks if the description is valid. */
-		bool isValid() const {
-			if (!graspData.isValid())
-				return false;
-			if (wireWidth <= golem::REAL_ZERO)
-				return false;
-			return true;
-		}
-	};
-
-	typedef std::map<std::string, grasp::Grasp::Desc::Ptr> GraspDescMap;
-	typedef std::map<std::string, grasp::Grasp::Ptr> GraspMap;
-	static const std::string GRASP_NAME_DFLT;
-
-	typedef std::map<std::string, grasp::Classifier::Desc::Ptr> ClassifierDescMap;
-	typedef std::map<std::string, grasp::Classifier::Ptr> ClassifierMap;
-	static const std::string CLASSIFIER_NAME_DFLT;
-
-	class DemoDesc {
-	public:
-		typedef std::map<std::string, DemoDesc> Map;
-
-		/** Model data name */
-		std::string dataModelName;
-		/** Query data name */
-		std::string dataQueryName;
+			/** Scan pose */
+			Robot::Pose scanPose;
+			/** Camera name */
+			std::string cameraName;
+			/** Minimum size */
+			golem::U32 minSize;
+			/** Object detection delta change */
+			golem::U32 deltaSize;
+			/** Object detection delta depth */
+			golem::Real deltaDepth;
 		
-		/** Grasp trajectory extrapolation factor */
-		golem::Real trjApproachExtrapolFac;
-		/** Global frame */
-		grasp::Mat34Seq frames;
-		/** Trajectory search maximum number of tries per cluster */
-		golem::U32 trjClusterSize;
-		/** Estimate object pose */
-		bool estimatePose;
+			/** Constructs from description */
+			ObjectDetection() {
+				setToDefault();
+			}
+			/** Sets the parameters to the default values */
+			void setToDefault() {
+				scanPose.setToDefault();
+				cameraName.clear();
+				minSize = 10000;
+				deltaSize = 100;
+				deltaDepth = golem::Real(0.001);
+			}
+			/** Checks if the description is valid. */
+			bool isValid() const {
+				if (!scanPose.isValid() || cameraName.length() <= 0 || minSize < 1 || deltaDepth < golem::REAL_EPS)
+					return false;
+				return true;
+			}
+		};
 
-		/** Constructs from description object */
-		DemoDesc() {
+		/** Pose estimation */
+		bool poseEstimation;
+		
+		/** Object detection */
+		ObjectDetection::Seq objectDetectionSeq;
+		
+		/** Classifier name */
+		std::string classifierName;
+		
+		/** Object model path */
+		std::string modelObject;
+		/** Trajectory model path */
+		grasp::StringSeq modelTrajectories;
+		
+		/** Poses */
+		Robot::Pose::Seq poses;
+
+		/** Constructs from description */
+		Demo() {
 			setToDefault();
 		}
 		/** Sets the parameters to the default values */
 		void setToDefault() {
-			dataModelName = "model";
-			dataQueryName = "query";
-			trjApproachExtrapolFac = golem::Real(1.0);
-			frames.clear();
-			trjClusterSize = 20;
-			estimatePose = false;
+			poseEstimation = true;
+			
+			objectDetectionSeq.clear();
+
+			classifierName.clear();
+			modelObject.clear();
+			modelTrajectories.clear();
+
+			poses.clear();
 		}
 		/** Checks if the description is valid. */
 		bool isValid() const {
-			//if (dataModelName.empty() || dataQueryName.empty())
-			//	return false;
-			if (trjApproachExtrapolFac < golem::REAL_ZERO || trjClusterSize < 1)
+			if (objectDetectionSeq.empty())
 				return false;
+			for (ObjectDetection::Seq::const_iterator i = objectDetectionSeq.begin(); i != objectDetectionSeq.end(); ++i)
+				if (!i->isValid())
+					return false;
+
+			if (poseEstimation ? modelObject.length() <= 0 || modelTrajectories.empty() : classifierName.length() <= 0)
+				return false;
+			for (grasp::StringSeq::const_iterator i = modelTrajectories.begin(); i != modelTrajectories.end(); ++i)
+				if (i->length() <= 0)
+					return false;
+
+			for (grasp::RobotPose::Seq::const_iterator i = poses.begin(); i != poses.end(); ++i)
+				if (!i->isValid())
+					return false;
+
 			return true;
 		}
 	};
@@ -251,19 +292,25 @@ public:
 	public:
 		typedef golem::shared_ptr<Desc> Ptr;
 
-		/** Grasp estimators */
-		GraspDescMap graspDescMap;
 		/** Grasp classifiers */
-		ClassifierDescMap classifierDescMap;
+		grasp::Manipulator::Desc::Ptr manipulatorDesc;
+
+		/** Grasp classifiers */
+		grasp::Classifier::Desc::Map classifierDescMap;
+
+		/** Clustering algorithm */
+		grasp::Cluster::Desc clusterDesc;
 		
 		/** Demo descriptions */
-		DemoDesc::Map demoDescMap;
-
-		/** Appearance */
-		Appearance appearance;
+		Demo::Map demoMap;
 
 		/** Grasp classifier file name extension */
 		std::string extGraspClass;
+
+		/** Data appearance */
+		grasp::Grasp::Data::Appearance appearanceData;
+		/** Config appearance */
+		grasp::Grasp::Config::Appearance appearanceConfig;
 
 		/** Constructs from description object */
 		Desc() {
@@ -275,31 +322,40 @@ public:
 
 			data.reset(new Data);
 			
-			//graspDescMap.insert(GraspDescMap::value_type(GRASP_NAME_DFLT, grasp::Grasp::Desc::Ptr()));
-			//classifierDescMap.insert(ClassifierDescMap::value_type(CLASSIFIER_NAME_DFLT, grasp::Classifier::Desc::Ptr()));
-			
-			demoDescMap.clear();
-			appearance.setToDefault();
+			manipulatorDesc.reset(new grasp::Manipulator::Desc);
+			classifierDescMap.clear();
+			clusterDesc.setToDefault();
+			demoMap.clear();
 			extGraspClass = ".graspclass";
+
+			appearanceData.setToDefault();
+			appearanceConfig.setToDefault();
 		}
 		/** Checks if the description is valid. */
 		virtual bool isValid() const {
 			if (!PosePlanner::Desc::isValid())
 				return false;
 			
-			for (ShapePlanner::GraspDescMap::const_iterator i = graspDescMap.begin(); i != graspDescMap.end(); ++i)
-				if (i->first.empty() || !i->second->isValid())
-					return false;
-			for (ShapePlanner::ClassifierDescMap::const_iterator i = classifierDescMap.begin(); i != classifierDescMap.end(); ++i)
-				if (i->first.empty() || !i->second->isValid())
+			if (manipulatorDesc == nullptr || !manipulatorDesc->isValid())
+				return false;
+
+			if (classifierDescMap.empty())
+				return false;
+			for (grasp::Classifier::Desc::Map::const_iterator i = classifierDescMap.begin(); i != classifierDescMap.end(); ++i)
+				if (i->first.length() <= 0 || !i->second->isValid())
 					return false;
 
-			for (ShapePlanner::DemoDesc::Map::const_iterator i = demoDescMap.begin(); i != demoDescMap.end(); ++i)
+			if (!clusterDesc.isValid())
+				return false;
+
+			for (ShapePlanner::Demo::Map::const_iterator i = demoMap.begin(); i != demoMap.end(); ++i)
 				if (!i->second.isValid())
 					return false;
-			if (!appearance.isValid())
-				return false;
+
 			if (extGraspClass.length() <= 0)
+				return false;
+
+			if (!appearanceData.isValid() || !appearanceConfig.isValid())
 				return false;
 
 			return true;
@@ -307,84 +363,38 @@ public:
 	};
 
 protected:
-	/** grasp mode */
-	enum GraspMode {
-		GRASP_MODE_DISABLED,
-		GRASP_MODE_GRIP,
-		GRASP_MODE_CONFIG,
-		GRASP_MODE_CONTACT,
-	};
-	/** Contact default name */
-	static const char* GraspModeName[GRASP_MODE_CONTACT + 1];
-	/** grasp contact */
-	enum GraspContact {
-		GRASP_CONTACT_DISABLED,
-		GRASP_CONTACT_ALL,
-		GRASP_CONTACT_SELECT,
-	};
-	/** Contact default name */
-	static const char* GraspContactName[GRASP_CONTACT_SELECT + 1];
-
 	/** Manipulator proxy */
 	grasp::Manipulator::Ptr manipulator;
 
-	/** Grasp estimator descriptions */
-	GraspDescMap graspDescMap;
-	/** Current grasp estimator */
-	std::pair<std::string, grasp::Grasp::Ptr> grasp;
-
 	/** Grasp classifier descriptions */
-	ClassifierDescMap classifierDescMap;
+	grasp::Classifier::Desc::Map classifierDescMap;
 	/** Current grasp classifier */
-	std::pair<std::string, grasp::Classifier::Ptr> classifier;
+	grasp::Classifier::Ptr classifier;
+	/** Clustering algorithm */
+	grasp::Cluster::Desc clusterDesc;
+
+	/** Grasp model renderers */
+	golem::DebugRenderer graspRenderer;
 
 	/** Demo descriptions */
-	DemoDesc::Map demoDescMap;
-
-	/** Show contact relations */
-	grasp::Feature::Relation showFeatureRelation;
-	/** Grasp model renderers */
-	golem::DebugRenderer graspModelContactRenderer, graspModelConfigRenderer;
-	/** Grasp query renderer */
-	golem::DebugRenderer graspQueryRenderer;
-	/** Bounds renderer */
-	golem::BoundsRenderer boundsRenderer;
-	/** Hand bounds */
-	golem::Bounds::Seq handBounds, handBoundsSelect;
-
-	/** Grasp mode */
-	golem::U32 graspMode;
-	/** Grasp contact */
-	golem::U32 graspContact;
-	/** Config index */
-	golem::U32 configIndex;
-	/** Contact index */
-	golem::U32 contactIndex;
-	/** Pose subspace distance */
-	golem::I32 poseSubspaceDist;
-
-	/** Appearance */
-	Appearance appearance;
+	Demo::Map demoMap;
 
 	/** Grasp classifier file name extension */
 	std::string extGraspClass;
 
-	/** Source and target data */
-	Data::Map::iterator targetDataPtr;
-	bool shapeDataRender;
+	/** Creates new data */
+	virtual Data::Ptr createData() const;
 
-	/** Grip info */
-	void printGripInfo();
-
-	void addBounds(const grasp::Manipulator::Pose& pose);
-
-	/** Profile state sequence */
-	virtual void profile(Data::Map::iterator dataPtr, const golem::Controller::State::Seq& inp, golem::SecTmReal dur, golem::SecTmReal idle) const;
+	/** Load classifier */
+	grasp::Classifier::Ptr load(const grasp::Classifier::Desc& desc);
 
 	/** Render data */
 	virtual void renderData(Data::Map::const_iterator dataPtr);
 	/** Reset grasp data pointers */
 	void resetDataPointers();
+
+	/** Shape planner demo */
+	void run(const Demo::Map::value_type& demo);
 
 	/** User interface: menu function */
 	virtual void function(Data::Map::iterator& dataPtr, int key);
@@ -397,15 +407,11 @@ protected:
 };
 
 /** Reads/writes object from/to a given XML context */
-void XMLData(ShapePlanner::Appearance &val, golem::XMLContext* xmlcontext, bool create = false);
+void XMLData(ShapePlanner::Demo::ObjectDetection &val, golem::XMLContext* xmlcontext, bool create = false);
 /** Reads/writes object from/to a given XML context */
-void XMLData(ShapePlanner::GraspDescMap::value_type &val, golem::XMLContext* xmlcontext, bool create = false);
+void XMLData(ShapePlanner::Demo &val, golem::XMLContext* xmlcontext, bool create = false);
 /** Reads/writes object from/to a given XML context */
-void XMLData(ShapePlanner::ClassifierDescMap::value_type &val, golem::XMLContext* xmlcontext, bool create = false);
-/** Reads/writes object from/to a given XML context */
-void XMLData(ShapePlanner::DemoDesc &val, golem::XMLContext* xmlcontext, bool create = false);
-/** Reads/writes object from/to a given XML context */
-void XMLData(ShapePlanner::DemoDesc::Map::value_type &val, golem::XMLContext* xmlcontext, bool create = false);
+void XMLData(ShapePlanner::Demo::Map::value_type &val, golem::XMLContext* xmlcontext, bool create = false);
 /** Reads/writes object from/to a given XML context */
 void XMLData(ShapePlanner::Desc &val, golem::Context* context, golem::XMLContext* xmlcontext, bool create = false);
 
@@ -422,4 +428,4 @@ protected:
 
 };	// namespace
 
-#endif /*_SPAM_SHAPEPLANNER_SHAPEPLANNER_H_*/
+#endif /*_GRASP_SHAPEPLANNER_SHAPEPLANNER_H_*/

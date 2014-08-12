@@ -279,7 +279,7 @@ void Belief::set(const grasp::RBPose::Sample::Seq &poseSeq, const grasp::RBPose:
 
 void Belief::setPoses(const grasp::RBPose::Sample::Seq &poseSeq) {
 	if (poseSeq.empty())
-		throw Message(golem::Message::LEVEL_ERROR, "Belief::setPoses(): Invalid samples. PoseSeq size = %d", poseSeq.size());
+		throw Message(golem::Message::LEVEL_ERROR, "Belief::setPoses(): Invalid samples.");
 
 	// reset containers
 	poses.clear();
@@ -304,7 +304,7 @@ void Belief::setPoses(const grasp::RBPose::Sample::Seq &poseSeq) {
 /** Sets hypotheses */
 void Belief::setHypotheses(const grasp::RBPose::Sample::Seq &hypothesisSeq) {
 	if (hypothesisSeq.empty() || !modelFrame.isFinite() || modelPoints.empty())
-		throw Message(golem::Message::LEVEL_ERROR, "Belief::setHypotheses(): Invalid samples.");
+		throw Message(golem::Message::LEVEL_ERROR, "Belief::setHypotheses(): Invalid samples (Hypotheses size %d, modelFrame is %s, modelPoints size %d)", hypothesisSeq.size(), modelFrame.isFinite()?"finite":"not finite", modelPoints.size());
 
 	// reset container for hypotheses
 	hypotheses.clear();
@@ -312,6 +312,7 @@ void Belief::setHypotheses(const grasp::RBPose::Sample::Seq &hypothesisSeq) {
 	U32 idx = 0;
 	for (grasp::RBPose::Sample::Seq::const_iterator p = hypothesisSeq.begin(); p != hypothesisSeq.end(); ++p) {
 		// container for the point cloud of this sample (default: the same points of the model)
+//		grasp::RBPose::Sample sample(*p);
 		grasp::Cloud::PointSeq sampleCloud;
 		const size_t size = modelPoints.size() < myDesc.maxSurfacePoints ? modelPoints.size() : myDesc.maxSurfacePoints;
 		for (size_t i = 0; i < size; ++i) {

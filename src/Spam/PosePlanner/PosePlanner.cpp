@@ -1,6 +1,6 @@
 /** @file PosePlanner.cpp
  * 
- * @author	Marek Kopicki
+ * @author	Claudio Zito
  *
  * @version 1.0
  *
@@ -20,40 +20,65 @@ using namespace spam;
 
 void spam::PosePlanner::Data::xmlData(golem::XMLContext* context, bool create) const {
 	grasp::Player::Data::xmlData(context, create);
-	std::cout << "PosePlanner:: data()\n";
 	try {
 		if (!create || !queryPoints.empty()) {
-			golem::XMLData(const_cast<golem::Mat34&>(modelFrame), context->getContextFirst("model_frame", create), create);
 			golem::XMLData(const_cast<golem::Mat34&>(queryTransform), context->getContextFirst("query_transform", create), create);
 			golem::XMLData(const_cast<golem::Mat34&>(queryFrame), context->getContextFirst("query_frame", create), create);
 			xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(queryPoints), std::string("query_points"), context, create);
-			//create ? xmlDataSave(context, this->name.c_str(), grasp::makeString("%s%s%s%s%s", dir.c_str(), this->name.c_str(), sepName.c_str(), name.c_str(), extSamples.c_str()), context, poses) : xmlDataLoad(name, context, const_cast<grasp::RBPose::Sample::Seq&>(poses), grasp::RBPose::Sample());
-			//create ? xmlDataSave(name, grasp::makeString("%s%s%s%s%s", dir.c_str(), this->name.c_str(), sepName.c_str(), name.c_str(), extSamples.c_str()), context, hypotheses) : xmlDataLoad(name, context,  const_cast<grasp::RBPose::Sample::Seq&>(hypotheses), grasp::RBPose::Sample());
+			golem::XMLData(const_cast<golem::Mat34&>(modelFrame), context->getContextFirst("model_frame", create), create);
+			xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(modelPoints), std::string("model_points"), context, create);
 		}
-		const std::string name = "belief";
-		if (/*!poses.empty() &&*/ create) {
-			std::cout << "saving poses\n";
-			xmlDataSave(context->createContext(name.c_str()), "pdf", grasp::makeString("%s%s%s%s%s%s", getName().c_str(), sepName.c_str(), name.c_str(), sepName.c_str(), "pdf", extSamples.c_str()), poses);
+		if (!poses.empty() && create) {
+			const std::string name = "belief_pdf";
+			std::stringstream str;
+			str << "Save poses\n";
+			size_t id = 1;
+			for (grasp::RBPose::Sample::Seq::const_iterator i = poses.begin(); i != poses.end(); ++i)
+				str << "pose " << id++ << " " << i->p.x << " " << i->p.y << " " << i->p.z << "\n";
+			str << "---------------------------------------------------------\n";
+			std::printf("%s", str.str().c_str());
+			xmlDataSave(context->createContext(name.c_str()), grasp::makeString("%s%s%s%s%s%s", getName().c_str(), sepName.c_str(), name.c_str(), sepName.c_str(), "pdf", extSamples.c_str()), poses);
 		}
-		if (/*!hypotheses.empty() &&*/ create){
-			std::cout << "saving hypotheses\n";
-			xmlDataSave(context->createContext(name.c_str()), "hypotheses", grasp::makeString("%s%s%s%s%s%s", getName().c_str(), sepName.c_str(), name.c_str(), sepName.c_str(), "hypotheses", extSamples.c_str()), hypotheses);
+		if (!hypotheses.empty() && create){
+			const std::string name = "belief_hypotheses";
+			std::stringstream str;
+			str << "Save hypotheses\n";
+			size_t id = 1;
+			for (grasp::RBPose::Sample::Seq::const_iterator i = hypotheses.begin(); i != hypotheses.end(); ++i)
+				str << "hypotheses " << id++ << " " << i->p.x << " " << i->p.y << " " << i->p.z << "\n";
+			std::printf("%s", str.str().c_str());
+			str << "---------------------------------------------------------\n";
+			xmlDataSave(context->createContext(name.c_str()), grasp::makeString("%s%s%s%s%s%s", getName().c_str(), sepName.c_str(), name.c_str(), sepName.c_str(), "hypotheses", extSamples.c_str()), hypotheses);
 		}
 		if (!create) {
-			std::cout << "reading poses and hypotheses\n";
-			xmlDataLoad(context, "pdf", const_cast<grasp::RBPose::Sample::Seq&>(poses), grasp::RBPose::Sample());
-			xmlDataLoad(context, "hypotheses", const_cast<grasp::RBPose::Sample::Seq&>(hypotheses), grasp::RBPose::Sample());
+			const std::string name = "belief_pdf";
+			xmlDataLoad(context->getContextFirst(name.c_str()), "", const_cast<grasp::RBPose::Sample::Seq&>(poses), grasp::RBPose::Sample());
+			std::stringstream str;
+			str << "Load poses\n";
+			size_t id = 1;
+			for (grasp::RBPose::Sample::Seq::const_iterator i = poses.begin(); i != poses.end(); ++i)
+				str << "pose " << id++ << " " << i->p.x << " " << i->p.y << " " << i->p.z << "\n";
+			str << "---------------------------------------------------------\n";
+			const std::string name1 = "belief_hypotheses";
+			xmlDataLoad(context->getContextFirst(name1.c_str()), "", const_cast<grasp::RBPose::Sample::Seq&>(hypotheses), grasp::RBPose::Sample());
+			id = 1;
+			str << "Load hypotheses\n";
+			for (grasp::RBPose::Sample::Seq::const_iterator i = hypotheses.begin(); i != hypotheses.end(); ++i)
+				str << "hypotheses " << id++ << " " << i->p.x << " " << i->p.y << " " << i->p.z << "\n";
+			str << "---------------------------------------------------------\n";
+			std::printf("%s", str.str().c_str());
 		}
 
 	}
 	catch (const golem::MsgXMLParser& msg) {
+		std::printf("%s\n", msg.what());
 		if (create)
 			throw msg;
 	}
 }
 
-spam::PosePlanner::Data::Ptr spam::PosePlanner::Data::clone() const {
-	return Ptr(new Data(*this));
+grasp::Director::Data::Ptr spam::PosePlanner::createData() const {
+	return Data::Ptr(new Data(*grasp::to<Data>(data))); // assuming data has been initialised properly
 }
 
 //------------------------------------------------------------------------------
@@ -69,6 +94,7 @@ bool spam::PosePlanner::create(const Desc& desc) {
 
 	modelAppearance = desc.modelAppearance;
 	queryAppearance = desc.queryAppearance;
+	sampleAppearance.setToDefault();
 
 	featureFrameSize = desc.featureFrameSize;
 	distribFrameSize = desc.distribFrameSize;
@@ -80,6 +106,7 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	context.write("PosePlannenr::Create(): model trn <%f %f %f>\n", desc.modelTrn.p.x, desc.modelTrn.p.y, desc.modelTrn.p.z);
 	modelTrn = desc.modelTrn;
 	modelDataPtr = getData().end();
+	queryDataPtr = getData().end();
 	resetDataPointers();
 //	screenCapture = desc.screenCapture;
 
@@ -91,12 +118,9 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	scene.getHelp().insert(Scene::StrMapVal("080", "  5                                       model features\n"));
 	scene.getHelp().insert(Scene::StrMapVal("081", "  Q                                       query create\n"));
 	scene.getHelp().insert(Scene::StrMapVal("081", "  6                                       query distribution\n"));
+	scene.getHelp().insert(Scene::StrMapVal("081", "  7                                       hypotheses distribution\n"));
 
 	return true;
-}
-
-grasp::Director::Data::Ptr spam::PosePlanner::createData() const {
-	return Data::Ptr(new Data(*grasp::to<Data>(data))); // assuming data has been initialised properly
 }
 
 //------------------------------------------------------------------------------
@@ -123,7 +147,6 @@ void spam::PosePlanner::renderUncertainty(const grasp::RBPose::Sample::Seq &samp
 void spam::PosePlanner::resetDataPointers() {
 	//auto ptr = getPtr<Data>(queryDataPtr);
 	//if (ptr != nullptr) ptr->queryPoints.clear();
-	queryDataPtr = getData().end();
 	showModelPoints = false;
 	showModelFeatures = false;
 	showQueryDistrib = false;
@@ -145,12 +168,7 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 		const bool showmodel = modelDataPtr == dataPtr;
 		const bool showquery = queryDataPtr == dataPtr;
 
-		//if (showTest) {
-		//	testRenderer.addAxes(mygraspFrame, featureFrameSize*5);
-		//	testRenderer.addAxes(r, featureFrameSize*5);
-		//	testRenderer.addAxes(r2, featureFrameSize*5);
-		//}
-
+//		std::printf("showmodel %s showquery %s showSamplePoints %s showQueryDistrib %s\n", showmodel ? "ON" : "OFF", showquery ? "ON" : "OFF", showSamplePoints ? "ON" : "OFF", showQueryDistrib ? "ON" : "OFF");
 		if (showmodel || showquery) {
 			if (showmodel) {
 				pointFeatureRenderer.addAxes(modelFrame, featureFrameSize);
@@ -161,7 +179,8 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 					featureIndex = (golem::U32)rand.next()%pBelief->getQueryFeatures().size();
 				}
 				if (showSamplePoints) {
-					grasp::RBPose::Sample::Seq samples = pBelief->getHypothesesToSample();
+//					context.write("hypotheses size %d\n", grasp::to<Data>(dataPtr)->hypotheses.size());
+					grasp::RBPose::Sample::Seq samples = grasp::to<Data>(dataPtr)->hypotheses;//pBelief->getHypothesesToSample();
 					for (grasp::RBPose::Sample::Seq::iterator i = samples.begin(); i != samples.end(); ++i) {
 						const Mat34 actionFrame(i->q, i->p);
 						const Mat34 sampleFrame(actionFrame * modelFrame);
@@ -181,7 +200,7 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 				}
 				if (showQueryDistrib) {
 					for (size_t i = 0; i < distribSamples; ++i) {
-						pointFeatureRenderer.addAxes(pRBPose->sample().toMat34() * modelFrame, distribFrameSize);
+						pointFeatureRenderer.addAxes(pBelief->sample().toMat34() * modelFrame, distribFrameSize);
 					}
 				}
 				if (!showModelPoints) {
@@ -321,6 +340,7 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 				modelPoints = points->second;
 			}
 			grasp::to<Data>(dataPtr)->modelFrame = modelFrame;
+			grasp::to<Data>(dataPtr)->modelPoints = modelPoints;
 			resetDataPointers();
 			// done
 			context.write("Done!\n");
@@ -363,47 +383,14 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 		}
 		case 'L':
 		{
-			// load data
-			readPath("Enter data path or directory to load: ", this->data->path, this->data->extData.c_str());
-			std::function<void(const std::string&, const std::string&)> load = [&](const std::string& path, const std::string& ext) {
-				if (!boost::filesystem::is_directory(path)) {
-					if (ext != &path[path.length() - ext.length()])
-						return;
-					try {
-						this->data->path = path;
-#ifdef WIN32
-						boost::replace_all(this->data->path, "\\", "/");
-#endif
-						context.write("Loading %s...\n", this->data->path.c_str());
-						Data::Ptr data = createData();
-						data->load();
-						scene.getOpenGL(grasp::to<Data>(dataPtr)->openGL);
-						scene.getOpenGL(grasp::to<Data>(data)->openGL);
-						getData().erase(grasp::to<Data>(data)->path);
-						dataPtr = getData().insert(getData().begin(), Data::Map::value_type(grasp::to<Data>(data)->path, data));
-						grasp::to<Data>(data)->appearance.mode = data->appearance.mode; // reset mode
-						if (grasp::to<Data>(dataPtr)->points.empty() && !grasp::to<Data>(dataPtr)->pointsRaw.empty()) grasp::to<Data>(dataPtr)->ptrPoints = false;
-						renderData(dataPtr);
-					}
-					catch (const std::exception& ex) {
-						context.write("%s\n", ex.what());
-					}
-					return;
-				}
-				for (boost::filesystem::directory_iterator i(path), end; i != end; ++i)
-					load(i->path().string(), ext);
-			};
-			load(this->data->path, this->data->extData);
-			context.write("Done!\n");
-
 			// compute model and model frame
 			grasp::Cloud::PointSeqMap::const_iterator points = getPoints(dataPtr);
-			context.write("Creating %s model...\n", grasp::to<Data>(dataPtr)->getLabelName(points->first).c_str());
+			context.write("Loading %s model...\n", grasp::to<Data>(dataPtr)->getLabelName(points->first).c_str());
 //			pBelief->createModel(points->second);
 			// update model settings
-			modelDataPtr = dataPtr;
+//			modelDataPtr = dataPtr;
 			modelFrame = grasp::to<Data>(dataPtr)->modelFrame;
-			modelPoints = points->second;
+			modelPoints = grasp::to<Data>(dataPtr)->modelPoints; // points->second;
 			resetDataPointers();
 			renderData(dataPtr);
 
@@ -411,12 +398,10 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 			context.write("Load %s query...\n", grasp::to<Data>(dataPtr)->getLabelName(points->first).c_str());
 			// update query settings
 			queryDataPtr = dataPtr;
-			context.write("poses size = %d\n", grasp::to<Data>(dataPtr)->poses.size());
-			context.write("hypotheses size = %d\n", grasp::to<Data>(dataPtr)->hypotheses.size());
 			pBelief->set(grasp::to<Data>(dataPtr)->poses, grasp::to<Data>(dataPtr)->hypotheses, modelFrame, modelPoints);
 			resetDataPointers();
-			renderUncertainty(grasp::to<Data>(dataPtr)->poses);
 			showSamplePoints = true; // shows hypotheses and mean pose
+			renderUncertainty(grasp::to<Data>(dataPtr)->poses);
 			// done
 			context.write("Done!\n");
 			renderData(dataPtr);

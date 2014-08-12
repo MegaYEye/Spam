@@ -68,11 +68,13 @@ public:
 //		golem::Mat34 actionFrame;
 		/** Query frame */
 		golem::Mat34 modelFrame;
+		/** Model points */
+		grasp::Cloud::PointSeq modelPoints;
 		/** Query transformation */
 		golem::Mat34 queryTransform;
 		/** Query frame */
 		golem::Mat34 queryFrame;
-		/** Model points */
+		/** Query points */
 		grasp::Cloud::PointSeq queryPoints;
 
 		/** High dim rep pose distribution **/
@@ -97,6 +99,9 @@ public:
 			queryFrame.setId();
 			queryPoints.clear();
 
+			modelFrame.setId();
+			modelPoints.clear();
+
 			poses.clear();
 			hypotheses.clear();
 
@@ -109,9 +114,6 @@ public:
 
 		/** Reads/writes object from/to a given XML context */
 		virtual void xmlData(golem::XMLContext* context, bool create = false) const;
-
-		/** Creates new data */
-		virtual Ptr clone() const;
 	};
 
 	/** Pose planner description */

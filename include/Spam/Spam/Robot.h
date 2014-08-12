@@ -69,12 +69,6 @@ public:
 	public:
 		typedef golem::shared_ptr<Desc> Ptr;
 
-		/** Enables/disables object to be static */
-		bool staticObject;
-
-		/** Point cloud size threshold. Above this threshold the point cloud is randomly sampled */
-		size_t thrPointCloudSize;
-
 		/** Constructs from description object */
 		Desc() {
 			Desc::setToDefault();
@@ -82,8 +76,6 @@ public:
 		/** Sets the parameters to the default values */
 		virtual void setToDefault() {
 			grasp::Robot::Desc::setToDefault();
-			staticObject = false;
-			thrPointCloudSize = 5000;
 //			physPlannerDesc->pPlannerDesc->pHeuristicDesc.reset(new FTDrivenHeuristic::Desc);
 		}
 		/** Checks if the description is valid. */
@@ -132,11 +124,6 @@ public:
 		arm->initControlCycle();
 		hand->initControlCycle();
 	}
-
-	// Object real point cloud (testing purposes)
-	golem::shared_ptr<grasp::Cloud::PointSeq> objectPointCloudPtr;
-
-	golem::Real simContacts(const golem::Bounds::Seq::const_iterator &begin, const golem::Bounds::Seq::const_iterator &end, const golem::Mat34 pose);
 
 protected:
 	/** Force/torque driven heuristic for robot controller */

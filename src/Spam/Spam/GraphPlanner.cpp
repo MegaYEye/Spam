@@ -53,8 +53,8 @@ bool RagGraphPlanner::create(const Desc& desc) {
 	GraphPlanner::create(desc); // throws	
 
 	MultiCtrl* multiCtrl = dynamic_cast<MultiCtrl*>(&controller);
-	if (multiCtrl == NULL || multiCtrl->getControllers().size() != 2)
-		throw Message(Message::LEVEL_CRIT, "Robot::create(): Robot requires MultiCtrl with two connected devices");	
+	if (multiCtrl == NULL || multiCtrl->getControllers().size() < 2)
+		throw Message(Message::LEVEL_CRIT, "Robot::create(): Robot requires MultiCtrl at least two connected devices");	
 	armInfo = dynamic_cast<SingleCtrl*>(multiCtrl->getControllers()[0])->getStateInfo();
 	handInfo = dynamic_cast<SingleCtrl*>(multiCtrl->getControllers()[1])->getStateInfo();
 	
@@ -307,7 +307,7 @@ bool RagGraphPlanner::localFind(const ConfigspaceCoord &begin, const Configspace
 //------------------------------------------------------------------------------
 
 bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const GenWorkspaceChainState& wend, GenConfigspaceState &cend) {
-	context.write("RagGraphPlanner::find target\n");
+//	context.write("RagGraphPlanner::find target\n");
 //	return GraphPlanner::findTarget(begin, wend, cend);
 	context.verbose("RagGraphPlanner::findTarget: %s\n", grasp::plannerDebug(*this).c_str());
 
@@ -329,16 +329,21 @@ bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const 
 #endif
 	// generate graph
 //	disableHandPlanning();
+//	context.write("RagGraphPlanner::findTarget(): generating graph...\n");
 	if (!pGlobalPathFinder->generateGraph(begin.cpos, wend.wpos)) {
 		context.error("RagGraphPlanner::findTarget(): unable to generate global graph\n");
 		return false;
 	}
+//	context.write("done.\n");
 
 	// find target
+//	context.write("RagGraphPlanner::findTarget(): seeking for a target...\n");
 	if (!pGlobalPathFinder->findGoal(cend.cpos)) {
 		context.error("RagGraphPlanner::findTarget(): unable to find global path\n");
 		return false;
 	}
+//	context.write("done.\n");
+
 
 	cend.t = wend.t;
 	cend.cvel.fill(REAL_ZERO);
@@ -353,6 +358,7 @@ bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const 
 	if (heuristic)
 		heuristic->enableUnc = enable;
 
+	context.write("RagGraphPlanner::findTarget(): done.\n");
 	return true;
 }
 
@@ -378,18 +384,23 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 	t.reset();
 #endif
 	// generate global graph only for the arm
+//	context.write("RagGraphPlanner::findGlobalTrajectory(): disable hand planning...\n");
 	disableHandPlanning();
+//	context.write("RagGraphPlanner::findGlobalTrajectory(): generating graph...\n");
 	if (!pGlobalPathFinder->generateGraph(begin.cpos, end.cpos)) {
 		context.error("GraphPlanner::findTrajectory(): unable to generate global graph\n");
 		return false;
 	}
+//	context.write("done.\n");
 
 	// find node path on global graph
 	globalPath.clear();
+//	context.write("RagGraphPlanner::findGlobalTrajectory(): seeking for a path...\n");
 	if (!pGlobalPathFinder->findPath(end.cpos, globalPath, globalPath.begin())) {
 		context.error("GraphPlanner::findTrajectory(): unable to find global path\n");
 		return false;
 	}
+//	context.write("done.\n");
 #ifdef _GRAPHPLANNER_PERFMON
 	context.debug(
 		"GlobalPathFinder::findPath(): time elapsed = %f [sec], len = %d\n",
@@ -404,8 +415,10 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 		PARAMETER_GUARD(Heuristic, Real, Scale, *pHeuristic);
 
 		localPath = globalPath;
+//		context.write("RagGraphPlanner::findGlobalTrajectory(): seeking for local path...\n");
 		if (!localFind(begin.cpos, end.cpos, localPath))
 			return false;
+//		context.write("done...\n");
 #ifdef _GRAPHPLANNER_PERFMON
 		context.debug(
 			"GraphPlanner::localFind(): time elapsed = %f [sec], len = %d\n",
@@ -466,8 +479,9 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 #endif
 
 	getCallbackDataSync()->syncFindTrajectory(trajectory.begin(), trajectory.end(), wend);
-	disableHandPlanning();
+	enableHandPlanning();
 	
+	context.write("RagGraphPlanner::findGlobalTrajectory(): done.\n");
 	return true;
 }
 

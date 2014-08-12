@@ -166,10 +166,8 @@ if (WIN32)
 	# OpenNI
 	option(BUILD_SPAM_CAMERA_DEPTH_OPENNI "Build OpenNI camera device" YES)
 	if(BUILD_SPAM_CAMERA_DEPTH_OPENNI)
-		SET(OPENNI2_INCLUDE "${PROGRAM_FILES}/OpenNI2/Include" CACHE PATH "Path prefix for OpenNI include")
-		MARK_AS_ADVANCED(OPENNI2_INCLUDE)
-		SET(OPENNI2_LIBRARY "${PROGRAM_FILES}/OpenNI2/Lib" CACHE PATH "Path prefix for OpenNI library")
-		MARK_AS_ADVANCED(OPENNI2_LIBRARY)
+		SET(OPENNI2_INCLUDE_DIRS "${PROGRAM_FILES}/OpenNI2/Include" CACHE PATH "Path prefix for OpenNI include")
+		SET(OPENNI2_LIBRARY "${PROGRAM_FILES}/OpenNI2/Lib/OpenNI2.lib" CACHE PATH "OpenNI library")
 	endif(BUILD_SPAM_CAMERA_DEPTH_OPENNI)
 elseif (UNIX)
 	# Build options
@@ -236,10 +234,8 @@ elseif (UNIX)
 	# OpenNI
 	option(BUILD_SPAM_CAMERA_DEPTH_OPENNI "Build OpenNI camera device" NO)
 	if(BUILD_SPAM_CAMERA_DEPTH_OPENNI)
-		SET(OPENNI2_INCLUDE /usr/include/openni2 CACHE PATH "Path prefix for OpenNI include")
-		MARK_AS_ADVANCED(OPENNI2_INCLUDE)
-		SET(OPENNI2_LIBRARY /usr/lib CACHE PATH "Path prefix for OpenNI library")
-		MARK_AS_ADVANCED(OPENNI2_LIBRARY)
+		SET(OPENNI2_INCLUDE_DIRS /usr/include/openni2 CACHE PATH "Path prefix for OpenNI include")
+		SET(OPENNI2_LIBRARY /usr/lib/libOpenNI2.so CACHE PATH "OpenNI library")
 	endif(BUILD_SPAM_CAMERA_DEPTH_OPENNI)
 endif()
 
@@ -375,7 +371,12 @@ SET_PROPERTY(TARGET SpamSpam PROPERTY FOLDER "Spam")
 INSTALL(TARGETS SpamSpam RUNTIME DESTINATION bin LIBRARY DESTINATION bin ARCHIVE DESTINATION lib)
 INSTALL(FILES ${SPAM_HEADERS} DESTINATION include/Spam/Spam/)
 
-# PosePlanner
+###############################################################################
+#
+# PosePlanner executables
+#
+###############################################################################
+
 SET(POSE_PLANNER_SOURCES
 	${PROJECT_ROOT}/../Grasp/src/Grasp/Director/Director.cpp
 	${PROJECT_ROOT}/../Grasp/src/Grasp/Player/Player.cpp
@@ -406,10 +407,60 @@ SET_PROPERTY(TARGET SpamPosePlanner PROPERTY FOLDER "Programs")
 SOURCE_GROUP("Include Files" FILES ${POSE_PLANNER_HEADERS})
 SOURCE_GROUP("Resource Files" FILES ${POSE_PLANNER_FILES})
 
-# RagPlanner
+###############################################################################
+#
+# ShapePlanner executables
+#
+###############################################################################
+
+SET(SHAPE_PLANNER_SOURCES
+	${PROJECT_ROOT}/../Grasp/src/Grasp/Director/Director.cpp
+	${PROJECT_ROOT}/../Grasp/src/Grasp/Player/Player.cpp
+	${PROJECT_ROOT}/src/Spam/PosePlanner/PosePlanner.cpp
+	${PROJECT_ROOT}/src/Spam/ShapePlanner/ShapePlanner.cpp
+)
+SET(SHAPE_PLANNER_HEADERS
+	${PROJECT_ROOT}/include/Spam/ShapePlanner/ShapePlanner.h
+)
+SET(SHAPE_PLANNER_FILES
+	${PROJECT_ROOT}/resources/SpamShapePlanner_RobotBham.xml
+	${PROJECT_ROOT}/resources/SpamShapePlanner_RobotBoris.xml
+	${PROJECT_ROOT}/resources/SpamShapePlanner_RobotJustin.xml
+	${PROJECT_ROOT}/resources/SpamShapePlanner_RobotUIBK.xml
+)
+SET(SHAPE_PLANNER_DEMO_FILES
+	${PROJECT_ROOT}/../Grasp/resources/Grasp/RobotBorisDefault.graspclass
+	${PROJECT_ROOT}/../Grasp/resources/Grasp/Demo/GraspShapePlannerDemo_Jug.pcd
+	${PROJECT_ROOT}/../Grasp/resources/Grasp/Demo/GraspShapePlannerDemo_JugTop.trj
+)
+	
+ADD_EXECUTABLE(SpamShapePlanner ${SHAPE_PLANNER_SOURCES} ${SHAPE_PLANNER_HEADERS} ${SHAPE_PLANNER_FILES})
+SET_TARGET_PROPERTIES(SpamShapePlanner PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -D_SPAM_SHAPEPLANNER_MAIN_")
+TARGET_LINK_LIBRARIES(SpamShapePlanner SpamSpam)
+COPY_FILES(SpamShapePlanner ${RUNTIME_OUTPUT_DIRECTORY} ${SHAPE_PLANNER_FILES})
+COPY_FILES(SpamShapePlanner ${RUNTIME_OUTPUT_DIRECTORY} ${SHAPE_PLANNER_DEMO_FILES})
+SET_PROPERTY(TARGET SpamShapePlanner PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
+SET_PROPERTY(TARGET SpamShapePlanner PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
+INSTALL(TARGETS SpamShapePlanner RUNTIME DESTINATION bin)
+INSTALL(FILES ${SHAPE_PLANNER_HEADERS} DESTINATION include/Spam/ShapePlanner/)
+INSTALL(FILES ${SHAPE_PLANNER_FILES} DESTINATION bin)
+
+SET_PROPERTY(TARGET SpamShapePlanner PROPERTY PROJECT_LABEL "ShapePlanner")
+SET_PROPERTY(TARGET SpamShapePlanner PROPERTY FOLDER "Programs")
+SOURCE_GROUP("Include Files" FILES ${SHAPE_PLANNER_HEADERS})
+SOURCE_GROUP("Resource Files" FILES ${SHAPE_PLANNER_FILES})
+
+###############################################################################
+#
+# RagPlanner executables
+#
+###############################################################################
+
 SET(RAG_PLANNER_SOURCES
 	${PROJECT_ROOT}/../Grasp/src/Grasp/Director/Director.cpp
 	${PROJECT_ROOT}/../Grasp/src/Grasp/Player/Player.cpp
+	${PROJECT_ROOT}/src/Spam/PosePlanner/PosePlanner.cpp
+	${PROJECT_ROOT}/src/Spam/ShapePlanner/ShapePlanner.cpp
 	${PROJECT_ROOT}/src/Spam/RagPlanner/RagPlanner.cpp
 )
 SET(RAG_PLANNER_HEADERS
