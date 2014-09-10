@@ -72,10 +72,12 @@ public:
 		grasp::Cloud::PointSeq modelPoints;
 		/** Query transformation */
 		golem::Mat34 queryTransform;
-		/** Query frame */
+		/** Query frame: queryTransform * modelFrame */
 		golem::Mat34 queryFrame;
 		/** Query points */
 		grasp::Cloud::PointSeq queryPoints;
+		/** Simulated location of the object */
+		grasp::Cloud::PointSeq simulateObjectPose;
 
 		/** High dim rep pose distribution **/
 		grasp::RBPose::Sample::Seq poses;
@@ -98,6 +100,8 @@ public:
 			queryTransform.setId();
 			queryFrame.setId();
 			queryPoints.clear();
+
+			simulateObjectPose.clear();
 
 			modelFrame.setId();
 			modelPoints.clear();
@@ -147,6 +151,9 @@ public:
 
 		/** Model point transformation **/
 		golem::Mat34 modelTrn;
+
+		/** Object transformation (for test porpuses) */
+		golem::Mat34 objectTrn;
 
 		/** Enables/disable screen capture from simulation */
 //		bool screenCapture;
@@ -232,22 +239,30 @@ protected:
 	grasp::Cloud::PointSeq modelPoints;
 	/** Model transformation frame **/
 	golem::Mat34 modelTrn;
+	/** Object transformation (for test porpuses) */
+	golem::Mat34 objectTrn;
 
 	/** Query data */
 	Data::Map::iterator queryDataPtr;
 
-		/** 3d surface samples' point feature appearance */
+	/** 3d surface samples' point feature appearance */
 	grasp::Director::Data::Appearance sampleAppearance;
 	/** Show model points */
 	bool showModelPoints;
+	/** Show query points */
+	bool showQueryPoints;
 	/** Show model features */
 	bool showModelFeatures;
 	/** Show query distribution */
 	bool showQueryDistrib;
 	/** Show pose distribution **/
 	bool showPoseDistrib;
+	/** Show mean hypothesis */
+	bool showMeanHypothesis;
 	/** Show hypothesis distribution **/
 	bool showSamplePoints;
+	/** Show simulated pose of the object */
+	bool showObject;
 	/** Displayed feature index */
 	golem::U32 featureIndex;
 
@@ -275,8 +290,8 @@ protected:
 	/** Render data */
 	virtual void renderData(Data::Map::const_iterator dataPtr);
 	/** Render belief state */
-	void renderUncertainty(const grasp::RBPose::Sample::Seq &samples);
-	golem::DebugRenderer uncRenderer;
+//	void renderUncertainty(const grasp::RBPose::Sample::Seq &samples);
+//	golem::DebugRenderer uncRenderer;
 	/** Reset data pointers */
 	void resetDataPointers();
 

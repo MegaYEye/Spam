@@ -25,6 +25,7 @@ void spam::PosePlanner::Data::xmlData(golem::XMLContext* context, bool create) c
 			golem::XMLData(const_cast<golem::Mat34&>(queryTransform), context->getContextFirst("query_transform", create), create);
 			golem::XMLData(const_cast<golem::Mat34&>(queryFrame), context->getContextFirst("query_frame", create), create);
 			xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(queryPoints), std::string("query_points"), context, create);
+//			xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(simulateObjectPose), std::string("object_points"), context, create);
 			golem::XMLData(const_cast<golem::Mat34&>(modelFrame), context->getContextFirst("model_frame", create), create);
 			xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(modelPoints), std::string("model_points"), context, create);
 		}
@@ -105,8 +106,8 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	modelFrame.setId();
 	context.write("PosePlannenr::Create(): model trn <%f %f %f>\n", desc.modelTrn.p.x, desc.modelTrn.p.y, desc.modelTrn.p.z);
 	modelTrn = desc.modelTrn;
+	objectTrn = desc.objectTrn;
 	modelDataPtr = getData().end();
-	queryDataPtr = getData().end();
 	resetDataPointers();
 //	screenCapture = desc.screenCapture;
 
@@ -131,26 +132,30 @@ void spam::PosePlanner::render() {
 		golem::CriticalSectionWrapper csw(csDataRenderer);
 		pointFeatureRenderer.render();
 		sampleRenderer.render();
-		testRenderer.render();
-		uncRenderer.render();
+//		testRenderer.render();
+//		uncRenderer.render();
 	}
 }
 
 //------------------------------------------------------------------------------
 
-void spam::PosePlanner::renderUncertainty(const grasp::RBPose::Sample::Seq &samples) {
-	uncRenderer.reset();
-	for (grasp::RBPose::Sample::Seq::const_iterator i = samples.begin(); i != samples.end(); ++i)
-		uncRenderer.addAxes(Mat34(i->q, i->p) * modelFrame, featureFrameSize*i->weight);
-}
+//void spam::PosePlanner::renderUncertainty(const grasp::RBPose::Sample::Seq &samples) {
+//	uncRenderer.reset();
+//	for (grasp::RBPose::Sample::Seq::const_iterator i = samples.begin(); i != samples.end(); ++i)
+//		uncRenderer.addAxes(Mat34(i->q, i->p) * modelFrame, featureFrameSize*i->weight);
+//}
 
 void spam::PosePlanner::resetDataPointers() {
 	//auto ptr = getPtr<Data>(queryDataPtr);
 	//if (ptr != nullptr) ptr->queryPoints.clear();
+	queryDataPtr = getData().end();
 	showModelPoints = false;
+	showQueryPoints = false;
 	showModelFeatures = false;
 	showQueryDistrib = false;
 	showSamplePoints = false;
+	showMeanHypothesis = false;
+	showObject = false;
 //	showTest = false;
 	featureIndex = -1;
 }
@@ -163,8 +168,8 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 	
 		pointFeatureRenderer.reset();
 		sampleRenderer.reset();
-		testRenderer.reset();
-		sampleRenderer.addAxes(Mat34::identity(), featureFrameSize*5);
+//		testRenderer.reset();
+//		sampleRenderer.addAxes(Mat34::identity(), featureFrameSize*5);
 		const bool showmodel = modelDataPtr == dataPtr;
 		const bool showquery = queryDataPtr == dataPtr;
 
@@ -179,7 +184,8 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 					featureIndex = (golem::U32)rand.next()%pBelief->getQueryFeatures().size();
 				}
 				if (showSamplePoints) {
-//					context.write("hypotheses size %d\n", grasp::to<Data>(dataPtr)->hypotheses.size());
+//					pBelief->drawHypotheses(sampleRenderer);
+//					context.write("showSamplePoints hypotheses size %d\n", grasp::to<Data>(dataPtr)->hypotheses.size());
 					grasp::RBPose::Sample::Seq samples = grasp::to<Data>(dataPtr)->hypotheses;//pBelief->getHypothesesToSample();
 					for (grasp::RBPose::Sample::Seq::iterator i = samples.begin(); i != samples.end(); ++i) {
 						const Mat34 actionFrame(i->q, i->p);
@@ -194,13 +200,22 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 						grasp::Cloud::transform(actionFrame, sample, sample);
 						sampleRenderer.addAxes(sampleFrame, distribFrameSize);
 						sampleAppearance.draw(sample, sampleRenderer);
-//						sampleAppearance.draw((*pBelief->getHypotheses().begin())->getCloud(), sampleRenderer);
-//						break;
+						if (showMeanHypothesis)
+							break;
+					//context.debug("cloud size %d\n", (*pBelief->getHypotheses().begin())->getCloud().size());
+					//sampleAppearance.colourOverride = true;
+					//sampleAppearance.colour = RGBA::MAGENTA;
+					//sampleAppearance.draw((*pBelief->getHypotheses().begin())->getCloud(), sampleRenderer);
+////						break;
 					}
 				}
+				if (showObject)
+					sampleAppearance.draw(grasp::to<Data>(dataPtr)->simulateObjectPose, pointFeatureRenderer);
 				if (showQueryDistrib) {
+//					pBelief->drawSamples(distribSamples, sampleRenderer);
+//					context.write("showQueryDistrib sample size %d\n", distribSamples);
 					for (size_t i = 0; i < distribSamples; ++i) {
-						pointFeatureRenderer.addAxes(pBelief->sample().toMat34() * modelFrame, distribFrameSize);
+						sampleRenderer.addAxes(pBelief->sample().toMat34() * modelFrame, distribFrameSize);
 					}
 				}
 				if (!showModelPoints) {
@@ -222,7 +237,7 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 		
 		if (!grasp::to<Data>(dataPtr)->queryPoints.empty()) {
 			pointFeatureRenderer.addAxes(grasp::to<Data>(dataPtr)->queryFrame, featureFrameSize);
-			if (showModelPoints)
+			if (showQueryPoints)
 				grasp::to<Data>(dataPtr)->draw(grasp::to<Data>(dataPtr)->queryPoints, pointFeatureRenderer);
 		}
 	}
@@ -320,7 +335,7 @@ grasp::Cloud::PointSeqMap::iterator PosePlanner::getPointsTrn(Data::Map::iterato
 void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 	switch (key) {
 	case 'P':
-		switch (waitKey("MQL", "Press a key to create (M)odel/(Q)uery/(L)oad...")) {
+		switch (waitKey("MQLS", "Press a key to create (M)odel/(Q)uery/(L)oad/(S)et object...")) {
 		case 'M':
 		{
 			// model create
@@ -373,11 +388,12 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 			grasp::to<Data>(dataPtr)->poses = pBelief->getSamples();
 			grasp::to<Data>(dataPtr)->hypotheses.clear();
 			grasp::to<Data>(dataPtr)->hypotheses = pBelief->getHypothesesToSample();
-			renderUncertainty(grasp::to<Data>(dataPtr)->poses);
+//			renderUncertainty(grasp::to<Data>(dataPtr)->poses);
 
 			context.info("<trn v1=\"%.7f\" v2=\"%.7f\" v3=\"%.7f\" q0=\"%.7f\" q1=\"%.7f\" q2=\"%.7f\" q3=\"%.7f\"/>\n", trn.p.x, trn.p.y, trn.p.z, trn.q.q0, trn.q.q1, trn.q.q2, trn.q.q3);
 			context.write("Done!\n");
 			showSamplePoints = true; // shows hypotheses and mean pose
+			showQueryPoints = true;
 			renderData(dataPtr);
 			return;
 		}
@@ -399,16 +415,51 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 			// update query settings
 			queryDataPtr = dataPtr;
 			pBelief->set(grasp::to<Data>(dataPtr)->poses, grasp::to<Data>(dataPtr)->hypotheses, modelFrame, modelPoints);
-			resetDataPointers();
 			showSamplePoints = true; // shows hypotheses and mean pose
-			renderUncertainty(grasp::to<Data>(dataPtr)->poses);
+			//showQueryPoints = true;
+
+			if (waitKey("YN", "Do you want to load the simulated object? (Y/N)") == 'Y') {
+				grasp::to<Data>(dataPtr)->simulateObjectPose.clear();
+				grasp::to<Data>(dataPtr)->simulateObjectPose.reserve(modelPoints.size());
+				for (grasp::Cloud::PointSeq::const_iterator point = modelPoints.begin(); point != modelPoints.end(); ++point) {
+					grasp::Cloud::Point p = *point;
+					grasp::Cloud::setColour(golem::RGBA::MAGENTA, p);
+					grasp::to<Data>(dataPtr)->simulateObjectPose.push_back(p);
+				}
+				grasp::Cloud::transform(grasp::to<Data>(dataPtr)->queryTransform, grasp::to<Data>(dataPtr)->simulateObjectPose, grasp::to<Data>(dataPtr)->simulateObjectPose);
+				grasp::Cloud::transform(objectTrn, grasp::to<Data>(dataPtr)->simulateObjectPose, grasp::to<Data>(dataPtr)->simulateObjectPose);
+				context.write("done.\n");
+				//showObject = true;
+			}
+
+//			renderUncertainty(grasp::to<Data>(dataPtr)->poses);
 			// done
 			context.write("Done!\n");
 			renderData(dataPtr);
 			return;
 		}
+		case 'S':
+			context.write("Storing simulated pose for the object to grasp...\n");
+			if (modelPoints.empty()) {
+				context.write("Error: No model loaded.\n");
+				return;
+			}
+			grasp::to<Data>(dataPtr)->simulateObjectPose.clear();
+			grasp::to<Data>(dataPtr)->simulateObjectPose.reserve(modelPoints.size());
+			for (grasp::Cloud::PointSeq::const_iterator point = modelPoints.begin(); point != modelPoints.end(); ++point) {
+				grasp::Cloud::Point p = *point;
+				grasp::Cloud::setColour(golem::RGBA::MAGENTA, p);
+				grasp::to<Data>(dataPtr)->simulateObjectPose.push_back(p);
+			}
+			grasp::Cloud::transform(grasp::to<Data>(dataPtr)->queryTransform, grasp::to<Data>(dataPtr)->simulateObjectPose, grasp::to<Data>(dataPtr)->simulateObjectPose);
+			grasp::Cloud::transform(objectTrn, grasp::to<Data>(dataPtr)->simulateObjectPose, grasp::to<Data>(dataPtr)->simulateObjectPose);
+			context.write("done.\n");
+			//showObject = true;
+			renderData(dataPtr);
+			return;
 		}
 		return;
+		// hand collision debug
 	case '4':
 		showModelPoints = !showModelPoints;
 		context.write("Model points %s\n", showModelPoints ? "ON" : "OFF");
@@ -424,11 +475,17 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 		showQueryDistrib = !showQueryDistrib;
 		context.write("Query distribution %s\n", showQueryDistrib ? "ON" : "OFF");
 		renderData(dataPtr);
+		return;	
+	case '=':
+		showObject = showSamplePoints && showMeanHypothesis ? !showObject : showObject;
+		showMeanHypothesis = showSamplePoints && !showObject ? !showMeanHypothesis : showObject ? !showMeanHypothesis : showMeanHypothesis;
+		showSamplePoints = !showMeanHypothesis && !showObject ? !showSamplePoints : showObject ? !showSamplePoints : showSamplePoints;
+		context.write("Hypotheses distribution %s\nShow Mean Pose %s\nObject Points %s\n-----------\n", showSamplePoints ? "ON" : "OFF", showMeanHypothesis ? "ON" : "OFF", showObject ? "ON" : "OFF");
+		renderData(dataPtr);
 		return;
-	
-	case '7':
-		showSamplePoints = !showSamplePoints;
-		context.write("Hypotheses distribution %s\n", showSamplePoints ? "ON" : "OFF");
+	case '+':
+		showQueryPoints = !showQueryPoints;
+		context.write("Query points %s\n", showQueryPoints ? "ON" : "OFF");
 		renderData(dataPtr);
 		return;
 	}
@@ -617,7 +674,9 @@ void spam::XMLData(PosePlanner::Desc &val, Context* context, XMLContext* xmlcont
 
 	try {
 		XMLData(val.modelTrn, xmlcontext->getContextFirst("model_trn_frame"), create);
-	} catch (const golem::MsgXMLParser& msg) {}
+		XMLData(val.objectTrn, xmlcontext->getContextFirst("object_points_trn"), create);
+	}
+	catch (const golem::MsgXMLParser& msg) { context->write("%s\n", msg.str().c_str());  }
 
 	//golem::XMLData("num_poses", val.numPoses, xmlcontext);
 	//golem::XMLData("num_hypotheses", val.numHypotheses, xmlcontext);

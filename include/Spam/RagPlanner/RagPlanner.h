@@ -206,6 +206,14 @@ protected:
 	bool posterior;
 
 	bool printing;
+	golem::Bounds::Seq handBounds;
+	Collision::Ptr collision;
+	Collision::Waypoint w;
+
+	/** Resets the controllers */
+	bool enableControllers;
+	/** Checks collision with the query point cloud */
+	bool enableSimContact;
 
 	/** Query transformation */
 	grasp::RBCoord queryPointsTrn;
@@ -216,6 +224,7 @@ protected:
 	golem::Controller::State::Seq executedTrajectory;
 	/** Contains the index of the triggered guards */
 	grasp::FTGuard::Seq triggeredGuards;
+	golem::Controller::State::Seq grasps;
 
 	/** Iterations counter */
 	size_t iterations;
@@ -234,10 +243,12 @@ protected:
 
 	/** Get current points transformed */
 	grasp::Cloud::PointSeqMap::iterator getTrnPoints(Data::Map::iterator dataPtr, const golem::Mat34 &trn);
+	/** Get current points transformed */
+	grasp::Cloud::RawPointSeqMultiMap::iterator getTrnRawPoints(Data::Map::iterator dataPtr, const golem::Mat34 &trn);
 
 	/** Simulates contacts between the robot's hand and object's partial point cloud */
 	golem::Real simContacts(const golem::Bounds::Seq::const_iterator &begin, const golem::Bounds::Seq::const_iterator &end, const golem::Mat34 pose);
-	// Object real point cloud (testing purposes)
+	/** Object real point cloud (testing purposes) */
 	golem::shared_ptr<grasp::Cloud::PointSeq> objectPointCloudPtr;
 
 	/** Updates belief state */
@@ -264,7 +275,7 @@ protected:
 	golem::DebugRenderer testPose;
 	void renderUpdate(const golem::Mat34 &pose, const grasp::RBPose::Sample::Seq &samples);
 	golem::DebugRenderer testUpdate;
-	void renderHand(const golem::Controller::State &state, bool clear = false);
+	void renderHand(const golem::Controller::State &state, const golem::Bounds::Seq &bounds, bool clear = false);
 	golem::BoundsRenderer handRenderer;
 
 	/** Prints out a trajectory */

@@ -48,7 +48,6 @@
 
 #include <Golem/PhysCtrl/PhysPlanner.h>
 #include <Golem/Device/SingleCtrl/Data.h>
-#include <Grasp/Grasp/Grasp.h>
 #include <Spam/Spam/Belief.h>
 #include <Grasp/Grasp/Robot.h>
 
@@ -263,6 +262,10 @@ public:
 
 	/** Acquires pose distribution **/
 	inline void setBelief(Belief *belief) { pBelief.reset(belief); };
+
+	/** Acquires manipulator */
+	inline void setManipulator(grasp::Manipulator *ptr) { manipulator.reset(ptr); collision.reset(new Collision(*manipulator)); };
+
 	/** Sets model cloud points */
 //	void setModel(grasp::Cloud::PointSeq::const_iterator begin, grasp::Cloud::PointSeq::const_iterator end, const golem::Mat34 &transform);
 	/** Sets the current belief state */
@@ -301,6 +304,13 @@ protected:
 
 	/** Pose distribution **/
 	Belief::Ptr pBelief;
+
+	/** Manipulator pointer */
+	grasp::Manipulator::Ptr manipulator;
+	/** Collision interface */
+	Collision::Ptr collision;
+	/** Collision waypoint */
+	Collision::Waypoint waypoint;
 
 	/** Sampled poses */
 //	HypSample::Map samples;
@@ -370,6 +380,12 @@ protected:
 	/** Constructor */
 	FTDrivenHeuristic(golem::Controller &controller);
 };
+
+//------------------------------------------------------------------------------
+
+void XMLData(FTDrivenHeuristic::FTModelDesc& val, golem::XMLContext* context, bool create = false);
+
+void XMLData(FTDrivenHeuristic::Desc& val, golem::XMLContext* context, bool create = false);
 
 //------------------------------------------------------------------------------
 

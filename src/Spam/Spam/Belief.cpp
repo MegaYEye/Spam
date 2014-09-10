@@ -237,6 +237,19 @@ bool Belief::Hypothesis::buildMesh() {
 	return true;
 }
 
+void Belief::Hypothesis::draw(DebugRenderer &renderer) const {
+	if (appearance.showFrames)
+		renderer.addAxes(sample.toMat34() * modelFrame, appearance.frameSize);
+
+	if (appearance.showPoints) {
+		for (grasp::Cloud::PointSeq::const_iterator i = points.begin(); i != points.end(); ++i) {
+			grasp::Cloud::Point point = *i;
+			grasp::Cloud::setColour(/*appearance.colour*/RGBA::RED, point);
+			renderer.addPoint(grasp::Cloud::getPoint(point));
+		}
+	}
+}
+
 //------------------------------------------------------------------------------
 
 Belief::Belief(golem::Context& context) : grasp::RBPose(context) {
@@ -249,6 +262,8 @@ bool Belief::create(const Desc& desc) {
 	
 	grasp::RBPose::create((grasp::RBPose::Desc&)desc);
 
+	appearance.setToDefault();
+
 	// reset container for the low-dim rep belief
 	hypotheses.clear();
 	hypotheses.reserve(desc.numHypotheses);
@@ -258,6 +273,38 @@ bool Belief::create(const Desc& desc) {
 
 	return true;
 }
+
+//------------------------------------------------------------------------------
+
+void Belief::drawSamples(const size_t numSamples, golem::DebugRenderer& renderer) const {
+	for (size_t t = 0; t < numSamples; ++t) {
+		grasp::RBCoord sample = grasp::RBPose::sample();
+
+		if (appearance.showFrames)
+			renderer.addAxes(sample.toMat34() * modelFrame, appearance.frameSize);
+
+		if (appearance.showPoints) {
+			grasp::Cloud::PointSeq seq;
+			for (grasp::Cloud::PointSeq::const_iterator i = modelPoints.begin(); i != modelPoints.end(); ++i) {
+				grasp::Cloud::Point point = *i;
+				grasp::Cloud::setColour(appearance.colour, point);
+				seq.push_back(point);
+			}
+			grasp::Cloud::transform(sample.toMat34(), seq, seq);
+			for (grasp::Cloud::PointSeq::const_iterator i = seq.begin(); i != seq.end(); ++i)
+				renderer.addPoint(grasp::Cloud::getPoint(*i));
+		}
+	}
+}
+
+void Belief::drawHypotheses(golem::DebugRenderer &renderer) const {
+	(*hypotheses.begin())->draw(renderer);
+	return;
+	for (Hypothesis::Seq::const_iterator h = hypotheses.begin(); h != hypotheses.end(); ++h)
+		(*h)->draw(renderer);
+}
+
+
 
 //------------------------------------------------------------------------------
 
@@ -321,6 +368,7 @@ void Belief::setHypotheses(const grasp::RBPose::Sample::Seq &hypothesisSeq) {
 			sampleCloud.push_back(point);
 		}
 		hypotheses.push_back(Hypothesis::Ptr(new Hypothesis(idx, modelFrame, *p, sampleCloud)));
+		hypotheses.back()->appearance.colour = (p == hypothesisSeq.begin()) ? RGBA::YELLOW : RGBA::BLUE;
 		context.write(" - sample n.%d <%.4f %.4f %.4f> <%.4f %.4f %.4f %.4f>\n", idx, p->p.x, p->p.y, p->p.z, p->q.w, p->q.x, p->q.y, p->q.z);
 		idx++;
 	}
@@ -370,6 +418,7 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 		}
 //		hypotheses.insert(Hypothesis::Map::value_type(idx, Hypothesis::Ptr(new Hypothesis(idx, grasp::RBPose::Sample(sampleFrame), sampleCloud))));
 		hypotheses.push_back(Hypothesis::Ptr(new Hypothesis(idx, transform, grasp::RBPose::Sample(actionFrame), sampleCloud)));
+		hypotheses.back()->appearance.colour = (i == 0) ? RGBA::YELLOW : RGBA::BLUE;
 		context.write(" - sample n.%d <%.4f %.4f %.4f> <%.4f %.4f %.4f %.4f>\n", idx, actionFrame.p.x, actionFrame.p.y, actionFrame.p.z, actionFrame.q.w, actionFrame.q.x, actionFrame.q.y, actionFrame.q.z); 
 		idx++;
 	}
@@ -548,7 +597,7 @@ void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Ro
 			triggered[idx] = [&] () -> bool {
 				for (grasp::FTGuard::Seq::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
 					if (j == i->jointIdx) {
-						forces[idx] = i->type == grasp::FTGUARD_ABS ? REAL_ZERO : i->type == grasp::FTGUARD_LESSTHAN ? -REAL_ONE : REAL_ONE;
+						forces[idx] = i->value; // i->type == grasp::FTGUARD_ABS ? REAL_ZERO : i->type == grasp::FTGUARD_LESSTHAN ? -REAL_ONE : REAL_ONE;
 						return true;
 					}
 				return false;

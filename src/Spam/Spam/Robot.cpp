@@ -8,10 +8,10 @@
 
 #include <Spam/Spam/Robot.h>
 #include <Golem/Device/MultiCtrl/MultiCtrl.h>
-#include <Golem/Tools/XMLData.h>
-#include <Golem/Plan/Data.h>
-#include <Golem/Tools/XMLData.h>
-#include <Golem/Tools/Data.h>
+//#include <Golem/Tools/XMLData.h>
+//#include <Golem/Plan/Data.h>
+//#include <Golem/Tools/XMLData.h>
+//#include <Golem/Tools/Data.h>
 #include <Golem/PhysCtrl/Data.h>
 #include <Golem/Device/RobotJustin/RobotJustin.h>
 
@@ -319,3 +319,17 @@ grasp::RBDist Robot::trnTrajectory(const golem::Mat34& actionFrame, const golem:
 	return err;
 }
 
+//------------------------------------------------------------------------------
+
+void spam::XMLData(Robot::Desc &val, golem::Context* context, golem::XMLContext* xmlcontext, bool create) {
+	//	grasp::XMLData((grasp::Robot::Desc&)val, context, xmlcontext, create);
+	RagGraphPlanner::Desc* pRagGraphPlanner(new RagGraphPlanner::Desc);
+	(golem::Planner::Desc&)*pRagGraphPlanner = *val.physPlannerDesc->pPlannerDesc;
+	val.physPlannerDesc->pPlannerDesc.reset(pRagGraphPlanner);
+	val.physPlannerDesc->pPlannerDesc = RagGraphPlanner::Desc::load(context, xmlcontext->getContextFirst("planner"));
+
+	FTDrivenHeuristic::Desc* pFTDrivenHeuristic(new FTDrivenHeuristic::Desc);
+	(golem::Heuristic::Desc&)*pFTDrivenHeuristic = *val.physPlannerDesc->pPlannerDesc->pHeuristicDesc;
+	val.physPlannerDesc->pPlannerDesc->pHeuristicDesc.reset(pFTDrivenHeuristic);
+	spam::XMLData((FTDrivenHeuristic::Desc&)*val.physPlannerDesc->pPlannerDesc->pHeuristicDesc, xmlcontext->getContextFirst("rag_planner heuristic"), create);
+}

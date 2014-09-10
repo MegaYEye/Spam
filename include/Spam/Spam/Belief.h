@@ -49,6 +49,7 @@
 #include <Grasp/Grasp/Cloud.h>
 #include <Grasp/Grasp/RBPose.h>
 #include <Grasp/Grasp/Robot.h>
+#include <Spam/Spam/Spam.h>
 
 //------------------------------------------------------------------------------
 
@@ -82,6 +83,37 @@ public:
 	friend class FTDrivenHeuristic;
 	typedef golem::shared_ptr<Belief> Ptr;
 
+	/** Appearance */
+	class Appearance {
+	public:
+		/** Show frame */
+		bool showFrames;
+		/** Show point cloud */
+		bool showPoints;
+		/** Frame size of the sample */
+		golem::Vec3 frameSize;
+		/** clolour of the point cloud */
+		golem::RGBA colour;
+
+		/** Constructs from description object */
+		Appearance() {
+			setToDefault();
+		}
+		/** Sets the parameters to the default values */
+		void setToDefault() {
+			showFrames = true;
+			showPoints = true;
+			frameSize.set(golem::Real(0.02));
+			colour = golem::RGBA::MAGENTA;
+		}
+		/** Checks if the description is valid. */
+		bool isValid() const {
+			if (!frameSize.isPositive())
+				return false;
+			return true;
+		}
+	};
+
 	/** Forward model to describe hand-object interactions */
 	class RigidBodyTransformation {
 	public:
@@ -111,7 +143,9 @@ public:
 		typedef std::vector<Ptr> Seq;
 
 		/** Default construtor */
-		Hypothesis() {}
+		Hypothesis() {
+			appearance.setToDefault();
+		}
 		/** Complete constructor */
 		Hypothesis(const golem::U32 idx, const golem::Mat34 &trn, const grasp::RBPose::Sample &s, grasp::Cloud::PointSeq &p) {
 			index = idx;
@@ -121,6 +155,8 @@ public:
 				points.push_back(*i);
 			build();
 			//buildMesh();
+
+			appearance.setToDefault();
 		}
 		/** Destrutor */
 		~Hypothesis() {
@@ -140,6 +176,11 @@ public:
 		inline grasp::RBPose::Sample toRBPoseSampleGF() { return grasp::RBPose::Sample(sample.toMat34() * modelFrame, sample.weight, sample.cdf); };
 		/** Returns the point cloud in global frame */
 		inline grasp::Cloud::PointSeq getCloud() { return points; };
+
+		/** Draw hypothesis */
+		void draw(golem::DebugRenderer& renderer) const;
+
+		Appearance appearance;
 
 	protected:
 		/** Builds a pcl::PointCloud and its kd tree */
@@ -302,6 +343,12 @@ public:
 	/** Gets the covariance det associated with the hypotheses **/
 	inline golem::Real getCovarianceDet() { return covarianceDet; };
 
+	/** Draw samples */
+	void drawSamples(const size_t numSamples, golem::DebugRenderer& renderer) const;
+
+	/** Draw hypotheses */
+	void drawHypotheses(golem:: DebugRenderer &renderer) const;
+
 	/** Pose description */
 	Desc myDesc;
 
@@ -313,6 +360,9 @@ protected:
 	grasp::RBPose::Ptr pRBPose;
 	/** Forward model of hand-object interaction */
 	RigidBodyTransformation trn;
+
+	/** Appearance */
+	Appearance appearance;
 
 	/** Model point cloud **/
 	grasp::Cloud::PointSeq modelPoints;

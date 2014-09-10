@@ -49,6 +49,7 @@
 #include <Grasp/Grasp/Robot.h>
 #include <Spam/Spam/Heuristic.h>
 #include <Grasp/Grasp/Cloud.h>
+#include <Spam/Spam/GraphPlanner.h>
 
 //------------------------------------------------------------------------------
 
@@ -142,6 +143,11 @@ protected:
 	Robot(golem::Scene &scene);
 	bool create(const Desc& desc);
 };
+
+//------------------------------------------------------------------------------
+
+/** Reads/writes object from/to a given XML context */
+void XMLData(spam::Robot::Desc &val, golem::Context* context, golem::XMLContext* xmlcontext, bool create = false);
 
 //------------------------------------------------------------------------------
 

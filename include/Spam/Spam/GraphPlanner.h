@@ -46,7 +46,7 @@
 
 //------------------------------------------------------------------------------
 
-#include <Golem/Plan/GraphPlanner.h>
+#include <Spam/Spam/Spam.h>
 
 //------------------------------------------------------------------------------
 
@@ -247,6 +247,10 @@ public:
 	 */
 //	virtual bool findLocalTrajectory(const golem::Controller::State &cbegin, golem::GenWorkspaceChainState::Seq::const_iterator wbegin, golem::GenWorkspaceChainState::Seq::const_iterator end, golem::Controller::Trajectory &trajectory, golem::Controller::Trajectory::iterator iter, golem::MSecTmU32 timeOut = golem::MSEC_TM_U32_INF);
 };
+
+//------------------------------------------------------------------------------
+
+void XMLData(RagGraphPlanner::Desc &val, golem::XMLContext* context, bool create = false);
 
 //------------------------------------------------------------------------------
 

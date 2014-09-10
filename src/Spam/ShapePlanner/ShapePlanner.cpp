@@ -127,13 +127,23 @@ void spam::ShapePlanner::mouseHandler(int button, int state, int x, int y) {
 	if (state != 1 || !(button == 1 || button == 3 || button == 4)) return;
 
 	grasp::Configuration::Path::Appearance* appearance =
-		grasp::to<Data>(currentDataPtr)->graspMode == MODE_DATA ? & grasp::to<Data>(currentDataPtr)->appearanceData.path :
+		grasp::to<Data>(currentDataPtr)->graspMode == MODE_DATA ? &grasp::to<Data>(currentDataPtr)->appearanceData.path :
 		grasp::to<Data>(currentDataPtr)->graspMode == MODE_CLUSTER || grasp::to<Data>(currentDataPtr)->graspMode == MODE_CONFIG || grasp::to<Data>(currentDataPtr)->graspMode == MODE_CONFIG_MODEL || grasp::to<Data>(currentDataPtr)->graspMode == MODE_CONTACT_MODEL ? &grasp::to<Data>(currentDataPtr)->appearanceConfig.configPath :
 		nullptr;
 
 	if (!appearance) return;
 
 	appearance->subspaceDist = button == 3 ? appearance->subspaceDist + 1 : button == 4 ? appearance->subspaceDist - 1 : 0;
+
+	auto printPath = [=](const char* name, const grasp::Configuration::Path::Appearance& appearance, const grasp::Configuration::Path& path) {
+		std::stringstream str;
+		const golem::ConfigspaceCoord& c = manipulator->getConfig(appearance.subspacePose);
+		for (golem::Configspace::Index i = robot->getStateArmInfo().getJoints().begin(); i < robot->getStateArmInfo().getJoints().end(); ++i)
+			str << " c" << (*i - *robot->getStateArmInfo().getJoints().begin() + 1) << "=\"" << c[i] << "\"";
+		for (golem::Configspace::Index i = robot->getStateHandInfo().getJoints().begin(); i < robot->getStateHandInfo().getJoints().end(); ++i)
+			str << " c" << (*i - *robot->getStateArmInfo().getJoints().begin() + 1) << "=\"" << c[i] << "\"";
+		context.write("%s: size=%u, dist_{first=%f, last=%f, curr=%f}, dist_range_{lo=%f, hi=%f}, <pose dim=\"%d\"%s/>\n", name, path.size(), path.front().getDistance(), path.back().getDistance(), appearance.subspaceDistVal, appearance.subspaceDistLo, appearance.subspaceDistHi, robot->getStateArmInfo().getJoints().size() + robot->getStateHandInfo().getJoints().size(), str.str().c_str());
+	};
 
 	golem::CriticalSectionWrapper csw(csDataRenderer);
 	// data pointer
@@ -146,10 +156,7 @@ void spam::ShapePlanner::mouseHandler(int button, int state, int x, int y) {
 			graspRenderer.reset();
 			grasp::to<Data>(currentDataPtr)->appearanceData.path.pathDelta = grasp->second->getConfiguration()->getDesc().distanceStdDev;
 			data->second.draw(*grasp->second, grasp::to<Data>(currentDataPtr)->appearanceData, graspRenderer);
-			context.write("Training data path: size=%u, dist_{first=%f, last=%f, curr=%f} dist_range_{lo=%f, hi=%f}\n",
-				data->second.path.size(),
-				data->second.path.front().getDistance(), data->second.path.back().getDistance(), grasp::to<Data>(currentDataPtr)->appearanceData.path.subspaceDistVal,
-				grasp::to<Data>(currentDataPtr)->appearanceData.path.subspaceDistLo, grasp::to<Data>(currentDataPtr)->appearanceData.path.subspaceDistHi);
+			printPath("Training data path", grasp::to<Data>(currentDataPtr)->appearanceData.path, data->second.path);
 		}
 		break;
 	}
@@ -160,17 +167,14 @@ void spam::ShapePlanner::mouseHandler(int button, int state, int x, int y) {
 		if (grasp::to<Data>(currentDataPtr)->hasGraspConfigs()) {
 			graspRenderer.reset();
 			grasp::Grasp::Config::Seq::const_iterator ptr = grasp::to<Data>(currentDataPtr)->getGraspConfig();
-			
+
 			if ((*ptr)->getGrasp() && (grasp::to<Data>(currentDataPtr)->graspMode == MODE_CLUSTER || grasp::to<Data>(currentDataPtr)->graspMode == MODE_CONFIG))
 				grasp::to<Data>(currentDataPtr)->appearanceConfig.configPath.pathDelta = (*ptr)->getGrasp()->getConfiguration()->getDesc().distanceStdDev;
-			
+
 			(*ptr)->draw(*manipulator, grasp::to<Data>(currentDataPtr)->appearanceConfig, graspRenderer);
-			
-			if ((*ptr)->getGrasp() && (grasp::to<Data>(currentDataPtr)->graspMode == MODE_CLUSTER || grasp::to<Data>(currentDataPtr)->graspMode == MODE_CONFIG))
-				context.write("Grasp config path: size=%u, dist_{first=%f, last=%f, curr=%f} dist_range_{lo=%f, hi=%f}\n",
-					(*ptr)->path.size(),
-					(*ptr)->path.front().getDistance(), (*ptr)->path.back().getDistance(), grasp::to<Data>(currentDataPtr)->appearanceConfig.configPath.subspaceDistVal,
-					grasp::to<Data>(currentDataPtr)->appearanceConfig.configPath.subspaceDistLo, grasp::to<Data>(currentDataPtr)->appearanceConfig.configPath.subspaceDistHi);
+
+			if (grasp::to<Data>(currentDataPtr)->graspMode == MODE_CLUSTER || grasp::to<Data>(currentDataPtr)->graspMode == MODE_CONFIG)
+				printPath("Grasp config path", grasp::to<Data>(currentDataPtr)->appearanceConfig.configPath, (*ptr)->path);
 		}
 		else
 			context.write("Grasp configs not available!\n");
