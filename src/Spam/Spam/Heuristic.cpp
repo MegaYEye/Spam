@@ -266,7 +266,7 @@ bool FTDrivenHeuristic::create(const Desc &desc) {
 
 	collision.reset();
 	waypoint.setToDefault();
-	waypoint.points = 1000;
+	waypoint.points = ftDrivenDesc.ftModelDesc.points;
 
 	testCollision = false;
 

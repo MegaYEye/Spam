@@ -306,7 +306,12 @@ public:
 	virtual bool collides(const golem::Waypoint &w0, const golem::Waypoint &w1, ThreadData* data) const;
 
 	/** Sets collision checking with the object to be grasped */
-	void setPointCloudCollision(const bool cloudCollision) { pointCloudCollision = cloudCollision; };
+	inline void setPointCloudCollision(const bool cloudCollision) { pointCloudCollision = cloudCollision; };
+
+	/** Sets surface points to be checked for collision */
+	inline void setNumCollisionPoints(const golem::U32 points) { waypoint.points = points; };
+	/** Returns surface points to be checked for collision */
+	inline golem::U32 getNumCollisionPoints() { return waypoint.points; };
 
 	/** Mahalanobis distance between rigid bodies a and b */
 	golem::Real distance(const grasp::RBCoord &a, const grasp::RBCoord &b, bool enableAng = false) const;

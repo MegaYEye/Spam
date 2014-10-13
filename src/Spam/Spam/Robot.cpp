@@ -84,7 +84,7 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 	gwcs.wpos[armChain].multiply(gwcs.wpos[armChain], controller->getChains()[armChain]->getReferencePose()); // 1:1
 	gwcs.wpos[armChain].multiply(trn, gwcs.wpos[armChain]); // new waypoint frame
 	gwcs.t = target.t;
-	gwcs.wpos[armChain].p.z += 0.01;
+//	gwcs.wpos[armChain].p.z += 0.01;
 
 	cend = target;
 	{
