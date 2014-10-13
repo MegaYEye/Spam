@@ -21,6 +21,18 @@ using namespace golem;
 
 //------------------------------------------------------------------------------
 
+//RagPathFinder::RagPathFinder(DEKinematics& kinematics) :
+//PathFinder(kinematics)
+//{}
+//
+//bool RagPathFinder::create(const Desc& desc) {
+//	golem::PathFinder::create(desc);
+//
+//	return true;
+//}
+
+//------------------------------------------------------------------------------
+
 Planner::Desc::Ptr RagGraphPlanner::Desc::load(Context* context, const std::string& libraryPath, const std::string& configPath) {
 	Planner::Desc::Ptr pDesc;
 	
@@ -70,8 +82,7 @@ bool RagGraphPlanner::create(const Desc& desc) {
 	//for (size_t j = 0; j < Configspace::DIM; ++j)
 	//	context.write("%s ", jointDescSeq[j] ? "ON" : "OFF");	
 	//context.write(">\n");
-	disableHandPlanning();
-
+//	disableHandPlanning();
 	
 	return true;
 }
@@ -124,65 +135,28 @@ bool RagGraphPlanner::localFind(const ConfigspaceCoord &begin, const Configspace
 		ConfigspaceCoord delta;
 		for (Configspace::Index j = stateInfo.getJoints().begin(); j < stateInfo.getJoints().end(); ++j)
 			delta[j] = pathFinderDesc.rangeFac*pHeuristic->getJointDesc()[j]->distMax;
-		
-		// setup graph generators
-		pLocalPathFinder->getGeneratorRoot().delta = pLocalPathFinder->getGeneratorGoal().delta = delta;
-		pLocalPathFinder->getGenerators().clear();
-		std::stringstream str;
-		str << "global path\n";
+
+		// create online graph generators
+		WaypointGenerator::Desc::Seq generators;
 		for (Waypoint::Seq::const_iterator j = localPath.begin(); j != localPath.end(); ++j) {
-			if (j != localPath.begin() && j != localPath.end()) // do not double root and goal nodes
-				pLocalPathFinder->getGenerators().push_back(WaypointGenerator(j->cpos, delta));
-			str << "<";
-			for (Configspace::Index i = stateInfo.getJoints().begin(); i != stateInfo.getJoints().end(); ++i)
-				str << j->cpos[i] << " ";
-			str << ">\n";
+			WaypointGenerator::Desc::Ptr generator(new WaypointGenerator::Desc);
+			generator->name = "local";
+			generator->delta = delta;
+			generator->mean = j->cpos;
+			generator->seed = j == localPath.begin() ? WaypointGenerator::SEED_ROOT : j == --localPath.end() ? WaypointGenerator::SEED_GOAL : WaypointGenerator::SEED_USER;
+			generators.push_back(generator);
 		}
-		//context.write("ragGraphPlanner::local path\n");
-		//for (Waypoint::Seq::const_iterator j = localPath.begin(); j != localPath.end(); ++j) {
-		//	context.write("<");
-		//	for (Configspace::Index i = controller.getStateInfo().getJoints().begin(); i != controller.getStateInfo().getJoints().end(); ++i)
-		//		context.write("%f ", j->cpos[i]);
-		//	context.write("\n");
-		//}
 
-		//Waypoint::Seq::const_iterator j = localPath.size() > 2 ? localPath.end() - 2 : localPath.begin();
-		//for (WaypointGenerator::Seq::iterator g = pLocalPathFinder->getGenerators().begin(); g != pLocalPathFinder->getGenerators().end(); ++g) {
-		//	if (j != localPath.begin()) { // do not double root and goal nodes
-		//		g->mean = j->cpos;
-		//		j--;
-		//	}
-		//}
-		//context.write("ragGraphPlanner::generators\n");
-		//for (WaypointGenerator::Seq::iterator j = pLocalPathFinder->getGenerators().begin(); j != pLocalPathFinder->getGenerators().end(); ++j) {
-		//	context.write("<");
-		//	for (Configspace::Index i = controller.getStateInfo().getJoints().begin(); i != controller.getStateInfo().getJoints().end(); ++i)
-		//		context.write("%f ", j->mean[i]);
-		//	context.write("\n");
-		//}
-
-		// and generate local graph
-		if (!pLocalPathFinder->generateGraph(begin, end)) {
-			context.error("GraphPlanner::localFind(): unable to generate graph\n");
-			return false;
-		}
+		// allocate and generate local graph
+		pLocalPathFinder->allocateGraph((U32)(scale*localPath.size()*pLocalPathFinder->getOnlineGraphSize()), pLocalPathFinder->getOnlineGraphSize(), pLocalPathFinder->getGraphNeighbours());
+		pLocalPathFinder->generateOnlineGraph(begin, end, &generators);
 
 		// find node path on local graph
 		localPath.clear();
-		if (!pLocalPathFinder->findPath(end, localPath, localPath.begin())) {
-			context.error("GraphPlanner::localFind(): unable to find path\n");
+		if (!pLocalPathFinder->findPath(end, localPath, localPath.begin()))
 			return false;
-		}
-		str << "local path\n";
-		for (Waypoint::Seq::const_iterator j = localPath.begin(); j != localPath.end(); ++j) {
-			str << "<";
-			for (Configspace::Index i = stateInfo.getJoints().begin(); i != stateInfo.getJoints().end(); ++i)
-				str << j->cpos[i] << " ";
-			str << ">\n";
-		}
-//		std::printf("%s\n", str.str().c_str());
 	}
-//	disableHandPlanning();
+	//	disableHandPlanning();
 	return true;
 }
 
@@ -320,31 +294,47 @@ bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const 
 		context.write("RagGraphPlanner::findTarget(): enable unc %s\n", heuristic->enableUnc ? "ON" : "OFF");
 	}
 
+#ifdef _HEURISTIC_PERFMON
+	pHeuristic->resetLog();
+#endif
 #ifdef _GRAPHPLANNER_PERFMON
 	PerfTimer t;
 #endif
+
 	getCallbackDataSync()->syncCollisionBounds();
 
-#ifdef _GRAPHPLANNER_PERFMON
-	t.reset();
-#endif
 	// generate graph
-//	disableHandPlanning();
-//	context.write("RagGraphPlanner::findTarget(): generating graph...\n");
-	if (!pGlobalPathFinder->generateGraph(begin.cpos, wend.wpos)) {
-		context.error("RagGraphPlanner::findTarget(): unable to generate global graph\n");
+	pGlobalPathFinder->generateOnlineGraph(begin.cpos, wend.wpos);
+
+	// create waypoints pointers
+	const Waypoint::Seq& graph = pGlobalPathFinder->getGraph();
+	WaypointPtr::Seq waypointPtrGraph;
+	waypointPtrGraph.reserve(graph.size());
+	for (U32 i = 0; i < graph.size(); ++i)
+		waypointPtrGraph.push_back(WaypointPtr(&graph[i]));
+
+	// Create waypoint population
+	const U32 populationSize = std::min(U32(pKinematics->getDesc().populationSize), (U32)waypointPtrGraph.size());
+
+	// sort waypoints (pointers) from the lowest to the highest cost
+	std::partial_sort(waypointPtrGraph.begin(), waypointPtrGraph.begin() + populationSize, waypointPtrGraph.end(), WaypointPtr::cost_less());
+
+	// create initial population for kinematics solver
+	ConfigspaceCoord::Seq population;
+	population.reserve(populationSize);
+	for (WaypointPtr::Seq::const_iterator i = waypointPtrGraph.begin(); population.size() < populationSize && i != waypointPtrGraph.end(); ++i)
+		population.push_back((*i)->cpos);
+	pKinematics->setPopulation(&population);
+
+	GenConfigspaceState root;
+	root.setToDefault(controller.getStateInfo().getJoints().begin(), controller.getStateInfo().getJoints().end());
+	root.cpos = graph[Node::IDX_ROOT].cpos;
+
+	// find the goal state
+	if (!pKinematics->findGoal(root, wend, cend)) {
+		context.error("GraphPlanner::findTarget(): unable to find target\n");
 		return false;
 	}
-//	context.write("done.\n");
-
-	// find target
-//	context.write("RagGraphPlanner::findTarget(): seeking for a target...\n");
-	if (!pGlobalPathFinder->findGoal(cend.cpos)) {
-		context.error("RagGraphPlanner::findTarget(): unable to find global path\n");
-		return false;
-	}
-//	context.write("done.\n");
-
 
 	cend.t = wend.t;
 	cend.cvel.fill(REAL_ZERO);
@@ -352,10 +342,13 @@ bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const 
 
 #ifdef _GRAPHPLANNER_PERFMON
 	context.debug(
-		"GlobalPathFinder::findTarget(): time elapsed = %f [sec], len = %d\n",
-		t.elapsed(), globalPath.size()
-	);
+		"GraphPlanner::findTarget(): time_elapsed = %f [sec]\n", t.elapsed()
+		);
 #endif
+#ifdef _HEURISTIC_PERFMON
+	pHeuristic->writeLog(context, "GraphPlanner::findTarget()");
+#endif
+
 	if (heuristic)
 		heuristic->enableUnc = enable;
 
@@ -365,11 +358,47 @@ bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const 
 
 //------------------------------------------------------------------------------
 
+//bool RagGraphPlanner::generateWaypoints(const Controller::Trajectory &trajectory, golem::WaypointGenerator::Seq &generators, golem::U32 steps) const {
+//	if (trajectory.size() < 2)
+//		return false;
+//
+//	//ConfigspaceCoord delta;
+//	//for (Configspace::Index j = stateInfo.getJoints().begin(); j < stateInfo.getJoints().end(); ++j) 
+//	//	delta[j] = pathFinderDesc.rangeFac*pHeuristic->getJointDesc()[j]->distMax*0.8;
+//	for (Controller::State::Seq::const_iterator w = trajectory.begin(); w != trajectory.end(); ++w) {
+//		Waypoint wi;
+//		wi.cpos = w->cpos;
+//		wi.setup(controller, false, true); 
+//		if (!getFTDrivenHeuristic()->collides(wi))
+//			generators.push_back(WaypointGenerator(w->cpos, pLocalPathFinder->getGeneratorRoot().delta));
+//
+//	}
+//	//for (Controller::State::Seq::const_iterator w0 = trajectory.begin(), w1 = ++trajectory.begin(); w1 != trajectory.end(); ++w0, ++w1) {
+//	//	// lineary interpolate coordinates
+//	//	generators.push_back(WaypointGenerator(w0->cpos, pLocalPathFinder->getGeneratorRoot().delta));
+//	//	for (U32 i = 1; i < steps; ++i) {
+//	//		Waypoint w;
+//	//		for (Configspace::Index j = stateInfo.getJoints().begin(); j < stateInfo.getJoints().end(); ++j) 
+//	//			w.cpos[j] = w1->cpos[j] - (w1->cpos[j] - w0->cpos[j])*Real(i) / Real(steps);
+//
+//	//		// skip reference pose computation
+//	//		w.setup(controller, false, true);
+//
+//	//		if (!getFTDrivenHeuristic()->collides(w))
+//	//			generators.push_back(WaypointGenerator(w.cpos, pLocalPathFinder->getGeneratorRoot().delta));
+//	//	}
+//
+//	//}
+////	generators.push_back(WaypointGenerator(trajectory.back().cpos, pLocalPathFinder->getGeneratorRoot().delta));
+//	return true;
+//}
+
+
 bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin, const golem::Controller::State &end, Controller::Trajectory &trajectory, Controller::Trajectory::iterator iter, const GenWorkspaceChainState* wend) {
 #ifdef _GRAPHPLANNER_PERFMON
 	PerfTimer t;
 #endif
-	
+
 #ifdef _GRAPHPLANNER_PERFMON
 #ifdef _HEURISTIC_PERFMON
 	Heuristic::resetLog();
@@ -385,28 +414,23 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 	t.reset();
 #endif
 	// generate global graph only for the arm
-//	context.write("RagGraphPlanner::findGlobalTrajectory(): disable hand planning...\n");
+	context.write("RagGraphPlanner::findGlobalTrajectory(): disable hand planning...\n");
 	disableHandPlanning();
-//	context.write("RagGraphPlanner::findGlobalTrajectory(): generating graph...\n");
-	if (!pGlobalPathFinder->generateGraph(begin.cpos, end.cpos)) {
-		context.error("GraphPlanner::findTrajectory(): unable to generate global graph\n");
-		return false;
-	}
-//	context.write("done.\n");
+
+	// generate global graph
+	pGlobalPathFinder->generateOnlineGraph(begin.cpos, end.cpos);
 
 	// find node path on global graph
 	globalPath.clear();
-//	context.write("RagGraphPlanner::findGlobalTrajectory(): seeking for a path...\n");
 	if (!pGlobalPathFinder->findPath(end.cpos, globalPath, globalPath.begin())) {
-		context.error("GraphPlanner::findTrajectory(): unable to find global path\n");
+		context.error("GlobalPathFinder::findPath(): unable to find global path\n");
 		return false;
 	}
-//	context.write("done.\n");
 #ifdef _GRAPHPLANNER_PERFMON
 	context.debug(
-		"GlobalPathFinder::findPath(): time elapsed = %f [sec], len = %d\n",
+		"GlobalPathFinder::findPath(): time_elapsed = %f [sec], len = %d\n",
 		t.elapsed(), globalPath.size()
-	);
+		);
 #endif
 
 	if (pLocalPathFinder != NULL) {
@@ -415,16 +439,20 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 #endif
 		PARAMETER_GUARD(Heuristic, Real, Scale, *pHeuristic);
 
-		localPath = globalPath;
-//		context.write("RagGraphPlanner::findGlobalTrajectory(): seeking for local path...\n");
-		if (!localFind(begin.cpos, end.cpos, localPath))
-			return false;
-//		context.write("done...\n");
+		for (U32 i = 0;;) {
+			localPath = globalPath;
+			if (localFind(begin.cpos, end.cpos, localPath))
+				break;
+			else if (++i > pathFinderDesc.numOfTrials) {
+				context.error("LocalPathFinder::findPath(): unable to find local path\n");
+				return false;
+			}
+		}
 #ifdef _GRAPHPLANNER_PERFMON
 		context.debug(
-			"GraphPlanner::localFind(): time elapsed = %f [sec], len = %d\n",
+			"LocalPathFinder::findPath(): time_elapsed = %f [sec], len = %d\n",
 			t.elapsed(), localPath.size()
-		);
+			);
 #endif
 		// copy localPath
 		optimisedPath = localPath;
@@ -452,12 +480,11 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 #endif
 	t.reset();
 #endif
-	if (!optimize(begin, end, optimisedPath))
-		return false;
+	optimize(optimisedPath);
 #ifdef _GRAPHPLANNER_PERFMON
 	context.debug(
-		"GraphPlanner::optimize(): time elapsed = %f [sec], len = %d\n", t.elapsed(), optimisedPath.size()
-	);
+		"GraphPlanner::optimize(): time_elapsed = %f [sec], len = %d\n", t.elapsed(), optimisedPath.size()
+		);
 #ifdef _HEURISTIC_PERFMON
 	Heuristic::writeLog(context, "GraphPlanner::optimize()");
 #endif
@@ -474,15 +501,14 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 	pProfile->profile(trajectory, iter, iend);
 #ifdef _GRAPHPLANNER_PERFMON
 	context.debug(
-		"GraphPlanner::profile(): time elapsed = %f [sec], len = %d\n",
+		"GraphPlanner::profile(): time_elapsed = %f [sec], len = %d\n",
 		t.elapsed(), trajectory.size()
-	);
+		);
 #endif
 
 	getCallbackDataSync()->syncFindTrajectory(trajectory.begin(), trajectory.end(), wend);
-//	enableHandPlanning();
-	
-	context.write("RagGraphPlanner::findGlobalTrajectory(): done.\n");
+	//	enableHandPlanning();
+
 	return true;
 }
 
@@ -491,5 +517,13 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 void spam::XMLData(RagGraphPlanner::Desc &val, golem::XMLContext* context, bool create) {
 	golem::XMLData((golem::GraphPlanner::Desc&)val, context, create);
 }
+
+//void spam::XMLData(RagPathFinder::Desc &val, golem::XMLContext* context, bool create) {
+//	golem::XMLData((golem::GraphPlanner::Desc&)val, context, create);
+//}
+//
+//void spam::XMLData(RagGraphPlanner::RagPathFinderDesc &val, golem::XMLContext* context, bool create) {
+//	golem::XMLData((golem::GraphPlanner::PathFinderDesc&)val, context, create);
+//}
 
 //------------------------------------------------------------------------------

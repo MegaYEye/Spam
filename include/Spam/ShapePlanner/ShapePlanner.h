@@ -93,7 +93,7 @@ public:
 		mutable golem::U32 graspDataPtr;
 		/** Grasp config cluster pointer */
 		mutable golem::U32 graspClusterPtr, graspConfigPtr;
-		
+
 		/** Data appearance */
 		mutable grasp::Grasp::Data::Appearance appearanceData;
 		/** Config appearance */
@@ -107,7 +107,7 @@ public:
 		/** Sets the parameters to the default values */
 		virtual void setToDefault() {
 			PosePlanner::Data::setToDefault();
-			
+
 			graspConfigs.clear();
 			graspClusters.clear();
 
@@ -118,7 +118,7 @@ public:
 		}
 		/** Assert that the description is valid. */
 		virtual void assertValid(const grasp::Assert::Context& ac) const {
-			PosePlanner::Data::assertValid(ac);
+			Player::Data::assertValid(ac);
 
 			grasp::Assert::valid(extGraspConfig.length() > 0, ac, "extGraspConfig: length 0");
 			grasp::Assert::valid(extGraspCluster.length() > 0, ac, "extGraspCluster: length 0");
@@ -141,10 +141,10 @@ public:
 			// search for index
 			for (_GraspMapIter i = map.begin(); i != map.end(); ++i)
 				for (_GraspDataMapIter j = i->second->getDataMap().begin(); j != i->second->getDataMap().end(); ++j) {
-					grasp = i;
-					data = j;
-					if (++n == graspDataPtr)
-						return true;
+				grasp = i;
+				data = j;
+				if (++n == graspDataPtr)
+					return true;
 				}
 
 			// there is some data
@@ -209,7 +209,7 @@ public:
 			golem::U32 deltaSize;
 			/** Object detection delta depth */
 			golem::Real deltaDepth;
-		
+
 			/** Constructs from description */
 			ObjectDetection() {
 				setToDefault();
@@ -224,7 +224,8 @@ public:
 			}
 			/** Checks if the description is valid. */
 			bool isValid() const {
-				if (!scanPose.isValid() || cameraName.length() <= 0 || minSize < 1 || deltaDepth < golem::REAL_EPS)
+				scanPose.assertValid(grasp::Assert::Context("grasp::ShapePlanner::Desc::isValid(): scanPose."));
+				if (cameraName.length() <= 0 || minSize < 1 || deltaDepth < golem::REAL_EPS)
 					return false;
 				return true;
 			}
@@ -232,18 +233,18 @@ public:
 
 		/** Pose estimation */
 		bool poseEstimation;
-		
+
 		/** Object detection */
 		ObjectDetection::Seq objectDetectionSeq;
-		
+
 		/** Classifier name */
 		std::string classifierName;
-		
+
 		/** Object model path */
 		std::string modelObject;
 		/** Trajectory model path */
 		grasp::StringSeq modelTrajectories;
-		
+
 		/** Poses */
 		Robot::Pose::Seq poses;
 
@@ -254,7 +255,7 @@ public:
 		/** Sets the parameters to the default values */
 		void setToDefault() {
 			poseEstimation = true;
-			
+
 			objectDetectionSeq.clear();
 
 			classifierName.clear();
@@ -277,9 +278,7 @@ public:
 				if (i->length() <= 0)
 					return false;
 
-			for (grasp::RobotPose::Seq::const_iterator i = poses.begin(); i != poses.end(); ++i)
-				if (!i->isValid())
-					return false;
+			for (grasp::RobotPose::Seq::const_iterator i = poses.begin(); i != poses.end(); ++i) i->assertValid(grasp::Assert::Context("grasp::ShapePlanner::Demo::isValid(): poses[]."));
 
 			return true;
 		}
@@ -300,7 +299,7 @@ public:
 
 		/** Clustering algorithm */
 		grasp::Cluster::Desc clusterDesc;
-		
+
 		/** Demo descriptions */
 		Demo::Map demoMap;
 
@@ -321,7 +320,7 @@ public:
 			PosePlanner::Desc::setToDefault();
 
 			data.reset(new Data);
-			
+
 			manipulatorDesc.reset(new grasp::Manipulator::Desc);
 			classifierDescMap.clear();
 			clusterDesc.setToDefault();
@@ -335,7 +334,7 @@ public:
 		virtual bool isValid() const {
 			if (!PosePlanner::Desc::isValid())
 				return false;
-			
+
 			if (manipulatorDesc == nullptr || !manipulatorDesc->isValid())
 				return false;
 

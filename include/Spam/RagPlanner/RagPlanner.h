@@ -206,7 +206,7 @@ protected:
 	bool posterior;
 
 	bool printing;
-	golem::Bounds::Seq handBounds;
+	golem::Bounds::Seq handBounds, waypointBounds;
 	Collision::Ptr collision;
 	Collision::Waypoint w;
 
@@ -214,6 +214,8 @@ protected:
 	bool enableControllers;
 	/** Checks collision with the query point cloud */
 	bool enableSimContact;
+	/** Enables/disables force reading */
+	bool enableForceReading;
 
 	/** Query transformation */
 	grasp::RBCoord queryPointsTrn;
@@ -264,7 +266,7 @@ protected:
 	virtual void performSingleGrasp(Data::Map::iterator dataPtr);
 	/** Performs trial action (trajectory) */
 	virtual void perform(const std::string& name, const golem::Controller::State::Seq& trajectory, bool silent = false);
-
+	void execute(Data::Map::iterator dataPtr, golem::Controller::State::Seq& trajectory);
 	/** Creates new data */
 	virtual Data::Ptr createData() const;
 
@@ -277,14 +279,16 @@ protected:
 	golem::DebugRenderer testUpdate;
 	void renderHand(const golem::Controller::State &state, const golem::Bounds::Seq &bounds, bool clear = false);
 	golem::BoundsRenderer handRenderer;
+	void renderWaypoints(const golem::Bounds::Seq &bounds, bool clear = false);
+	golem::BoundsRenderer waypointRenderer;
 
 	/** Prints out a trajectory */
 	void printTrajectory(const golem::Controller::State::Seq &trajectory, const golem::Configspace::Index &begin, const golem::Configspace::Index &end) const;
 	/** Prints out a state of the robot */
 	void printState(const golem::Controller::State &state, const golem::Configspace::Index &begin, const golem::Configspace::Index &end, const std::string &label = "", const bool readForce = false) const;
 
-	/** Shape planner demo */
-	void run(const Demo::Map::value_type& demo);
+	///** Shape planner demo */
+	//void run(const Demo::Map::value_type& demo);
 
 	/** User interface: menu function */
 	virtual void function(Data::Map::iterator& dataPtr, int key);

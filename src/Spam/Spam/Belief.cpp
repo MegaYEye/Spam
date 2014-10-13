@@ -238,12 +238,15 @@ bool Belief::Hypothesis::buildMesh() {
 }
 
 void Belief::Hypothesis::draw(DebugRenderer &renderer) const {
-	if (appearance.showFrames)
+	printf("Belief::Hypothesis::draw(showFrame=%s, showPoints=%s)\n", appearance.showFrames ? "ON" : "OFF", appearance.showPoints ? "ON" : "OFF");
+	if (appearance.showFrames || true)
 		renderer.addAxes(sample.toMat34() * modelFrame, appearance.frameSize);
 
-	if (appearance.showPoints) {
+	size_t t = 0;
+	if (appearance.showPoints || true) {
 		for (grasp::Cloud::PointSeq::const_iterator i = points.begin(); i != points.end(); ++i) {
 			grasp::Cloud::Point point = *i;
+			if (++t < 10) printf("Belief::Hypothesis point %d <%.4f %.4f %.4f>\n", t, point.x, point.y, point.z);
 			grasp::Cloud::setColour(/*appearance.colour*/RGBA::RED, point);
 			renderer.addPoint(grasp::Cloud::getPoint(point));
 		}
@@ -297,11 +300,13 @@ void Belief::drawSamples(const size_t numSamples, golem::DebugRenderer& renderer
 	}
 }
 
-void Belief::drawHypotheses(golem::DebugRenderer &renderer) const {
-	(*hypotheses.begin())->draw(renderer);
-	return;
-	for (Hypothesis::Seq::const_iterator h = hypotheses.begin(); h != hypotheses.end(); ++h)
+void Belief::drawHypotheses(golem::DebugRenderer &renderer, const bool showOnlyMeanPose) const {
+	context.write("Belief::drawHypotheses (%s)\n", showOnlyMeanPose ? "ON" : "OFF");
+	for (Hypothesis::Seq::const_iterator h = hypotheses.begin(); h != hypotheses.end(); ++h) {
 		(*h)->draw(renderer);
+		if (showOnlyMeanPose)
+			return;
+	}
 }
 
 
@@ -310,9 +315,10 @@ void Belief::drawHypotheses(golem::DebugRenderer &renderer) const {
 
 void Belief::set(const grasp::RBPose::Sample::Seq &poseSeq, const grasp::RBPose::Sample::Seq &hypothesisSeq, const Mat34 &trn, const grasp::Cloud::PointSeq &points) {
 	modelPoints.clear();
-	modelPoints.resize(points.size());
+	modelPoints.reserve(points.size());
 	for (grasp::Cloud::PointSeq::const_iterator i = points.begin(); i != points.end(); ++i)
 		modelPoints.push_back(*i);
+	context.write("Belief::set(): model points size %d\n", modelPoints.size());
 	modelFrame = trn;
 
 	try {
@@ -364,11 +370,15 @@ void Belief::setHypotheses(const grasp::RBPose::Sample::Seq &hypothesisSeq) {
 		const size_t size = modelPoints.size() < myDesc.maxSurfacePoints ? modelPoints.size() : myDesc.maxSurfacePoints;
 		for (size_t i = 0; i < size; ++i) {
 			grasp::Cloud::Point point = size < modelPoints.size() ? modelPoints[size_t(rand.next()) % modelPoints.size()] : modelPoints[i]; // make a copy here
+			if (i < 10) context.write("Model point %d <%.4f %.4f %.4f>\n", i, modelPoints[i].x, modelPoints[i].y, modelPoints[i].z);
 			grasp::Cloud::setPoint(p->toMat34() * grasp::Cloud::getPoint(point)/* + actionFrame.p*/, point);
+			if (i < 10) context.write("Query point %d <%.4f %.4f %.4f>\n", i, point.x, point.y, point.z);
+			grasp::Cloud::setColour((p == hypothesisSeq.begin()) ? RGBA::YELLOW : RGBA::BLUE, point);
 			sampleCloud.push_back(point);
 		}
 		hypotheses.push_back(Hypothesis::Ptr(new Hypothesis(idx, modelFrame, *p, sampleCloud)));
 		hypotheses.back()->appearance.colour = (p == hypothesisSeq.begin()) ? RGBA::YELLOW : RGBA::BLUE;
+		hypotheses.back()->appearance.showPoints = true;
 		context.write(" - sample n.%d <%.4f %.4f %.4f> <%.4f %.4f %.4f %.4f>\n", idx, p->p.x, p->p.y, p->p.z, p->q.w, p->q.x, p->q.y, p->q.z);
 		idx++;
 	}
@@ -411,23 +421,25 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 		// copy model point cloud
 		// optimisation: limit the number of points to save performance in the kd-tree
 		const size_t size = model.size() < myDesc.maxSurfacePoints ? model.size() : myDesc.maxSurfacePoints;
-		for (size_t i = 0; i < size; ++i) {
-			grasp::Cloud::Point p = size < model.size() ? model[size_t(rand.next())%model.size()] : model[i]; // make a copy here
+		for (size_t j = 0; j < size; ++j) {
+			grasp::Cloud::Point p = size < model.size() ? model[size_t(rand.next())%model.size()] : model[j]; // make a copy here
 			grasp::Cloud::setPoint(actionFrame.toMat34() * grasp::Cloud::getPoint(p)/* + actionFrame.p*/, p);
+			grasp::Cloud::setColour((i == 0) ? RGBA::YELLOW : RGBA::BLUE, p);
 			sampleCloud.push_back(p);
 		}
 //		hypotheses.insert(Hypothesis::Map::value_type(idx, Hypothesis::Ptr(new Hypothesis(idx, grasp::RBPose::Sample(sampleFrame), sampleCloud))));
 		hypotheses.push_back(Hypothesis::Ptr(new Hypothesis(idx, transform, grasp::RBPose::Sample(actionFrame), sampleCloud)));
 		hypotheses.back()->appearance.colour = (i == 0) ? RGBA::YELLOW : RGBA::BLUE;
-		context.write(" - sample n.%d <%.4f %.4f %.4f> <%.4f %.4f %.4f %.4f>\n", idx, actionFrame.p.x, actionFrame.p.y, actionFrame.p.z, actionFrame.q.w, actionFrame.q.x, actionFrame.q.y, actionFrame.q.z); 
+		hypotheses.back()->appearance.showPoints = true;
+		context.write(" - sample n.%d <%.4f %.4f %.4f> <%.4f %.4f %.4f %.4f>\n", idx, actionFrame.p.x, actionFrame.p.y, actionFrame.p.z, actionFrame.q.w, actionFrame.q.x, actionFrame.q.y, actionFrame.q.z);
 		idx++;
 	}
 	
 	// mean and covariance
 	if (!sampleProperties.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.covariance, getHypothesesToSample()))
-		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
+		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createHypotheses(): Unable to create mean and covariance for the high dimensional representation");
 		
-	context.write("spam::Belief::createQuery(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", sampleProperties.covariance[0], sampleProperties.covariance[1], sampleProperties.covariance[2], sampleProperties.covariance[3], sampleProperties.covariance[4], sampleProperties.covariance[5], sampleProperties.covariance[6]);
+	context.write("spam::Belief::createHypotheses(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", sampleProperties.covariance[0], sampleProperties.covariance[1], sampleProperties.covariance[2], sampleProperties.covariance[3], sampleProperties.covariance[4], sampleProperties.covariance[5], sampleProperties.covariance[6]);
 	
 	// compute determinant for the sampled hypotheses
 	covarianceDet = REAL_ONE;
@@ -610,7 +622,7 @@ void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Ro
 			//for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b)
 			//		context.write("finger bound frame <%f %f %f>\n", (*b)->getPose().p.x, (*b)->getPose().p.y, (*b)->getPose().p.z);
 		golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO;
-		context.debug("Finger %d\n", i);
+//		context.debug("Finger %d\n", i);
 		for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
 //			context.debug("<%f %f %f> <%f %f %f %f>\n", sampledPose->p.x, sampledPose->p.y, sampledPose->p.z, sampledPose->q.w, sampledPose->q.x, sampledPose->q.y, sampledPose->q.z);
 			const Real eval = evaluate(bounds, grasp::RBCoord(w.wpos[i]), *sampledPose, forces, triggered, intersect);
@@ -620,14 +632,14 @@ void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Ro
 				return false;
 			}();*/
 //			sampledPose->weight += fingerTriggered ? myDesc.sensory.contactFac*eval : intersect ? myDesc.sensory.noContactFac*(REAL_ONE - eval) : REAL_ZERO;
-			context.debug("pose <%f %f %f>: eval=%f log=%f, trigguered %s intersect %s prob=%f\n", sampledPose->p.x, sampledPose->p.y, sampledPose->p.z, eval, -Math::log10(eval), fingerTriggered ? "Y" : "N", intersect ? "Y" : "N", fingerTriggered ? myDesc.sensory.contactFac*golem::Math::log10(eval) : intersect ? -REAL_MAX : REAL_ZERO);
+//			context.debug("pose <%f %f %f>: eval=%f log=%f, trigguered %s intersect %s prob=%f\n", sampledPose->p.x, sampledPose->p.y, sampledPose->p.z, eval, -Math::log10(eval), fingerTriggered ? "Y" : "N", intersect ? "Y" : "N", fingerTriggered ? myDesc.sensory.contactFac*golem::Math::log10(eval) : intersect ? -REAL_MAX : REAL_ZERO);
 			golem::kahanSum(sampledPose->weight, c, fingerTriggered ? -myDesc.sensory.contactFac*golem::Math::log10(eval) : intersect ? -REAL_MAX : REAL_ZERO);
 			//const Real eval = evaluate(bounds, grasp::RBCoord(w.wposex[j]), *sampledPose, forces[idx], j == robot->getStateHandInfo().getJoints(i).begin(), intersect);
 			//sampledPose->weight *= (triggered ? myDesc.sensory.contactFac*eval : intersect ? myDesc.sensory.noContactFac*(REAL_ONE - eval) : REAL_ZERO);
 			//golem::kahanSum(norm, c, sampledPose->weight);
 		//}
 		}
-		context.debug("\n---------------------------------------------\n");
+//		context.debug("\n---------------------------------------------\n");
 	}
 
 	// normalise weights
@@ -638,11 +650,11 @@ void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Ro
 	c = golem::REAL_ZERO;
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
 		sampledPose->weight /= norm;
-		context.write("sample.weight = %f\n", sampledPose->weight);
+//		context.write("sample.weight = %f\n", sampledPose->weight);
 		golem::kahanSum(cdf, c, sampledPose->weight);
 		sampledPose->cdf = cdf;
 	}
-	context.write("spam::Belief::createUpdate(): done!\n");
+//	context.write("spam::Belief::createUpdate(): done!\n");
 
 }
 
@@ -747,6 +759,8 @@ golem::Real Belief::evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCo
 }
 
 bool Belief::intersect(const golem::Bounds::Seq &bounds, const golem::Mat34 &pose) const {
+	if (hypotheses.empty())
+		return false;
 	grasp::RBPose::Sample frame = (*hypotheses.begin())->toRBPoseSample();
 	Mat34 actionFrame(frame.q, frame.p);
 	grasp::Cloud::PointSeq points;

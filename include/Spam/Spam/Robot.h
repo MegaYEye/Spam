@@ -62,6 +62,9 @@ class Robot : public grasp::Robot {
 public:
 	typedef golem::shared_ptr<Desc> Ptr;
 	
+	/** Force reader. Overwrite the ActiveCtrl reader. this retrieves the triggered joints */
+	typedef std::function<void(const golem::Controller::State&, grasp::RealSeq&, std::vector<golem::Configspace::Index>)> GuardsReader;
+
 	/** Robot factory */
 	class Desc : public grasp::Robot::Desc {
 	protected:
@@ -90,6 +93,8 @@ public:
 		}
 	};
 
+	/** (Global search) trajectory of the entire robot from the configuration space and/or workspace target */
+	virtual void createTrajectory(const golem::Controller::State& begin, const golem::Controller::State* pcend, const golem::Mat34* pwend, golem::SecTmReal t, const golem::Controller::State::Seq& waypoints, golem::Controller::State::Seq& trajectory);
 	/** (Local search) trajectory of the arm only from a sequence of configuration space targets in a new reference frame */
 	grasp::RBDist trnTrajectory(const golem::Mat34& actionFrame, const golem::Mat34& modelFrame, const golem::Mat34& trn, golem::Controller::State::Seq::const_iterator begin, golem::Controller::State::Seq::const_iterator end, golem::Controller::State::Seq& trajectory);
 
@@ -125,6 +130,9 @@ public:
 		arm->initControlCycle();
 		hand->initControlCycle();
 	}
+
+	/** Force reader */
+	GuardsReader guardsReader;
 
 protected:
 	/** Force/torque driven heuristic for robot controller */

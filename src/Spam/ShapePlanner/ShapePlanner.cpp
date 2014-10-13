@@ -24,10 +24,10 @@ void spam::ShapePlanner::Data::xmlData(golem::XMLContext* context, bool create) 
 
 	try {
 		if (!create || !graspConfigs.empty()) {
-			{
-				const std::string name("grasp_config");
-				create ? xmlDataSave(context->getContextFirst(name.c_str(), create), grasp::makeString("%s%s%s%s", getName().c_str(), sepName.c_str(), name.c_str(), extGraspConfig.c_str()), graspConfigs) : xmlDataLoad(context->getContextFirst(name.c_str(), create), this->path, const_cast<grasp::Grasp::Config::Seq&>(graspConfigs));
-			}
+				{
+					const std::string name("grasp_config");
+					create ? xmlDataSave(context->getContextFirst(name.c_str(), create), grasp::makeString("%s%s%s%s", getName().c_str(), sepName.c_str(), name.c_str(), extGraspConfig.c_str()), graspConfigs) : xmlDataLoad(context->getContextFirst(name.c_str(), create), this->path, const_cast<grasp::Grasp::Config::Seq&>(graspConfigs));
+				}
 			{
 				const std::string name("grasp_cluster");
 				create ? xmlDataSave(context->getContextFirst(name.c_str(), create), grasp::makeString("%s%s%s%s", getName().c_str(), sepName.c_str(), name.c_str(), extGraspCluster.c_str()), graspClusters) : xmlDataLoad(context->getContextFirst(name.c_str(), create), this->path, const_cast<grasp::Cluster::Seq&>(graspClusters));
@@ -51,8 +51,8 @@ void spam::ShapePlanner::Data::setGraspData(const grasp::Grasp::Map& map, grasp:
 	for (grasp::Grasp::Map::const_iterator i = map.begin(); i != map.end(); ++i)
 		for (grasp::Grasp::Data::Map::const_iterator j = i->second->getDataMap().begin(); j != i->second->getDataMap().end(); ++j, ++n)
 			if (j == data) {
-				graspDataPtr = n;
-				return;
+		graspDataPtr = n;
+		return;
 			}
 
 	throw Message(Message::LEVEL_ERROR, "ShapePlanner::Data::setGraspData(): unable to find grasp data pointer");
@@ -66,7 +66,7 @@ void spam::ShapePlanner::Data::printGraspInfo(const grasp::Manipulator& manipula
 
 	const grasp::Grasp::Config& graspConfig = **getGraspConfig();
 	const grasp::Manipulator::Pose& graspPose = graspConfig.path.getGrip();
-	
+
 	std::stringstream str;
 	for (size_t i = 0; i < manipulator.getJoints(); ++i)
 		str << " c" << (i + 1) << "=\"" << graspPose.jc[i] << "\"";
@@ -81,14 +81,14 @@ void spam::ShapePlanner::Data::printGraspInfo(const grasp::Manipulator& manipula
 
 //------------------------------------------------------------------------------
 
-const char* spam::ShapePlanner::ModeName[MODE_SIZE + 1] = {"Disabled", "Training data", "Cluster", "Config", "Config Model", "Contact Model",};
+const char* spam::ShapePlanner::ModeName[MODE_SIZE + 1] = { "Disabled", "Training data", "Cluster", "Config", "Config Model", "Contact Model", };
 
 spam::ShapePlanner::ShapePlanner(Scene &scene) : PosePlanner(scene) {
 }
 
 bool spam::ShapePlanner::create(const Desc& desc) {
 	PosePlanner::create(desc); // throws
-	
+
 	manipulator = desc.manipulatorDesc->create(*robot->getPlanner());
 	clusterDesc = desc.clusterDesc;
 
@@ -116,7 +116,7 @@ bool spam::ShapePlanner::create(const Desc& desc) {
 
 void spam::ShapePlanner::render() {
 	PosePlanner::render();
-	
+
 	golem::CriticalSectionWrapper csw(csDataRenderer);
 	graspRenderer.render();
 }
@@ -127,8 +127,8 @@ void spam::ShapePlanner::mouseHandler(int button, int state, int x, int y) {
 	if (state != 1 || !(button == 1 || button == 3 || button == 4)) return;
 
 	grasp::Configuration::Path::Appearance* appearance =
-		grasp::to<Data>(currentDataPtr)->graspMode == MODE_DATA ? &grasp::to<Data>(currentDataPtr)->appearanceData.path :
-		grasp::to<Data>(currentDataPtr)->graspMode == MODE_CLUSTER || grasp::to<Data>(currentDataPtr)->graspMode == MODE_CONFIG || grasp::to<Data>(currentDataPtr)->graspMode == MODE_CONFIG_MODEL || grasp::to<Data>(currentDataPtr)->graspMode == MODE_CONTACT_MODEL ? &grasp::to<Data>(currentDataPtr)->appearanceConfig.configPath :
+		grasp::to<Data>(currentDataPtr)->graspMode == MODE_DATA ? & grasp::to<Data>(currentDataPtr)->appearanceData.path :
+		grasp::to<Data>(currentDataPtr)->graspMode == MODE_CLUSTER || grasp::to<Data>(currentDataPtr)->graspMode == MODE_CONFIG || grasp::to<Data>(currentDataPtr)->graspMode == MODE_CONFIG_MODEL || grasp::to<Data>(currentDataPtr)->graspMode == MODE_CONTACT_MODEL ? & grasp::to<Data>(currentDataPtr)->appearanceConfig.configPath :
 		nullptr;
 
 	if (!appearance) return;
@@ -138,11 +138,9 @@ void spam::ShapePlanner::mouseHandler(int button, int state, int x, int y) {
 	auto printPath = [=](const char* name, const grasp::Configuration::Path::Appearance& appearance, const grasp::Configuration::Path& path) {
 		std::stringstream str;
 		const golem::ConfigspaceCoord& c = manipulator->getConfig(appearance.subspacePose);
-		for (golem::Configspace::Index i = robot->getStateArmInfo().getJoints().begin(); i < robot->getStateArmInfo().getJoints().end(); ++i)
-			str << " c" << (*i - *robot->getStateArmInfo().getJoints().begin() + 1) << "=\"" << c[i] << "\"";
-		for (golem::Configspace::Index i = robot->getStateHandInfo().getJoints().begin(); i < robot->getStateHandInfo().getJoints().end(); ++i)
-			str << " c" << (*i - *robot->getStateArmInfo().getJoints().begin() + 1) << "=\"" << c[i] << "\"";
-		context.write("%s: size=%u, dist_{first=%f, last=%f, curr=%f}, dist_range_{lo=%f, hi=%f}, <pose dim=\"%d\"%s/>\n", name, path.size(), path.front().getDistance(), path.back().getDistance(), appearance.subspaceDistVal, appearance.subspaceDistLo, appearance.subspaceDistHi, robot->getStateArmInfo().getJoints().size() + robot->getStateHandInfo().getJoints().size(), str.str().c_str());
+		for (golem::Configspace::Index i = robot->getStateInfo().getJoints().begin(); i < robot->getStateInfo().getJoints().end(); ++i)
+			str << " c" << (*i - *robot->getStateInfo().getJoints().begin() + 1) << "=\"" << c[i] << "\"";
+		context.write("%s: size=%u, dist_{first=%f, last=%f, curr=%f}, dist_range_{lo=%f, hi=%f}, <pose dim=\"%d\"%s/>\n", name, path.size(), path.front().getDistance(), path.back().getDistance(), appearance.subspaceDistVal, appearance.subspaceDistLo, appearance.subspaceDistHi, robot->getStateInfo().getJoints().size(), str.str().c_str());
 	};
 
 	golem::CriticalSectionWrapper csw(csDataRenderer);
@@ -184,7 +182,7 @@ void spam::ShapePlanner::mouseHandler(int button, int state, int x, int y) {
 
 //------------------------------------------------------------------------------
 
-void ShapePlanner::renderData(Data::Map::const_iterator dataPtr) {
+void spam::ShapePlanner::renderData(Data::Map::const_iterator dataPtr) {
 	PosePlanner::renderData(dataPtr);
 
 	golem::CriticalSectionWrapper csw(csDataRenderer);
@@ -211,7 +209,7 @@ void ShapePlanner::renderData(Data::Map::const_iterator dataPtr) {
 	case MODE_CONTACT_MODEL:
 		if (grasp::to<Data>(dataPtr)->hasGraspConfigs()) {
 			grasp::Grasp::Config::Seq::const_iterator ptr = grasp::to<Data>(dataPtr)->getGraspConfig();
-			
+
 			grasp::to<Data>(dataPtr)->appearanceConfig.showConfig = false;
 			grasp::to<Data>(dataPtr)->appearanceConfig.showModelConfig = false;
 			grasp::to<Data>(dataPtr)->appearanceConfig.showModelContact = false;
@@ -239,7 +237,7 @@ void ShapePlanner::renderData(Data::Map::const_iterator dataPtr) {
 				}
 				break;
 			};
-			
+
 			(*ptr)->draw(*manipulator, grasp::to<Data>(dataPtr)->appearanceConfig, graspRenderer);
 		}
 		else
@@ -273,222 +271,229 @@ grasp::Classifier::Ptr spam::ShapePlanner::load(const grasp::Classifier::Desc& d
 
 void spam::ShapePlanner::run(const Demo::Map::value_type& demo) {
 #ifdef _GRASP_CAMERA_DEPTH
-	auto breakPoint = [&] () { if (waitKey(10) == 27) throw Cancel("Demo cancelled"); };
+	auto breakPoint = [&]() { if (waitKey(10) == 27) throw Cancel("Demo cancelled"); };
 
 	context.write("================================================================================================================================\nRunning demo %s\n", demo.first.c_str());
-	
+
+	// manipulation trajectory
+	golem::Controller::State::Seq trajectory;
+
 	{
-	grasp::ScopeGuard cleanup([&]() {
-		grasp::to<Data>(currentDataPtr)->graspMode = MODE_DISABLED;
-		renderData(currentDataPtr);
-	});
+		grasp::ScopeGuard cleanup([&]() {
+			grasp::to<Data>(currentDataPtr)->graspMode = MODE_DISABLED;
+			renderData(currentDataPtr);
+		});
 
-	grasp::Cloud::RawPointSeqVal val;
-	val.first = grasp::to<Data>(currentDataPtr)->labelMap.empty() ? grasp::Cloud::LABEL_OBJECT : grasp::to<Data>(currentDataPtr)->labelMap.rbegin()->first + 1;
-	const grasp::Cloud::RawPointSeqMultiMap::iterator points = grasp::to<Data>(currentDataPtr)->insertPoints(val, demo.first);
-	grasp::Cloud::RawPointSeq prev, next;
-	grasp::Cloud::RawPointSeqQueue rawPointSeqQueue(cloudDesc.filterDesc.window);
+		grasp::Cloud::RawPointSeqVal val;
+		val.first = grasp::to<Data>(currentDataPtr)->labelMap.empty() ? grasp::Cloud::LABEL_OBJECT : grasp::to<Data>(currentDataPtr)->labelMap.rbegin()->first + 1;
+		const grasp::Cloud::RawPointSeqMultiMap::iterator points = grasp::to<Data>(currentDataPtr)->insertPoints(val, demo.first);
+		grasp::Cloud::RawPointSeq prev, next;
+		grasp::Cloud::RawPointSeqQueue rawPointSeqQueue(cloudDesc.filterDesc.window);
 
-	// capture depth image
-	for (Demo::ObjectDetection::Seq::const_iterator j = demo.second.objectDetectionSeq.begin(); j != demo.second.objectDetectionSeq.end(); ++j) {
-		// go to object detection pose
-		gotoPose(j->scanPose);
-		breakPoint();
-		grasp::RobotPose robotPose;
-		getPose(robotPose);
+		// capture depth image
+		for (Demo::ObjectDetection::Seq::const_iterator j = demo.second.objectDetectionSeq.begin(); j != demo.second.objectDetectionSeq.end(); ++j) {
+			// go to object detection pose
+			gotoPose(j->scanPose);
+			breakPoint();
+			grasp::RobotPose robotPose;
+			getPose(robotPose);
 
-		// find camera
-		grasp::Recorder* recorder = nullptr;
-		grasp::DepthCamera* camera = nullptr;
-		for (grasp::Recorder::Seq::iterator i = cameraSeq.begin(); i != cameraSeq.end(); ++i)
-			if ((*i)->getCamera()->getName() == j->cameraName) {
+			// find camera
+			grasp::Recorder* recorder = nullptr;
+			grasp::DepthCamera* camera = nullptr;
+			for (grasp::Recorder::Seq::iterator i = cameraSeq.begin(); i != cameraSeq.end(); ++i)
+				if ((*i)->getCamera()->getName() == j->cameraName) {
 				recorder = i->get();
 				camera = recorder->getDepthCamera();
 				break;
-			}
-		if (!camera)
-			throw Message(Message::LEVEL_ERROR, "ShapePlanner::run(): unknown camera %s", j->cameraName.c_str());
-		// set camera frame
-		robotPose.multiply(camera->getCalibration()->getDeformation(robotPose), robotPose);
-		Mat34 cameraFrame = camera->getCalibration()->getParameters().pose;
-		if (recorder->isHand()) cameraFrame.multiply(robotPose, cameraFrame);
-		camera->setFrame(cameraFrame);
-		// Object region in global coordinates
-		golem::Bounds::Seq objectRegion;
-		for (golem::Bounds::Desc::Seq::const_iterator i = cloudDesc.objectRegionDesc.begin(); i != cloudDesc.objectRegionDesc.end(); ++i)
-			objectRegion.push_back((*i)->create());
-		// Move bounds to camera frame
-		Mat34 cameraFrameInv;
-		cameraFrameInv.setInverse(cameraFrame);
-		for (golem::Bounds::Seq::const_iterator i = objectRegion.begin(); i != objectRegion.end(); ++i)
-			(*i)->multiplyPose(cameraFrameInv, (*i)->getPose());
-		// start camera
-		grasp::ScopeGuard guardCamera([&]() { camera->set(grasp::Camera::CMD_STOP); });
-		camera->setProperty(camera->getDepthProperty());
-		camera->set(grasp::Camera::CMD_VIDEO);
-		// detect changes
-		grasp::Image::Ptr image;
-		rawPointSeqQueue.clear();
-		prev.clear();
-		U32 prevSize = 0;
-		for (bool accept = false; !accept;) {
-			breakPoint();
-			// grab image
-			camera->peek_back(image);
-			grasp::Image::assertImageData(image->dataDepth);
-			try {
-				grasp::Cloud::copy(objectRegion, false, *image->dataDepth, next);
-			}
-			catch (const Message&) {}
-			grasp::Cloud::transform(cameraFrame, next, next);
-			grasp::Cloud::setSensorFrame(cameraFrame, next);
-			rawPointSeqQueue.push_back(next);
-			if (!rawPointSeqQueue.full())
-				continue;
-			grasp::Cloud::filter(context, cloudDesc.filterDesc, rawPointSeqQueue, next);
-			// render points
-			{
-				golem::CriticalSectionWrapper csw(csDataRenderer);
-				pointRenderer.reset();
-				grasp::to<Data>(currentDataPtr)->draw(next, pointRenderer);
-			}
-			// count points
-			U32 nextSize = 0;
-			for (grasp::Cloud::RawPointSeq::const_iterator i = next.begin(); i != next.end(); ++i)
-				if (!grasp::Cloud::isNanXYZ(*i))
-					++nextSize;
-			if (nextSize < j->minSize)
-				continue;
-			//context.debug("ShapePlanner::run(): object detected (size=%u)\n", nextSize);
-			if (prev.size() == next.size()) {
-				size_t sharedSize = 0;
-				Real deltaDepth = REAL_ZERO;
-				for (size_t i = 0; i < next.size(); ++i) {
-					const grasp::Cloud::RawPoint p = prev[i], n = next[i];
-					if (grasp::Cloud::isNanXYZ(p) || grasp::Cloud::isNanXYZ(n))
-						continue;
-					++sharedSize;
-					deltaDepth += Math::sqrt(Math::sqr(p.x - n.x) + Math::sqr(p.y - n.y) + Math::sqr(p.z - n.z));
 				}
-				if (nextSize - sharedSize < j->deltaSize && deltaDepth/sharedSize < j->deltaDepth) {
-					context.write("Object detected (size=%u, delta_size=%u, delta_depth=%f)\n", nextSize, nextSize - sharedSize, deltaDepth/sharedSize);
-					grasp::Cloud::nanRem(context, next, grasp::Cloud::isNanXYZ<grasp::Cloud::RawPoint>); // required by flann in linux
-					grasp::Cloud::normal(context, cloudDesc.normal, next, next);
-					grasp::Cloud::nanRem(context, next, grasp::Cloud::isNanXYZNormal<grasp::Cloud::RawPoint>);
-					points->second.insert(points->second.end(), next.begin(), next.end());
-					accept = true;
-					// render
-					renderData(currentDataPtr);
+			if (!camera)
+				throw Message(Message::LEVEL_ERROR, "ShapePlanner::run(): unknown camera %s", j->cameraName.c_str());
+			// set camera frame
+			robotPose.w.multiply(camera->getCalibration()->getDeformation(robotPose), robotPose.w);
+			Mat34 cameraFrame = camera->getCalibration()->getParameters().pose;
+			if (recorder->isHand()) cameraFrame.multiply(robotPose.w, cameraFrame);
+			camera->setFrame(cameraFrame);
+			// Object region in global coordinates
+			golem::Bounds::Seq objectRegion;
+			for (golem::Bounds::Desc::Seq::const_iterator i = cloudDesc.objectRegionDesc.begin(); i != cloudDesc.objectRegionDesc.end(); ++i)
+				objectRegion.push_back((*i)->create());
+			// Move bounds to camera frame
+			Mat34 cameraFrameInv;
+			cameraFrameInv.setInverse(cameraFrame);
+			for (golem::Bounds::Seq::const_iterator i = objectRegion.begin(); i != objectRegion.end(); ++i)
+				(*i)->multiplyPose(cameraFrameInv, (*i)->getPose());
+			// start camera
+			grasp::ScopeGuard guardCamera([&]() { camera->set(grasp::Camera::CMD_STOP); });
+			camera->setProperty(camera->getDepthProperty());
+			camera->set(grasp::Camera::CMD_VIDEO);
+			// detect changes
+			grasp::Image::Ptr image;
+			rawPointSeqQueue.clear();
+			prev.clear();
+			U32 prevSize = 0;
+			for (bool accept = false; !accept;) {
+				breakPoint();
+				// grab image
+				camera->peek_back(image);
+				grasp::Image::assertImageData(image->dataDepth);
+				try {
+					grasp::Cloud::copy(objectRegion, false, *image->dataDepth, next);
 				}
-			}
-			if (!accept) {
-				prev = next;
-				prevSize = nextSize;
+				catch (const Message&) {}
+				grasp::Cloud::transform(cameraFrame, next, next);
+				grasp::Cloud::setSensorFrame(cameraFrame, next);
+				rawPointSeqQueue.push_back(next);
+				if (!rawPointSeqQueue.full())
+					continue;
+				grasp::Cloud::filter(context, cloudDesc.filterDesc, rawPointSeqQueue, next);
+				// render points
+				{
+					golem::CriticalSectionWrapper csw(csDataRenderer);
+					pointRenderer.reset();
+					grasp::to<Data>(currentDataPtr)->draw(next, pointRenderer);
+				}
+				// count points
+				U32 nextSize = 0;
+				for (grasp::Cloud::RawPointSeq::const_iterator i = next.begin(); i != next.end(); ++i)
+					if (!grasp::Cloud::isNanXYZ(*i))
+						++nextSize;
+				if (nextSize < j->minSize)
+					continue;
+				//context.debug("ShapePlanner::run(): object detected (size=%u)\n", nextSize);
+				if (prev.size() == next.size()) {
+					size_t sharedSize = 0;
+					Real deltaDepth = REAL_ZERO;
+					for (size_t i = 0; i < next.size(); ++i) {
+						const grasp::Cloud::RawPoint p = prev[i], n = next[i];
+						if (grasp::Cloud::isNanXYZ(p) || grasp::Cloud::isNanXYZ(n))
+							continue;
+						++sharedSize;
+						deltaDepth += Math::sqrt(Math::sqr(p.x - n.x) + Math::sqr(p.y - n.y) + Math::sqr(p.z - n.z));
+					}
+					if (nextSize - sharedSize < j->deltaSize && deltaDepth / sharedSize < j->deltaDepth) {
+						context.write("Object detected (size=%u, delta_size=%u, delta_depth=%f)\n", nextSize, nextSize - sharedSize, deltaDepth / sharedSize);
+						grasp::Cloud::nanRem(context, next, grasp::Cloud::isNanXYZ<grasp::Cloud::RawPoint>); // required by flann in linux
+						grasp::Cloud::normal(context, cloudDesc.normal, next, next);
+						grasp::Cloud::nanRem(context, next, grasp::Cloud::isNanXYZNormal<grasp::Cloud::RawPoint>);
+						points->second.insert(points->second.end(), next.begin(), next.end());
+						accept = true;
+						// render
+						renderData(currentDataPtr);
+					}
+				}
+				if (!accept) {
+					prev = next;
+					prevSize = nextSize;
+				}
 			}
 		}
-	}
 
-	breakPoint();
-
-	// find approach trajectory
-	golem::Real err = REAL_MAX;
-	golem::Controller::State::Seq approach;
-	if (demo.second.poseEstimation) {
-		// load model
-		grasp::Cloud::RawPointSeq modelPoints;
-		Data::pcdRead(demo.second.modelObject, demo.second.modelObject, modelPoints);
-		pRBPose->createModel(modelPoints);
-		// estimate pose
 		breakPoint();
-		pRBPose->createQuery(points->second);
-		const Mat34 queryTransform = pRBPose->maximum().toMat34();
-		grasp::Cloud::transform(queryTransform, modelPoints, modelPoints);
-		points->second.insert(points->second.end(), modelPoints.begin(), modelPoints.end());
-		// render
-		renderData(currentDataPtr);
-		// find feasible trajectory
-		for (grasp::StringSeq::const_iterator i = demo.second.modelTrajectories.begin(); i != demo.second.modelTrajectories.end() && err > REAL_ONE; ++i) {
+
+		// find approach trajectory
+		golem::Real err = REAL_MAX;
+		golem::Controller::State::Seq approach;
+		if (demo.second.poseEstimation) {
+			// load model
+			grasp::Cloud::RawPointSeq modelPoints;
+			Data::pcdRead(demo.second.modelObject, demo.second.modelObject, modelPoints);
+			pRBPose->createModel(modelPoints);
+			// estimate pose
 			breakPoint();
-			grasp::RobotState::Seq raw;
-			golem::FileReadStream frs(i->c_str());
-			frs.read(raw, raw.end(), grasp::RobotState(*robot->getController()));
-			golem::Controller::State::Seq inp = grasp::RobotState::makeCommand(raw);
-			// choose first with acceptable error
-			approach.clear();
-			const grasp::RBDist dist = robot->transformTrajectory(queryTransform, inp.begin(), inp.end(), approach);
-			err = manipulator->getDesc().trajectoryErr.dot(dist);
-			context.write("Trajectory error: lin=%.9f, ang=%.9f, total=%.9f\n", dist.lin, dist.ang, err);
-		}
-	}
-	else {
-		grasp::Classifier::Desc::Map::const_iterator ptr = classifierDescMap.find(demo.second.classifierName);
-		if (ptr == classifierDescMap.end())
-			throw Message(Message::LEVEL_ERROR, "ShapePlanner::run(): unknown classifier %s", demo.second.classifierName.c_str());
-		classifier = load(*ptr->second);
-		// estimate curvatures
-		grasp::Cloud::PointSeq features;
-		grasp::Cloud::copy(Bounds::Seq(), false, points->second, features);
-		grasp::Cloud::curvature(context, cloudDesc.curvature, features);
-		grasp::Cloud::nanRem(context, features, grasp::Cloud::isNanXYZNormalCurvature<grasp::Cloud::Point>);
-		// estimate grasp
-		classifier->find(features, grasp::to<Data>(currentDataPtr)->graspConfigs);
-		grasp::Cluster::findLikelihood(clusterDesc, grasp::to<Data>(currentDataPtr)->graspConfigs, grasp::to<Data>(currentDataPtr)->graspClusters);
-		// display
-		grasp::to<Data>(currentDataPtr)->resetDataPointers();
-		grasp::to<Data>(currentDataPtr)->graspMode = MODE_CONFIG;
-		// trajectory
-		CollisionBounds collisionBounds(*this, true);
-		golem::U32 size = std::min(grasp::to<Data>(currentDataPtr)->getGraspConfigSize() - grasp::to<Data>(currentDataPtr)->graspConfigPtr, manipulator->getDesc().trajectoryClusterSize), j = grasp::to<Data>(currentDataPtr)->graspConfigPtr;
-		const std::pair<grasp::Grasp::Config::Seq::const_iterator, grasp::RBDistEx> val = manipulator->find<grasp::Grasp::Config::Seq::const_iterator>(grasp::to<Data>(currentDataPtr)->getGraspConfigBegin(), grasp::to<Data>(currentDataPtr)->getGraspConfigBegin() + size, [&](const grasp::Grasp::Config::Ptr& config) -> grasp::RBDistEx {
-			breakPoint();
-			grasp::to<Data>(currentDataPtr)->graspConfigPtr = j++;
+			pRBPose->createQuery(points->second);
+			const Mat34 queryTransform = pRBPose->maximum().toMat34();
+			grasp::Cloud::transform(queryTransform, modelPoints, modelPoints);
+			points->second.insert(points->second.end(), modelPoints.begin(), modelPoints.end());
+			// render
 			renderData(currentDataPtr);
-			const grasp::RBDist dist(manipulator->find(config->path));
-			const grasp::RBDistEx distex(dist, manipulator->getDesc().trajectoryErr.collision && collisionBounds.collides(manipulator->getConfig(config->path.getApproach())));
-			err = manipulator->getDesc().trajectoryErr.dot(dist);
-			context.write("#%03u: Trajectory error: lin=%.9f, ang=%.9f, collision=%s, total=%f\n", j, distex.lin, distex.ang, distex.collision ? "yes" : "no", err);
-			return distex;
-		});
-		manipulator->copy((*val.first)->path, approach);
-		grasp::to<Data>(currentDataPtr)->graspConfigPtr = val.first - grasp::to<Data>(currentDataPtr)->getGraspConfigBegin();
-		context.write("#%03u: Best trajectory\n", grasp::to<Data>(currentDataPtr)->graspConfigPtr + 1);
-		renderData(currentDataPtr);
-	}
-	if (err > REAL_ONE) {
-		context.write("No feasible trajectory has been found\n");
-		return;
-	}
-	grasp::to<Data>(currentDataPtr)->trajectory[demo.first] = grasp::RobotState::make(manipulator->getController(), approach); // update trajectory collection
+			// find feasible trajectory
+			for (grasp::StringSeq::const_iterator i = demo.second.modelTrajectories.begin(); i != demo.second.modelTrajectories.end() && err > REAL_ONE; ++i) {
+				breakPoint();
+				grasp::RobotState::Seq raw;
+				golem::FileReadStream frs(i->c_str());
+				frs.read(raw, raw.end(), grasp::RobotState(*robot->getController()));
+				golem::Controller::State::Seq inp = grasp::RobotState::makeCommand(raw);
+				// choose first with acceptable error
+				approach.clear();
+				const grasp::RBDist dist = robot->transformTrajectory(queryTransform, inp.begin(), inp.end(), approach);
+				err = manipulator->getDesc().trajectoryErr.dot(dist);
+				context.write("%s: Trajectory error: lin=%.9f, ang=%.9f, total=%.9f\n", i->c_str(), dist.lin, dist.ang, err);
+			}
+		}
+		else {
+			grasp::Classifier::Desc::Map::const_iterator ptr = classifierDescMap.find(demo.second.classifierName);
+			if (ptr == classifierDescMap.end())
+				throw Message(Message::LEVEL_ERROR, "ShapePlanner::run(): unknown classifier %s", demo.second.classifierName.c_str());
+			classifier = load(*ptr->second);
+			// estimate curvatures
+			grasp::Cloud::PointSeq features;
+			grasp::Cloud::copy(Bounds::Seq(), false, points->second, features);
+			grasp::Cloud::curvature(context, cloudDesc.curvature, features);
+			grasp::Cloud::nanRem(context, features, grasp::Cloud::isNanXYZNormalCurvature<grasp::Cloud::Point>);
+			// estimate grasp
+			classifier->find(features, grasp::to<Data>(currentDataPtr)->graspConfigs);
+			grasp::Cluster::findLikelihood(clusterDesc, grasp::to<Data>(currentDataPtr)->graspConfigs, grasp::to<Data>(currentDataPtr)->graspClusters);
+			// display
+			grasp::to<Data>(currentDataPtr)->resetDataPointers();
+			grasp::to<Data>(currentDataPtr)->graspMode = MODE_CONFIG;
+			// trajectory
+			CollisionBounds collisionBounds(*this, true);
+			golem::U32 size = std::min(grasp::to<Data>(currentDataPtr)->getGraspConfigSize() - grasp::to<Data>(currentDataPtr)->graspConfigPtr, manipulator->getDesc().trajectoryClusterSize), j = grasp::to<Data>(currentDataPtr)->graspConfigPtr;
+			const std::pair<grasp::Grasp::Config::Seq::const_iterator, grasp::RBDistEx> val = manipulator->find<grasp::Grasp::Config::Seq::const_iterator>(grasp::to<Data>(currentDataPtr)->getGraspConfigBegin(), grasp::to<Data>(currentDataPtr)->getGraspConfigBegin() + size, [&](const grasp::Grasp::Config::Ptr& config) -> grasp::RBDistEx {
+				breakPoint();
+				grasp::to<Data>(currentDataPtr)->graspConfigPtr = j++;
+				renderData(currentDataPtr);
+				const grasp::RBDist dist(manipulator->find(config->path));
+				const grasp::RBDistEx distex(dist, manipulator->getDesc().trajectoryErr.collision && collisionBounds.collides(manipulator->getConfig(config->path.getApproach())));
+				err = manipulator->getDesc().trajectoryErr.dot(dist);
+				context.write("#%03u: Trajectory error: lin=%.9f, ang=%.9f, collision=%s, total=%f\n", j, distex.lin, distex.ang, distex.collision ? "yes" : "no", err);
+				return distex;
+			});
+			manipulator->copy((*val.first)->path, approach);
+			grasp::to<Data>(currentDataPtr)->graspConfigPtr = val.first - grasp::to<Data>(currentDataPtr)->getGraspConfigBegin();
+			context.write("#%03u: Best trajectory\n", grasp::to<Data>(currentDataPtr)->graspConfigPtr + 1);
+			renderData(currentDataPtr);
+		}
+		if (err > REAL_ONE) {
+			context.write("No feasible trajectory has been found\n");
+			return;
+		}
+		grasp::to<Data>(currentDataPtr)->trajectory[demo.first] = grasp::RobotState::make(manipulator->getController(), approach); // update trajectory collection
 
-	// overwrite not used joints
-	const grasp::RealSeq& cpos = demo.second.objectDetectionSeq.back().scanPose.c;
-	for (golem::Controller::State::Seq::iterator i = approach.begin(); i != approach.end(); ++i)
-		i->cpos.set(cpos.data() + manipulator->getJoints(), cpos.data() + cpos.size(), manipulator->getJoints());
+		// overwrite not used joints
+		const grasp::RealSeq& cpos = demo.second.objectDetectionSeq.back().scanPose.c;
+		for (golem::Controller::State::Seq::iterator i = approach.begin(); i != approach.end(); ++i)
+			i->cpos.set(cpos.data() + manipulator->getJoints(), cpos.data() + cpos.size(), manipulator->getJoints());
 
-	// find manipulation trajectory
-	golem::Controller::State::Seq trajectory;
-	createWithManipulation(approach, trajectory, true);
-	breakPoint();
+		// find manipulation trajectory
+		createWithManipulation(approach, trajectory, true);
+		breakPoint();
 
-	// collision bounds
-	CollisionBounds collisionBounds(*this, points->second);
+		// collision bounds
+		CollisionBounds collisionBounds(*this, points->second);
 
-	// perform
-	try {
-		perform(demo.first, trajectory, true);
-	}
-	catch (const Message& msg) {
-		context.write("%s\n", msg.str().c_str());
-		return;
-	}
-	breakPoint();
+		// perform
+		try {
+			perform(demo.first, trajectory, true);
+		}
+		catch (const Message& msg) {
+			context.write("%s\n", msg.str().c_str());
+			return;
+		}
+		breakPoint();
 
-	// cleanup
+		// cleanup
 	}
 
 	// goto remaining poses
 	for (Robot::Pose::Seq::const_iterator i = demo.second.poses.begin(); i != demo.second.poses.end(); ++i) {
-		gotoPose(*i);
+		grasp::RobotPose pose = *i;
+		// use hand configuration
+		const Real* c = pose.flags == "open" ? trajectory.front().cpos.data() : pose.flags == "close" ? trajectory.back().cpos.data() : nullptr;
+		if (c) std::copy(c + manipulator->getArmJoints(), c + manipulator->getJoints(), pose.c.data() + manipulator->getArmJoints());
+		// go to pose
+		gotoPose(pose);
 		breakPoint();
 	}
 
@@ -499,7 +504,7 @@ void spam::ShapePlanner::function(Data::Map::iterator& dataPtr, int key) {
 	switch (key) {
 	case 'G':
 	{
-		switch (waitKey("LSARECUBXD", "Press a key to (L)oad/(S)ave classifier, (A)dd/(R)emove training data, (E)stimate/(C)luster grasp, find c(U)rrent/(B)est trajectory, e(X)port data, run (D)emo...")) {
+		switch (waitKey("LSARECUBXOD", "Press a key to (L)oad/(S)ave classifier, (A)dd/(R)emove training data, (E)stimate/(C)luster grasp, find c(U)rrent/(B)est trajectory, e(X)port data, c(O)llision test, run (D)emo...")) {
 		case 'L':
 			classifier = load(*select(classifierDescMap.begin(), classifierDescMap.end(), "Available classifiers:\n", [](grasp::Classifier::Desc::Map::const_iterator ptr) -> const std::string&{
 				return ptr->first;
@@ -531,11 +536,11 @@ void spam::ShapePlanner::function(Data::Map::iterator& dataPtr, int key) {
 			// parameters
 			grasp::ParameterGuard<Real> distanceScale(grasp->second->getDesc().configurationDesc->distanceScale);
 			readNumber("Enter distance scale: ", distanceScale);
-			
+
 			// add
 			context.write("Adding training data...\n");
 			grasp::to<Data>(dataPtr)->setGraspData(classifier->getGraspMap(), classifier->add(grasp->first, name, points, grasp::RobotState::makeCommand(trajectory->second), 0));
-			
+
 			// display
 			grasp::to<Data>(dataPtr)->resetDataPointers();
 			grasp::to<Data>(dataPtr)->graspMode = MODE_DATA;
@@ -657,11 +662,12 @@ void spam::ShapePlanner::function(Data::Map::iterator& dataPtr, int key) {
 			if (!grasp::to<Data>(dataPtr)->hasGraspConfigs())
 				throw Message(Message::LEVEL_ERROR, "No grasp data!");
 			if (grasp::to<Data>(dataPtr)->graspMode == MODE_CLUSTER || grasp::to<Data>(dataPtr)->graspMode == MODE_CONFIG) {
+				const golem::U32 graspConfigPtr = grasp::to<Data>(dataPtr)->graspConfigPtr;
 				const grasp::Grasp::Config::Seq::const_iterator begin = grasp::to<Data>(dataPtr)->getGraspConfigBegin() + grasp::to<Data>(dataPtr)->graspConfigPtr;
 				const grasp::Grasp::Config::Seq::const_iterator end = begin + std::min(grasp::to<Data>(dataPtr)->getGraspConfigSize() - grasp::to<Data>(dataPtr)->graspConfigPtr, manipulator->getDesc().trajectoryClusterSize);
 				golem::U32 j = grasp::to<Data>(currentDataPtr)->graspConfigPtr;
 				CollisionBounds collisionBounds(*this, true);
-				const std::pair<grasp::Grasp::Config::Seq::const_iterator, grasp::RBDistEx> val = manipulator->find<grasp::Grasp::Config::Seq::const_iterator>(grasp::to<Data>(dataPtr)->getGraspConfigBegin(), end, [&](const grasp::Grasp::Config::Ptr& config) -> grasp::RBDistEx {
+				const std::pair<grasp::Grasp::Config::Seq::const_iterator, grasp::RBDistEx> val = manipulator->find<grasp::Grasp::Config::Seq::const_iterator>(begin, end, [&](const grasp::Grasp::Config::Ptr& config) -> grasp::RBDistEx {
 					grasp::to<Data>(currentDataPtr)->graspConfigPtr = j++;
 					renderData(currentDataPtr);
 					const grasp::RBDist dist(manipulator->find(config->path));
@@ -669,7 +675,7 @@ void spam::ShapePlanner::function(Data::Map::iterator& dataPtr, int key) {
 					context.write("#%03u: Trajectory error: lin=%.9f, ang=%.9f, collision=%s\n", j, distex.lin, distex.ang, distex.collision ? "yes" : "no");
 					return distex;
 				});
-				grasp::to<Data>(dataPtr)->graspConfigPtr = val.first - begin;
+				grasp::to<Data>(dataPtr)->graspConfigPtr = graspConfigPtr + val.first - begin;
 				context.write("#%03u: Best trajectory\n", grasp::to<Data>(dataPtr)->graspConfigPtr + 1);
 				renderData(dataPtr);
 				Controller::State::Seq trajectory;
@@ -682,29 +688,29 @@ void spam::ShapePlanner::function(Data::Map::iterator& dataPtr, int key) {
 				context.write("Select %s mode\n", ModeName[(size_t)MODE_CONFIG]);
 			break;
 		}
-		/*case 'X':
-		{
+			/*case 'X':
+			{
 			const char SEP = ' ';
 			size_t n = 0;
 			std::for_each(grasp.second->getContacts().begin(), grasp.second->getContacts().end(), [&] (const Contact* contact) {
-				++n;
-				if (contact->getFeatures().empty()) return;
-				context.debug("Writing contact distribution #%d\n", n);
-				// model distribution
-				std::ofstream mfile(makeString("%s%s_model_%02d_%05d.txt", data->dir.c_str(), dataPtr->first.c_str(), n, contact->getFeatures().size()));
-				mfile << std::scientific << "#" << SEP << "weight" << SEP << "p.x" << SEP << "p.y" << SEP << "p.z" << SEP << "q.x" << SEP << "q.y" << SEP << "q.z" << SEP << "q.w" <<  SEP << "r.x" <<  SEP << "r.y" << std::endl;
-				std::for_each(contact->getFeatures().begin(), contact->getFeatures().end(), [&] (const Feature& feature) {
-					mfile << feature.weight << SEP << feature.frame.p.x << SEP << feature.frame.p.y << SEP << feature.frame.p.z << SEP << feature.frame.q.x << SEP << feature.frame.q.y << SEP << feature.frame.q.z << SEP << feature.frame.q.w <<  SEP << feature.curvature.x <<  SEP << feature.curvature.y << std::endl;
-				});
-				// query distribution
-				std::ofstream qfile(makeString("%s%s_query_%02d_%05d.txt", data->dir.c_str(), dataPtr->first.c_str(), n, contact->getPoses().size()));
-				qfile << std::scientific << "#" << SEP << "weight" << SEP << "p.x" << SEP << "p.y" << SEP << "p.z" << SEP << "q.x" << SEP << "q.y" << SEP << "q.z" << SEP << "q.w" << std::endl;
-				std::for_each(contact->getPoses().begin(), contact->getPoses().end(), [&] (const Contact::Pose& pose) {
-					qfile << pose.weight << SEP << pose.p.x << SEP << pose.p.y << SEP << pose.p.z << SEP << pose.q.x << SEP << pose.q.y << SEP << pose.q.z << SEP << pose.q.w << std::endl;
-				});
+			++n;
+			if (contact->getFeatures().empty()) return;
+			context.debug("Writing contact distribution #%d\n", n);
+			// model distribution
+			std::ofstream mfile(makeString("%s%s_model_%02d_%05d.txt", data->dir.c_str(), dataPtr->first.c_str(), n, contact->getFeatures().size()));
+			mfile << std::scientific << "#" << SEP << "weight" << SEP << "p.x" << SEP << "p.y" << SEP << "p.z" << SEP << "q.x" << SEP << "q.y" << SEP << "q.z" << SEP << "q.w" <<  SEP << "r.x" <<  SEP << "r.y" << std::endl;
+			std::for_each(contact->getFeatures().begin(), contact->getFeatures().end(), [&] (const Feature& feature) {
+			mfile << feature.weight << SEP << feature.frame.p.x << SEP << feature.frame.p.y << SEP << feature.frame.p.z << SEP << feature.frame.q.x << SEP << feature.frame.q.y << SEP << feature.frame.q.z << SEP << feature.frame.q.w <<  SEP << feature.curvature.x <<  SEP << feature.curvature.y << std::endl;
+			});
+			// query distribution
+			std::ofstream qfile(makeString("%s%s_query_%02d_%05d.txt", data->dir.c_str(), dataPtr->first.c_str(), n, contact->getPoses().size()));
+			qfile << std::scientific << "#" << SEP << "weight" << SEP << "p.x" << SEP << "p.y" << SEP << "p.z" << SEP << "q.x" << SEP << "q.y" << SEP << "q.z" << SEP << "q.w" << std::endl;
+			std::for_each(contact->getPoses().begin(), contact->getPoses().end(), [&] (const Contact::Pose& pose) {
+			qfile << pose.weight << SEP << pose.p.x << SEP << pose.p.y << SEP << pose.p.z << SEP << pose.q.x << SEP << pose.q.y << SEP << pose.q.z << SEP << pose.q.w << std::endl;
+			});
 			});
 			break;
-		}*/
+			}*/
 		case 'D':
 			while (!demoMap.empty())
 				for (Demo::Map::const_iterator i = demoMap.begin(); i != demoMap.end(); ++i)
@@ -757,7 +763,7 @@ void spam::ShapePlanner::function(Data::Map::iterator& dataPtr, int key) {
 		};
 		renderData(dataPtr);
 		return;
-	case '(': case ')': 
+	case '(': case ')':
 		if (grasp::to<Data>(dataPtr)->graspMode != MODE_DISABLED && grasp::to<Data>(dataPtr)->graspMode != MODE_CONFIG_MODEL) {
 			U32& ptr =
 				grasp::to<Data>(dataPtr)->graspMode == MODE_DATA ? grasp::to<Data>(dataPtr)->graspDataPtr :
@@ -773,68 +779,17 @@ void spam::ShapePlanner::function(Data::Map::iterator& dataPtr, int key) {
 		}
 		renderData(dataPtr);
 		return;
-	// hand collision debug
-	//case 'c':
-	//{
-	//	Manipulator::Pose pose = manipulator->getPose(robot->recvState().config);
-	//	const Bounds::Seq boundsSeq = manipulator->getBounds(pose);
-	//	for (auto bounds: boundsSeq) {
-	//		int c = 0;
-	//		for (auto j: to<Data>(dataPtr)->pointCloud)
-	//			if (bounds->intersect(j.frame.p)) ++c;
-	//		context.write("%s: %d\n", bounds->getName(), c);
-	//	}
-	//	Collision collision(*manipulator);
-	//	Manipulator::RBPose rbpose(pose);
-	//	Real likelihoodCol = collision.evaluate(grasp.second->getDesc().collisionDesc.waypoints[0], to<Data>(dataPtr)->pointCloud, rand, rbpose, true);
-	//	golem::CriticalSectionWrapper csw(csDataRenderer);
-	//	auto render = [] (const Collision::Bounds& bounds, DebugRenderer& renderer) {
-	//		for (auto j: bounds.getTriangles())
-	//			for (auto k: j)
-	//				renderer.addLine(k.point, k.point + k.normal * 0.01, golem::RGBA::CYAN);
-	//	};
-	//	graspQueryRenderer.reset();
-	//	for (U32 i = 0; i < Manipulator::JOINTS + 1; ++i)
-	//		render(collision.getBounds(i), graspQueryRenderer);
-	//	break;
-	//}
-	// rigid body transform debug
-	//case 'c':
-	//{
-	//	golem::CriticalSectionWrapper csw(csDataRenderer);
-	//	pointFeatureRenderer.reset();
-	//	// global frame
-	//	const U8 a = 20;
-	//	const Real size = 0.1;
-	//	pointFeatureRenderer.addAxes3D(Mat34::identity(), Vec3(size), 127);
-	//	// translation
-	//	Vec3 p1(0.0, 0.0, 0.0);
-	//	Vec3 p2(0.1, 0.2, 0.1);
-	//	RGBA colour = RGBA(127, 127, 127, 127);
-	//	//pointFeatureRenderer.addAxis3D(p1, p2, colour, size*size/p2.magnitude());
-	//	// rotation
-	//	Mat33 rot;
-	//	rot.rotX(0.7);
-	//	Mat34 trn(rot, p2);
-	//	//pointFeatureRenderer.addAxes3D(trn, Vec3(size), 127);
-	//	for (U32 i = 0; i < 10000; ++i) {
-	//		Mat34 pose;
-	//		Vec3 v;
-	//		// Linear component
-	//		v.next(rand); // |v|==1
-	//		v.multiply(Math::abs(rand.nextGaussian<Real>(REAL_ZERO, 0.00025)), v);
-	//		pose.p.add(p2, v);
-	//		// Angular component
-	//		Quat q;
-	//		q.next(rand, 25000.0);
-	//		pose.R.multiply(rot, q);
-	//		// visualisation
-	//		pointFeatureRenderer.addLine(p1, pose.p, RGBA(colour._rgba.r, colour._rgba.g, colour._rgba.b, a));
-	//		pointFeatureRenderer.addAxes(pose, Vec3(size), RGBA(255, 0, 0, a), RGBA(0, 255, 0, a), RGBA(0, 0, 255, a));
-	//	}
-	//	pointFeatureRenderer.setLineWidth(3.0);
-	//	break;
-	//}
+		// collision debug
+	case 'O':
+	{
+		const grasp::Cloud::PointSeq& points = getPoints(dataPtr)->second;
+		Collision collision(*manipulator);
+		grasp::Manipulator::Pose pose = manipulator->getPose(robot->recvState().config);
+		Collision::Waypoint waypoint;
+		waypoint.points = 1000000;
+		(void)collision.evaluate(waypoint, points, rand, pose, true);
+		break;
+	}
 	}
 
 	PosePlanner::function(dataPtr, key);
@@ -854,7 +809,7 @@ void spam::XMLData(ShapePlanner::Demo &val, golem::XMLContext* xmlcontext, bool 
 	golem::XMLData("pose_estimation", val.poseEstimation, xmlcontext, create);
 	golem::XMLData("classifier_name", val.classifierName, xmlcontext, create);
 	golem::XMLData("model_object", val.modelObject, xmlcontext, create);
-	
+
 	val.modelTrajectories.clear();
 	std::pair<XMLContext::XMLContextMap::const_iterator, XMLContext::XMLContextMap::const_iterator> range = xmlcontext->getContextMap().equal_range("model_trajectory");
 	for (XMLContext::XMLContextMap::const_iterator i = range.first; i != range.second; ++i) {
@@ -880,7 +835,7 @@ void spam::XMLData(ShapePlanner::Desc &val, Context* context, XMLContext* xmlcon
 	XMLData((PosePlanner::Desc&)val, context, xmlcontext, create);
 
 	xmlcontext = xmlcontext->getContextFirst("shape_planner");
-	
+
 	val.manipulatorDesc.reset(new grasp::Manipulator::Desc);
 	grasp::XMLData(*val.manipulatorDesc, xmlcontext->getContextFirst("manipulator"), create);
 
@@ -897,6 +852,7 @@ void spam::XMLData(ShapePlanner::Desc &val, Context* context, XMLContext* xmlcon
 	grasp::XMLData(val.appearanceData, xmlcontext->getContextFirst("appearance data"), create);
 	grasp::XMLData(val.appearanceConfig, xmlcontext->getContextFirst("appearance"), create);
 }
+
 
 //------------------------------------------------------------------------------
 

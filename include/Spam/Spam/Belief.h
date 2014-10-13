@@ -347,7 +347,7 @@ public:
 	void drawSamples(const size_t numSamples, golem::DebugRenderer& renderer) const;
 
 	/** Draw hypotheses */
-	void drawHypotheses(golem:: DebugRenderer &renderer) const;
+	void drawHypotheses(golem:: DebugRenderer &renderer, const bool showOnlyMeanPose = false) const;
 
 	/** Pose description */
 	Desc myDesc;

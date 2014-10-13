@@ -19,15 +19,12 @@ using namespace spam;
 //------------------------------------------------------------------------------
 
 void spam::PosePlanner::Data::xmlData(golem::XMLContext* context, bool create) const {
-	grasp::Player::Data::xmlData(context, create);
 	try {
 		if (!create || !queryPoints.empty()) {
 			golem::XMLData(const_cast<golem::Mat34&>(queryTransform), context->getContextFirst("query_transform", create), create);
 			golem::XMLData(const_cast<golem::Mat34&>(queryFrame), context->getContextFirst("query_frame", create), create);
-			xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(queryPoints), std::string("query_points"), context, create);
 //			xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(simulateObjectPose), std::string("object_points"), context, create);
 			golem::XMLData(const_cast<golem::Mat34&>(modelFrame), context->getContextFirst("model_frame", create), create);
-			xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(modelPoints), std::string("model_points"), context, create);
 		}
 		if (!poses.empty() && create) {
 			const std::string name = "belief_pdf";
@@ -74,8 +71,18 @@ void spam::PosePlanner::Data::xmlData(golem::XMLContext* context, bool create) c
 	catch (const golem::MsgXMLParser& msg) {
 		std::printf("%s\n", msg.what());
 		if (create)
-			throw msg;
+			printf("%s\n", msg.str().c_str());
 	}
+	try {
+		xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(queryPoints), std::string("query_points"), context, create);
+		xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(modelPoints), std::string("model_points"), context, create);
+	}
+	catch (const golem::MsgXMLParser& msg) {
+		std::printf("%s\n", msg.what());
+		if (create)
+			printf("%s\n", msg.str().c_str());
+	}
+	grasp::Player::Data::xmlData(context, create);
 }
 
 grasp::Director::Data::Ptr spam::PosePlanner::createData() const {
@@ -162,7 +169,6 @@ void spam::PosePlanner::resetDataPointers() {
 
 void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 	grasp::Player::renderData(dataPtr);
-
 	{
 		golem::CriticalSectionWrapper csw(csDataRenderer);
 	
@@ -184,29 +190,33 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 					featureIndex = (golem::U32)rand.next()%pBelief->getQueryFeatures().size();
 				}
 				if (showSamplePoints) {
-//					pBelief->drawHypotheses(sampleRenderer);
+//					pBelief->drawHypotheses(sampleRenderer, showMeanHypothesis);
 //					context.write("showSamplePoints hypotheses size %d\n", grasp::to<Data>(dataPtr)->hypotheses.size());
-					grasp::RBPose::Sample::Seq samples = grasp::to<Data>(dataPtr)->hypotheses;//pBelief->getHypothesesToSample();
-					for (grasp::RBPose::Sample::Seq::iterator i = samples.begin(); i != samples.end(); ++i) {
-						const Mat34 actionFrame(i->q, i->p);
-						const Mat34 sampleFrame(actionFrame * modelFrame);
-						grasp::Cloud::PointSeq sample; // = modelPoints;
-						sample.reserve(modelPoints.size());
-						for (grasp::Cloud::PointSeq::const_iterator point = modelPoints.begin(); point != modelPoints.end(); ++point) {
-							grasp::Cloud::Point p = *point;
-							grasp::Cloud::setColour(i == samples.begin() ? golem::RGBA::YELLOW : golem::RGBA::BLUE, p);
-							sample.push_back(p);
-						}
-						grasp::Cloud::transform(actionFrame, sample, sample);
-						sampleRenderer.addAxes(sampleFrame, distribFrameSize);
-						sampleAppearance.draw(sample, sampleRenderer);
+					//grasp::RBPose::Sample::Seq samples = /*grasp::to<Data>(dataPtr)->hypotheses;*/pBelief->getHypothesesToSample();
+					//for (grasp::RBPose::Sample::Seq::iterator i = samples.begin(); i != samples.end(); ++i) {
+					//	const Mat34 actionFrame(i->q, i->p);
+					//	const Mat34 sampleFrame(actionFrame * modelFrame);
+					//	grasp::Cloud::PointSeq sample; // = modelPoints;
+					//	sample.reserve(modelPoints.size());
+					//	//size_t t = 0;
+					//	for (grasp::Cloud::PointSeq::const_iterator point = modelPoints.begin(); point != modelPoints.end(); ++point) {
+					//		grasp::Cloud::Point p = *point;
+					//		//if (++t < 10) context.write("Render: Model point %d <%.4f %.4f %.4f>\n", t, p.x, p.y, p.z);
+					//		grasp::Cloud::setColour(i == samples.begin() ? golem::RGBA::YELLOW : golem::RGBA::BLUE, p);
+					//		sample.push_back(p);
+					//	}
+					//	grasp::Cloud::transform(actionFrame, sample, sample);
+					//	//sampleRenderer.addAxes(sampleFrame, distribFrameSize);
+					//	sampleAppearance.draw(sample, sampleRenderer);
+					for (Belief::Hypothesis::Seq::const_iterator i = pBelief->getHypotheses().begin(); i != pBelief->getHypotheses().end(); ++i) {
+						sampleAppearance.draw((*i)->getCloud(), sampleRenderer);
 						if (showMeanHypothesis)
 							break;
 					//context.debug("cloud size %d\n", (*pBelief->getHypotheses().begin())->getCloud().size());
 					//sampleAppearance.colourOverride = true;
 					//sampleAppearance.colour = RGBA::MAGENTA;
 					//sampleAppearance.draw((*pBelief->getHypotheses().begin())->getCloud(), sampleRenderer);
-////						break;
+//						break;
 					}
 				}
 				if (showObject)
@@ -251,12 +261,12 @@ void spam::PosePlanner::createWithManipulation(const golem::Controller::State::S
 	golem::Controller::State::Seq seq;
 
 	// add manipulation trajectory
-	if (actionManip.workspace) {
+	if (actionManip.position || actionManip.orientation) {
 		WorkspaceChainCoord wcc;
 		robot->getController()->chainForwardTransform(trajectory.back().cpos, wcc);
 		Mat34 trn;
 		trn.multiply(wcc[robot->getStateInfo().getChains().begin()], robot->getController()->getChains()[robot->getStateInfo().getChains().begin()]->getReferencePose());
-		trn.multiply(actionManip, trn);
+		trn.multiply(actionManip.w, trn);
 		robot->findTrajectory(trajectory.back(), nullptr, &trn, this->trjDuration, seq);
 	}
 
@@ -399,19 +409,30 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 		}
 		case 'L':
 		{
-			// compute model and model frame
-			grasp::Cloud::PointSeqMap::const_iterator points = getPoints(dataPtr);
-			context.write("Loading %s model...\n", grasp::to<Data>(dataPtr)->getLabelName(points->first).c_str());
+			//// compute model and model frame
+			//bool emptyPoints = false;
+			//grasp::Cloud::PointSeqMap::const_iterator points;
+			//try {
+			//	points = getPoints(dataPtr);
+			//	context.write("Loading %s model...\n", grasp::to<Data>(dataPtr)->getLabelName(points->first).c_str());
+			//}
+			//catch (const Message &msg) {
+			//	context.info("%s\n", msg.str().c_str());
+			//	emptyPoints = true;
+			//}
 //			pBelief->createModel(points->second);
 			// update model settings
 //			modelDataPtr = dataPtr;
 			modelFrame = grasp::to<Data>(dataPtr)->modelFrame;
-			modelPoints = grasp::to<Data>(dataPtr)->modelPoints; // points->second;
+//			if (!emptyPoints)
+				modelPoints = grasp::to<Data>(dataPtr)->modelPoints; // points->second;
+				context.write("Model point size %d, loaded point size %d\n", modelPoints.size(), grasp::to<Data>(dataPtr)->modelPoints.size());
 			resetDataPointers();
 			renderData(dataPtr);
 
 			// query create
-			context.write("Load %s query...\n", grasp::to<Data>(dataPtr)->getLabelName(points->first).c_str());
+//			if (!emptyPoints)
+//				context.write("Load %s query...\n", grasp::to<Data>(dataPtr)->getLabelName(points->first).c_str());
 			// update query settings
 			queryDataPtr = dataPtr;
 			pBelief->set(grasp::to<Data>(dataPtr)->poses, grasp::to<Data>(dataPtr)->hypotheses, modelFrame, modelPoints);
@@ -427,7 +448,7 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 					grasp::to<Data>(dataPtr)->simulateObjectPose.push_back(p);
 				}
 				grasp::Cloud::transform(grasp::to<Data>(dataPtr)->queryTransform, grasp::to<Data>(dataPtr)->simulateObjectPose, grasp::to<Data>(dataPtr)->simulateObjectPose);
-				grasp::Cloud::transform(objectTrn, grasp::to<Data>(dataPtr)->simulateObjectPose, grasp::to<Data>(dataPtr)->simulateObjectPose);
+//				grasp::Cloud::transform(objectTrn, grasp::to<Data>(dataPtr)->simulateObjectPose, grasp::to<Data>(dataPtr)->simulateObjectPose);
 				context.write("done.\n");
 				//showObject = true;
 			}

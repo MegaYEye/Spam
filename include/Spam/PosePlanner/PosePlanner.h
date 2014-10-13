@@ -176,9 +176,9 @@ public:
 			distribSamples = 100;
 
 			actionManip.configspace = false;
-			actionManip.workspace = true;
-			actionManip.setId();
-			actionManip.p.z += -golem::Real(0.15);
+			actionManip.position = actionManip.orientation = true;
+			actionManip.w.setId();
+			actionManip.w.p.z += -golem::Real(0.15);
 
 			//numPoses = 100;
 			//numHypotheses = 5;

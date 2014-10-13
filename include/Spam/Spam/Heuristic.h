@@ -245,9 +245,9 @@ public:
 		}
 	};
 	/** Evaluates a single waypoint */
-	golem::Real cost(const golem::Waypoint &w, const golem::Waypoint &root, const golem::Waypoint &goal) const;
+	virtual golem::Real cost(const golem::Waypoint &w, const golem::Waypoint &root, const golem::Waypoint &goal) const;
 	/** Objective cost function of a path between specified waypoints */
-	golem::Real cost(const golem::Waypoint &w0, const  golem::Waypoint &w1, const  golem::Waypoint &root, const  golem::Waypoint &goal) const;
+	virtual golem::Real cost(const golem::Waypoint &w0, const  golem::Waypoint &w1) const;
 
 	/** Sets heuristic description */
 	void setDesc(const Desc& desc);
@@ -277,8 +277,34 @@ public:
 	/** Evaluate the likelihood of reading a contact between robot's pose and the sample */
 //	golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const golem::Real &force, const golem::Mat34 &trn, bool &interect) const;
 
-	/** Overwrite the collision detection method to check collision with the ML pose */
-	bool collides(const golem::Waypoint &w) const;
+	/** Collision detection test function for the single waypoint.
+	* @param w			waypoint
+	* @return			<code>true</code> if a collision has been detected; <code>false</code> otherwise
+	*/
+	virtual bool collides(const golem::Waypoint &w) const;
+
+	/** Collision detection test function for the single waypoint with thread data.
+	* @param w			waypoint
+	* @param data		a pointer to the current thread data
+	* @return			<code>true</code> if a collision has been detected; <code>false</code> otherwise
+	*/
+	virtual bool collides(const golem::Waypoint &w, ThreadData* data) const;
+
+	/** Collision detection test function for the single waypoint.
+	* @param w0			waypoint
+	* @param w1			waypoint
+	* @return			<code>true</code> if a collision has been detected; <code>false</code> otherwise
+	*/
+	virtual bool collides(const golem::Waypoint &w0, const golem::Waypoint &w1) const;
+
+	/** Collision detection test function for the single waypoint with thread data.
+	* @param w0			waypoint
+	* @param w1			waypoint
+	* @param data		a pointer to the current thread data
+	* @return			<code>true</code> if a collision has been detected; <code>false</code> otherwise
+	*/
+	virtual bool collides(const golem::Waypoint &w0, const golem::Waypoint &w1, ThreadData* data) const;
+
 	/** Sets collision checking with the object to be grasped */
 	void setPointCloudCollision(const bool cloudCollision) { pointCloudCollision = cloudCollision; };
 
@@ -297,6 +323,12 @@ public:
 	bool enableUnc;
 	/** Pointer to descriptor */
 	FTDrivenHeuristic::Desc ftDrivenDesc;
+
+	bool testCollision;
+	inline golem::Real getDist2(const golem::Waypoint& w0, const golem::Waypoint& w1) const {
+		return golem::Heuristic::getDist(w0, w1);
+	};
+
 
 protected:
 	/** Generator of pseudo random numbers */

@@ -54,6 +54,58 @@ namespace spam {
 
 // Forward declaration
 class FTDrivenHeuristic;
+//class RagGraphPlanner;
+
+//------------------------------------------------------------------------------
+
+/** Abstract class for Arm movement planinng using Probabilistic Road Map approach. */
+//class RagPathFinder : public golem::PathFinder {
+//public:
+//	typedef shared_ptr<RagPathFinder> Ptr;
+//	friend class Desc;
+//	friend class RagGraphPlanner;
+//
+//	/** Path finder description */
+//	class Desc : public golem::PathFinder::Desc {
+//	public:
+//		typedef shared_ptr<Desc> Ptr;
+//
+//		/** Constructs the description object. */
+//		Desc() {
+//			Desc::setToDefault();
+//		}
+//
+//		/** virtual destructor is required */
+//		virtual ~Desc() {}
+//
+//		/** Creates the object from the description. */
+//		CREATE_FROM_OBJECT_DESC1(RagPathFinder, golem::PathFinder::Ptr, DEKinematics&)
+//
+//		/** Sets the parameters to the default values */
+//		virtual void setToDefault() {
+//			golem::PathFinder::Desc::setToDefault();
+//		}
+//
+//		/** Checks if the description is valid. */
+//		virtual bool isValid() const {
+//			return golem::PathFinder::Desc::isValid();
+//		}
+//	};
+//
+//protected:
+//	/** Generates random waypoint */
+//	virtual bool generateWaypoint(Waypoint& w, const WaypointGenerator &generator, U32 trials) const;
+//
+//	/** Creates PathFinder from the description.
+//	* @param desc		PathFinder description
+//	* @return			<code>TRUE</code> no errors; <code>FALSE</code> otherwise
+//	*/
+//	bool create(const Desc& desc);
+//
+//	/** PathFinder constructor */
+//	RagPathFinder(golem::DEKinematics& kinematics);
+//
+//};
 
 //------------------------------------------------------------------------------
 
@@ -64,25 +116,32 @@ public:
 	friend class Desc;
 
 	///** Path finder description */
-	//class PathFinderDesc : public golem::GraphPlanner::PathFinderDesc {
+	//class RagPathFinderDesc : public golem::GraphPlanner::PathFinderDesc {
 	//public:
 	//	/** Global path finder description */
-	//	golem::PathFinder::Desc::Ptr pGraspPathFinderDesc;
-	//	
+	//	RagPathFinder::Desc::Ptr pGlobalPathFinderDesc;
+	//	/** Local path finder description */
+	//	RagPathFinder::Desc::Ptr pLocalPathFinderDesc;
+
 	//	/** Constructs the description object. */
-	//	PathFinderDesc() {
+	//	RagPathFinderDesc() {
 	//		setToDefault();
 	//	}
 	//	/** Sets the parameters to the default values */
 	//	void setToDefault() {
-	//		pGraspPathFinderDesc.reset(new golem::PathFinder::Desc);
 	//		golem::GraphPlanner::PathFinderDesc::setToDefault();
+	//		pGlobalPathFinderDesc.reset(new RagPathFinder::Desc);
+	//		pGlobalPathFinderDesc->graphSize = 2000;
+	//		pLocalPathFinderDesc.reset(new RagPathFinder::Desc);
+	//		pLocalPathFinderDesc->graphSize = 1000;
 	//	}
 	//	/** Checks if the description is valid. */
 	//	bool isValid() const {
-	//		if (pGraspPathFinderDesc == NULL || !pGraspPathFinderDesc->isValid())
-	//			return false;
 	//		if (!golem::GraphPlanner::PathFinderDesc::isValid())
+	//			return false;
+	//		if (pGlobalPathFinderDesc == NULL || !pGlobalPathFinderDesc->isValid())
+	//			return false;
+	//		if (pLocalPathFinderDesc != NULL && !pLocalPathFinderDesc->isValid())
 	//			return false;
 
 	//		return true;
@@ -199,6 +258,9 @@ public:
 	};
 
 protected:
+	///** Overwrites the path finder desc */
+	//RagPathFinderDesc ragPathFinderDesc;
+	//RagPathFinder::Ptr pGlobalPathFinder, pLocalPathFinder;
 	/** Controller state info */
 	golem::Controller::State::Info armInfo;
 	/** Controller state info */
@@ -207,6 +269,10 @@ protected:
 
 	void disableHandPlanning();
 	void enableHandPlanning();
+
+	/** Generates random waypoint */
+//	virtual bool generateWaypoints(const golem::Controller::Trajectory &trajectory, golem::WaypointGenerator::Seq &generators, golem::U32 steps = 4) const;
+
 	/** Performs local search on waypoint path */
 	virtual bool localFind(const golem::ConfigspaceCoord &begin, const golem::ConfigspaceCoord &end, golem::Waypoint::Seq &localPath);
 
@@ -220,8 +286,10 @@ protected:
 	RagGraphPlanner(golem::Controller& controller);
 
 public:
+	inline golem::Waypoint::Seq getLocalPath() { return localPath; };
 	/** FT Driven Heuristic */
 	FTDrivenHeuristic* getFTDrivenHeuristic() const;
+//	inline golem::WaypointGenerator::Seq getGlobalPathGenerators() { return pGlobalPathFinder->getGenerators(); };
 
 	/** Finds (optimal) trajectory target in the obstacle-free configuration space.
 	 */
@@ -251,6 +319,8 @@ public:
 //------------------------------------------------------------------------------
 
 void XMLData(RagGraphPlanner::Desc &val, golem::XMLContext* context, bool create = false);
+//void XMLData(RagPathFinder::Desc &val, golem::XMLContext* context, bool create = false);
+//void XMLData(RagGraphPlanner::RagPathFinderDesc &val, golem::XMLContext* context, bool create = false);
 
 //------------------------------------------------------------------------------
 
