@@ -49,7 +49,7 @@ bool Robot::create(const Desc& desc) {
 	triggeredGuards.clear();
 	triggeredGuards.reserve(fLimit.size());
 
-	guardsReader = [&](const Controller::State&, grasp::RealSeq& force, std::vector<golem::Configspace::Index> joints) {
+	guardsReader = [=](const Controller::State&, grasp::RealSeq& force, std::vector<golem::Configspace::Index> joints) {
 		const size_t size = std::min(force.size(), fLimit.size());
 		joints.clear();
 		joints.reserve(getStateHandInfo().getJoints().size());
@@ -84,7 +84,7 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 	gwcs.wpos[armChain].multiply(gwcs.wpos[armChain], controller->getChains()[armChain]->getReferencePose()); // 1:1
 	gwcs.wpos[armChain].multiply(trn, gwcs.wpos[armChain]); // new waypoint frame
 	gwcs.t = target.t;
-//	gwcs.wpos[armChain].p.z += 0.01;
+	gwcs.wpos[armChain].p.z += 0.01;
 
 	cend = target;
 	{
@@ -343,6 +343,69 @@ grasp::RBDist Robot::trnTrajectory(const golem::Mat34& actionFrame, const golem:
 
 	return err;
 }
+
+grasp::RBDist Robot::findTrnTrajectory(const golem::Mat34& trn, const golem::Controller::State& startPose, golem::Controller::State::Seq::const_iterator begin, golem::Controller::State::Seq::const_iterator end, golem::Controller::State::Seq& trajectory) {
+	if (begin == end)
+		throw Message(Message::LEVEL_ERROR, "Robot::transformTrajectory(): Empty input trajectory");
+	// arm chain and joints pointers
+	const golem::Chainspace::Index armChain = armInfo.getChains().begin();
+	const golem::Configspace::Range armJoints = armInfo.getJoints();
+	// Compute a sequence of targets corresponding to the transformed arm end-effector
+	GenWorkspaceChainState::Seq seq;
+	//// the starting pose of the robot does not need a tranformation
+	//GenWorkspaceChainState gStart;
+	//controller->chainForwardTransform(startPose.cpos, gStart.wpos);
+	//gStart.wpos[armChain].multiply(gStart.wpos[armChain], controller->getChains()[armChain]->getReferencePose()); // 1:1
+	//gStart.t = startPose.t;
+	//seq.push_back(gStart);
+	for (Controller::State::Seq::const_iterator i = begin; i != end; ++i) {
+		GenWorkspaceChainState gwcs;
+		controller->chainForwardTransform(i->cpos, gwcs.wpos);
+		gwcs.wpos[armChain].multiply(gwcs.wpos[armChain], controller->getChains()[armChain]->getReferencePose()); // 1:1
+		gwcs.wpos[armChain].multiply(trn, gwcs.wpos[armChain]); // new waypoint frame
+		gwcs.t = i->t;
+		seq.push_back(gwcs);
+	}
+	// planner debug
+	//context.verbose("%s\n", plannerDebug(*planner).c_str());
+	Controller::State::Seq initTrajectory, ctrajectory;
+	{
+		// lock controller
+		golem::CriticalSectionWrapper csw(csController);
+		// Find initial target position
+		Controller::State cend = *begin;
+		// planner debug
+		//context.debug("Seq[0]: %s\n", grasp::plannerWorkspaceDebug(*planner, &seq[0].wpos).c_str());
+		//context.debug("Seq[2]: %s\n", grasp::plannerWorkspaceDebug(*planner, &seq[2].wpos).c_str());
+		if (!planner->findTarget(*begin, seq[0], cend))
+			throw Message(Message::LEVEL_ERROR, "Robot::transformTrajectory(): Unable to find initial target configuration");
+		// compute the initial trajectory to move thee robot from current pose to the beginning of the approach trajectory
+		if (!planner->findGlobalTrajectory(startPose, cend, initTrajectory, initTrajectory.end()))
+			throw Message(Message::LEVEL_ERROR, "Robot::transformTrajectory(): Unable to find initial trajectory");
+		// Find remaining position sequence
+		if (seq.size() == 1)
+			ctrajectory.push_back(cend);
+		else if (seq.size() > 1 && !planner->findLocalTrajectory(cend, ++seq.begin(), seq.end(), ctrajectory, ctrajectory.end()))
+			throw Message(Message::LEVEL_ERROR, "Robot::transformTrajectory(): Unable to find trajectory");
+	}
+	// update arm configurations and compute average error
+	trajectory.insert(trajectory.end(), initTrajectory.begin(), initTrajectory.end());	
+	grasp::RBDist err;
+	Controller::State::Seq::const_iterator j = begin;
+	for (size_t i = 0; i < ctrajectory.size(); ++i, ++j) {
+		// copy config
+		trajectory.push_back(*j);
+		trajectory.back().set(armInfo.getJoints().begin(), armInfo.getJoints().end(), ctrajectory[i]);
+		// error
+		WorkspaceChainCoord wcc;
+		controller->chainForwardTransform(trajectory.back().cpos, wcc);
+		wcc[armChain].multiply(wcc[armChain], controller->getChains()[armChain]->getReferencePose());
+		err.add(err, grasp::RBDist(grasp::RBCoord(wcc[armChain]), grasp::RBCoord(seq[i].wpos[armChain])));
+	}
+	context.debug("Robot::transformTrajectory(): Pose error: lin=%.9f, ang=%.9f\n", err.lin, err.ang);
+	return err;
+}
+
 
 void Robot::createTrajectory(const golem::Controller::State& begin, const golem::Controller::State* pcend, const golem::Mat34* pwend, golem::SecTmReal t, const golem::Controller::State::Seq& waypoints, golem::Controller::State::Seq& trajectory) {
 	if (!pcend && !pwend)

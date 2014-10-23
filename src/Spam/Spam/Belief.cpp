@@ -131,7 +131,7 @@ Real Belief::Hypothesis::dist2NearestKPoints(const grasp::RBCoord &pose,  const 
 	return result;
 }
 
-size_t Belief::Hypothesis::nearestKPoints(const grasp::RBCoord &pose, grasp::Cloud::PointSeq &points, std::vector<float> &distances, const size_t clusters) {
+size_t Belief::Hypothesis::nearestKPoints(const grasp::RBCoord &pose, grasp::Cloud::PointSeq &points, std::vector<float> &distances, const size_t clusters) const {
 	// sets the query point
 	pcl::PointXYZ searchPoint;
 	searchPoint.x = (float)pose.p.x;
@@ -370,9 +370,7 @@ void Belief::setHypotheses(const grasp::RBPose::Sample::Seq &hypothesisSeq) {
 		const size_t size = modelPoints.size() < myDesc.maxSurfacePoints ? modelPoints.size() : myDesc.maxSurfacePoints;
 		for (size_t i = 0; i < size; ++i) {
 			grasp::Cloud::Point point = size < modelPoints.size() ? modelPoints[size_t(rand.next()) % modelPoints.size()] : modelPoints[i]; // make a copy here
-			if (i < 10) context.write("Model point %d <%.4f %.4f %.4f>\n", i, modelPoints[i].x, modelPoints[i].y, modelPoints[i].z);
 			grasp::Cloud::setPoint(p->toMat34() * grasp::Cloud::getPoint(point)/* + actionFrame.p*/, point);
-			if (i < 10) context.write("Query point %d <%.4f %.4f %.4f>\n", i, point.x, point.y, point.z);
 			grasp::Cloud::setColour((p == hypothesisSeq.begin()) ? RGBA::YELLOW : RGBA::BLUE, point);
 			sampleCloud.push_back(point);
 		}
@@ -469,7 +467,7 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 	return maximumFrame;
 }
 
-grasp::RBPose::Sample::Seq Belief::getHypothesesToSample() {
+grasp::RBPose::Sample::Seq Belief::getHypothesesToSample() const {
 	// return the rbpose::sample associated with each hypothesis.
 	// NOTE: useful for creating mean and covariance in Belief::setHypotheses
 	grasp::RBPose::Sample::Seq samples;

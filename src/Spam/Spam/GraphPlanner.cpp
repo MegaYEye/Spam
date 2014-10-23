@@ -295,7 +295,8 @@ bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const 
 	}
 
 #ifdef _HEURISTIC_PERFMON
-	pHeuristic->resetLog();
+	heuristic->resetLog();
+	heuristic->getCollision()->resetLog();
 #endif
 #ifdef _GRAPHPLANNER_PERFMON
 	PerfTimer t;
@@ -346,7 +347,8 @@ bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const 
 		);
 #endif
 #ifdef _HEURISTIC_PERFMON
-	pHeuristic->writeLog(context, "GraphPlanner::findTarget()");
+	heuristic->writeLog(context, "GraphPlanner::findTarget()");
+	heuristic->getCollision()->writeLog(context, "GraphPlanner::findTarget()");;
 #endif
 
 	if (heuristic)
@@ -401,7 +403,8 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 
 #ifdef _GRAPHPLANNER_PERFMON
 #ifdef _HEURISTIC_PERFMON
-	Heuristic::resetLog();
+	FTDrivenHeuristic::resetLog();
+	Collision::resetLog();
 #endif
 #ifdef _BOUNDS_PERFMON
 	Bounds::resetLog();
@@ -464,7 +467,9 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 
 #ifdef _GRAPHPLANNER_PERFMON
 #ifdef _HEURISTIC_PERFMON
-	Heuristic::writeLog(context, "PathFinder::find()");
+	context.debug("Enabled Uncertainty %s\n", getFTDrivenHeuristic()->enableUnc ? "ON" : "OFF");
+	FTDrivenHeuristic::writeLog(context, "PathFinder::find()");
+	Collision::writeLog(context, "PathFinder::find()");
 #endif
 #ifdef _BOUNDS_PERFMON
 	Bounds::writeLog(context, "PathFinder::find()");
@@ -473,7 +478,8 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 
 #ifdef _GRAPHPLANNER_PERFMON
 #ifdef _HEURISTIC_PERFMON
-	Heuristic::resetLog();
+	FTDrivenHeuristic::resetLog();
+	Collision::resetLog();
 #endif
 #ifdef _BOUNDS_PERFMON
 	Bounds::resetLog();
@@ -486,7 +492,8 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 		"GraphPlanner::optimize(): time_elapsed = %f [sec], len = %d\n", t.elapsed(), optimisedPath.size()
 		);
 #ifdef _HEURISTIC_PERFMON
-	Heuristic::writeLog(context, "GraphPlanner::optimize()");
+	FTDrivenHeuristic::writeLog(context, "GraphPlanner::optimize()");
+	Collision::writeLog(context, "GraphPlanner::optimize()");
 #endif
 #ifdef _BOUNDS_PERFMON
 	Bounds::writeLog(context, "GraphPlanner::optimize()");
@@ -508,6 +515,87 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 
 	getCallbackDataSync()->syncFindTrajectory(trajectory.begin(), trajectory.end(), wend);
 	//	enableHandPlanning();
+
+	return true;
+}
+
+//------------------------------------------------------------------------------
+
+bool RagGraphPlanner::findLocalTrajectory(const Controller::State &cbegin, GenWorkspaceChainState::Seq::const_iterator wbegin, GenWorkspaceChainState::Seq::const_iterator wend, Controller::Trajectory &trajectory, Controller::Trajectory::iterator iter, MSecTmU32 timeOut) {
+#ifdef _GRAPHPLANNER_PERFMON
+	PerfTimer t;
+#ifdef _HEURISTIC_PERFMON
+	FTDrivenHeuristic::resetLog();
+	Collision::resetLog();
+#endif
+#endif
+
+	spam::FTDrivenHeuristic *heuristic = getFTDrivenHeuristic();
+	// trajectory size
+	const size_t size = 1 + (size_t)(wend - wbegin);
+	// check initial size
+	if (size < 2) {
+		context.error("GraphPlanner::findLocalTrajectory(): Invalid workspace sequence size\n");
+		return false;
+	}
+	// time out
+	const MSecTmU32 segTimeOut = timeOut == MSEC_TM_U32_INF ? MSEC_TM_U32_INF : timeOut / MSecTmU32(size - 1);
+	// fill trajectory with cbegin
+	const Controller::State cinit = cbegin; // backup
+	Controller::Trajectory::iterator end = ++trajectory.insert(iter, cinit);
+	for (GenWorkspaceChainState::Seq::const_iterator i = wbegin; i != wend; ++i)
+		end = ++trajectory.insert(end, cinit);
+	Controller::Trajectory::iterator begin = end - size;
+
+	getCallbackDataSync()->syncCollisionBounds();
+	optimisedPath.resize(size - 1);
+	pKinematics->setPopulation();
+
+	// find configspace trajectory
+	PARAMETER_GUARD(Heuristic, GenCoordConfigspace, Min, *pHeuristic);
+	PARAMETER_GUARD(Heuristic, GenCoordConfigspace, Max, *pHeuristic);
+	for (size_t i = 1; i < size; ++i) {
+		// pointers
+		const Controller::Trajectory::iterator c[2] = { begin + i - 1, begin + i };
+		const GenWorkspaceChainState::Seq::const_iterator w = wbegin + i - 1;
+
+		// setup search limits
+		GenCoordConfigspace min = pHeuristic->getMin();
+		GenCoordConfigspace max = pHeuristic->getMin();
+		for (Configspace::Index j = stateInfo.getJoints().begin(); j < stateInfo.getJoints().end(); ++j) {
+			const idx_t k = j - stateInfo.getJoints().begin();
+			min[j].pos = c[0]->cpos[j] - localFinderDesc.range[k];
+			max[j].pos = c[0]->cpos[j] + localFinderDesc.range[k];
+		}
+		pHeuristic->setMin(min);
+		pHeuristic->setMax(max);
+
+		// and search for a solution
+		if (!pKinematics->findGoal(*c[0], *w, *c[1], segTimeOut)) {
+			context.error("GraphPlanner::findLocalTrajectory(): unable to solve inverse kinematics\n");
+			return false;
+		}
+
+		// visualisation
+		optimisedPath[i - 1].cpos = c[1]->cpos;
+		optimisedPath[i - 1].wpos = w->wpos;
+	}
+
+	// profile configspace trajectory
+	pProfile->profile(trajectory, begin, end);
+
+	getCallbackDataSync()->syncFindTrajectory(begin, end, &*(wend - 1));
+
+#ifdef _GRAPHPLANNER_PERFMON
+	context.debug("GraphPlanner::findLocalTrajectory(): time_elapsed = %f [sec], len = %d\n", t.elapsed(), size);
+#ifdef _HEURISTIC_PERFMON
+	if (heuristic) {
+		context.debug("Enabled Uncertainty %s\n", heuristic->enableUnc ? "ON" : "OFF");
+		heuristic->writeLog(context, "GraphPlanner::findTarget()");
+		heuristic->getCollision()->writeLog(context, "GraphPlanner::findTarget()");;
+	}
+#endif
+#endif
 
 	return true;
 }

@@ -52,6 +52,13 @@
 
 namespace spam {
 
+//------------------------------------------------------------------------------
+
+/** Performance monitor */
+#define _GRAPHPLANNER_PERFMON
+
+//------------------------------------------------------------------------------
+
 // Forward declaration
 class FTDrivenHeuristic;
 //class RagGraphPlanner;
@@ -303,6 +310,17 @@ public:
 	 * @return			<code>TRUE</code> no errors; <code>FALSE</code> otherwise 
 	 */
 	virtual bool findGlobalTrajectory(const golem::Controller::State &begin, const golem::Controller::State &end, golem::Controller::Trajectory &trajectory, golem::Controller::Trajectory::iterator iter, const golem::GenWorkspaceChainState* wend = NULL);
+
+	/** Finds obstacle-free (local search) trajectory in the workspace form trajectory workspace increments.
+	* @param cbegin	trajectory begin in the configuration space
+	* @param wbegin	trajectory begin in the workspace
+	* @param end		trajectory end in the workspace
+	* @param path		generated trajectory in the configuration space
+	* @param iter		trajectory instertion point
+	* @param timeOut	maximum work time
+	* @return			<code>TRUE</code> no errors; <code>FALSE</code> otherwise
+	*/
+	virtual bool findLocalTrajectory(const golem::Controller::State &cbegin, golem::GenWorkspaceChainState::Seq::const_iterator wbegin, golem::GenWorkspaceChainState::Seq::const_iterator end, golem::Controller::Trajectory &trajectory, golem::Controller::Trajectory::iterator iter, golem::MSecTmU32 timeOut = golem::MSEC_TM_U32_INF);
 
 	/** Finds obstacle-free (local search) trajectory in the workspace form trajectory workspace increments.
 	 * @param cbegin	trajectory begin in the configuration space

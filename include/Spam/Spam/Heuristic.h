@@ -69,6 +69,11 @@ namespace spam {
 
 //------------------------------------------------------------------------------
 
+/** Performance monitor */
+#define _HEURISTIC_PERFMON
+
+//------------------------------------------------------------------------------
+
 /** Exceptions */
 MESSAGE_DEF(MsgSpamHeuristic, golem::Message)
 MESSAGE_DEF(MsgIncompatibleVectors, golem::Message)
@@ -244,6 +249,14 @@ public:
 		virtual ~Desc() {
 		}
 	};
+
+#ifdef _HEURISTIC_PERFMON
+	static golem::U32 perfCollisionWaypoint, perfCollisionPath, perfCollisionGroup, perfCollisionBounds, perfCollisionSegs, perfCollisionPointCloud, perfBoundDist, perfH;
+
+	static void resetLog();
+	static void writeLog(golem::Context &context, const char *str);
+#endif
+
 	/** Evaluates a single waypoint */
 	virtual golem::Real cost(const golem::Waypoint &w, const golem::Waypoint &root, const golem::Waypoint &goal) const;
 	/** Objective cost function of a path between specified waypoints */
@@ -264,7 +277,7 @@ public:
 	inline void setBelief(Belief *belief) { pBelief.reset(belief); };
 
 	/** Acquires manipulator */
-	inline void setManipulator(grasp::Manipulator *ptr) { manipulator.reset(ptr); collision.reset(new Collision(*manipulator)); };
+	inline void setManipulator(grasp::Manipulator *ptr) { manipulator.reset(ptr); collision.reset(new Collision(context, *manipulator)); };
 
 	/** Sets model cloud points */
 //	void setModel(grasp::Cloud::PointSeq::const_iterator begin, grasp::Cloud::PointSeq::const_iterator end, const golem::Mat34 &transform);
@@ -334,6 +347,8 @@ public:
 		return golem::Heuristic::getDist(w0, w1);
 	};
 
+	/** Returns a pointer to the collision interface */
+	Collision* getCollision() { return collision.get(); };
 
 protected:
 	/** Generator of pseudo random numbers */

@@ -168,14 +168,14 @@ public:
 		golem::Real dist2NearestKPoints(const grasp::RBCoord &pose, const golem::Real &maxDist = golem::Real(1.0), const size_t clusters = 10, const size_t &nIndeces = 100, const bool normal = true) const;
 
 		/** Nearest K points */
-		size_t nearestKPoints(const grasp::RBCoord &pose, grasp::Cloud::PointSeq &points, std::vector<float> &distances, const size_t clusters = 50);
+		size_t nearestKPoints(const grasp::RBCoord &pose, grasp::Cloud::PointSeq &points, std::vector<float> &distances, const size_t clusters = 50) const;
 
 		/** Returns this sample in model frame **/
-		inline grasp::RBPose::Sample toRBPoseSample() { return sample; };
+		inline grasp::RBPose::Sample toRBPoseSample() const { return sample; };
 		/** Returns this sample in global frame (default: robot frame) **/
-		inline grasp::RBPose::Sample toRBPoseSampleGF() { return grasp::RBPose::Sample(sample.toMat34() * modelFrame, sample.weight, sample.cdf); };
+		inline grasp::RBPose::Sample toRBPoseSampleGF() const { return grasp::RBPose::Sample(sample.toMat34() * modelFrame, sample.weight, sample.cdf); };
 		/** Returns the point cloud in global frame */
-		inline grasp::Cloud::PointSeq getCloud() { return points; };
+		inline grasp::Cloud::PointSeq getCloud() const { return points; };
 
 		/** Draw hypothesis */
 		void draw(golem::DebugRenderer& renderer) const;
@@ -294,7 +294,7 @@ public:
 	/** Sets the hypothesis for planning. NOTE: returns the action frame **/
 	grasp::RBPose::Sample createHypotheses(const grasp::Cloud::PointSeq& model, const golem::Mat34 &transform/*, const bool init = true*/);
 	/** Returns the low-dimensional representation of the density **/
-	grasp::RBPose::Sample::Seq getHypothesesToSample();
+	grasp::RBPose::Sample::Seq getHypothesesToSample() const;
 
 	/** Creates query object pose distribution */
 	void createQuery(const grasp::Cloud::PointSeq& points);

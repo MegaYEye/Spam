@@ -97,6 +97,8 @@ public:
 	virtual void createTrajectory(const golem::Controller::State& begin, const golem::Controller::State* pcend, const golem::Mat34* pwend, golem::SecTmReal t, const golem::Controller::State::Seq& waypoints, golem::Controller::State::Seq& trajectory);
 	/** (Local search) trajectory of the arm only from a sequence of configuration space targets in a new reference frame */
 	grasp::RBDist trnTrajectory(const golem::Mat34& actionFrame, const golem::Mat34& modelFrame, const golem::Mat34& trn, golem::Controller::State::Seq::const_iterator begin, golem::Controller::State::Seq::const_iterator end, golem::Controller::State::Seq& trajectory);
+	/** (Local search) trajectory of the arm only from a sequence of configuration space targets in a new reference frame */
+	grasp::RBDist findTrnTrajectory(const golem::Mat34& trn, const golem::Controller::State& startPose, golem::Controller::State::Seq::const_iterator begin, golem::Controller::State::Seq::const_iterator end, golem::Controller::State::Seq& trajectory);
 
 	/** Returns a seq of triggered guards if any */
 	grasp::FTGuard::Seq getTriggeredGuard() { return triggeredGuards; };

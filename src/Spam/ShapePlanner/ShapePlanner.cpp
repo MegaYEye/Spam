@@ -783,7 +783,7 @@ void spam::ShapePlanner::function(Data::Map::iterator& dataPtr, int key) {
 	case 'O':
 	{
 		const grasp::Cloud::PointSeq& points = getPoints(dataPtr)->second;
-		Collision collision(*manipulator);
+		Collision collision(context, *manipulator);
 		grasp::Manipulator::Pose pose = manipulator->getPose(robot->recvState().config);
 		Collision::Waypoint waypoint;
 		waypoint.points = 1000000;

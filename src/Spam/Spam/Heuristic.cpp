@@ -32,6 +32,36 @@ using namespace spam;
 
 //------------------------------------------------------------------------------
 
+#ifdef _HEURISTIC_PERFMON
+U32 FTDrivenHeuristic::perfCollisionWaypoint;
+U32 FTDrivenHeuristic::perfCollisionPath;
+U32 FTDrivenHeuristic::perfCollisionGroup;
+U32 FTDrivenHeuristic::perfCollisionBounds;
+U32 FTDrivenHeuristic::perfCollisionSegs;
+U32 FTDrivenHeuristic::perfCollisionPointCloud;
+U32 FTDrivenHeuristic::perfBoundDist;
+U32 FTDrivenHeuristic::perfH;
+
+void FTDrivenHeuristic::resetLog() {
+	perfCollisionWaypoint = 0;
+	perfCollisionPath = 0;
+	perfCollisionGroup = 0;
+	perfCollisionBounds = 0;
+	perfCollisionSegs = 0;
+	perfCollisionPointCloud = 0;
+	perfBoundDist = 0;
+	perfH = 0;
+}
+
+void FTDrivenHeuristic::writeLog(Context &context, const char *str) {
+	context.debug(
+		"%s: collision_{waypoint, path, group, bounds, point cloud, <segments>} = {%u, %u, %u, %u, %u, %f}, calls_{getBoundedDist(), h()} = {%u, %u}\n", str, perfCollisionWaypoint, perfCollisionPath, perfCollisionGroup, perfCollisionBounds, perfCollisionPointCloud, perfCollisionPath > 0 ? Real(perfCollisionSegs) / perfCollisionPath : REAL_ZERO, perfBoundDist, perfH
+		);
+}
+#endif
+
+//------------------------------------------------------------------------------
+
 //bool FTDrivenHeuristic::HypSample::build() {
 //	pTree.reset(new pcl::KdTreeFLANN<pcl::PointXYZ, flann::L2_Simple<float>>);
 //
@@ -444,7 +474,7 @@ Real FTDrivenHeuristic::cost(const Waypoint &w0, const Waypoint &w1) const {
 	//context.debug("  Mahala. distance %.4f\n", w);
 	//context.debug("  total cost func. %.4f\n\n", c);
 
-//	std::printf("FTDrivenHeuristic::cost: preforming time %.7f\n", context.getTimer().elapsed() - init);
+//	context.debug("FTDrivenHeuristic::cost(enable=%s): preforming time %.7f\n", enableUnc ? "ON" : "OFF", context.getTimer().elapsed() - init);
 	return c;
 }
 
@@ -454,21 +484,32 @@ and the reference frame of the samples. If at least one of the distance is <= of
 it returns the distance.. otherwise it returns INF.
 */
 golem::Real FTDrivenHeuristic::getBoundedDist(const golem::Waypoint& w) const {
+#ifdef _HEURISTIC_PERFMON
+	++perfBoundDist;
+#endif
 	const Real ret = golem::Node::COST_INF;
 	if (pBelief.get() && pBelief->getHypotheses().empty())
 		return ret;
 
-	for (Belief::Hypothesis::Seq::const_iterator s = ++pBelief->getHypotheses().begin(); s != pBelief->getHypotheses().end(); ++s) {
-		for (Chainspace::Index i = stateInfo.getChains().begin(); i < stateInfo.getChains().end(); ++i) {
-			const ChainDesc* cdesc = getChainDesc()[i];
-			if (cdesc->enabledObs) {
-				const RBCoord c(w.wpos[i]);
-				const Real dist = c.p.distance((*s)->toRBPoseSampleGF().p);
-				if (dist < this->ftDrivenDesc.ftModelDesc.distMax)
-					return dist;
-			}
-		}
+	Belief::Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
+	for (Chainspace::Index i = stateInfo.getChains().end() - 1; i >= stateInfo.getChains().begin(); --i){
+		const RBCoord c(w.wpos[i]);
+		const Real dist = c.p.distance((*maxLhdPose)->toRBPoseSampleGF().p);
+		if (dist < ftDrivenDesc.ftModelDesc.distMax)
+				return dist;
 	}
+
+	//for (Belief::Hypothesis::Seq::const_iterator s = ++pBelief->getHypotheses().begin(); s != pBelief->getHypotheses().end(); ++s) {
+	//	for (Chainspace::Index i = stateInfo.getChains().begin(); i < stateInfo.getChains().end(); ++i) {
+	//		const ChainDesc* cdesc = getChainDesc()[i];
+	//		if (cdesc->enabledObs) {
+	//			const RBCoord c(w.wpos[i]);
+	//			const Real dist = c.p.distance((*s)->toRBPoseSampleGF().p);
+	//			if (dist < this->ftDrivenDesc.ftModelDesc.distMax)
+	//				return dist;
+	//		}
+	//	}
+	//}
 	return ret;
 }
 
@@ -590,6 +631,9 @@ Real FTDrivenHeuristic::expectedObservationCost(const Waypoint &wi, const Waypoi
 
 void FTDrivenHeuristic::h(const golem::Waypoint &wi, const golem::Waypoint &wj, std::vector<golem::Real> &y) const {	
 //	context.write("FTDrivenHeuristic::h(const Waypoint &wi, const Waypoint &wj, std::vector<golem::Real> &y)\n");
+#ifdef _HEURISTIC_PERFMON
+	++perfH;
+#endif
 	Belief::Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
 	const Real norm = (REAL_ONE - pBelief->kernel(pBelief->myDesc.sensory.sensoryRange, pBelief->myDesc.lambda));//(ftDrivenDesc.ftModelDesc.enabledLikelihood)?/*REAL_ONE/*/(REAL_ONE - kernel(ftDrivenDesc.ftModelDesc.distMax, ftDrivenDesc.ftModelDesc.lambda)):REAL_ONE;
 	y.clear();
@@ -715,11 +759,17 @@ void FTDrivenHeuristic::h(const golem::Waypoint &wi, const golem::Waypoint &wj, 
 		
 }); // end parallels task
 #endif
-		const Real likelihood_p1 = collision->evaluate(waypoint, (*pBelief->getHypotheses().begin())->getCloud(), golem::Rand(rand), manipulator->getPose(w.cpos), false);
-		for (Belief::Hypothesis::Seq::const_iterator p = ++pBelief->getHypotheses().begin(); p != pBelief->getHypotheses().end(); ++p) {
-			const Real likelihood_pi = collision->evaluate(waypoint, (*p)->getCloud(), golem::Rand(rand), manipulator->getPose(w.cpos), false);
+		const Real likelihood_p1 = collision->evaluate(waypoint, pBelief.get()/*(*pBelief->getHypotheses().begin())->getCloud()*/, 0, golem::Rand(rand), manipulator->getPose(w.cpos), testCollision);
+		for (U32 p = 1; p != pBelief->getHypotheses().size(); ++p) {
+			const Real likelihood_pi = collision->evaluate(waypoint, pBelief.get(), p, golem::Rand(rand), manipulator->getPose(w.cpos), testCollision);
+//			(void)collision->evaluate(waypoint, pBelief->getHypotheses()[p]->getCloud(), golem::Rand(rand), manipulator->getPose(w.cpos), testCollision);
 			y.push_back(likelihood_pi - likelihood_p1);
 		}
+
+		//for (Belief::Hypothesis::Seq::const_iterator p = ++pBelief->getHypotheses().begin(); p != pBelief->getHypotheses().end(); ++p) {
+		//	const Real likelihood_pi = collision->evaluate(waypoint, (*p)->getCloud(), golem::Rand(rand), manipulator->getPose(w.cpos), testCollision);
+		//	y.push_back(likelihood_pi - likelihood_p1);
+		//}
 	}
 }
 
@@ -1467,12 +1517,26 @@ bool FTDrivenHeuristic::collides(const Waypoint &w, ThreadData* data) const {
 	++perfCollisionWaypoint;
 #endif
 	// check for collisions with the object to grasp. only the hand
-	if (pointCloudCollision && pBelief.get()) {
-		if (manipulator.get()) {
-			if (Math::abs(collision->evaluate(waypoint, (*pBelief->getHypotheses().begin())->getCloud(), golem::Rand(rand), manipulator->getPose(w.cpos), testCollision)) > REAL_EPS) {
-				return true;
+	if (pointCloudCollision && pBelief.get() && !pBelief->getHypotheses().empty() && manipulator.get()) {
+		// workspace coord of the first joint of the hand
+//		const RBCoord c(w.wpos[handInfo.getChains().begin()]);
+		Belief::Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
+		// if the distance is less than distMax, then we check collision with the point cloud 
+//		if (c.p.distance((*maxLhdPose)->toRBPoseSampleGF().p) < ftDrivenDesc.ftModelDesc.distMax*2) {
+//		collision->evaluate(waypoint, (*maxLhdPose)->getCloud(), golem::Rand(rand), manipulator->getPose(w.cpos), testCollision);
+		for (Chainspace::Index i = stateInfo.getChains().end() - 1; i >= stateInfo.getChains().begin(); --i)
+		{
+			const RBCoord c(w.wpos[i]);
+			if (c.p.distance((*maxLhdPose)->toRBPoseSampleGF().p) < ftDrivenDesc.ftModelDesc.distMax) {
+#ifdef _HEURISTIC_PERFMON
+				++perfCollisionPointCloud;
+#endif
+				if (Math::abs(collision->evaluate(waypoint, pBelief.get(), 0, golem::Rand(rand), manipulator->getPose(w.cpos), false)) > REAL_ZERO)
+					return true;
+				break;
 			}
 		}
+//		}
 	}
 
 	// all chains

@@ -96,7 +96,22 @@ spam::PosePlanner::PosePlanner(Scene &scene) : grasp::Player(scene), rand(contex
 	
 bool spam::PosePlanner::create(const Desc& desc) {
 	grasp::Player::create(desc); // throws
-	
+
+	trialData = desc.trialData;
+	Mat33 rot = Mat33::identity();
+	rot.rotZ(rand.nextUniform<Real>()*desc.trialData->queryStdDev.ang);
+	Vec3 v(REAL_ONE, REAL_ONE, REAL_ONE);
+	Vec3 vquery = v*-desc.trialData->queryStdDev.lin;
+	trialData->queryPointsTrn.set(vquery-Vec3(rand.nextUniform<Real>(), rand.nextUniform<Real>(), rand.nextUniform<Real>())*desc.trialData->queryStdDev.lin*2, rot);
+	context.write("PosePlannenr::Create(): trialData->queryPointsTrn <%f %f %f> [%f %f %f %f] (lin=%f, ang=%f)\n", trialData->queryPointsTrn.p.x, trialData->queryPointsTrn.p.y, trialData->queryPointsTrn.p.z,
+		trialData->queryPointsTrn.q.w, trialData->queryPointsTrn.q.x, trialData->queryPointsTrn.q.y, trialData->queryPointsTrn.q.z, desc.trialData->queryStdDev.lin, desc.trialData->queryStdDev.ang);
+	rot = Mat33::identity();
+	rot.rotZ(rand.nextUniform<Real>()*desc.trialData->objPoseStdDev.ang);
+	Vec3 vobj = v*-desc.trialData->objPoseStdDev.lin;
+	trialData->objectPoseTrn.set(vobj-Vec3(rand.nextUniform<Real>(), rand.nextUniform<Real>(), rand.nextUniform<Real>())*desc.trialData->objPoseStdDev.lin*2, rot);
+	context.write("PosePlannenr::Create(): trialData->objectPoseTrn <%f %f %f> [%f %f %f %f] (lin=%f, ang=%f)\n", trialData->objectPoseTrn.p.x, trialData->objectPoseTrn.p.y, trialData->objectPoseTrn.p.z,
+		trialData->objectPoseTrn.q.w, trialData->objectPoseTrn.q.x, trialData->objectPoseTrn.q.y, trialData->objectPoseTrn.q.z, desc.trialData->objPoseStdDev.lin, desc.trialData->objPoseStdDev.ang);
+
 	pRBPose = desc.pRBPoseDesc->create(context); // throws
 	pBelief = static_cast<Belief*>(pRBPose.get());
 
@@ -113,7 +128,7 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	modelFrame.setId();
 	context.write("PosePlannenr::Create(): model trn <%f %f %f>\n", desc.modelTrn.p.x, desc.modelTrn.p.y, desc.modelTrn.p.z);
 	modelTrn = desc.modelTrn;
-	objectTrn = desc.objectTrn;
+//	objectTrn = desc.objectTrn;
 	modelDataPtr = getData().end();
 	resetDataPointers();
 //	screenCapture = desc.screenCapture;
@@ -292,6 +307,12 @@ void spam::PosePlanner::create(const golem::Controller::State::Seq& inp, golem::
 
 //------------------------------------------------------------------------------
 
+PosePlanner::TrialData::Ptr spam::PosePlanner::createTrialData() {
+	return TrialData::Ptr(new TrialData(*trialData));
+}
+
+//------------------------------------------------------------------------------
+
 //void spam::PosePlanner::profile(Data::Map::iterator dataPtr, const golem::Controller::State::Seq& inp, golem::SecTmReal dur, golem::SecTmReal idle) const {
 //	if (!grasp::to<Data>(queryDataPtr)->queryPoints.empty()) {
 //		context.write("PosePlanner::profile(): Computing trajectory in a new frame...\n");
@@ -448,7 +469,7 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 					grasp::to<Data>(dataPtr)->simulateObjectPose.push_back(p);
 				}
 				grasp::Cloud::transform(grasp::to<Data>(dataPtr)->queryTransform, grasp::to<Data>(dataPtr)->simulateObjectPose, grasp::to<Data>(dataPtr)->simulateObjectPose);
-//				grasp::Cloud::transform(objectTrn, grasp::to<Data>(dataPtr)->simulateObjectPose, grasp::to<Data>(dataPtr)->simulateObjectPose);
+				grasp::Cloud::transform(trialData->objectPoseTrn.toMat34(), grasp::to<Data>(dataPtr)->simulateObjectPose, grasp::to<Data>(dataPtr)->simulateObjectPose);
 				context.write("done.\n");
 				//showObject = true;
 			}
@@ -695,9 +716,14 @@ void spam::XMLData(PosePlanner::Desc &val, Context* context, XMLContext* xmlcont
 
 	try {
 		XMLData(val.modelTrn, xmlcontext->getContextFirst("model_trn_frame"), create);
-		XMLData(val.objectTrn, xmlcontext->getContextFirst("object_points_trn"), create);
+//		XMLData(val.objectTrn, xmlcontext->getContextFirst("object_points_trn"), create);
 	}
 	catch (const golem::MsgXMLParser& msg) { context->write("%s\n", msg.str().c_str());  }
+
+	try {
+		val.trialData->xmlData(xmlcontext->getContextFirst("trial_data"), create);
+	}
+	catch (const golem::MsgXMLParser& msg) { context->write("%s\n", msg.str().c_str()); }
 
 	//golem::XMLData("num_poses", val.numPoses, xmlcontext);
 	//golem::XMLData("num_hypotheses", val.numHypotheses, xmlcontext);
@@ -709,6 +735,19 @@ void spam::XMLData(PosePlanner::Desc &val, Context* context, XMLContext* xmlcont
 
 	XMLData(val.actionManip, xmlcontext->getContextFirst("action_manip"), create);
 }
+
+void spam::PosePlanner::TrialData::xmlData(golem::XMLContext* context, bool create) const {
+	golem::XMLData("name", const_cast<std::string&>(name), context, create);
+	golem::XMLData("path", const_cast<std::string&>(path), context, create);
+	golem::XMLData("ext_trial", const_cast<std::string&>(extTrial), context, create);
+
+	golem::XMLData("enable", const_cast<bool&>(enable), context, create);
+	golem::XMLData("silent", const_cast<bool&>(silent), context, create);
+
+	XMLData(const_cast<grasp::RBDist&>(queryStdDev), context->getContextFirst("meta_query_transformation"), create);
+	XMLData(const_cast<grasp::RBDist&>(objPoseStdDev), context->getContextFirst("meta_obj_pose_transformation"), create);
+}
+
 
 //------------------------------------------------------------------------------
 

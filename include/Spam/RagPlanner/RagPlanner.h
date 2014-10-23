@@ -43,6 +43,7 @@
 #pragma once
 #ifndef _SPAM_RAGPLANNER_RAGPLANNER_H_
 #define _SPAM_RAGPLANNER_RAGPLANNER_H_
+#define _GRASP_CAMERA_DEPTH
 
 //------------------------------------------------------------------------------
 
@@ -124,8 +125,8 @@ public:
 		/** Downsampling parameter */
 		size_t maxModelPoints;
 
-		/** Query transformation */
-		grasp::RBCoord queryPointsTrn;
+		///** Query transformation */
+		//grasp::RBCoord queryPointsTrn;
 		
 		/** Constructs from description object */
 		Desc() {
@@ -148,7 +149,7 @@ public:
 
 			maxModelPoints = 5000;
 
-			queryPointsTrn.fromMat34(golem::Mat34::identity());
+//			queryPointsTrn.fromMat34(golem::Mat34::identity());
 		}
 		/** Checks if the description is valid. */
 		virtual bool isValid() const {
@@ -216,6 +217,7 @@ protected:
 	bool enableSimContact;
 	/** Enables/disables force reading */
 	bool enableForceReading;
+	bool forcereadersilent;
 
 	/** Query transformation */
 	grasp::RBCoord queryPointsTrn;
