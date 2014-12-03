@@ -49,13 +49,93 @@ bool Robot::create(const Desc& desc) {
 	triggeredGuards.clear();
 	triggeredGuards.reserve(fLimit.size());
 
-	guardsReader = [=](const Controller::State&, grasp::RealSeq& force, std::vector<golem::Configspace::Index> joints) {
+	//objectPointCloudPtr.reset(new grasp::Cloud::PointSeq());
+	//manipulator.reset();
+	//w.setToDefault();
+	//w.points = 5000;// desc.maxModelPoints;
+	//collision.reset();
+
+	//desc.handCtrlDesc->forceReader = [=](const golem::Controller::State& state, grasp::RealSeq& force) {
+	//	// no force by default
+	//	force.assign(state.getInfo().getJoints().size(), REAL_ZERO);
+	//	// use simulated force
+	//	if (simHandForceMode != FORCE_MODE_DISABLED) {
+	//		const Vec3 simForce(simModeVec.z*simForceGain.v.z, simModeVec.x*simForceGain.v.x, simModeVec.y*simForceGain.v.y);
+
+	//		Chainspace::Index i = state.getInfo().getChains().begin() + simHandForceMode - 1; // simHandForceMode corresponds to chain
+	//		for (Configspace::Index j = state.getInfo().getJoints(i).begin(); j < state.getInfo().getJoints(i).end(); ++j) {
+	//			const size_t k = j - state.getInfo().getJoints().begin(); // from the first joint
+	//			const size_t l = j - state.getInfo().getJoints(i).begin(); // from the first joint in the chain
+	//			//if (!objectPointCloudPtr->empty())
+	//			//	context.write("Chainspace::Index i=%d, j=%d, from first joint k=%d, from first joint in chain l=%d, triggerred guard=%d (%d)\n", i, j, k, l, joints.front(), joints.size());
+	//			force[k] = simForce[std::min(size_t(2), l)];
+	//		}
+	//	}
+	//	// read from the state variable (if supported)
+	//	else {
+	//		try {
+	//			const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
+	//			std::vector<Configspace::Index> joints;
+	//			Real value = !objectPointCloudPtr->empty() ? collision->evaluate(this, w, *objectPointCloudPtr.get(), rand, manipulator->getPose(recvState().command), joints)*5. : REAL_ZERO;
+	//			if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
+	//				for (Configspace::Index j = state.getInfo().getJoints().begin(); j < state.getInfo().getJoints().end(); ++j) {
+	//					const size_t k = j - state.getInfo().getJoints().begin();
+	//					force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
+	//				}
+	//				for (auto j = joints.begin(); j != joints.end(); ++j) {
+	//					const size_t k = (*j) - state.getInfo().getJoints().begin();
+	//					if (k > force.size()) {
+	//						context.write("k=%d > force.size()=%d\n", k, force.size());
+	//						continue;
+	//					}
+	//					force[k] = value;
+	//				}
+	//				if (!joints.empty()) {
+	//					const size_t k = joints.front() - state.getInfo().getJoints().begin();
+	//					//context.write("-----------COLLISSION JOINT=%d k=%d force=%3.3f limit=%3.3f (size=%d)--------------\n", joints.front(), k,
+	//					//	force[k], fLimit[k], joints.size());
+	//				}
+	//			}
+	//		}
+	//		catch (const Message &msg) { context.write("%s\n", msg.str()); }
+	//	}
+
+	//	bool emergency = false;
+	//	try {
+	//		golem::CriticalSectionWrapper csw(csData);
+	//		// use customised force reader if available, otherwise the default one
+	//		handForceReader ? handForceReader(state, force) : handForceReaderDflt(state, force);
+	//	}
+	//	catch (const std::exception& ex) {
+	//		// if force threshold limit is reached
+	//		if (handCtrl->getMode() != grasp::ActiveCtrl::MODE_EMERGENCY) {
+	//			emergency = true;
+	//			// print exception
+	//			context.write("%s\n", ex.what());
+	//			// set emergency mode
+	//			armCtrl->setMode(grasp::ActiveCtrl::MODE_EMERGENCY);
+	//			handCtrl->setMode(grasp::ActiveCtrl::MODE_EMERGENCY);
+	//			// stop controller and cleanup the command queue
+	//			controller->stop();
+	//		}
+	//	}
+
+	//	{
+	//		golem::CriticalSectionWrapper csw(csData);
+	//		handForce = force;
+	//		// emergency mode handler
+	//		if (emergency && emergencyModeHandler) emergencyModeHandlerThread.start(emergencyModeHandler);
+	//	}
+	//};
+	//handCtrl = desc.handCtrlDesc->create(*hand); // create and install callback (throws)
+
+	guardsReader = [=](const Controller::State&, grasp::RealSeq& force, std::vector<golem::Configspace::Index> &joints) {
 		const size_t size = std::min(force.size(), fLimit.size());
 		joints.clear();
 		joints.reserve(getStateHandInfo().getJoints().size());
 		for (Configspace::Index i = getStateHandInfo().getJoints().begin(); i != getStateHandInfo().getJoints().end(); ++i) {
 			const size_t k = i - getStateHandInfo().getJoints().begin();
-			if (Math::abs(force[k] > fLimit[k]))
+			if (Math::abs(force[k]) > fLimit[k])
 				joints.push_back(i);
 		}
 		//for (size_t i = 0; i < size; ++i)
@@ -187,20 +267,32 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 //	return ret;
 //}
 //
-//void Robot::readFT(const Controller::State &state, grasp::RealSeq &force) const {
-//	context.debug("robot::readFT(): retrieve torques\n");
-//	const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
-//	const Chainspace::Index handChain = state.getInfo().getChains().begin()+1;
-//
-//	force.assign(handInfo.getJoints().size(), REAL_ZERO);
-//	context.debug("forces \n");
-//	if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
-//		for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
-//			const size_t k = j - handInfo.getJoints().begin();
-//			force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
-//			context.debug("hand joint %d force=%f guard=%f\n", k, force[k], ftHandGuards[k]);
-//		}
-//	}
+void Robot::readFT(const Controller::State &state, grasp::RealSeq &force) const {
+	const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
+	if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
+		Real max = REAL_ZERO;
+		static int jj = 0;
+		for (Configspace::Index j = state.getInfo().getJoints().begin(); j < state.getInfo().getJoints().end(); ++j) {
+			const size_t k = j - state.getInfo().getJoints().begin();
+			force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
+			if (force[k] > max)
+				max = force[k];
+		}
+	}
+	
+	//context.debug("robot::readFT(): retrieve torques\n");
+	//const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
+	//const Chainspace::Index handChain = state.getInfo().getChains().begin()+1;
+
+	//force.assign(handInfo.getJoints().size(), REAL_ZERO);
+	//context.debug("forces \n");
+	//if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
+	//	for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
+	//		const size_t k = j - handInfo.getJoints().begin();
+	//		force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
+	//		context.debug("hand joint %d force=%f guard=%f\n", k, force[k], ftHandGuards[k]);
+	//	}
+}
 //
 //}
 //

@@ -296,7 +296,7 @@ bool FTDrivenHeuristic::create(const Desc &desc) {
 
 	collision.reset();
 	waypoint.setToDefault();
-	waypoint.points = ftDrivenDesc.ftModelDesc.points;
+	waypoint.points = 5000;//ftDrivenDesc.ftModelDesc.points;
 
 	testCollision = false;
 
@@ -491,7 +491,7 @@ golem::Real FTDrivenHeuristic::getBoundedDist(const golem::Waypoint& w) const {
 	if (pBelief.get() && pBelief->getHypotheses().empty())
 		return ret;
 
-	Belief::Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
+	Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
 	for (Chainspace::Index i = stateInfo.getChains().end() - 1; i >= stateInfo.getChains().begin(); --i){
 		const RBCoord c(w.wpos[i]);
 		const Real dist = c.p.distance((*maxLhdPose)->toRBPoseSampleGF().p);
@@ -634,7 +634,7 @@ void FTDrivenHeuristic::h(const golem::Waypoint &wi, const golem::Waypoint &wj, 
 #ifdef _HEURISTIC_PERFMON
 	++perfH;
 #endif
-	Belief::Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
+	Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
 	const Real norm = (REAL_ONE - pBelief->kernel(pBelief->myDesc.sensory.sensoryRange, pBelief->myDesc.lambda));//(ftDrivenDesc.ftModelDesc.enabledLikelihood)?/*REAL_ONE/*/(REAL_ONE - kernel(ftDrivenDesc.ftModelDesc.distMax, ftDrivenDesc.ftModelDesc.lambda)):REAL_ONE;
 	y.clear();
 	const U32 meanIdx = 0;
@@ -759,9 +759,11 @@ void FTDrivenHeuristic::h(const golem::Waypoint &wi, const golem::Waypoint &wj, 
 		
 }); // end parallels task
 #endif
-		const Real likelihood_p1 = collision->evaluate(waypoint, pBelief.get()/*(*pBelief->getHypotheses().begin())->getCloud()*/, 0, golem::Rand(rand), manipulator->getPose(w.cpos), testCollision);
-		for (U32 p = 1; p != pBelief->getHypotheses().size(); ++p) {
-			const Real likelihood_pi = collision->evaluate(waypoint, pBelief.get(), p, golem::Rand(rand), manipulator->getPose(w.cpos), testCollision);
+//		const Real likelihood_p1 = collision->evaluate(waypoint, **pBelief->getHypotheses().begin(), Rand(rand), manipulator->getPose(w.cpos), testCollision);
+		const Real likelihood_p1 = collision->evaluate(waypoint, pBelief->getHypotheses().front()->getCloud(), Rand(rand), manipulator->getPose(w.cpos), testCollision);
+		for (auto p = ++pBelief->getHypotheses().begin(); p != pBelief->getHypotheses().end(); ++p) {
+//			const Real likelihood_pi = collision->evaluate(waypoint, **p, manipulator->getPose(w.cpos), testCollision);
+			const Real likelihood_pi = collision->evaluate(waypoint, (*p)->getCloud(), Rand(rand), manipulator->getPose(w.cpos), testCollision);
 //			(void)collision->evaluate(waypoint, pBelief->getHypotheses()[p]->getCloud(), golem::Rand(rand), manipulator->getPose(w.cpos), testCollision);
 			y.push_back(likelihood_pi - likelihood_p1);
 		}
@@ -1520,7 +1522,8 @@ bool FTDrivenHeuristic::collides(const Waypoint &w, ThreadData* data) const {
 	if (pointCloudCollision && pBelief.get() && !pBelief->getHypotheses().empty() && manipulator.get()) {
 		// workspace coord of the first joint of the hand
 //		const RBCoord c(w.wpos[handInfo.getChains().begin()]);
-		Belief::Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
+		/*Belief::*/Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
+		Collision col(context, *manipulator);
 		// if the distance is less than distMax, then we check collision with the point cloud 
 //		if (c.p.distance((*maxLhdPose)->toRBPoseSampleGF().p) < ftDrivenDesc.ftModelDesc.distMax*2) {
 //		collision->evaluate(waypoint, (*maxLhdPose)->getCloud(), golem::Rand(rand), manipulator->getPose(w.cpos), testCollision);
@@ -1531,7 +1534,8 @@ bool FTDrivenHeuristic::collides(const Waypoint &w, ThreadData* data) const {
 #ifdef _HEURISTIC_PERFMON
 				++perfCollisionPointCloud;
 #endif
-				if (Math::abs(collision->evaluate(waypoint, pBelief.get(), 0, golem::Rand(rand), manipulator->getPose(w.cpos), false)) > REAL_ZERO)
+				//if (Math::abs(col.evaluate(waypoint, **maxLhdPose, manipulator->getPose(w.cpos), false)) > REAL_ZERO)
+				if (Math::abs(collision->evaluate(waypoint, (*maxLhdPose)->getCloud(), Rand(rand), manipulator->getPose(w.cpos), false)) > REAL_ZERO)
 					return true;
 				break;
 			}
@@ -1639,7 +1643,7 @@ bool FTDrivenHeuristic::collides(const Waypoint &w0, const Waypoint &w1) const {
 
 //------------------------------------------------------------------------------
 
-golem::Real FTDrivenHeuristic::getCollisionCost(const golem::Waypoint &wi, const golem::Waypoint &wj, Belief::Hypothesis::Seq::const_iterator p) const {
+golem::Real FTDrivenHeuristic::getCollisionCost(const golem::Waypoint &wi, const golem::Waypoint &wj, Hypothesis::Seq::const_iterator p) const {
 	// Create the normal estimation class, and pass the input dataset to it
 	//pcl::KdTree<pcl::PointXYZ>::PointCloudConstPtr cloud = p->second->pTree->getInputCloud();
 	//pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
@@ -1658,7 +1662,7 @@ golem::Real FTDrivenHeuristic::getCollisionCost(const golem::Waypoint &wi, const
 
 	//// Compute the features
 	//ne.compute(*cloudNormals);		// compute the normal at the closest point of the surface
-	Belief::Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
+	Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
 	const Real norm = (REAL_ONE - pBelief->density(pBelief->myDesc.sensory.sensoryRange));//const Real norm = //(ftDrivenDesc.ftModelDesc.enabledLikelihood)?/*REAL_ONE/*/(REAL_ONE - kernel(ftDrivenDesc.ftModelDesc.lambda*ftDrivenDesc.ftModelDesc.distMax)):REAL_ONE;
 	Real threshold(0.01), cost(REAL_ZERO);
 	for (Chainspace::Index i = handInfo.getChains().begin(); i < handInfo.getChains().end(); ++i) {

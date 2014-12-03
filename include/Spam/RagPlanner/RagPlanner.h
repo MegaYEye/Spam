@@ -43,7 +43,6 @@
 #pragma once
 #ifndef _SPAM_RAGPLANNER_RAGPLANNER_H_
 #define _SPAM_RAGPLANNER_RAGPLANNER_H_
-#define _GRASP_CAMERA_DEPTH
 
 //------------------------------------------------------------------------------
 
@@ -160,7 +159,7 @@ public:
 	};
 
 	/** Profile state sequence */
-	virtual void profile(golem::SecTmReal duration, const golem::Controller::State::Seq& inp, golem::Controller::State::Seq& out) const;
+	virtual void profile(golem::SecTmReal duration, const golem::Controller::State::Seq& inp, golem::Controller::State::Seq& out, const bool silent = false) const;
 
 	virtual ~RagPlanner();
 
@@ -218,6 +217,7 @@ protected:
 	/** Enables/disables force reading */
 	bool enableForceReading;
 	bool forcereadersilent;
+	bool contactOccured;
 
 	/** Query transformation */
 	grasp::RBCoord queryPointsTrn;
@@ -283,6 +283,11 @@ protected:
 	golem::BoundsRenderer handRenderer;
 	void renderWaypoints(const golem::Bounds::Seq &bounds, bool clear = false);
 	golem::BoundsRenderer waypointRenderer;
+
+	// clear states
+	grasp::Robot::State::Seq robotStates;
+
+	bool unlockContact();
 
 	/** Prints out a trajectory */
 	void printTrajectory(const golem::Controller::State::Seq &trajectory, const golem::Configspace::Index &begin, const golem::Configspace::Index &end) const;

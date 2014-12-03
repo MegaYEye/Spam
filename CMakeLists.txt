@@ -289,6 +289,7 @@ endif(BUILD_DYNAMIC_LIBS)
 if (WIN32)
 	TARGET_LINK_LIBRARIES(
 		SpamSpam
+		optimized GraspCore${CMAKE_RELEASE_POSTFIX} debug GraspCore${CMAKE_DEBUG_POSTFIX}
 		optimized GraspGrasp${CMAKE_RELEASE_POSTFIX} debug GraspGrasp${CMAKE_DEBUG_POSTFIX}
 		optimized GraspApp${CMAKE_RELEASE_POSTFIX} debug GraspApp${CMAKE_DEBUG_POSTFIX}		 
 		NxCharacter64 PhysXCooking64 PhysXCore64 PhysXLoader64
@@ -324,11 +325,12 @@ if (WIN32)
 	endif(BUILD_SPAM_CAMERA_DEPTH_OPENNI)
 elseif (UNIX)
 	TARGET_LINK_LIBRARIES(
-		SpamSpam
+		SpamSpam		
 		${PCL_LIBRARIES}
 		optimized CamcalbCalb${CMAKE_RELEASE_POSTFIX} debug CamcalbCalb${CMAKE_DEBUG_POSTFIX}
 		optimized CamcalbMatas${CMAKE_RELEASE_POSTFIX} debug CamcalbMatas${CMAKE_DEBUG_POSTFIX}		 
 		${OpenCV_LIBS}
+		optimized GraspCore${CMAKE_RELEASE_POSTFIX} debug GraspCore${CMAKE_DEBUG_POSTFIX}		
 		optimized GraspGrasp${CMAKE_RELEASE_POSTFIX} debug GraspGrasp${CMAKE_DEBUG_POSTFIX}
 		optimized GraspApp${CMAKE_RELEASE_POSTFIX} debug GraspApp${CMAKE_DEBUG_POSTFIX}		 
 		${Boost_LIBRARIES}

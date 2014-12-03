@@ -407,7 +407,7 @@ protected:
 	/** Observational cost function over a trajectory */
 	golem::Real expectedObservationCost(const golem::Waypoint &wi, const golem::Waypoint &wj) const;
 	/** Computes the distance between future observations */
-	golem::Real psi(const golem::Waypoint& wi, const golem::Waypoint& wj, Belief::Hypothesis::Seq::const_iterator p) const;
+	golem::Real psi(const golem::Waypoint& wi, const golem::Waypoint& wj, Hypothesis::Seq::const_iterator p) const;
 	/** Pair observational function over a trajectory */
 //	void h(const golem::Waypoint &wi, const golem::Waypoint &wj, Belief::Hypothesis::Seq::const_iterator p, std::vector<golem::Real> &y) const;
 	/** Pair observational function over a trajectory */
@@ -425,7 +425,7 @@ protected:
 //	golem::Real density(const grasp::RBCoord &x, const grasp::RBCoord &p) const;
 
 	/** Penalises configurations which collide with the mean hypothesis */
-	golem::Real getCollisionCost(const golem::Waypoint &wi, const golem::Waypoint &wj, Belief::Hypothesis::Seq::const_iterator p) const;
+	golem::Real getCollisionCost(const golem::Waypoint &wi, const golem::Waypoint &wj, Hypothesis::Seq::const_iterator p) const;
 
 	/** Create heuristic from the description */
 	bool create(const Desc &desc);

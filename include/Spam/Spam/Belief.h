@@ -46,30 +46,30 @@
 
 //------------------------------------------------------------------------------
 
-#include <Grasp/Grasp/Cloud.h>
-#include <Grasp/Grasp/RBPose.h>
+//#include <Grasp/Grasp/Cloud.h>
+//#include <Grasp/Grasp/RBPose.h>
 #include <Grasp/Grasp/Robot.h>
 #include <Spam/Spam/Spam.h>
 
-//------------------------------------------------------------------------------
-
-namespace flann {
-	template <typename T> struct L2_Simple;
-};
-
-namespace pcl {
-	struct PointXYZ;
-	template <typename T, typename Dist> class KdTreeFLANN;
-	struct PolygonMesh;
-};
-
-namespace grasp {
-	class Manipulator;
-};
-
-namespace spam {
-	class FTDrivenHeuristic;
-};
+////------------------------------------------------------------------------------
+//
+//namespace flann {
+//	template <typename T> struct L2_Simple;
+//};
+//
+//namespace pcl {
+//	struct PointXYZ;
+//	template <typename T, typename Dist> class KdTreeFLANN;
+//	struct PolygonMesh;
+//};
+//
+//namespace grasp {
+//	class Manipulator;
+//};
+//
+//namespace spam {
+//	class FTDrivenHeuristic;
+//};
 
 //------------------------------------------------------------------------------
 
@@ -83,36 +83,36 @@ public:
 	friend class FTDrivenHeuristic;
 	typedef golem::shared_ptr<Belief> Ptr;
 
-	/** Appearance */
-	class Appearance {
-	public:
-		/** Show frame */
-		bool showFrames;
-		/** Show point cloud */
-		bool showPoints;
-		/** Frame size of the sample */
-		golem::Vec3 frameSize;
-		/** clolour of the point cloud */
-		golem::RGBA colour;
+	///** Appearance */
+	//class Appearance {
+	//public:
+	//	/** Show frame */
+	//	bool showFrames;
+	//	/** Show point cloud */
+	//	bool showPoints;
+	//	/** Frame size of the sample */
+	//	golem::Vec3 frameSize;
+	//	/** clolour of the point cloud */
+	//	golem::RGBA colour;
 
-		/** Constructs from description object */
-		Appearance() {
-			setToDefault();
-		}
-		/** Sets the parameters to the default values */
-		void setToDefault() {
-			showFrames = true;
-			showPoints = true;
-			frameSize.set(golem::Real(0.02));
-			colour = golem::RGBA::MAGENTA;
-		}
-		/** Checks if the description is valid. */
-		bool isValid() const {
-			if (!frameSize.isPositive())
-				return false;
-			return true;
-		}
-	};
+	//	/** Constructs from description object */
+	//	Appearance() {
+	//		setToDefault();
+	//	}
+	//	/** Sets the parameters to the default values */
+	//	void setToDefault() {
+	//		showFrames = true;
+	//		showPoints = true;
+	//		frameSize.set(golem::Real(0.02));
+	//		colour = golem::RGBA::MAGENTA;
+	//	}
+	//	/** Checks if the description is valid. */
+	//	bool isValid() const {
+	//		if (!frameSize.isPositive())
+	//			return false;
+	//		return true;
+	//	}
+	//};
 
 	/** Forward model to describe hand-object interactions */
 	class RigidBodyTransformation {
@@ -133,74 +133,74 @@ public:
 		golem::Mat34 pose;
 	};
 
-		/** Hypothesis over object poses */
-	class Hypothesis {
-	public:
-		friend class FTDrivenHeuristic;
-		friend class Belief;
-		typedef golem::shared_ptr<Hypothesis> Ptr;
-		typedef std::map<golem::U32, Ptr> Map;
-		typedef std::vector<Ptr> Seq;
+	//	/** Hypothesis over object poses */
+	//class Hypothesis {
+	//public:
+	//	friend class FTDrivenHeuristic;
+	//	friend class Belief;
+	//	typedef golem::shared_ptr<Hypothesis> Ptr;
+	//	typedef std::map<golem::U32, Ptr> Map;
+	//	typedef std::vector<Ptr> Seq;
 
-		/** Default construtor */
-		Hypothesis() {
-			appearance.setToDefault();
-		}
-		/** Complete constructor */
-		Hypothesis(const golem::U32 idx, const golem::Mat34 &trn, const grasp::RBPose::Sample &s, grasp::Cloud::PointSeq &p) {
-			index = idx;
-			modelFrame = trn;
-			sample = s;
-			for (grasp::Cloud::PointSeq::const_iterator i = p.begin(); i != p.end(); ++i)
-				points.push_back(*i);
-			build();
-			//buildMesh();
+	//	/** Default construtor */
+	//	Hypothesis() {
+	//		appearance.setToDefault();
+	//	}
+	//	/** Complete constructor */
+	//	Hypothesis(const golem::U32 idx, const golem::Mat34 &trn, const grasp::RBPose::Sample &s, grasp::Cloud::PointSeq &p) {
+	//		index = idx;
+	//		modelFrame = trn;
+	//		sample = s;
+	//		for (grasp::Cloud::PointSeq::const_iterator i = p.begin(); i != p.end(); ++i)
+	//			points.push_back(*i);
+	//		build();
+	//		//buildMesh();
 
-			appearance.setToDefault();
-		}
-		/** Destrutor */
-		~Hypothesis() {
-			pTree.release();
-			pTriangles.release();
-		}
+	//		appearance.setToDefault();
+	//	}
+	//	/** Destrutor */
+	//	~Hypothesis() {
+	//		pTree.release();
+	//		pTriangles.release();
+	//	}
 
-		/** Distance to nearest k points on the object's surface */
-		golem::Real dist2NearestKPoints(const grasp::RBCoord &pose, const golem::Real &maxDist = golem::Real(1.0), const size_t clusters = 10, const size_t &nIndeces = 100, const bool normal = true) const;
+	//	/** Distance to nearest k points on the object's surface */
+	//	golem::Real dist2NearestKPoints(const grasp::RBCoord &pose, const golem::Real &maxDist = golem::Real(1.0), const size_t clusters = 10, const size_t &nIndeces = 100, const bool normal = true) const;
 
-		/** Nearest K points */
-		size_t nearestKPoints(const grasp::RBCoord &pose, grasp::Cloud::PointSeq &points, std::vector<float> &distances, const size_t clusters = 50) const;
+	//	/** Nearest K points */
+	//	size_t nearestKPoints(const grasp::RBCoord &pose, grasp::Cloud::PointSeq &points, std::vector<float> &distances, const size_t clusters = 50) const;
 
-		/** Returns this sample in model frame **/
-		inline grasp::RBPose::Sample toRBPoseSample() const { return sample; };
-		/** Returns this sample in global frame (default: robot frame) **/
-		inline grasp::RBPose::Sample toRBPoseSampleGF() const { return grasp::RBPose::Sample(sample.toMat34() * modelFrame, sample.weight, sample.cdf); };
-		/** Returns the point cloud in global frame */
-		inline grasp::Cloud::PointSeq getCloud() const { return points; };
+	//	/** Returns this sample in model frame **/
+	//	inline grasp::RBPose::Sample toRBPoseSample() const { return sample; };
+	//	/** Returns this sample in global frame (default: robot frame) **/
+	//	inline grasp::RBPose::Sample toRBPoseSampleGF() const { return grasp::RBPose::Sample(sample.toMat34() * modelFrame, sample.weight, sample.cdf); };
+	//	/** Returns the point cloud in global frame */
+	//	inline grasp::Cloud::PointSeq getCloud() const { return points; };
 
-		/** Draw hypothesis */
-		void draw(golem::DebugRenderer& renderer) const;
+	//	/** Draw hypothesis */
+	//	void draw(golem::DebugRenderer& renderer) const;
 
-		Appearance appearance;
+	//	Appearance appearance;
 
-	protected:
-		/** Builds a pcl::PointCloud and its kd tree */
-		bool build();
-		/** Builds a pcl::PointCloud and its mesh */
-		bool buildMesh();
+	//protected:
+	//	/** Builds a pcl::PointCloud and its kd tree */
+	//	bool build();
+	//	/** Builds a pcl::PointCloud and its mesh */
+	//	bool buildMesh();
 
-		/** Identifier */
-		golem::U32 index;
-		/** Model frame **/
-		golem::Mat34 modelFrame;
-		/** Hypothesis. NOTE: contains the query (or sample) frame w.r.t model frame **/
-		grasp::RBPose::Sample sample;
-		/** Point cloud */
-		grasp::Cloud::PointSeq points;
-		/** Kd tree */
-		golem::shared_ptr<pcl::KdTreeFLANN<pcl::PointXYZ, flann::L2_Simple<float>>> pTree;
-		/** Polygon mesh */
-		golem::shared_ptr<pcl::PolygonMesh> pTriangles;
-	};
+	//	/** Identifier */
+	//	golem::U32 index;
+	//	/** Model frame **/
+	//	golem::Mat34 modelFrame;
+	//	/** Hypothesis. NOTE: contains the query (or sample) frame w.r.t model frame **/
+	//	grasp::RBPose::Sample sample;
+	//	/** Point cloud */
+	//	grasp::Cloud::PointSeq points;
+	//	/** Kd tree */
+	//	golem::shared_ptr<pcl::KdTreeFLANN<pcl::PointXYZ, flann::L2_Simple<float>>> pTree;
+	//	/** Polygon mesh */
+	//	golem::shared_ptr<pcl::PolygonMesh> pTriangles;
+	//};
 
 	/** Description file of tactile observational model */
 	class SensoryDesc {
@@ -362,7 +362,7 @@ protected:
 	RigidBodyTransformation trn;
 
 	/** Appearance */
-	Appearance appearance;
+	Hypothesis::Appearance appearance;
 
 	/** Model point cloud **/
 	grasp::Cloud::PointSeq modelPoints;

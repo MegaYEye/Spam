@@ -285,7 +285,6 @@ bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const 
 //	context.write("RagGraphPlanner::find target\n");
 //	return GraphPlanner::findTarget(begin, wend, cend);
 	context.verbose("RagGraphPlanner::findTarget: %s\n", grasp::plannerDebug(*this).c_str());
-
 	bool enable = false;
 	spam::FTDrivenHeuristic *heuristic = getFTDrivenHeuristic();
 	if (heuristic) {
@@ -333,6 +332,7 @@ bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const 
 
 	// find the goal state
 	if (!pKinematics->findGoal(root, wend, cend)) {
+		printf("failure\n");
 		context.error("GraphPlanner::findTarget(): unable to find target\n");
 		return false;
 	}

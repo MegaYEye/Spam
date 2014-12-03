@@ -59,6 +59,34 @@ namespace spam {
 /** SPAM Pose planner. */
 class PosePlanner : public grasp::Player {
 public:
+	enum  action {
+		NONE,
+		GRASP,
+		IG_PLAN_ON_QUERY,
+		IG_PLAN_M2Q,
+		IG_TRAJ_OPT
+	};
+	static std::string actionToString(action type) {
+		std::string str;
+		switch (type) {
+		case action::NONE:
+			str.assign("NONE");
+			break;
+		case action::GRASP:
+			str.assign("GRASP");
+			break;
+		case action::IG_PLAN_M2Q:
+			str.assign("IG_PLAN_M2Q");
+			break;
+		case action::IG_PLAN_ON_QUERY:
+			str.assign("IG_PLAN_ON_QUERY");
+			break;
+		case action::IG_TRAJ_OPT:
+			str.assign("IG_TRAJ_OPT");
+			break;
+		}
+		return str;
+	}
 	/** Data */
 	class Data : public grasp::Player::Data {
 	public:
@@ -86,6 +114,9 @@ public:
 
 		/** Belief file name extension */
 		std::string extSamples;
+
+		/** type of action to execute */
+		action actionType;
 		
 		/** Reset data during construction */
 		Data() {
@@ -110,6 +141,8 @@ public:
 			hypotheses.clear();
 
 			extSamples = ".rbs";
+
+			actionType = action::NONE;
 		}
 		/** Assert that the description is valid. */
 		virtual void assertValid(const grasp::Assert::Context& ac) const {
@@ -193,7 +226,7 @@ public:
 		typedef golem::shared_ptr<Trajectory> Ptr;
 		typedef std::map<std::string, Ptr> Map;
 
-		Trajectory(const std::string &type, const golem::Controller &controller, const golem::Controller::State::Seq trajectory) {
+		Trajectory(const action &type, const golem::Controller &controller, const golem::Controller::State::Seq trajectory) {
 			this->type = type;
 			waypoints.clear();
 			for (auto i = trajectory.begin(); i != trajectory.end(); ++i)
@@ -203,13 +236,13 @@ public:
 		/** To string */
 		std::string toString(const golem::Controller &controller) {
 			std::stringstream ss;
-			ss << "Trajectory type=" << type << " size=" << waypoints.size() << "\n";
+			ss << "Trajectory type=" << actionToString(type).c_str() << " size=" << waypoints.size() << "\n";
 			for (auto i = waypoints.begin(); i != waypoints.end(); ++i)
 				ss << (*i)->toString(controller);
 			return ss.str();
 		}
 
-		std::string type;
+		action type;
 		Waypoint::SeqPtr waypoints;
 	};
 	class State {
@@ -247,28 +280,64 @@ public:
 			typedef golem::shared_ptr<Iteration> Ptr;
 			typedef std::map<golem::U32, Ptr> Map;
 
+			/** Trial path */
+			std::string path;
+			/** Name separator */
+			std::string sepName;
+			/** Data file name extension */
+			std::string extIter;
+
+			/** Belief state */
 			State::Ptr state;
-			Trajectory::Ptr trajectory;
+			/** Executed trajectory */
+			//Trajectory::Ptr trajectory;
+			golem::Controller::State::Seq trajectory;
+			/** Action type to execute */
+			action actionType;
+			/** Robot pose at the moment of the contact */
+			grasp::RobotPose pose;
+			/** chain and joint in contact. If no contact -1 */
+			golem::U32 chainIdx, jointIdx;
 
-			Iteration() {
-				this->state.reset();
-				this->trajectory.reset();
+			Iteration(const std::string &path) {
+				this->path = path;
+				setToDefault();
 			}
-			Iteration(const Belief *belief) {
+			Iteration(const std::string &path, const Belief *belief) {
+				this->path = path;
+				setToDefault();
 				state.reset(new State(*belief));
-				trajectory.reset();
 			}
 
-			void setTrajectory(const std::string type, const golem::Controller &controller, const golem::Controller::State::Seq &trajectory) {
-				this->trajectory.reset(new Trajectory(type, controller, trajectory));
+			void setToDefault() {
+				this->state.reset();
+				this->trajectory.clear();//.reset();
+				actionType = action::NONE;
+				sepName = "-";
+				extIter = ".rbs";
+			}
+
+			//void setTrajectory(const action &type, const golem::Controller &controller, const golem::Controller::State::Seq &trajectory) {
+			//	this->trajectory.reset(new Trajectory(type, controller, trajectory));
+			//}
+			void setTrajectory(const golem::Controller::State::Seq &trajectory) {
+				this->trajectory = trajectory;
+			}
+
+			/** Name */
+			std::string getName() const {
+				return path;
 			}
 
 			std::string toString(const golem::Controller &controller) {
 				std::stringstream ss;
 				ss << state->toString() << "\n";
-				ss << trajectory->toString(controller) << "\n";
+				//ss << trajectory->toString(controller) << "\n";
 				return ss.str();
 			}
+
+			/** Reads/writes object from/to a given XML context */
+			virtual void xmlData(golem::XMLContext* context, bool create = false) const;
 		};
 
 		/** Data ptr */
@@ -304,11 +373,11 @@ public:
 
 		/** Sets the parameters to the default values */
 		virtual void setToDefault() {
-			dataPath = "./data/boris/bucket/spam.xml";
+			dataPath = "./data/boris/jug/spam.xml";
 
 			name = "Default";
-			path = "./data/";
-			extTrial = ".trl";
+			path = "./data/rag_analysis/jug.xml";
+			extTrial = ".xml";
 			silent = false;
 			enable = false;
 
@@ -340,6 +409,38 @@ public:
 
 		/** Destructor */
 		virtual ~TrialData() {}
+
+		/** set up the trial */
+		virtual void setup(const golem::Context &context,  golem::Rand &rand) {
+			using namespace golem;
+			Mat33 rot = Mat33::identity();
+			rot.rotZ(rand.nextUniform<Real>()*queryStdDev.ang);
+			Vec3 v(REAL_ONE, REAL_ONE, REAL_ONE);
+			Vec3 vquery = v*-queryStdDev.lin;
+			queryPointsTrn.set(vquery + Vec3(rand.nextUniform<Real>(), rand.nextUniform<Real>(), rand.nextUniform<Real>())*queryStdDev.lin * 2, rot);
+			queryPointsTrn.p.z *= 0.01;
+			if (!silent) context.write("trialData->queryPointsTrn <%f %f %f> [%f %f %f %f] (lin=%f, ang=%f)\n", queryPointsTrn.p.x, queryPointsTrn.p.y, queryPointsTrn.p.z,
+				queryPointsTrn.q.w, queryPointsTrn.q.x, queryPointsTrn.q.y, queryPointsTrn.q.z, queryStdDev.lin, queryStdDev.ang);
+			rot = Mat33::identity();
+			rot.rotZ(rand.nextUniform<Real>()*objPoseStdDev.ang);
+			Vec3 vobj = v*-objPoseStdDev.lin;
+			objectPoseTrn.set(vobj + Vec3(rand.nextUniform<Real>(), rand.nextUniform<Real>(), rand.nextUniform<Real>())*objPoseStdDev.lin * 2, rot);
+			if (!silent) context.write("trialData->objectPoseTrn <%f %f %f> [%f %f %f %f] (lin=%f, ang=%f)\n", objectPoseTrn.p.x, objectPoseTrn.p.y, objectPoseTrn.p.z,
+				objectPoseTrn.q.w, objectPoseTrn.q.x, objectPoseTrn.q.y, objectPoseTrn.q.z, objPoseStdDev.lin, objPoseStdDev.ang);
+		}
+
+		/** Name */
+		std::string getName() const {
+			std::string name = path;
+			const size_t pos = name.rfind(extTrial);
+			if (pos != std::string::npos) name.erase(pos);
+			return name;
+		}
+
+		/** Load from disk */
+		virtual void load();
+		/** Save to disk */
+		virtual void save() const;
 
 		/** Adds new entry */
 		void add(const Iteration::Ptr &iteration) {
@@ -446,6 +547,9 @@ public:
 		}
 	};
 
+	/** Process algortihm */
+	virtual void processPoints(Data::Map::const_iterator dataPtr, const Selection& selection, const bool silent = false);
+
 protected:
 	/** Generator of pseudo random numbers */
 	golem::Rand rand;
@@ -516,6 +620,8 @@ protected:
 	bool showObject;
 	/** Displayed feature index */
 	golem::U32 featureIndex;
+	/** Show processed points */
+	bool showPoints;
 
 	///** Distribution num of poses **/
 	//size_t numPoses;

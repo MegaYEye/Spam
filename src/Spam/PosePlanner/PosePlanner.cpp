@@ -74,8 +74,8 @@ void spam::PosePlanner::Data::xmlData(golem::XMLContext* context, bool create) c
 			printf("%s\n", msg.str().c_str());
 	}
 	try {
-		xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(queryPoints), std::string("query_points"), context, create);
 		xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(modelPoints), std::string("model_points"), context, create);
+		xmlDataCloud(const_cast<grasp::Cloud::PointSeq&>(queryPoints), std::string("query_points"), context, create);
 	}
 	catch (const golem::MsgXMLParser& msg) {
 		std::printf("%s\n", msg.what());
@@ -98,19 +98,21 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	grasp::Player::create(desc); // throws
 
 	trialData = desc.trialData;
-	Mat33 rot = Mat33::identity();
-	rot.rotZ(rand.nextUniform<Real>()*desc.trialData->queryStdDev.ang);
-	Vec3 v(REAL_ONE, REAL_ONE, REAL_ONE);
-	Vec3 vquery = v*-desc.trialData->queryStdDev.lin;
-	trialData->queryPointsTrn.set(vquery-Vec3(rand.nextUniform<Real>(), rand.nextUniform<Real>(), rand.nextUniform<Real>())*desc.trialData->queryStdDev.lin*2, rot);
-	context.write("PosePlannenr::Create(): trialData->queryPointsTrn <%f %f %f> [%f %f %f %f] (lin=%f, ang=%f)\n", trialData->queryPointsTrn.p.x, trialData->queryPointsTrn.p.y, trialData->queryPointsTrn.p.z,
-		trialData->queryPointsTrn.q.w, trialData->queryPointsTrn.q.x, trialData->queryPointsTrn.q.y, trialData->queryPointsTrn.q.z, desc.trialData->queryStdDev.lin, desc.trialData->queryStdDev.ang);
-	rot = Mat33::identity();
-	rot.rotZ(rand.nextUniform<Real>()*desc.trialData->objPoseStdDev.ang);
-	Vec3 vobj = v*-desc.trialData->objPoseStdDev.lin;
-	trialData->objectPoseTrn.set(vobj-Vec3(rand.nextUniform<Real>(), rand.nextUniform<Real>(), rand.nextUniform<Real>())*desc.trialData->objPoseStdDev.lin*2, rot);
-	context.write("PosePlannenr::Create(): trialData->objectPoseTrn <%f %f %f> [%f %f %f %f] (lin=%f, ang=%f)\n", trialData->objectPoseTrn.p.x, trialData->objectPoseTrn.p.y, trialData->objectPoseTrn.p.z,
-		trialData->objectPoseTrn.q.w, trialData->objectPoseTrn.q.x, trialData->objectPoseTrn.q.y, trialData->objectPoseTrn.q.z, desc.trialData->objPoseStdDev.lin, desc.trialData->objPoseStdDev.ang);
+	trialData->setup(context, rand);
+	//Mat33 rot = Mat33::identity();
+	//rot.rotZ(rand.nextUniform<Real>()*desc.trialData->queryStdDev.ang);
+	//Vec3 v(REAL_ONE, REAL_ONE, REAL_ONE);
+	//Vec3 vquery = v*-desc.trialData->queryStdDev.lin;
+	//trialData->queryPointsTrn.set(vquery+Vec3(rand.nextUniform<Real>(), rand.nextUniform<Real>(), rand.nextUniform<Real>())*desc.trialData->queryStdDev.lin*2, rot);
+	//trialData->queryPointsTrn.p.z *= 0.01;
+	//context.write("PosePlannenr::Create(): trialData->queryPointsTrn <%f %f %f> [%f %f %f %f] (lin=%f, ang=%f)\n", trialData->queryPointsTrn.p.x, trialData->queryPointsTrn.p.y, trialData->queryPointsTrn.p.z,
+	//	trialData->queryPointsTrn.q.w, trialData->queryPointsTrn.q.x, trialData->queryPointsTrn.q.y, trialData->queryPointsTrn.q.z, desc.trialData->queryStdDev.lin, desc.trialData->queryStdDev.ang);
+	//rot = Mat33::identity();
+	//rot.rotZ(rand.nextUniform<Real>()*desc.trialData->objPoseStdDev.ang);
+	//Vec3 vobj = v*-desc.trialData->objPoseStdDev.lin;
+	//trialData->objectPoseTrn.set(vobj+Vec3(rand.nextUniform<Real>(), rand.nextUniform<Real>(), rand.nextUniform<Real>())*desc.trialData->objPoseStdDev.lin*2, rot);
+	//context.write("PosePlannenr::Create(): trialData->objectPoseTrn <%f %f %f> [%f %f %f %f] (lin=%f, ang=%f)\n", trialData->objectPoseTrn.p.x, trialData->objectPoseTrn.p.y, trialData->objectPoseTrn.p.z,
+	//	trialData->objectPoseTrn.q.w, trialData->objectPoseTrn.q.x, trialData->objectPoseTrn.q.y, trialData->objectPoseTrn.q.z, desc.trialData->objPoseStdDev.lin, desc.trialData->objPoseStdDev.ang);
 
 	pRBPose = desc.pRBPoseDesc->create(context); // throws
 	pBelief = static_cast<Belief*>(pRBPose.get());
@@ -131,7 +133,7 @@ bool spam::PosePlanner::create(const Desc& desc) {
 //	objectTrn = desc.objectTrn;
 	modelDataPtr = getData().end();
 	resetDataPointers();
-//	screenCapture = desc.screenCapture;
+	screenCapture = true;// desc.screenCapture;
 
 	//numPoses = desc.numPoses;
 	//numHypotheses = desc.numHypotheses;
@@ -178,12 +180,12 @@ void spam::PosePlanner::resetDataPointers() {
 	showSamplePoints = false;
 	showMeanHypothesis = false;
 	showObject = false;
+	showPoints = true;
 //	showTest = false;
 	featureIndex = -1;
 }
 
 void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
-	grasp::Player::renderData(dataPtr);
 	{
 		golem::CriticalSectionWrapper csw(csDataRenderer);
 	
@@ -223,8 +225,9 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 					//	grasp::Cloud::transform(actionFrame, sample, sample);
 					//	//sampleRenderer.addAxes(sampleFrame, distribFrameSize);
 					//	sampleAppearance.draw(sample, sampleRenderer);
-					for (Belief::Hypothesis::Seq::const_iterator i = pBelief->getHypotheses().begin(); i != pBelief->getHypotheses().end(); ++i) {
+					for (Hypothesis::Seq::const_iterator i = pBelief->getHypotheses().begin(); i != pBelief->getHypotheses().end(); ++i) {
 						sampleAppearance.draw((*i)->getCloud(), sampleRenderer);
+						sampleRenderer.addAxes((*i)->toRBPoseSampleGF().toMat34(), featureFrameSize);
 						if (showMeanHypothesis)
 							break;
 					//context.debug("cloud size %d\n", (*pBelief->getHypotheses().begin())->getCloud().size());
@@ -266,6 +269,7 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 				grasp::to<Data>(dataPtr)->draw(grasp::to<Data>(dataPtr)->queryPoints, pointFeatureRenderer);
 		}
 	}
+	if (showPoints) grasp::Player::renderData(dataPtr);
 }
 
 //------------------------------------------------------------------------------
@@ -307,9 +311,155 @@ void spam::PosePlanner::create(const golem::Controller::State::Seq& inp, golem::
 
 //------------------------------------------------------------------------------
 
+void spam::PosePlanner::TrialData::Iteration::xmlData(golem::XMLContext* context, bool create) const {
+	//if (!state->poses.empty() && create) {
+	//	const std::string name = "belief_pdf";
+	//	std::stringstream str;
+	//	str << "Save poses\n";
+	//	size_t id = 1;
+	//	for (grasp::RBPose::Sample::Seq::const_iterator i = state->poses.begin(); i != state->poses.end(); ++i)
+	//		str << "pose " << id++ << " " << i->p.x << " " << i->p.y << " " << i->p.z << "\n";
+	//	str << "---------------------------------------------------------\n";
+	//	std::printf("%s", str.str().c_str());
+	//	xmlDataSave(context->createContext(name.c_str()), grasp::makeString("%s%s%s%s%s%s", getName().c_str(), sepName.c_str(), name.c_str(), sepName.c_str(), "pdf", extIter.c_str()), state->poses);
+	//}
+	//if (!state->hypotheses.empty() && create){
+	//	const std::string name = "belief_hypotheses";
+	//	std::stringstream str;
+	//	str << "Save hypotheses\n";
+	//	size_t id = 1;
+	//	for (grasp::RBPose::Sample::Seq::const_iterator i = hypotheses.begin(); i != hypotheses.end(); ++i)
+	//		str << "hypotheses " << id++ << " " << i->p.x << " " << i->p.y << " " << i->p.z << "\n";
+	//	std::printf("%s", str.str().c_str());
+	//	str << "---------------------------------------------------------\n";
+	//	xmlDataSave(context->createContext(name.c_str()), grasp::makeString("%s%s%s%s%s%s", getName().c_str(), sepName.c_str(), name.c_str(), sepName.c_str(), "hypotheses", extIter.c_str()), hypotheses);
+	//}
+	//if (!create) {
+	//	const std::string name = "belief_pdf";
+	//	xmlDataLoad(context->getContextFirst(name.c_str()), "", const_cast<grasp::RBPose::Sample::Seq&>(poses), grasp::RBPose::Sample());
+	//	std::stringstream str;
+	//	str << "Load poses\n";
+	//	size_t id = 1;
+	//	for (grasp::RBPose::Sample::Seq::const_iterator i = poses.begin(); i != poses.end(); ++i)
+	//		str << "pose " << id++ << " " << i->p.x << " " << i->p.y << " " << i->p.z << "\n";
+	//	str << "---------------------------------------------------------\n";
+	//	const std::string name1 = "belief_hypotheses";
+	//	xmlDataLoad(context->getContextFirst(name1.c_str()), "", const_cast<grasp::RBPose::Sample::Seq&>(hypotheses), grasp::RBPose::Sample());
+	//	id = 1;
+	//	str << "Load hypotheses\n";
+	//	for (grasp::RBPose::Sample::Seq::const_iterator i = hypotheses.begin(); i != hypotheses.end(); ++i)
+	//		str << "hypotheses " << id++ << " " << i->p.x << " " << i->p.y << " " << i->p.z << "\n";
+	//	str << "---------------------------------------------------------\n";
+	//	std::printf("%s", str.str().c_str());
+	//}
+
+
+}
+
+void spam::PosePlanner::TrialData::xmlData(golem::XMLContext* context, bool create) const {
+	golem::XMLData("name", const_cast<std::string&>(name), context, create);
+	golem::XMLData("path", const_cast<std::string&>(path), context, create);
+	golem::XMLData("ext_trial", const_cast<std::string&>(extTrial), context, create);
+
+	golem::XMLData("enable", const_cast<bool&>(enable), context, create);
+	golem::XMLData("silent", const_cast<bool&>(silent), context, create);
+
+	XMLData(const_cast<grasp::RBDist&>(queryStdDev), create ? context->createContext("meta_query_transformation") : context->getContextFirst("meta_query_transformation"), create);
+	XMLData(const_cast<grasp::RBDist&>(objPoseStdDev), create ? context->createContext("meta_obj_pose_transformation") : context->getContextFirst("meta_obj_pose_transformation"), create);
+
+	try {
+		XMLData(const_cast<grasp::RBCoord&>(queryPointsTrn), create ? context->createContext("query_transformation") : context->getContextFirst("query_transformation"), create);
+		XMLData(const_cast<grasp::RBCoord&>(objectPoseTrn), create ? context->createContext("obj_pose_transformation") : context->getContextFirst("obj_pose_transformation"), create);
+
+	}
+	catch (const golem::MsgXMLParser& msg) {
+		std::printf("%s\n", msg.what());
+		if (create)
+			printf("%s\n", msg.str().c_str());
+	}
+
+}
+
+//void spam::PosePlanner::TrialData::xmlData(golem::XMLContext* context, bool create) const {
+//	try {
+//		if (!create) {
+//			golem::XMLData(const_cast<grasp::RBCoord&>(objectPoseTrn), context->getContextFirst("object_pose_transform", create), create);
+//			golem::XMLData(const_cast<grasp::RBCoord&>(queryPointsTrn), context->getContextFirst("query_points_transform", create), create);
+//		}
+//	//	if (!poses.empty() && create) {
+//	//		const std::string name = "belief_pdf";
+//	//		std::stringstream str;
+//	//		str << "Save poses\n";
+//	//		size_t id = 1;
+//	//		for (grasp::RBPose::Sample::Seq::const_iterator i = poses.begin(); i != poses.end(); ++i)
+//	//			str << "pose " << id++ << " " << i->p.x << " " << i->p.y << " " << i->p.z << "\n";
+//	//		str << "---------------------------------------------------------\n";
+//	//		std::printf("%s", str.str().c_str());
+//	//		xmlDataSave(context->createContext(name.c_str()), grasp::makeString("%s%s%s%s%s%s", getName().c_str(), sepName.c_str(), name.c_str(), sepName.c_str(), "pdf", extSamples.c_str()), poses);
+//	//	}
+//	//	if (!hypotheses.empty() && create){
+//	//		const std::string name = "belief_hypotheses";
+//	//		std::stringstream str;
+//	//		str << "Save hypotheses\n";
+//	//		size_t id = 1;
+//	//		for (grasp::RBPose::Sample::Seq::const_iterator i = hypotheses.begin(); i != hypotheses.end(); ++i)
+//	//			str << "hypotheses " << id++ << " " << i->p.x << " " << i->p.y << " " << i->p.z << "\n";
+//	//		std::printf("%s", str.str().c_str());
+//	//		str << "---------------------------------------------------------\n";
+//	//		xmlDataSave(context->createContext(name.c_str()), grasp::makeString("%s%s%s%s%s%s", getName().c_str(), sepName.c_str(), name.c_str(), sepName.c_str(), "hypotheses", extSamples.c_str()), hypotheses);
+//	//	}
+//	//	if (!create) {
+//	//		const std::string name = "belief_pdf";
+//	//		xmlDataLoad(context->getContextFirst(name.c_str()), "", const_cast<grasp::RBPose::Sample::Seq&>(poses), grasp::RBPose::Sample());
+//	//		std::stringstream str;
+//	//		str << "Load poses\n";
+//	//		size_t id = 1;
+//	//		for (grasp::RBPose::Sample::Seq::const_iterator i = poses.begin(); i != poses.end(); ++i)
+//	//			str << "pose " << id++ << " " << i->p.x << " " << i->p.y << " " << i->p.z << "\n";
+//	//		str << "---------------------------------------------------------\n";
+//	//		const std::string name1 = "belief_hypotheses";
+//	//		xmlDataLoad(context->getContextFirst(name1.c_str()), "", const_cast<grasp::RBPose::Sample::Seq&>(hypotheses), grasp::RBPose::Sample());
+//	//		id = 1;
+//	//		str << "Load hypotheses\n";
+//	//		for (grasp::RBPose::Sample::Seq::const_iterator i = hypotheses.begin(); i != hypotheses.end(); ++i)
+//	//			str << "hypotheses " << id++ << " " << i->p.x << " " << i->p.y << " " << i->p.z << "\n";
+//	//		str << "---------------------------------------------------------\n";
+//	//		std::printf("%s", str.str().c_str());
+//	//	}
+//
+//	}
+//	catch (const golem::MsgXMLParser& msg) {
+//		std::printf("%s\n", msg.what());
+//		if (create)
+//			printf("%s\n", msg.str().c_str());
+//	}
+////	grasp::Player::Data::xmlData(context, create);
+//}
+
+
 PosePlanner::TrialData::Ptr spam::PosePlanner::createTrialData() {
 	return TrialData::Ptr(new TrialData(*trialData));
 }
+
+void spam::PosePlanner::TrialData::load() {
+	// Load xml context and data
+	xmlData(XMLParser::load(path)->getContextRoot()->getContextFirst("grasp trial_data", false), false);
+	// check validity
+	assertValid(grasp::Assert::Context("spam::PosePlanner::TrialData::load(): this->"));
+}
+
+void spam::PosePlanner::TrialData::save() const {
+	// check validity
+	assertValid(grasp::Assert::Context("spam::PosePlanner::TrialData::save(): this->"));
+	// Create XML parser
+	XMLParser::Ptr pParser = XMLParser::Desc().create();
+	// Create xml context and save data
+	golem::mkdir(path.c_str()); // make sure that the directory exists
+	xmlData(pParser->getContextRoot()->getContextFirst("grasp trial_data", true), true);
+	FileWriteStream fws(path.c_str());
+	pParser->store(fws);
+}
+
 
 //------------------------------------------------------------------------------
 
@@ -362,6 +512,145 @@ grasp::Cloud::PointSeqMap::iterator PosePlanner::getPointsTrn(Data::Map::iterato
 	return grasp::Director::getPoints(dataPtr);
 }
 
+void PosePlanner::processPoints(Data::Map::const_iterator dataPtr, const Selection& selection, const bool silent) {
+	{
+		golem::CriticalSectionWrapper csw(csDataRenderer);
+		renderBounds(cloudDesc.objectRegionDesc, cloudDesc.regionColourSolid, cloudDesc.regionColourWire, boundsRenderer);
+		boundsRenderer.addAxes3D(golem::Mat34::identity(), Vec3(0.2));
+	}
+	grasp::ScopeGuard guard([&] {
+		golem::CriticalSectionWrapper csw(csDataRenderer);
+		boundsRenderer.reset();
+	});
+
+	// camera
+	const bool hasCamera = !cameraSeq.empty();
+
+	// transforms
+	typedef std::vector< std::pair<std::string, golem::Mat34> > TrnSeq;
+	TrnSeq trnSeq;
+	trnSeq.push_back(std::make_pair(std::string("None"), golem::Mat34::identity()));
+	trnSeq.push_back(std::make_pair(std::string("Custom"), golem::Mat34::identity()));
+	if (hasCamera) trnSeq.push_back(std::make_pair(std::string("Deformation"), golem::Mat34::identity()));
+	trnSeq.insert(trnSeq.end(), transforms.begin(), transforms.end());
+	TrnSeq::const_iterator trnPtr = silent ? trnSeq.begin() : select(trnSeq.begin(), trnSeq.end(), "Transforms:\n", [](TrnSeq::const_iterator ptr) -> const std::string&{
+		return ptr->first;
+	});
+	const size_t trnIndex = trnPtr - trnSeq.begin();
+
+	// mode
+	const bool process = trnIndex == 0;
+	const bool custom = trnIndex == 1;
+	const bool deformation = hasCamera && trnIndex == 2;
+
+	// transform
+	Mat34 trn = trnPtr->second;
+
+	// custom transform
+	if (custom) {
+		readNumber("x [m] = ", trn.p.x);
+		readNumber("y [m] = ", trn.p.y);
+		readNumber("z [m] = ", trn.p.z);
+		Real roll, pitch, yaw;
+		trn.R.toEuler(roll, pitch, yaw);
+		roll = Math::radToDeg(roll);	readNumber("roll  [deg] = ", roll);
+		pitch = Math::radToDeg(pitch);	readNumber("pitch [deg] = ", pitch);
+		yaw = Math::radToDeg(yaw);		readNumber("yaw   [deg] = ", yaw);
+		trn.R.fromEuler(Math::degToRad(roll), Math::radToDeg(pitch), Math::radToDeg(yaw));
+	}
+
+	// deformation map
+	if (deformation) {
+		cameraIndex = (U32)(select(cameraSeq.begin(), cameraSeq.end(), "Available Cameras:\n", [](grasp::Recorder::Seq::const_iterator ptr) -> const std::string&{
+			return (*ptr)->getCamera()->getName();
+		}, cameraIndex) - cameraSeq.begin());
+	}
+
+	// all data?
+	const bool allData = silent ? false : getData().size() > 1 && waitKey("YN", "Process all data (Y/N)...") == 'Y';
+	Data::Map::const_iterator end = allData ? getData().end() : dataPtr, begin = allData ? getData().begin() : end++;
+
+	// iterate
+	for (Data::Map::const_iterator j = begin; j != end; ++j) {
+		if (allData)
+			context.write("Processing %s...\n", j->first.c_str());
+
+		grasp::Cloud::LabelMap labelMap;
+		grasp::Cloud::RawPointSeqPtrMultiMap inp;
+		std::string suffix;
+		if (silent) suffix += "-query";
+		for (Director::Selection::const_iterator i = selection.begin(); i != selection.end(); ++i) {
+			j->second->ptrPoints = false;
+			j->second->ptrIndex = i->first;
+			grasp::Cloud::RawPointSeqMultiMap::iterator pointsRawPtr = j->second->getPoints<grasp::Cloud::RawPointSeqMultiMap::iterator>(j->second->pointsRaw);
+			if (pointsRawPtr == j->second->pointsRaw.end())
+				continue;
+
+			inp.insert(grasp::Cloud::RawPointSeqPtrMultiMap::value_type(pointsRawPtr->first, pointsRawPtr));
+			labelMap[pointsRawPtr->first] = pointsRawPtr->first;
+			suffix += '-' + std::to_string(i->first + 1);
+		}
+		if (inp.empty())
+			continue;
+
+		try {
+			if (process) {
+				// label re-assignment
+				for (grasp::Cloud::LabelMap::iterator i = labelMap.begin(); i != labelMap.end(); ++i) {
+					std::string name = j->second->labelMap[i->first].name;
+					name += suffix;
+					if (!allData && !silent)
+						readString("Enter new label name: ", name);
+
+					if (name != j->second->labelMap[i->first].name) {
+						i->second = j->second->labelMap.rbegin()->first + 1; // increment label
+						j->second->labelMap[i->second].name = name; // add new label
+					}
+				}
+				// process
+				grasp::Cloud::process(context, cloudDesc, inp, j->second->points, [&](const grasp::Cloud::RawPointSeqVal* points) {
+					golem::CriticalSectionWrapper csw(csDataRenderer);
+					pointRenderer.reset();
+					if (points) j->second->draw(points->second, pointRenderer);
+				}, &labelMap);
+			}
+			else
+				// transform
+				for (grasp::Cloud::RawPointSeqPtrMultiMap::iterator i = inp.begin(); i != inp.end(); ++i)
+					grasp::Cloud::transform(deformation ? cameraSeq[cameraIndex]->getCamera()->getCalibration()->getDeformation(j->second->robotPoseMap[&i->second->second]) : trn, i->second->second, i->second->second);
+		}
+		catch (const golem::Message& msg) {
+			context.write("%s\n", msg.str().c_str());
+		}
+	}
+
+	//Cloud::LabelMap labelMap;
+	//Cloud::RawPointSeqPtrMultiMap inp;
+	//for (Director::Selection::const_iterator i = selection.begin(); i != selection.end(); ++i) {
+	//	inp.insert(Cloud::RawPointSeqPtrMultiMap::value_type(i->second->first, i->second));
+	//	labelMap[i->second->first] = i->second->first;
+	//}
+
+	//// label re-assignment
+	//for (Cloud::LabelMap::iterator i = labelMap.begin(); i != labelMap.end(); ++i) {
+	//	std::string name = to<Data>(dataPtr)->labelMap[i->first].name;
+	//	readString("Enter new label name: ", name);
+	//	if (name != to<Data>(dataPtr)->labelMap[i->first].name) {
+	//		i->second = to<Data>(dataPtr)->labelMap.rbegin()->first + 1; // increment label
+	//		to<Data>(dataPtr)->labelMap[i->second].name = name; // add new label
+	//	}
+	//}
+
+	//Cloud::process(context, cloudDesc, inp, to<Data>(dataPtr)->points, [&] (const Cloud::RawPointSeqVal* points) {
+	//	golem::CriticalSectionWrapper csw(csDataRenderer);
+	//	pointRenderer.reset();
+	//	if (points) to<Data>(dataPtr)->draw(points->second, pointRenderer);
+	//}, &labelMap);
+
+	grasp::to<Data>(dataPtr)->ptrPoints = process;
+	grasp::to<Data>(dataPtr)->ptrLabel = grasp::Cloud::LABEL_DEFAULT;
+	grasp::to<Data>(dataPtr)->ptrIndex = 0;
+}
 
 void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 	switch (key) {
@@ -390,6 +679,7 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 			resetDataPointers();
 			// done
 			context.write("Done!\n");
+//			showPoints = false;
 			renderData(dataPtr);
 			return;
 		}
@@ -477,6 +767,8 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 //			renderUncertainty(grasp::to<Data>(dataPtr)->poses);
 			// done
 			context.write("Done!\n");
+//			pointRenderer.reset();
+//			showPoints = false;
 			renderData(dataPtr);
 			return;
 		}
@@ -494,7 +786,7 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 				grasp::to<Data>(dataPtr)->simulateObjectPose.push_back(p);
 			}
 			grasp::Cloud::transform(grasp::to<Data>(dataPtr)->queryTransform, grasp::to<Data>(dataPtr)->simulateObjectPose, grasp::to<Data>(dataPtr)->simulateObjectPose);
-			grasp::Cloud::transform(objectTrn, grasp::to<Data>(dataPtr)->simulateObjectPose, grasp::to<Data>(dataPtr)->simulateObjectPose);
+			grasp::Cloud::transform(trialData->objectPoseTrn.toMat34(), grasp::to<Data>(dataPtr)->simulateObjectPose, grasp::to<Data>(dataPtr)->simulateObjectPose);
 			context.write("done.\n");
 			//showObject = true;
 			renderData(dataPtr);
@@ -530,6 +822,13 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 		context.write("Query points %s\n", showQueryPoints ? "ON" : "OFF");
 		renderData(dataPtr);
 		return;
+	case '_':
+	{
+		showPoints = !showPoints;
+		if (!showPoints) pointRenderer.reset();
+		renderData(dataPtr);
+		return;
+	}
 	}
 //	case 'M':
 //	{
@@ -735,19 +1034,6 @@ void spam::XMLData(PosePlanner::Desc &val, Context* context, XMLContext* xmlcont
 
 	XMLData(val.actionManip, xmlcontext->getContextFirst("action_manip"), create);
 }
-
-void spam::PosePlanner::TrialData::xmlData(golem::XMLContext* context, bool create) const {
-	golem::XMLData("name", const_cast<std::string&>(name), context, create);
-	golem::XMLData("path", const_cast<std::string&>(path), context, create);
-	golem::XMLData("ext_trial", const_cast<std::string&>(extTrial), context, create);
-
-	golem::XMLData("enable", const_cast<bool&>(enable), context, create);
-	golem::XMLData("silent", const_cast<bool&>(silent), context, create);
-
-	XMLData(const_cast<grasp::RBDist&>(queryStdDev), context->getContextFirst("meta_query_transformation"), create);
-	XMLData(const_cast<grasp::RBDist&>(objPoseStdDev), context->getContextFirst("meta_obj_pose_transformation"), create);
-}
-
 
 //------------------------------------------------------------------------------
 

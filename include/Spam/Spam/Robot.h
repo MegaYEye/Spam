@@ -63,7 +63,7 @@ public:
 	typedef golem::shared_ptr<Desc> Ptr;
 	
 	/** Force reader. Overwrite the ActiveCtrl reader. this retrieves the triggered joints */
-	typedef std::function<void(const golem::Controller::State&, grasp::RealSeq&, std::vector<golem::Configspace::Index>)> GuardsReader;
+	typedef std::function<void(const golem::Controller::State&, grasp::RealSeq&, std::vector<golem::Configspace::Index>&)> GuardsReader;
 
 	/** Robot factory */
 	class Desc : public grasp::Robot::Desc {
@@ -110,7 +110,7 @@ public:
 	//int checkGuards(std::vector<int> &triggeredGuards, golem::Controller::State &state);
 
 	///** Reads torque/force values from the state */
-	//void readFT(const golem::Controller::State &state, grasp::RealSeq &force) const;
+	void readFT(const golem::Controller::State &state, grasp::RealSeq &force) const;
 
 	/** Activates collision detection with group of bounds */
 	inline void setCollisionBoundsGroup(golem::U32 collisionGroup) {
@@ -135,7 +135,14 @@ public:
 
 	/** Force reader */
 	GuardsReader guardsReader;
-
+	//golem::shared_ptr<grasp::Cloud::PointSeq> objectPointCloudPtr;
+	//Collision::Ptr collision;
+	//Collision::Waypoint w;
+	///** Manipulator pointer */
+	//grasp::Manipulator::Ptr manipulator;
+	///** Acquires manipulator */
+	//inline void setManipulator(grasp::Manipulator *ptr) { manipulator.reset(ptr); collision.reset(new Collision(context, *manipulator)); };
+	//golem::Rand rand;
 protected:
 	/** Force/torque driven heuristic for robot controller */
 	FTDrivenHeuristic* pFTDrivenHeuristic;

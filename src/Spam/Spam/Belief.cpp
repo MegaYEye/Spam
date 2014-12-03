@@ -70,188 +70,188 @@ Mat34 Belief::RigidBodyTransformation::transform(Mat34 &p) {
 }
 
 //------------------------------------------------------------------------------
-
-Real Belief::Hypothesis::dist2NearestKPoints(const grasp::RBCoord &pose,  const golem::Real &maxDist, const size_t clusters, const size_t &nIndeces, const bool normal) const {
-	if (pose.p.distance((sample.toMat34() * modelFrame).p) > (REAL_ONE + REAL_HALF)*maxDist)
-		return maxDist + 1;;
-
-	pcl::PointXYZ searchPoint;
-	searchPoint.x = (float)pose.p.x;
-	searchPoint.y = (float)pose.p.y;
-	searchPoint.z = (float)pose.p.z;
-
-	std::vector<int> indeces;
-	std::vector<float> distances;
-	pcl::KdTree<pcl::PointXYZ>::PointCloudConstPtr cloud = pTree->getInputCloud();
-	Real result = REAL_ZERO;
-	Vec3 median;
-	median.setZero();
-	golem::Rand rand;
-	if (pTree->nearestKSearch(searchPoint, clusters, indeces, distances) > 0) {
-		const size_t size = indeces.size() < nIndeces ? indeces.size() : nIndeces;
-		for (size_t i = 0; i < size; ++i) {
-			idxdiff_t idx = size < indeces.size() ? indeces[size_t(rand.next())%indeces.size()] : indeces[i];
-			//Point point;
-			//point.frame.setId();
-			//point.frame.p.set(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z);
-			//result += pose.p.distance(point.frame.p);
-			//median += Vec3(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z);
-			result += pose.p.distance(Vec3(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z));
-			median += Vec3(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z);
-		}
-		result /= size;
-		median /= size;
-	}
-	
-	if (normal) {
-		Vec3 v;
-		Mat34 jointFrame(Mat33(pose.q), pose.p);
-		Mat34 jointFrameInv;
-		jointFrameInv.setInverse(jointFrame);
-		jointFrameInv.multiply(v, median);
-		v.normalise();
-//		const Real thx(Math::atan2(v.z, v.x)), thy(Math::atan2(v.z, v.y));
-//		if (v.z < 0 || Math::abs(thx) > ftDrivenDesc.ftModelDesc.coneTheta1 || Math::abs(thy) > ftDrivenDesc.ftModelDesc.coneTheta2) 
-		if (v.z > 0/* || v.z < golem::Real(.5)*/) // for justin v.z < 0
-			result = maxDist + 1;
-		//else {
-		//	Mat33 rot;
-		//	Real roll, pitch, yaw;
-		//	Quat quat(pose.q);
-		//	quat.toMat33(rot);
-		//	rot.toEuler(roll, pitch, yaw);
-		//	std::printf("nearest(): pose [%.4f,%.4f,%.4f]<%.4f,%.4f,%.4f>; median <%.4f,%.4f,%.4f>, thx %.4f, thy %.4f\n",
-		//		roll, pitch, yaw, pose.p.x, pose.p.y, pose.p.z, median.x, median.y, median.z, thx, thy);
-		//}
-	}
-	//if (result < ftDrivenDesc.ftModelDesc.distMax + 1) {
-	//	std::printf("NearestKNeigh (t %.7f) %.7f\n", context.getTimer().elapsed() - init, result);
-	//	dist2NearestPoint(pose, p, normal);
-	//}
-	return result;
-}
-
-size_t Belief::Hypothesis::nearestKPoints(const grasp::RBCoord &pose, grasp::Cloud::PointSeq &points, std::vector<float> &distances, const size_t clusters) const {
-	// sets the query point
-	pcl::PointXYZ searchPoint;
-	searchPoint.x = (float)pose.p.x;
-	searchPoint.y = (float)pose.p.y;
-	searchPoint.z = (float)pose.p.z;
-
-	// cleanns container
-	points.clear();
-
-	std::vector<int> indeces;
-	// retrieves the point cloud
-	pcl::KdTree<pcl::PointXYZ>::PointCloudConstPtr cloud = pTree->getInputCloud();
-	// returns a positive number if the query is successful
-	size_t ret;
-	if (ret = pTree->nearestKSearch(searchPoint, clusters, indeces, distances) > 0) {
-		points.reserve(indeces.size());
-		for (size_t i = 0; i < indeces.size(); ++i) {
-			grasp::Cloud::Point point;
-			point.x = cloud->points[indeces[i]].x;
-			point.y = cloud->points[indeces[i]].y;
-			point.z = cloud->points[indeces[i]].z;
-			points.push_back(point);
-		}
-	}
-	return ret;
-}
-
-bool Belief::Hypothesis::build() {
-	pTree.reset(new pcl::KdTreeFLANN<pcl::PointXYZ, flann::L2_Simple<float>>);
-
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>); 
-	cloud->width = points.size();
-	cloud->height = 1;
-	cloud->points.resize (cloud->width * cloud->height);
-	int j = 0;
-	for (grasp::Cloud::PointSeq::const_iterator point = points.begin(); point != points.end(); ++point) {
-		cloud->points[j].x = (float)point->x;
-		cloud->points[j].y = (float)point->y;
-		cloud->points[j++].z = (float)point->z;
-	}
-	pTree->setInputCloud(cloud);
-
-	return true;
-}
-
-bool Belief::Hypothesis::buildMesh() {
-	pTriangles.reset(new pcl::PolygonMesh);
-	// build point cloud form set of points
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>); 
-	cloud->width = points.size();
-	cloud->height = 1;
-	cloud->points.resize(cloud->width * cloud->height);
-	int j = 0;
-	for (grasp::Cloud::PointSeq::const_iterator point = points.begin(); point != points.end(); ++point) {
-		cloud->points[j].x = (float)point->x;
-		cloud->points[j].y = (float)point->y;
-		cloud->points[j++].z = (float)point->z;
-	}
-
-	  // Normal estimation*
-	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> n;
-	pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-	tree->setInputCloud(cloud);
-	n.setInputCloud(cloud);
-	n.setSearchMethod(tree);
-	n.setKSearch(20);
-	n.compute(*normals);
-	//* normals should not contain the point normals + surface curvatures
-
-	// Concatenate the XYZ and normal fields*
-	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
-	pcl::concatenateFields(*cloud, *normals, *cloud_with_normals);
-	//* cloud_with_normals = cloud + normals
-
-	// Create search tree*
-	pcl::search::KdTree<pcl::PointNormal>::Ptr tree2(new pcl::search::KdTree<pcl::PointNormal>);
-	tree2->setInputCloud(cloud_with_normals);
-
-	// Initialize objects
-	pcl::GreedyProjectionTriangulation<pcl::PointNormal> gp3;
-	pcl::PolygonMesh triangles;
-
-	// Set the maximum distance between connected points (maximum edge length)
-	gp3.setSearchRadius(0.025);
-
-	// Set typical values for the parameters
-	gp3.setMu(2.5);
-	gp3.setMaximumNearestNeighbors(1000);
-	gp3.setMaximumSurfaceAngle(M_PI/4); // 45 degrees
-	gp3.setMinimumAngle(M_PI/18); // 10 degrees
-	gp3.setMaximumAngle(2*M_PI/3); // 120 degrees
-	gp3.setNormalConsistency(false);
-
-	// Get result
-	gp3.setInputCloud(cloud_with_normals);
-	gp3.setSearchMethod(tree2);
-	gp3.reconstruct(*pTriangles.get());
-	std::printf("HypSample::buildMesh: Triangle vertices %d\n", pTriangles->polygons.size());
-	//for (std::vector<pcl::Vertices>::iterator i = pTriangles->polygons.begin(); i != pTriangles->polygons.end(); ++i)
-	//	std::printf("Vertex n.%d size %d\n", i, i->vertices.size());
-	
-	return true;
-}
-
-void Belief::Hypothesis::draw(DebugRenderer &renderer) const {
-	printf("Belief::Hypothesis::draw(showFrame=%s, showPoints=%s)\n", appearance.showFrames ? "ON" : "OFF", appearance.showPoints ? "ON" : "OFF");
-	if (appearance.showFrames || true)
-		renderer.addAxes(sample.toMat34() * modelFrame, appearance.frameSize);
-
-	size_t t = 0;
-	if (appearance.showPoints || true) {
-		for (grasp::Cloud::PointSeq::const_iterator i = points.begin(); i != points.end(); ++i) {
-			grasp::Cloud::Point point = *i;
-			if (++t < 10) printf("Belief::Hypothesis point %d <%.4f %.4f %.4f>\n", t, point.x, point.y, point.z);
-			grasp::Cloud::setColour(/*appearance.colour*/RGBA::RED, point);
-			renderer.addPoint(grasp::Cloud::getPoint(point));
-		}
-	}
-}
+//
+//Real Belief::Hypothesis::dist2NearestKPoints(const grasp::RBCoord &pose,  const golem::Real &maxDist, const size_t clusters, const size_t &nIndeces, const bool normal) const {
+//	if (pose.p.distance((sample.toMat34() * modelFrame).p) > (REAL_ONE + REAL_HALF)*maxDist)
+//		return maxDist + 1;;
+//
+//	pcl::PointXYZ searchPoint;
+//	searchPoint.x = (float)pose.p.x;
+//	searchPoint.y = (float)pose.p.y;
+//	searchPoint.z = (float)pose.p.z;
+//
+//	std::vector<int> indeces;
+//	std::vector<float> distances;
+//	pcl::KdTree<pcl::PointXYZ>::PointCloudConstPtr cloud = pTree->getInputCloud();
+//	Real result = REAL_ZERO;
+//	Vec3 median;
+//	median.setZero();
+//	golem::Rand rand;
+//	if (pTree->nearestKSearch(searchPoint, clusters, indeces, distances) > 0) {
+//		const size_t size = indeces.size() < nIndeces ? indeces.size() : nIndeces;
+//		for (size_t i = 0; i < size; ++i) {
+//			idxdiff_t idx = size < indeces.size() ? indeces[size_t(rand.next())%indeces.size()] : indeces[i];
+//			//Point point;
+//			//point.frame.setId();
+//			//point.frame.p.set(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z);
+//			//result += pose.p.distance(point.frame.p);
+//			//median += Vec3(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z);
+//			result += pose.p.distance(Vec3(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z));
+//			median += Vec3(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z);
+//		}
+//		result /= size;
+//		median /= size;
+//	}
+//	
+//	if (normal) {
+//		Vec3 v;
+//		Mat34 jointFrame(Mat33(pose.q), pose.p);
+//		Mat34 jointFrameInv;
+//		jointFrameInv.setInverse(jointFrame);
+//		jointFrameInv.multiply(v, median);
+//		v.normalise();
+////		const Real thx(Math::atan2(v.z, v.x)), thy(Math::atan2(v.z, v.y));
+////		if (v.z < 0 || Math::abs(thx) > ftDrivenDesc.ftModelDesc.coneTheta1 || Math::abs(thy) > ftDrivenDesc.ftModelDesc.coneTheta2) 
+//		if (v.z > 0/* || v.z < golem::Real(.5)*/) // for justin v.z < 0
+//			result = maxDist + 1;
+//		//else {
+//		//	Mat33 rot;
+//		//	Real roll, pitch, yaw;
+//		//	Quat quat(pose.q);
+//		//	quat.toMat33(rot);
+//		//	rot.toEuler(roll, pitch, yaw);
+//		//	std::printf("nearest(): pose [%.4f,%.4f,%.4f]<%.4f,%.4f,%.4f>; median <%.4f,%.4f,%.4f>, thx %.4f, thy %.4f\n",
+//		//		roll, pitch, yaw, pose.p.x, pose.p.y, pose.p.z, median.x, median.y, median.z, thx, thy);
+//		//}
+//	}
+//	//if (result < ftDrivenDesc.ftModelDesc.distMax + 1) {
+//	//	std::printf("NearestKNeigh (t %.7f) %.7f\n", context.getTimer().elapsed() - init, result);
+//	//	dist2NearestPoint(pose, p, normal);
+//	//}
+//	return result;
+//}
+//
+//size_t Belief::Hypothesis::nearestKPoints(const grasp::RBCoord &pose, grasp::Cloud::PointSeq &points, std::vector<float> &distances, const size_t clusters) const {
+//	// sets the query point
+//	pcl::PointXYZ searchPoint;
+//	searchPoint.x = (float)pose.p.x;
+//	searchPoint.y = (float)pose.p.y;
+//	searchPoint.z = (float)pose.p.z;
+//
+//	// cleanns container
+//	points.clear();
+//
+//	std::vector<int> indeces;
+//	// retrieves the point cloud
+//	pcl::KdTree<pcl::PointXYZ>::PointCloudConstPtr cloud = pTree->getInputCloud();
+//	// returns a positive number if the query is successful
+//	size_t ret;
+//	if (ret = pTree->nearestKSearch(searchPoint, clusters, indeces, distances) > 0) {
+//		points.reserve(indeces.size());
+//		for (size_t i = 0; i < indeces.size(); ++i) {
+//			grasp::Cloud::Point point;
+//			point.x = cloud->points[indeces[i]].x;
+//			point.y = cloud->points[indeces[i]].y;
+//			point.z = cloud->points[indeces[i]].z;
+//			points.push_back(point);
+//		}
+//	}
+//	return ret;
+//}
+//
+//bool Belief::Hypothesis::build() {
+//	pTree.reset(new pcl::KdTreeFLANN<pcl::PointXYZ, flann::L2_Simple<float>>);
+//
+//	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>); 
+//	cloud->width = points.size();
+//	cloud->height = 1;
+//	cloud->points.resize (cloud->width * cloud->height);
+//	int j = 0;
+//	for (grasp::Cloud::PointSeq::const_iterator point = points.begin(); point != points.end(); ++point) {
+//		cloud->points[j].x = (float)point->x;
+//		cloud->points[j].y = (float)point->y;
+//		cloud->points[j++].z = (float)point->z;
+//	}
+//	pTree->setInputCloud(cloud);
+//
+//	return true;
+//}
+//
+//bool Belief::Hypothesis::buildMesh() {
+//	pTriangles.reset(new pcl::PolygonMesh);
+//	// build point cloud form set of points
+//	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>); 
+//	cloud->width = points.size();
+//	cloud->height = 1;
+//	cloud->points.resize(cloud->width * cloud->height);
+//	int j = 0;
+//	for (grasp::Cloud::PointSeq::const_iterator point = points.begin(); point != points.end(); ++point) {
+//		cloud->points[j].x = (float)point->x;
+//		cloud->points[j].y = (float)point->y;
+//		cloud->points[j++].z = (float)point->z;
+//	}
+//
+//	  // Normal estimation*
+//	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> n;
+//	pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+//	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+//	tree->setInputCloud(cloud);
+//	n.setInputCloud(cloud);
+//	n.setSearchMethod(tree);
+//	n.setKSearch(20);
+//	n.compute(*normals);
+//	//* normals should not contain the point normals + surface curvatures
+//
+//	// Concatenate the XYZ and normal fields*
+//	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
+//	pcl::concatenateFields(*cloud, *normals, *cloud_with_normals);
+//	//* cloud_with_normals = cloud + normals
+//
+//	// Create search tree*
+//	pcl::search::KdTree<pcl::PointNormal>::Ptr tree2(new pcl::search::KdTree<pcl::PointNormal>);
+//	tree2->setInputCloud(cloud_with_normals);
+//
+//	// Initialize objects
+//	pcl::GreedyProjectionTriangulation<pcl::PointNormal> gp3;
+//	pcl::PolygonMesh triangles;
+//
+//	// Set the maximum distance between connected points (maximum edge length)
+//	gp3.setSearchRadius(0.025);
+//
+//	// Set typical values for the parameters
+//	gp3.setMu(2.5);
+//	gp3.setMaximumNearestNeighbors(1000);
+//	gp3.setMaximumSurfaceAngle(M_PI/4); // 45 degrees
+//	gp3.setMinimumAngle(M_PI/18); // 10 degrees
+//	gp3.setMaximumAngle(2*M_PI/3); // 120 degrees
+//	gp3.setNormalConsistency(false);
+//
+//	// Get result
+//	gp3.setInputCloud(cloud_with_normals);
+//	gp3.setSearchMethod(tree2);
+//	gp3.reconstruct(*pTriangles.get());
+//	std::printf("HypSample::buildMesh: Triangle vertices %d\n", pTriangles->polygons.size());
+//	//for (std::vector<pcl::Vertices>::iterator i = pTriangles->polygons.begin(); i != pTriangles->polygons.end(); ++i)
+//	//	std::printf("Vertex n.%d size %d\n", i, i->vertices.size());
+//	
+//	return true;
+//}
+//
+//void Belief::Hypothesis::draw(DebugRenderer &renderer) const {
+//	printf("Belief::Hypothesis::draw(showFrame=%s, showPoints=%s)\n", appearance.showFrames ? "ON" : "OFF", appearance.showPoints ? "ON" : "OFF");
+//	if (appearance.showFrames || true)
+//		renderer.addAxes(sample.toMat34() * modelFrame, appearance.frameSize);
+//
+//	size_t t = 0;
+//	if (appearance.showPoints || true) {
+//		for (grasp::Cloud::PointSeq::const_iterator i = points.begin(); i != points.end(); ++i) {
+//			grasp::Cloud::Point point = *i;
+//			if (++t < 10) printf("Belief::Hypothesis point %d <%.4f %.4f %.4f>\n", t, point.x, point.y, point.z);
+//			grasp::Cloud::setColour(/*appearance.colour*/RGBA::RED, point);
+//			renderer.addPoint(grasp::Cloud::getPoint(point));
+//		}
+//	}
+//}
 
 //------------------------------------------------------------------------------
 
