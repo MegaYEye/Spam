@@ -236,6 +236,7 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 					//sampleAppearance.draw((*pBelief->getHypotheses().begin())->getCloud(), sampleRenderer);
 //						break;
 					}
+					(*pBelief->getHypotheses().begin())->appearance.bounds.draw((*pBelief->getHypotheses().begin())->bounds(), sampleRenderer);
 				}
 				if (showObject)
 					sampleAppearance.draw(grasp::to<Data>(dataPtr)->simulateObjectPose, pointFeatureRenderer);

@@ -271,6 +271,8 @@ bool Belief::create(const Desc& desc) {
 	hypotheses.clear();
 	hypotheses.reserve(desc.numHypotheses);
 
+	manipulator.reset();
+
 	myDesc = desc;
 //	mfsePoses.resize(desc.tactile.kernels);
 
@@ -302,11 +304,11 @@ void Belief::drawSamples(const size_t numSamples, golem::DebugRenderer& renderer
 
 void Belief::drawHypotheses(golem::DebugRenderer &renderer, const bool showOnlyMeanPose) const {
 	context.write("Belief::drawHypotheses (%s)\n", showOnlyMeanPose ? "ON" : "OFF");
-	for (Hypothesis::Seq::const_iterator h = hypotheses.begin(); h != hypotheses.end(); ++h) {
-		(*h)->draw(renderer);
-		if (showOnlyMeanPose)
-			return;
-	}
+	//for (Hypothesis::Seq::const_iterator h = hypotheses.begin(); h != hypotheses.end(); ++h) {
+	//	(*h)->draw(renderer);
+	//	if (showOnlyMeanPose)
+	//		return;
+	//}
 }
 
 
@@ -374,7 +376,10 @@ void Belief::setHypotheses(const grasp::RBPose::Sample::Seq &hypothesisSeq) {
 			grasp::Cloud::setColour((p == hypothesisSeq.begin()) ? RGBA::YELLOW : RGBA::BLUE, point);
 			sampleCloud.push_back(point);
 		}
-		hypotheses.push_back(Hypothesis::Ptr(new Hypothesis(idx, modelFrame, *p, sampleCloud)));
+//		hypotheses.push_back(Hypothesis::Ptr(new Hypothesis(idx, modelFrame, *p, sampleCloud)));
+		Hypothesis::Ptr h = Hypothesis::Desc().create(*manipulator);
+		h->create(idx, modelFrame, *p, rand, sampleCloud);
+		hypotheses.push_back(h);
 		hypotheses.back()->appearance.colour = (p == hypothesisSeq.begin()) ? RGBA::YELLOW : RGBA::BLUE;
 		hypotheses.back()->appearance.showPoints = true;
 		context.write(" - sample n.%d <%.4f %.4f %.4f> <%.4f %.4f %.4f %.4f>\n", idx, p->p.x, p->p.y, p->p.z, p->q.w, p->q.x, p->q.y, p->q.z);
@@ -426,7 +431,10 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 			sampleCloud.push_back(p);
 		}
 //		hypotheses.insert(Hypothesis::Map::value_type(idx, Hypothesis::Ptr(new Hypothesis(idx, grasp::RBPose::Sample(sampleFrame), sampleCloud))));
-		hypotheses.push_back(Hypothesis::Ptr(new Hypothesis(idx, transform, grasp::RBPose::Sample(actionFrame), sampleCloud)));
+		//hypotheses.push_back(Hypothesis::Ptr(new Hypothesis(idx, transform, grasp::RBPose::Sample(actionFrame), sampleCloud)));
+		Hypothesis::Ptr h = Hypothesis::Desc().create(*manipulator);
+		h->create(idx, modelFrame, grasp::RBPose::Sample(actionFrame), rand, sampleCloud);
+		hypotheses.push_back(h);
 		hypotheses.back()->appearance.colour = (i == 0) ? RGBA::YELLOW : RGBA::BLUE;
 		hypotheses.back()->appearance.showPoints = true;
 		context.write(" - sample n.%d <%.4f %.4f %.4f> <%.4f %.4f %.4f %.4f>\n", idx, actionFrame.p.x, actionFrame.p.y, actionFrame.p.z, actionFrame.q.w, actionFrame.q.x, actionFrame.q.y, actionFrame.q.z);
@@ -586,7 +594,7 @@ Real Belief::density(const Real dist) const {
 	return (dist > myDesc.sensory.sensoryRange) ? REAL_ZERO : (dist < REAL_EPS) ? kernel(REAL_EPS, myDesc.lambda) : kernel(dist, myDesc.lambda); // esponential up to norm factor
 }
 
-void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Robot *robot, const golem::Waypoint &w, const grasp::FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force) {
+void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Robot *robot, const golem::Waypoint &w, const FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force) {
 	context.write("spam::Belief::createUpdate()...\n");
 	bool intersect = false; 
 	// retrieve wrist's workspace pose and fingers configuration
@@ -605,9 +613,9 @@ void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Ro
 		for (Configspace::Index j = robot->getStateHandInfo().getJoints(i).begin(); j != robot->getStateHandInfo().getJoints(i).end(); ++j) { 
 			const size_t idx = j - robot->getStateHandInfo().getJoints(i).begin();
 			triggered[idx] = [&] () -> bool {
-				for (grasp::FTGuard::Seq::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
+				for (FTGuard::Seq::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
 					if (j == i->jointIdx) {
-						forces[idx] = i->value; // i->type == grasp::FTGUARD_ABS ? REAL_ZERO : i->type == grasp::FTGUARD_LESSTHAN ? -REAL_ONE : REAL_ONE;
+						forces[idx] = i->value; // i->type == FTGuard_ABS ? REAL_ZERO : i->type == FTGuard_LESSTHAN ? -REAL_ONE : REAL_ONE;
 						return true;
 					}
 				return false;
@@ -756,54 +764,54 @@ golem::Real Belief::evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCo
 //	return /*norm**/density(distMin);
 }
 
-bool Belief::intersect(const golem::Bounds::Seq &bounds, const golem::Mat34 &pose) const {
-	if (hypotheses.empty())
-		return false;
-	grasp::RBPose::Sample frame = (*hypotheses.begin())->toRBPoseSample();
-	Mat34 actionFrame(frame.q, frame.p);
-	grasp::Cloud::PointSeq points;
-	std::vector<float> distances;
-
-	if ((*hypotheses.begin())->nearestKPoints(grasp::RBCoord(pose), points, distances) > 0) {
-		//const Vec3 point = grasp::Cloud::getPoint(points[0]);
-		for (size_t i = 0; i < points.size(); ++i) {
-			const Vec3 point = grasp::Cloud::getPoint(points[i]);
-			//Mat34 pointFrame = actionFrame;
-			//pointFrame.p += point; // only position is updated
-			//context.debug("Joint at pose <%f %f %f>, point at pose <%f %f %f>\n", pose.p.x, pose.p.y, pose.p.z, pointFrame.p.x, pointFrame.p.y, pointFrame.p.z);
-			for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b) {
-				if ((*b)->intersect(point)) { 
-//					context.debug("Joint at pose <%f %f %f> intersects point at pose <%f %f %f>\n", pose.p.x, pose.p.y, pose.p.z, point.x, point.y, point.z);
-					return true;
-				}
-			}
-		}
-		//context.debug("returns false\n--------------------------------------\n");
-	}
-
-	// quick check of intersection
-//	if (pose.p.distance(actionFrame.p) < myDesc.distanceRange) {
-//		const size_t size = modelPoints.size() < myDesc.maxSurfacePoints ? modelPoints.size() : myDesc.maxSurfacePoints;
-//		for (size_t i = 0; i < size; ++i) {
-//			const Vec3 point = grasp::Cloud::getPoint(size < modelPoints.size() ? modelPoints[size_t(rand.next())%modelPoints.size()] : modelPoints[i]);
-//			Mat34 pointFrame = actionFrame;
-//			pointFrame.p += point; // only position is updated
-////			std::cout << "dist ";
+//bool Belief::intersect(const golem::Bounds::Seq &bounds, const golem::Mat34 &pose) const {
+//	if (hypotheses.empty())
+//		return false;
+//	grasp::RBPose::Sample frame = (*hypotheses.begin())->toRBPoseSample();
+//	Mat34 actionFrame(frame.q, frame.p);
+//	grasp::Cloud::PointSeq points;
+//	std::vector<float> distances;
+//
+//	if ((*hypotheses.begin())->nearestKPoints(grasp::RBCoord(pose), points, distances) > 0) {
+//		//const Vec3 point = grasp::Cloud::getPoint(points[0]);
+//		for (size_t i = 0; i < points.size(); ++i) {
+//			const Vec3 point = grasp::Cloud::getPoint(points[i]);
+//			//Mat34 pointFrame = actionFrame;
+//			//pointFrame.p += point; // only position is updated
+//			//context.debug("Joint at pose <%f %f %f>, point at pose <%f %f %f>\n", pose.p.x, pose.p.y, pose.p.z, pointFrame.p.x, pointFrame.p.y, pointFrame.p.z);
 //			for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b) {
-//				const Real d = (*b)->getSurfaceDistance(pointFrame.p);
-////				std::cout <<  d << " ";
-//				if (d < REAL_ZERO) { 
-//					context.debug("Joint at pose <%f %f %f> intersects estimated object at pose <%f %f %f>\n", pose.p.x, pose.p.y, pose.p.z, actionFrame.p.x, actionFrame.p.y, actionFrame.p.z);
+//				if ((*b)->intersect(point)) { 
+////					context.debug("Joint at pose <%f %f %f> intersects point at pose <%f %f %f>\n", pose.p.x, pose.p.y, pose.p.z, point.x, point.y, point.z);
 //					return true;
 //				}
 //			}
-////			std::cout << "\n";
 //		}
+//		//context.debug("returns false\n--------------------------------------\n");
 //	}
-	return false;
-}
+//
+//	// quick check of intersection
+////	if (pose.p.distance(actionFrame.p) < myDesc.distanceRange) {
+////		const size_t size = modelPoints.size() < myDesc.maxSurfacePoints ? modelPoints.size() : myDesc.maxSurfacePoints;
+////		for (size_t i = 0; i < size; ++i) {
+////			const Vec3 point = grasp::Cloud::getPoint(size < modelPoints.size() ? modelPoints[size_t(rand.next())%modelPoints.size()] : modelPoints[i]);
+////			Mat34 pointFrame = actionFrame;
+////			pointFrame.p += point; // only position is updated
+//////			std::cout << "dist ";
+////			for (golem::Bounds::Seq::const_iterator b = bounds.begin(); b != bounds.end(); ++b) {
+////				const Real d = (*b)->getSurfaceDistance(pointFrame.p);
+//////				std::cout <<  d << " ";
+////				if (d < REAL_ZERO) { 
+////					context.debug("Joint at pose <%f %f %f> intersects estimated object at pose <%f %f %f>\n", pose.p.x, pose.p.y, pose.p.z, actionFrame.p.x, actionFrame.p.y, actionFrame.p.z);
+////					return true;
+////				}
+////			}
+//////			std::cout << "\n";
+////		}
+////	}
+//	return false;
+//}
 
-//void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Robot *robot, const golem::Waypoint &w, const grasp::FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force) {
+//void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Robot *robot, const golem::Waypoint &w, const FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force) {
 //	context.write("spam::Belief::createUpdate()...\n");
 //	Real weight = golem::REAL_ONE;
 //	bool intersect = false; 
@@ -818,9 +826,9 @@ bool Belief::intersect(const golem::Bounds::Seq &bounds, const golem::Mat34 &pos
 //		for (Configspace::Index j = robot->getStateHandInfo().getJoints(i).begin(); j != robot->getStateHandInfo().getJoints(i).end(); ++j) { 
 //			const size_t idx = j - robot->getStateHandInfo().getJoints().begin();
 //			triggered = triggered || [&] () -> bool {
-//				for (grasp::FTGuard::Seq::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
+//				for (FTGuard::Seq::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
 //					if (j == i->jointIdx) {
-//						forces[idx] = i->type == grasp::FTGUARD_ABS ? 0 : i->type == grasp::FTGUARD_LESSTHAN ? -1 : 1;
+//						forces[idx] = i->type == FTGuard_ABS ? 0 : i->type == FTGuard_LESSTHAN ? -1 : 1;
 //						return true;
 //					}
 //				return false;

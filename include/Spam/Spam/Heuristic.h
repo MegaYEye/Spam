@@ -49,7 +49,7 @@
 #include <Golem/PhysCtrl/PhysPlanner.h>
 #include <Golem/Device/SingleCtrl/Data.h>
 #include <Spam/Spam/Belief.h>
-#include <Grasp/Grasp/Robot.h>
+#include <Grasp/Core/Robot.h>
 
 //------------------------------------------------------------------------------
 
@@ -277,7 +277,7 @@ public:
 	inline void setBelief(Belief *belief) { pBelief.reset(belief); };
 
 	/** Acquires manipulator */
-	inline void setManipulator(grasp::Manipulator *ptr) { manipulator.reset(ptr); collision.reset(new Collision(context, *manipulator)); };
+	inline void setManipulator(grasp::Manipulator *ptr) { manipulator.reset(ptr); pBelief->setManipulator(ptr); /*collision.reset(new Collision(context, *manipulator));*/ };
 
 	/** Sets model cloud points */
 //	void setModel(grasp::Cloud::PointSeq::const_iterator begin, grasp::Cloud::PointSeq::const_iterator end, const golem::Mat34 &transform);
@@ -286,7 +286,7 @@ public:
 	/** Evaluate the likelihood of reading a contact between robot's pose and the sample */
 //	golem::Real evaluate(const grasp::Manipulator *manipulator, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<golem::Configspace::Index> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const;
 	/** Evaluate the likelihood of reading a contact between robot's pose and the sample */
-//	golem::Real evaluate(const grasp::Manipulator *manipulator, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<grasp::FTGuard> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const;
+//	golem::Real evaluate(const grasp::Manipulator *manipulator, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<FTGuard> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const;
 	/** Evaluate the likelihood of reading a contact between robot's pose and the sample */
 //	golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const golem::Real &force, const golem::Mat34 &trn, bool &interect) const;
 
@@ -319,7 +319,22 @@ public:
 	virtual bool collides(const golem::Waypoint &w0, const golem::Waypoint &w1, ThreadData* data) const;
 
 	/** Sets collision checking with the object to be grasped */
-	inline void setPointCloudCollision(const bool cloudCollision) { pointCloudCollision = cloudCollision; };
+	inline void setPointCloudCollision(const bool cloudCollision) { 
+		pointCloudCollision = cloudCollision; 
+
+		//if (collision.get()) {
+		//	golem::U32 jobs = 1;
+
+		//	const golem::Parallels* parallels = context.getParallels();
+		//	if (parallels != NULL) {
+		//		jobs = parallels->getNumOfThreads();
+		//	}
+		//	collision->clearKDTrees();
+		//	for (golem::U32 j = 0; j < jobs; ++j)
+		//		for (auto i = pBelief->getHypotheses().begin(); i != pBelief->getHypotheses().end(); ++i)
+		//			collision->setKDTree((*i)->getCloud(), j);
+		//}
+	};
 
 	/** Sets surface points to be checked for collision */
 	inline void setNumCollisionPoints(const golem::U32 points) { waypoint.points = points; };

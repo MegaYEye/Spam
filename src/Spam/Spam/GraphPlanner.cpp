@@ -292,6 +292,8 @@ bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const 
 		heuristic->enableUnc = false;
 		context.write("RagGraphPlanner::findTarget(): enable unc %s\n", heuristic->enableUnc ? "ON" : "OFF");
 	}
+	// TODO: Find why the pre-grasp pose returns with close fingers
+	disableHandPlanning();
 
 #ifdef _HEURISTIC_PERFMON
 	heuristic->resetLog();
@@ -353,6 +355,8 @@ bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const 
 
 	if (heuristic)
 		heuristic->enableUnc = enable;
+
+	enableHandPlanning();
 
 	context.write("RagGraphPlanner::findTarget(): done.\n");
 	return true;
@@ -422,7 +426,6 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 
 	// generate global graph
 	pGlobalPathFinder->generateOnlineGraph(begin.cpos, end.cpos);
-
 	// find node path on global graph
 	globalPath.clear();
 	if (!pGlobalPathFinder->findPath(end.cpos, globalPath, globalPath.begin())) {

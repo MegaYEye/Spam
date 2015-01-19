@@ -46,9 +46,9 @@
 
 //------------------------------------------------------------------------------
 
-#include <Grasp/Grasp/Robot.h>
+#include <Grasp/Core/Robot.h>
 #include <Spam/Spam/Heuristic.h>
-#include <Grasp/Grasp/Cloud.h>
+#include <Grasp/Core/Cloud.h>
 #include <Spam/Spam/GraphPlanner.h>
 
 //------------------------------------------------------------------------------
@@ -101,10 +101,10 @@ public:
 	grasp::RBDist findTrnTrajectory(const golem::Mat34& trn, const golem::Controller::State& startPose, golem::Controller::State::Seq::const_iterator begin, golem::Controller::State::Seq::const_iterator end, golem::Controller::State::Seq& trajectory);
 
 	/** Returns a seq of triggered guards if any */
-	grasp::FTGuard::Seq getTriggeredGuard() { return triggeredGuards; };
+//	FTGuard::Seq getTriggeredGuard() { return triggeredGuards; };
 
 	///** Checks if triggered and return in case a vector of indeces */
-	//virtual int getTriggeredGuards(grasp::FTGuard::Seq &triggeredGuards, golem::Controller::State &state);
+	//virtual int getTriggeredGuards(FTGuard::Seq &triggeredGuards, golem::Controller::State &state);
 
 	///** Checks guards on justin and bham robot */
 	//int checkGuards(std::vector<int> &triggeredGuards, golem::Controller::State &state);
@@ -122,7 +122,7 @@ public:
 	}
 
 	///** Checks if the object is in the hand */
-	//size_t isGrasping(grasp::FTGuard::Seq &triggeredJoints, golem::Controller::State &state);
+	//size_t isGrasping(FTGuard::Seq &triggeredJoints, golem::Controller::State &state);
 
 	/** Finds a target in configuration space in a new reference frame */
 	void findTarget(const golem::Mat34 &trn, const golem::Controller::State &target, golem::Controller::State &cend);
@@ -149,7 +149,7 @@ protected:
 
 
 	/** Trigguered F/T guards */
-	grasp::FTGuard::Seq triggeredGuards;
+	FTGuard::Seq triggeredGuards;
 
 	/** Robot descriptor */
 	Desc desc;

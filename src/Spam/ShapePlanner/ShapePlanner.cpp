@@ -72,11 +72,11 @@ void spam::ShapePlanner::Data::printGraspInfo(const grasp::Manipulator& manipula
 		str << " c" << (i + 1) << "=\"" << graspPose.jc[i] << "\"";
 
 	//manipulator.getContext().write("<pose v1=\"%.7f\" v2=\"%.7f\" v3=\"%.7f\" q0=\"%.7f\" q1=\"%.7f\" q2=\"%.7f\" q3=\"%.7f\" dim=\"%d\"%s/>\n", frame.p.x, frame.p.y, frame.p.z, frame.q.q0, frame.q.q1, frame.q.q2, frame.q.q3, robot->getStateInfo().getJoints().size(), str.str().c_str());
-	manipulator.getContext().write("Grasp config: type=%s, cluster=%d/%d, config=%d/%d, likelihood_{value=%f, active=%f, inactive=%f, contacts=%f, config=%f, collision=%f}, valid=%s\n",
-		graspConfig.type.c_str(),
-		graspClusterPtr + 1, (golem::U32)graspClusters.size(), graspConfigPtr + 1, (graspClusters[graspClusterPtr].end - graspClusters[graspClusterPtr].begin),
-		graspConfig.likelihood.value, graspConfig.likelihood.valueActive, graspConfig.likelihood.valueInactive, graspConfig.likelihood.getActiveContactsAverageValue(), graspConfig.likelihood.config, graspConfig.likelihood.collision,
-		graspConfig.getGrasp() ? graspConfig.likelihood.isValid(graspConfig.getGrasp()->getDesc().optimisationDesc->epsilon) ? "yes" : "no" : "unknown");
+	//manipulator.getContext().write("Grasp config: type=%s, cluster=%d/%d, config=%d/%d, likelihood_{value=%f, active=%f, inactive=%f, contacts=%f, config=%f, collision=%f}, valid=%s\n",
+	//	graspConfig.type.c_str(),
+	//	graspClusterPtr + 1, (golem::U32)graspClusters.size(), graspConfigPtr + 1, (graspClusters[graspClusterPtr].end - graspClusters[graspClusterPtr].begin),
+	//	graspConfig.likelihood.value, graspConfig.likelihood.valueActive, graspConfig.likelihood.valueInactive, graspConfig.likelihood.getActiveContactsAverageValue(), graspConfig.likelihood.config, graspConfig.likelihood.collision,
+	//	graspConfig.getGrasp() ? graspConfig.likelihood.isValid(graspConfig.getGrasp()->getDesc().optimisationDesc->epsilon) ? "yes" : "no" : "unknown");
 }
 
 //------------------------------------------------------------------------------
@@ -169,7 +169,7 @@ void spam::ShapePlanner::mouseHandler(int button, int state, int x, int y) {
 			if ((*ptr)->getGrasp() && (grasp::to<Data>(currentDataPtr)->graspMode == MODE_CLUSTER || grasp::to<Data>(currentDataPtr)->graspMode == MODE_CONFIG))
 				grasp::to<Data>(currentDataPtr)->appearanceConfig.configPath.pathDelta = (*ptr)->getGrasp()->getConfiguration()->getDesc().distanceStdDev;
 
-			(*ptr)->draw(*manipulator, grasp::to<Data>(currentDataPtr)->appearanceConfig, graspRenderer);
+//			(*ptr)->draw(*manipulator, grasp::to<Data>(currentDataPtr)->appearanceConfig, graspRenderer);
 
 			if (grasp::to<Data>(currentDataPtr)->graspMode == MODE_CLUSTER || grasp::to<Data>(currentDataPtr)->graspMode == MODE_CONFIG)
 				printPath("Grasp config path", grasp::to<Data>(currentDataPtr)->appearanceConfig.configPath, (*ptr)->path);
@@ -238,7 +238,7 @@ void spam::ShapePlanner::renderData(Data::Map::const_iterator dataPtr) {
 				break;
 			};
 
-			(*ptr)->draw(*manipulator, grasp::to<Data>(dataPtr)->appearanceConfig, graspRenderer);
+//			(*ptr)->draw(*manipulator, grasp::to<Data>(dataPtr)->appearanceConfig, graspRenderer);
 		}
 		else
 			context.write("Grasp configs not available!\n");
@@ -783,11 +783,11 @@ void spam::ShapePlanner::function(Data::Map::iterator& dataPtr, int key) {
 	case 'O':
 	{
 		const grasp::Cloud::PointSeq& points = getPoints(dataPtr)->second;
-		Collision collision(context, *manipulator);
-		grasp::Manipulator::Pose pose = manipulator->getPose(robot->recvState().config);
-		Collision::Waypoint waypoint;
-		waypoint.points = 1000000;
-		(void)collision.evaluate(waypoint, points, rand, pose, true);
+		//Collision collision(context, *manipulator);
+		//grasp::Manipulator::Pose pose = manipulator->getPose(robot->recvState().config);
+		//Collision::Waypoint waypoint;
+		//waypoint.points = 1000000;
+		//(void)collision.evaluate(waypoint, points, rand, pose, true);
 		break;
 	}
 	}

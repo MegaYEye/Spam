@@ -268,14 +268,14 @@ INCLUDE_DIRECTORIES(
 # Spam library
 SET(SPAM_HEADERS
 	${PROJECT_ROOT}/include/Spam/Spam/Belief.h
-	${PROJECT_ROOT}/include/Spam/Spam/Data.h
+	${PROJECT_ROOT}/include/Spam/Spam/Spam.h
 	${PROJECT_ROOT}/include/Spam/Spam/GraphPlanner.h
 	${PROJECT_ROOT}/include/Spam/Spam/Heuristic.h
 	${PROJECT_ROOT}/include/Spam/Spam/Robot.h
 )
 SET(SPAM_SOURCES
 	${PROJECT_ROOT}/src/Spam/Spam/Belief.cpp
-	${PROJECT_ROOT}/src/Spam/Spam/Data.cpp
+	${PROJECT_ROOT}/src/Spam/Spam/Spam.cpp
 	${PROJECT_ROOT}/src/Spam/Spam/GraphPlanner.cpp
 	${PROJECT_ROOT}/src/Spam/Spam/Heuristic.cpp
 	${PROJECT_ROOT}/src/Spam/Spam/Robot.cpp

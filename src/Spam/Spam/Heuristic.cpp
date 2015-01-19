@@ -422,12 +422,12 @@ golem::Real FTDrivenHeuristic::cost(const golem::Waypoint &w, const golem::Waypo
 	if (desc.costDesc.distRootFac > golem::REAL_ZERO)
 		c += desc.costDesc.distRootFac*getDist(w, root);
 	
-	if (desc.costDesc.distGoalFac > golem::REAL_ZERO) {
+//	if (desc.costDesc.distGoalFac > golem::REAL_ZERO) {
 		const Real dist = (enable)?getMahalanobisDist(w, goal):getWorkspaceDist(w, goal);
-		c += desc.costDesc.distGoalFac*dist;
+		c += /*desc.costDesc.distGoalFac**/dist;
 //		c += desc.costDesc.distGoalFac*getMahalanobisDist(w, goal); getWorkspaceDist
 //		context.getMessageStream()->write(Message::LEVEL_DEBUG, "MyHeuristic::cost(w, root, goal) goal <%.2f, %.2f, %.2f>\n", goal.wpos[chainArm].p.x, goal.wpos[chainArm].p.y, goal.wpos[chainArm].p.z);
-	}
+//	}
 
 	if (desc.costDesc.distLimitsFac > golem::REAL_ZERO)
 		c += desc.costDesc.distLimitsFac*getConfigspaceLimitsDist(w.cpos);
@@ -445,7 +445,7 @@ Real FTDrivenHeuristic::cost(const Waypoint &w0, const Waypoint &w1) const {
 	const bool enable = enableUnc && (pBelief.get() && pBelief->getHypotheses().size() > 0);
 
 	const Chainspace::Index chainArm = stateInfo.getChains().begin();
-	if (desc.costDesc.distPathFac > REAL_ZERO) {
+//	if (desc.costDesc.distPathFac > REAL_ZERO) {
 		d = Heuristic::getBoundedDist(w0, w1);
 		if (d >= Node::COST_INF)
 			return Node::COST_INF;
@@ -456,8 +456,8 @@ Real FTDrivenHeuristic::cost(const Waypoint &w0, const Waypoint &w1) const {
 //		const Real bound = getBoundedDist(w1);
 		const Real r = (enable && getBoundedDist(w1) < Node::COST_INF) ? expectedObservationCost(w0, w1) : 1;//(d < 5*bsDesc.ftModelDesc.tactileRange)?getObservationalCost(w0, w1):1;
 //		if (r < 1) context.write("rewarded trajectory dist=%f reward %f (enalbe=%s)\n", bound < Node::COST_INF ? bound : -1, r, enable ? "ON" : "OFF");
-		c += desc.costDesc.distPathFac*d*r;
-	}
+		c += /*desc.costDesc.distPathFac**/d*r;
+//	}
 	// rewards more natural approaches (palm towards object)
 //	c *= directionApproach(w1);
 	
@@ -759,12 +759,26 @@ void FTDrivenHeuristic::h(const golem::Waypoint &wi, const golem::Waypoint &wj, 
 		
 }); // end parallels task
 #endif
-//		const Real likelihood_p1 = collision->evaluate(waypoint, **pBelief->getHypotheses().begin(), Rand(rand), manipulator->getPose(w.cpos), testCollision);
-		const Real likelihood_p1 = collision->evaluate(waypoint, pBelief->getHypotheses().front()->getCloud(), Rand(rand), manipulator->getPose(w.cpos), testCollision);
-		for (auto p = ++pBelief->getHypotheses().begin(); p != pBelief->getHypotheses().end(); ++p) {
-//			const Real likelihood_pi = collision->evaluate(waypoint, **p, manipulator->getPose(w.cpos), testCollision);
-			const Real likelihood_pi = collision->evaluate(waypoint, (*p)->getCloud(), Rand(rand), manipulator->getPose(w.cpos), testCollision);
-//			(void)collision->evaluate(waypoint, pBelief->getHypotheses()[p]->getCloud(), golem::Rand(rand), manipulator->getPose(w.cpos), testCollision);
+		U32 index = 0;
+
+		const Parallels* parallels = context.getParallels();
+		if (parallels != NULL) {
+			const Job* job = parallels->getCurrentJob();
+			if (job != NULL) {
+				index = job->getJobId();
+			}
+		}
+
+		//const Real likelihood_p1 = collision->evaluate(waypoint, **pBelief->getHypotheses().begin(), Rand(rand), manipulator->getPose(w.cpos), testCollision);
+//		const Real likelihood_p1 = collision->evaluate(waypoint, 0/*pBelief->getHypotheses().front()->getCloud(), rand*/, manipulator->getPose(w.cpos), testCollision, index);
+		const Real likelihood_p1 = pBelief->getHypotheses().front()->evaluate(manipulator->getPose(w.cpos), testCollision);
+		//for (auto p = ++pBelief->getHypotheses().begin(); p != pBelief->getHypotheses().end(); ++p) {
+		for (auto j = 1; j < pBelief->getHypotheses().size(); ++j) {
+			//const Real likelihood_pi = collision->evaluate(waypoint, **p, manipulator->getPose(w.cpos), testCollision);
+//			const Real likelihood_pi = collision->evaluate(waypoint, j/*pBelief->getHypotheses()[j]->getCloud(), rand*/, manipulator->getPose(w.cpos), testCollision, index);
+			const Real likelihood_pi = pBelief->getHypotheses()[j]->evaluate(manipulator->getPose(w.cpos), testCollision);
+
+			//			(void)collision->evaluate(waypoint, pBelief->getHypotheses()[p]->getCloud(), golem::Rand(rand), manipulator->getPose(w.cpos), testCollision);
 			y.push_back(likelihood_pi - likelihood_p1);
 		}
 
@@ -1179,7 +1193,7 @@ void FTDrivenHeuristic::h(const golem::Waypoint &wi, const golem::Waypoint &wj, 
 ////	return /*norm**/density(distMin);
 //}
 //
-//golem::Real FTDrivenHeuristic::evaluate(const grasp::Manipulator *manipulator, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<grasp::FTGuard> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const {
+//golem::Real FTDrivenHeuristic::evaluate(const grasp::Manipulator *manipulator, const golem::Waypoint &w, const grasp::RBPose::Sample &sample, const std::vector<FTGuard> &triggeredGuards, const grasp::RealSeq &force, const golem::Mat34 &trn) const {
 //	Real weight = golem::REAL_ONE;
 //	bool intersect = false; 
 //	// retrieve wrist's workspace pose and fingers configuration
@@ -1194,9 +1208,9 @@ void FTDrivenHeuristic::h(const golem::Waypoint &wi, const golem::Waypoint &wj, 
 //		for (Configspace::Index j = handInfo.getJoints(i).begin(); j != handInfo.getJoints(i).end(); ++j) { 
 //			const size_t idx = j - handInfo.getJoints().begin();
 //			triggered = triggered || [&] () -> bool {
-//				for (std::vector<grasp::FTGuard>::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
+//				for (std::vector<FTGuard>::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
 //					if (j == i->jointIdx) {
-//						forces[idx] = i->type == grasp::FTGUARD_ABS ? 0 : i->type == grasp::FTGUARD_LESSTHAN ? -1 : 1;
+//						forces[idx] = i->type == FTGuard_ABS ? 0 : i->type == FTGuard_LESSTHAN ? -1 : 1;
 //						return true;
 //					}
 //				return false;
@@ -1520,23 +1534,41 @@ bool FTDrivenHeuristic::collides(const Waypoint &w, ThreadData* data) const {
 #endif
 	// check for collisions with the object to grasp. only the hand
 	if (pointCloudCollision && pBelief.get() && !pBelief->getHypotheses().empty() && manipulator.get()) {
+		U32 index = 0;
+
+		//const Parallels* parallels = context.getParallels();
+		//if (parallels != NULL) {
+		//	const Job* job = parallels->getCurrentJob();
+		//	if (job != NULL) {
+		//		index = job->getJobId();
+		//	}
+		//}
+
+
 		// workspace coord of the first joint of the hand
 //		const RBCoord c(w.wpos[handInfo.getChains().begin()]);
 		/*Belief::*/Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
-		Collision col(context, *manipulator);
+//		Collision col(context, *manipulator);
 		// if the distance is less than distMax, then we check collision with the point cloud 
 //		if (c.p.distance((*maxLhdPose)->toRBPoseSampleGF().p) < ftDrivenDesc.ftModelDesc.distMax*2) {
 //		collision->evaluate(waypoint, (*maxLhdPose)->getCloud(), golem::Rand(rand), manipulator->getPose(w.cpos), testCollision);
-		for (Chainspace::Index i = stateInfo.getChains().end() - 1; i >= stateInfo.getChains().begin(); --i)
+		for (Chainspace::Index i = handInfo.getChains().end() - 1; i >= handInfo.getChains().begin(); --i)
 		{
 			const RBCoord c(w.wpos[i]);
-			if (c.p.distance((*maxLhdPose)->toRBPoseSampleGF().p) < ftDrivenDesc.ftModelDesc.distMax) {
+			//if (c.p.distance((*maxLhdPose)->toRBPoseSampleGF().p) < ftDrivenDesc.ftModelDesc.distMax) {
+			if (intersect(manipulator->getBounds(manipulator->getConfig(w.cpos), manipulator->getPose(w.cpos).toMat34()), (*maxLhdPose)->bounds(), true)) {
 #ifdef _HEURISTIC_PERFMON
 				++perfCollisionPointCloud;
 #endif
 				//if (Math::abs(col.evaluate(waypoint, **maxLhdPose, manipulator->getPose(w.cpos), false)) > REAL_ZERO)
-				if (Math::abs(collision->evaluate(waypoint, (*maxLhdPose)->getCloud(), Rand(rand), manipulator->getPose(w.cpos), false)) > REAL_ZERO)
+
+//				if (Math::abs(collision->evaluate(waypoint, 0/*(*maxLhdPose)->getCloud(), rand*/, manipulator->getPose(w.cpos), false, index)) > REAL_ZERO)
+//					return true;
+
+				//if (collision->check(waypoint, /*0*/(*maxLhdPose)->getCloud(), rand, manipulator->getPose(w.cpos), false/*, index*/))
+				if ((*maxLhdPose)->check(manipulator->getPose(w.cpos)))
 					return true;
+				// collision->check iterates on all the hand's bounds. so 1 control is more than enough. don't need to check for other fingers.
 				break;
 			}
 		}
@@ -1667,7 +1699,8 @@ golem::Real FTDrivenHeuristic::getCollisionCost(const golem::Waypoint &wi, const
 	Real threshold(0.01), cost(REAL_ZERO);
 	for (Chainspace::Index i = handInfo.getChains().begin(); i < handInfo.getChains().end(); ++i) {
 		const RBCoord c(wj.wpos[i]);
-		const Real d = (*maxLhdPose)->dist2NearestKPoints(c, ftDrivenDesc.ftModelDesc.distMax, ftDrivenDesc.ftModelDesc.k, ftDrivenDesc.numIndeces);
+
+		const Real d = 0;// (*maxLhdPose)->dist2NearestKPoints(c, ftDrivenDesc.ftModelDesc.distMax, ftDrivenDesc.ftModelDesc.k, ftDrivenDesc.numIndeces);
 //		context.write("FTDrivenHeuristic::getCollisionCost(): distance=%4.5f, cost=%4.5f\n", d, d < threshold ? Node::COST_INF : REAL_ZERO);
 		// penalise collisions with the shape of the mean pose
 		if (d < threshold)
@@ -1700,23 +1733,23 @@ Real FTDrivenHeuristic::testObservations(const grasp::RBCoord &pose, const bool 
 
 	std::vector<int> indeces;
 	std::vector<float> distances;
-	pcl::KdTree<pcl::PointXYZ>::PointCloudConstPtr cloud = (*pBelief->getHypotheses().begin())->pTree->getInputCloud();
+//	pcl::KdTree<pcl::PointXYZ>::PointCloudConstPtr cloud = (*pBelief->getHypotheses().begin())->pTree->getInputCloud();
 	Real result = REAL_ZERO;
 	Vec3 median;
 	median.setZero();
-	if ((*pBelief->getHypotheses().begin())->pTree->nearestKSearch(searchPoint, ftDrivenDesc.ftModelDesc.k, indeces, distances) > 0) {
-		for (size_t i = 0; i < indeces.size(); ++i) {
-			//Point point;
-			//point.frame.setId();
-			//point.frame.p.set(cloud->points[indeces[i]].x, cloud->points[indeces[i]].y, cloud->points[indeces[i]].z);
-			//result += pose.p.distance(point.frame.p);
-			//median += Vec3(cloud->points[indeces[i]].x, cloud->points[indeces[i]].y, cloud->points[indeces[i]].z);
-			result += pose.p.distance(Vec3(cloud->points[indeces[i]].x, cloud->points[indeces[i]].y, cloud->points[indeces[i]].z));
-			median += Vec3(cloud->points[indeces[i]].x, cloud->points[indeces[i]].y, cloud->points[indeces[i]].z);
-		}
-		result /= indeces.size();
-		median /= indeces.size();
-	}
+	//if ((*pBelief->getHypotheses().begin())->pTree->nearestKSearch(searchPoint, ftDrivenDesc.ftModelDesc.k, indeces, distances) > 0) {
+	//	for (size_t i = 0; i < indeces.size(); ++i) {
+	//		//Point point;
+	//		//point.frame.setId();
+	//		//point.frame.p.set(cloud->points[indeces[i]].x, cloud->points[indeces[i]].y, cloud->points[indeces[i]].z);
+	//		//result += pose.p.distance(point.frame.p);
+	//		//median += Vec3(cloud->points[indeces[i]].x, cloud->points[indeces[i]].y, cloud->points[indeces[i]].z);
+	//		result += pose.p.distance(Vec3(cloud->points[indeces[i]].x, cloud->points[indeces[i]].y, cloud->points[indeces[i]].z));
+	//		median += Vec3(cloud->points[indeces[i]].x, cloud->points[indeces[i]].y, cloud->points[indeces[i]].z);
+	//	}
+	//	result /= indeces.size();
+	//	median /= indeces.size();
+	//}
 	
 	context.write("FTDrivenHeuristic:testObs(normal=%s):\n", normal ? "ON" : "OFF");
 	if (normal) {

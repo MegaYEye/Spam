@@ -207,8 +207,8 @@ protected:
 
 	bool printing;
 	golem::Bounds::Seq handBounds, waypointBounds;
-	Collision::Ptr collision;
-	Collision::Waypoint w;
+//	Collision::Ptr collision;
+//	Collision::Waypoint w;
 
 	/** Resets the controllers */
 	bool enableControllers;
@@ -227,7 +227,7 @@ protected:
 	/** Combined action waypoints */
 	golem::Controller::State::Seq executedTrajectory;
 	/** Contains the index of the triggered guards */
-	grasp::FTGuard::Seq triggeredGuards;
+	FTGuard::Seq triggeredGuards;
 	golem::Controller::State::Seq grasps;
 
 	/** Iterations counter */
@@ -288,7 +288,7 @@ protected:
 	grasp::Robot::State::Seq robotStates;
 
 	bool unlockContact();
-
+	bool showIndices;
 	/** Prints out a trajectory */
 	void printTrajectory(const golem::Controller::State::Seq &trajectory, const golem::Configspace::Index &begin, const golem::Configspace::Index &end) const;
 	/** Prints out a state of the robot */

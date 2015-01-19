@@ -33,7 +33,6 @@
 using namespace golem;
 using namespace spam;
 
-
 //------------------------------------------------------------------------------
 
 Robot::Robot(Scene &scene) : grasp::Robot(scene) {
@@ -164,7 +163,7 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 	gwcs.wpos[armChain].multiply(gwcs.wpos[armChain], controller->getChains()[armChain]->getReferencePose()); // 1:1
 	gwcs.wpos[armChain].multiply(trn, gwcs.wpos[armChain]); // new waypoint frame
 	gwcs.t = target.t;
-	gwcs.wpos[armChain].p.z += 0.01;
+//	gwcs.wpos[armChain].p.z += 0.01;
 
 	cend = target;
 	{
@@ -174,6 +173,8 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 		if (!planner->findTarget(target, gwcs, cend))
 			throw Message(Message::LEVEL_ERROR, "spam::Robot::findTarget(): Unable to find initial target configuration");
 	}
+	context.write(">\n"); //std::cout << ">\n"; //context.write(">\n");
+
 	// update arm configurations and compute average error
 	grasp::RBDist err;
 	WorkspaceChainCoord wcc;
@@ -213,7 +214,7 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 //
 //}
 //
-//int Robot::getTriggeredGuards(grasp::FTGuard::Seq &triggeredJoints, golem::Controller::State &state) {	
+//int Robot::getTriggeredGuards(FTGuard::Seq &triggeredJoints, golem::Controller::State &state) {	
 //	triggeredJoints.clear();
 //	triggeredJoints.reserve(ftGuards.size());
 //
@@ -236,7 +237,7 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 //	}
 //	else {
 //		// in case robot bham
-//		for (grasp::FTGuard::Seq::const_iterator i = triggeredGuards.begin(); i != triggeredGuards.end(); ++i)
+//		for (FTGuard::Seq::const_iterator i = triggeredGuards.begin(); i != triggeredGuards.end(); ++i)
 //			triggeredJoints.push_back(*i);
 //		
 //		//const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
@@ -339,7 +340,7 @@ void Robot::readFT(const Controller::State &state, grasp::RealSeq &force) const 
 ////	//return false;
 ////}
 //
-//size_t Robot::isGrasping(grasp::FTGuard::Seq &triggeredJoints, golem::Controller::State &state) {
+//size_t Robot::isGrasping(FTGuard::Seq &triggeredJoints, golem::Controller::State &state) {
 //	// in case justin tried to grasp with no guards enabled
 //	triggeredJoints.clear();
 //	const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);

@@ -48,7 +48,7 @@
 
 //#include <Grasp/Grasp/Cloud.h>
 //#include <Grasp/Grasp/RBPose.h>
-#include <Grasp/Grasp/Robot.h>
+#include <Grasp/Core/Robot.h>
 #include <Spam/Spam/Spam.h>
 
 ////------------------------------------------------------------------------------
@@ -301,13 +301,13 @@ public:
 	/** Creates a new set of poses (resampling wheel algorithm) */
 	virtual void createResample();
 	/** Creates belief update (on importance weights) given the robot's pose and the current belief state. NOTE: weights are normalised. */
-	void createUpdate(const grasp::Manipulator *manipulator, const grasp::Robot *robot, const golem::Waypoint &w, const grasp::FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force);
+	void createUpdate(const grasp::Manipulator *manipulator, const grasp::Robot *robot, const golem::Waypoint &w, const FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force);
 	/** Evaluates the likelihood of reading a contact between robot's pose and the sample */
 	golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const grasp::RealSeq &forces, std::vector<bool> &triggered, bool intersect = true);
 	//golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const golem::Real &force, bool jointZero, bool intersect = true);
 
 	/** Checks collision with the max likelihood fitting estimation */
-	bool intersect(const golem::Bounds::Seq &bounds, const golem::Mat34 &pose) const;
+//	bool intersect(const golem::Bounds::Seq &bounds, const golem::Mat34 &pose) const;
 
 	/** Probability density value=p(d) for a given distance between finger and hypothesis */
 	golem::Real density(const golem::Real dist) const;
@@ -349,6 +349,9 @@ public:
 	/** Draw hypotheses */
 	void drawHypotheses(golem:: DebugRenderer &renderer, const bool showOnlyMeanPose = false) const;
 
+	/** Acquires manipulator */
+	inline void setManipulator(grasp::Manipulator *ptr) { manipulator.reset(ptr); /*collision.reset(new Collision(context, *manipulator));*/ };
+
 	/** Pose description */
 	Desc myDesc;
 
@@ -384,6 +387,9 @@ protected:
 	grasp::RBPose::Sample::Seq initPoses;
 	/** Transformation samples properties */
 	golem::SampleProperty<golem::Real, grasp::RBCoord, grasp::RBCoord::N> sampleProperties, initProperties;
+
+	/** Manipulator pointer */
+	grasp::Manipulator::Ptr manipulator;
 
 	/** Creates/initialises the object */
 	bool create(const Desc& desc);

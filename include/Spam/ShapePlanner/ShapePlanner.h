@@ -49,6 +49,8 @@
 #include <Spam/PosePlanner/PosePlanner.h>
 #include <Spam/Spam/Data.h>
 #include <Grasp/Grasp/Grasp.h>
+#include <Grasp/Grasp/Classifier.h>
+#include <Grasp/Grasp/Cluster.h>
 #include <Golem/Phys/Application.h>
 #include <Golem/Tools/XMLParser.h>
 

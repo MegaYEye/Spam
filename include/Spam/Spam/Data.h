@@ -126,7 +126,7 @@ public:
 	int triggered;
 	/** Contains the index of the triggered guards */
 //	std::vector<golem::Configspace::Index> triggeredGuards;
-	std::vector<grasp::FTGuard> triggeredGuards;
+	std::vector<FTGuard> triggeredGuards;
 	/** State of the robot at the time a contact occurred */
 	golem::Controller::State::Seq triggeredStates;
 
