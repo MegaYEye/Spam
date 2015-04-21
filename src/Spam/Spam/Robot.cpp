@@ -163,7 +163,7 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 	gwcs.wpos[armChain].multiply(gwcs.wpos[armChain], controller->getChains()[armChain]->getReferencePose()); // 1:1
 	gwcs.wpos[armChain].multiply(trn, gwcs.wpos[armChain]); // new waypoint frame
 	gwcs.t = target.t;
-//	gwcs.wpos[armChain].p.z += 0.01;
+//	gwcs.wpos[armChain].p.x += 0.045;
 
 	cend = target;
 	{
@@ -173,7 +173,7 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 		if (!planner->findTarget(target, gwcs, cend))
 			throw Message(Message::LEVEL_ERROR, "spam::Robot::findTarget(): Unable to find initial target configuration");
 	}
-	context.write(">\n"); //std::cout << ">\n"; //context.write(">\n");
+//	context.write(">\n"); //std::cout << ">\n"; //context.write(">\n");
 
 	// update arm configurations and compute average error
 	grasp::RBDist err;
@@ -181,8 +181,7 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 	controller->chainForwardTransform(cend.cpos, wcc);
 	wcc[armChain].multiply(wcc[armChain], controller->getChains()[armChain]->getReferencePose());
 	err.add(err, grasp::RBDist(grasp::RBCoord(wcc[armChain]), grasp::RBCoord(gwcs.wpos[armChain])));
-	context.write("spam::Robot::findTarget(): Pose error: lin=%.9f, ang=%.9f\n", err.lin, err.ang);
-
+	context.write("Robot::findTarget(): Pose error: lin=%.9f, ang=%.9f\n", err.lin, err.ang);
 }
 
 //------------------------------------------------------------------------------
@@ -432,7 +431,7 @@ grasp::RBDist Robot::trnTrajectory(const golem::Mat34& actionFrame, const golem:
 		wcc[armChain].multiply(wcc[armChain], controller->getChains()[armChain]->getReferencePose());
 		err.add(err, grasp::RBDist(grasp::RBCoord(wcc[armChain]), grasp::RBCoord(seq[i].wpos[armChain])));
 	}
-	context.write("Robot::createTrajectory(2): Pose error: lin=%.9f, ang=%.9f\n", err.lin, err.ang);
+	context.debug("Robot::createTrajectory(2): Pose error: lin=%.9f, ang=%.9f\n", err.lin, err.ang);
 
 	return err;
 }
@@ -508,7 +507,7 @@ void Robot::createTrajectory(const golem::Controller::State& begin, const golem:
 	for (golem::U32 i = 0; i < trajectoryTrials; ++i) {
 		if (universe.interrupted())
 			throw grasp::Interrupted();
-		context.debug("Robot::findTrajectory(): Planning movement...\n");
+//		context.debug("Robot::findTrajectory(): Planning movement...\n");
 		// lock controller
 		golem::CriticalSectionWrapper csw(csController);
 		// All bounds are treated as obstacles

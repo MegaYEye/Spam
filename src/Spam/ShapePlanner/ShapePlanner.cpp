@@ -188,10 +188,10 @@ void spam::ShapePlanner::renderData(Data::Map::const_iterator dataPtr) {
 	golem::CriticalSectionWrapper csw(csDataRenderer);
 	graspRenderer.reset();
 
-	// data pointer
-	switch (grasp::to<Data>(dataPtr)->graspMode) {
-	case MODE_DATA:
-	{
+	if (grasp::to<Data>(dataPtr)->graspMode == MODE_DISABLED)
+		return;
+
+	if (grasp::to<Data>(dataPtr)->graspMode == MODE_DATA) {
 		grasp::Grasp::Map::const_iterator grasp;
 		grasp::Grasp::Data::Map::const_iterator data;
 		if (grasp::to<Data>(dataPtr)->getGraspData(classifier->getGraspMap(), grasp, data)) {
@@ -201,49 +201,112 @@ void spam::ShapePlanner::renderData(Data::Map::const_iterator dataPtr) {
 		}
 		else
 			context.write("Training data not available!\n");
-		break;
 	}
-	case MODE_CLUSTER:
-	case MODE_CONFIG:
-	case MODE_CONFIG_MODEL:
-	case MODE_CONTACT_MODEL:
-		if (grasp::to<Data>(dataPtr)->hasGraspConfigs()) {
-			grasp::Grasp::Config::Seq::const_iterator ptr = grasp::to<Data>(dataPtr)->getGraspConfig();
+	else if (!grasp::to<Data>(dataPtr)->hasGraspConfigs())
+		context.write("Grasp configs not available!\n");
+	else {
+		grasp::Grasp::Config::Seq::const_iterator ptr = grasp::to<Data>(dataPtr)->getGraspConfig();
+		const grasp::Grasp* grasp = grasp::to<Data>(dataPtr)->hasGraspConfigs() ? (*ptr)->getGrasp() : nullptr;
 
-			grasp::to<Data>(dataPtr)->appearanceConfig.showConfig = false;
-			grasp::to<Data>(dataPtr)->appearanceConfig.showModelConfig = false;
-			grasp::to<Data>(dataPtr)->appearanceConfig.showModelContact = false;
-			switch (grasp::to<Data>(dataPtr)->graspMode) {
-			case MODE_CLUSTER:
-			case MODE_CONFIG:
-				grasp::to<Data>(dataPtr)->appearanceConfig.showConfig = true;
-				grasp::to<Data>(dataPtr)->printGraspInfo(*manipulator);
-				break;
-			case MODE_CONFIG_MODEL:
-				grasp::to<Data>(dataPtr)->appearanceConfig.showModelConfig = true;
-				break;
-			case MODE_CONTACT_MODEL:
-				grasp::to<Data>(dataPtr)->appearanceConfig.showModelContact = true;
-				const grasp::Grasp* grasp = (*ptr)->getGrasp();
-				if (grasp) {
-					U32& ptr = grasp::to<Data>(dataPtr)->appearanceConfig.modelSelectionIndex;
-					while (ptr < grasp->getContacts().size() && grasp->getContacts()[ptr]->getPoses().empty()) ++ptr;
-					if (ptr > grasp->getContacts().size()) ptr = grasp->getContacts().size();
-					const grasp::Contact* contact = ptr < grasp->getContacts().size() ? grasp->getContacts()[ptr] : nullptr;
-					if (contact)
-						context.write("Contact: type=%s, name=%s, size_{model=%u, query=%u}\n", grasp->getType().c_str(), contact->getTypeDesc().getName().c_str(), contact->getFeatures().size(), contact->getPoses().size());
-					else
-						context.write("Contact: disabled\n");
-				}
-				break;
-			};
+		grasp::to<Data>(dataPtr)->appearanceConfig.showConfig = false;
+		grasp::to<Data>(dataPtr)->appearanceConfig.showModelConfig = false;
+		grasp::to<Data>(dataPtr)->appearanceConfig.showModelContact = false;
 
-//			(*ptr)->draw(*manipulator, grasp::to<Data>(dataPtr)->appearanceConfig, graspRenderer);
+		// data pointer
+		switch (grasp::to<Data>(dataPtr)->graspMode) {
+		case MODE_CLUSTER:
+		case MODE_CONFIG:
+			grasp::to<Data>(dataPtr)->appearanceConfig.showConfig = true;
+			grasp::to<Data>(dataPtr)->printGraspInfo(*manipulator);
+			grasp = nullptr;
+			break;
+		case MODE_CONFIG_MODEL:
+			grasp::to<Data>(dataPtr)->appearanceConfig.showModelConfig = true;
+			break;
+		case MODE_CONTACT_MODEL:
+			grasp::to<Data>(dataPtr)->appearanceConfig.showModelContact = true;
+			break;
+		};
+
+		if (grasp) {
+			U32& modelSelectionIndex = grasp::to<Data>(dataPtr)->appearanceConfig.modelSelectionIndex;
+			if (modelSelectionIndex > grasp->getContacts().size()) modelSelectionIndex = grasp->getContacts().size();
+			const grasp::Contact* contact = modelSelectionIndex < grasp->getContacts().size() && !grasp->getContacts()[modelSelectionIndex]->getPoses().empty() ? grasp->getContacts()[modelSelectionIndex] : nullptr;
+			if (contact) {
+				grasp::to<Data>(dataPtr)->appearanceData.path.manipulator.selectionIndex = grasp::to<Data>(dataPtr)->appearanceConfig.configPath.manipulator.selectionIndex = grasp::to<Data>(dataPtr)->appearanceConfig.modelManipulator.selectionIndex = (U32)contact->getTypeDesc().index > manipulator->getJoints() ? manipulator->getJoints() : (U32)contact->getTypeDesc().index;
+				context.write("Contact index=%u: type=%s, name=%s, joint=%u, size_{model=%u, query=%u}\n", modelSelectionIndex + 1, grasp->getType().c_str(), contact->getTypeDesc().getName().c_str(), contact->getTypeDesc().index + 1, contact->getFeatures().size(), contact->getPoses().size());
+			}
+			else {
+				grasp::to<Data>(dataPtr)->appearanceData.path.manipulator.selectionIndex = grasp::to<Data>(dataPtr)->appearanceConfig.configPath.manipulator.selectionIndex = grasp::to<Data>(dataPtr)->appearanceConfig.modelManipulator.selectionIndex = (U32)-1;
+				if (modelSelectionIndex < grasp->getContacts().size())
+					context.write("Contact index=%u: disabled\n", modelSelectionIndex + 1);
+				else
+					context.write("Contact: disabled\n");
+			}
 		}
-		else
-			context.write("Grasp configs not available!\n");
-		break;
-	};
+
+		(*ptr)->draw(*manipulator, grasp::to<Data>(dataPtr)->appearanceConfig, rand, graspRenderer);
+	}
+
+//	golem::CriticalSectionWrapper csw(csDataRenderer);
+//	graspRenderer.reset();
+//
+//	// data pointer
+//	switch (grasp::to<Data>(dataPtr)->graspMode) {
+//	case MODE_DATA:
+//	{
+//		grasp::Grasp::Map::const_iterator grasp;
+//		grasp::Grasp::Data::Map::const_iterator data;
+//		if (grasp::to<Data>(dataPtr)->getGraspData(classifier->getGraspMap(), grasp, data)) {
+//			grasp::to<Data>(currentDataPtr)->appearanceData.path.pathDelta = grasp->second->getConfiguration()->getDesc().distanceStdDev;
+//			data->second.draw(*grasp->second, grasp::to<Data>(dataPtr)->appearanceData, graspRenderer);
+//			context.write("Training data: estimator=%s, type=%s, name=%s\n", grasp->second->getName().c_str(), grasp->first.c_str(), data->first.c_str());
+//		}
+//		else
+//			context.write("Training data not available!\n");
+//		break;
+//	}
+//	case MODE_CLUSTER:
+//	case MODE_CONFIG:
+//	case MODE_CONFIG_MODEL:
+//	case MODE_CONTACT_MODEL:
+//		if (grasp::to<Data>(dataPtr)->hasGraspConfigs()) {
+//			grasp::Grasp::Config::Seq::const_iterator ptr = grasp::to<Data>(dataPtr)->getGraspConfig();
+//
+//			grasp::to<Data>(dataPtr)->appearanceConfig.showConfig = false;
+//			grasp::to<Data>(dataPtr)->appearanceConfig.showModelConfig = false;
+//			grasp::to<Data>(dataPtr)->appearanceConfig.showModelContact = false;
+//			switch (grasp::to<Data>(dataPtr)->graspMode) {
+//			case MODE_CLUSTER:
+//			case MODE_CONFIG:
+//				grasp::to<Data>(dataPtr)->appearanceConfig.showConfig = true;
+//				grasp::to<Data>(dataPtr)->printGraspInfo(*manipulator);
+//				break;
+//			case MODE_CONFIG_MODEL:
+//				grasp::to<Data>(dataPtr)->appearanceConfig.showModelConfig = true;
+//				break;
+//			case MODE_CONTACT_MODEL:
+//				grasp::to<Data>(dataPtr)->appearanceConfig.showModelContact = true;
+//				const grasp::Grasp* grasp = (*ptr)->getGrasp();
+//				if (grasp) {
+//					U32& ptr = grasp::to<Data>(dataPtr)->appearanceConfig.modelSelectionIndex;
+//					while (ptr < grasp->getContacts().size() && grasp->getContacts()[ptr]->getPoses().empty()) ++ptr;
+//					if (ptr > grasp->getContacts().size()) ptr = grasp->getContacts().size();
+//					const grasp::Contact* contact = ptr < grasp->getContacts().size() ? grasp->getContacts()[ptr] : nullptr;
+//					if (contact)
+//						context.write("Contact: type=%s, name=%s, size_{model=%u, query=%u}\n", grasp->getType().c_str(), contact->getTypeDesc().getName().c_str(), contact->getFeatures().size(), contact->getPoses().size());
+//					else
+//						context.write("Contact: disabled\n");
+//				}
+//				break;
+//			};
+//
+////			(*ptr)->draw(*manipulator, grasp::to<Data>(dataPtr)->appearanceConfig, graspRenderer);
+//		}
+//		else
+//			context.write("Grasp configs not available!\n");
+//		break;
+//	};
 }
 
 void spam::ShapePlanner::resetDataPointers() {

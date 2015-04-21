@@ -63,7 +63,7 @@ RagGraphPlanner::RagGraphPlanner(Controller& controller) :	GraphPlanner(controll
 }
 
 bool RagGraphPlanner::create(const Desc& desc) {
-	context.write("RagGraphPlanner::create()\n");
+//	context.write("RagGraphPlanner::create()\n");
 	GraphPlanner::create(desc); // throws	
 
 	MultiCtrl* multiCtrl = dynamic_cast<MultiCtrl*>(&controller);
@@ -284,13 +284,13 @@ bool RagGraphPlanner::localFind(const ConfigspaceCoord &begin, const Configspace
 bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const GenWorkspaceChainState& wend, GenConfigspaceState &cend) {
 //	context.write("RagGraphPlanner::find target\n");
 //	return GraphPlanner::findTarget(begin, wend, cend);
-	context.verbose("RagGraphPlanner::findTarget: %s\n", grasp::plannerDebug(*this).c_str());
+//	context.verbose("RagGraphPlanner::findTarget: %s\n", grasp::plannerDebug(*this).c_str());
 	bool enable = false;
 	spam::FTDrivenHeuristic *heuristic = getFTDrivenHeuristic();
 	if (heuristic) {
 		enable = heuristic->enableUnc;
 		heuristic->enableUnc = false;
-		context.write("RagGraphPlanner::findTarget(): enable unc %s\n", heuristic->enableUnc ? "ON" : "OFF");
+		context.debug("RagGraphPlanner::findTarget(): enable unc %s\n", heuristic->enableUnc ? "ON" : "OFF");
 	}
 	// TODO: Find why the pre-grasp pose returns with close fingers
 	disableHandPlanning();
@@ -358,7 +358,7 @@ bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const 
 
 	enableHandPlanning();
 
-	context.write("RagGraphPlanner::findTarget(): done.\n");
+//	context.write("RagGraphPlanner::findTarget(): done.\n");
 	return true;
 }
 
@@ -421,7 +421,7 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 	t.reset();
 #endif
 	// generate global graph only for the arm
-	context.write("RagGraphPlanner::findGlobalTrajectory(): disable hand planning...\n");
+	context.debug("GraphPlanner::findGlobalTrajectory(): Enabled Uncertainty %s. disable hand planning...\n", getFTDrivenHeuristic()->enableUnc ? "ON" : "OFF");
 	disableHandPlanning();
 
 	// generate global graph
@@ -433,7 +433,7 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 		return false;
 	}
 #ifdef _GRAPHPLANNER_PERFMON
-	context.debug(
+	context.write(
 		"GlobalPathFinder::findPath(): time_elapsed = %f [sec], len = %d\n",
 		t.elapsed(), globalPath.size()
 		);
@@ -455,7 +455,7 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 			}
 		}
 #ifdef _GRAPHPLANNER_PERFMON
-		context.debug(
+		context.write(
 			"LocalPathFinder::findPath(): time_elapsed = %f [sec], len = %d\n",
 			t.elapsed(), localPath.size()
 			);
@@ -470,7 +470,7 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 
 #ifdef _GRAPHPLANNER_PERFMON
 #ifdef _HEURISTIC_PERFMON
-	context.debug("Enabled Uncertainty %s\n", getFTDrivenHeuristic()->enableUnc ? "ON" : "OFF");
+//	context.debug("Enabled Uncertainty %s\n", getFTDrivenHeuristic()->enableUnc ? "ON" : "OFF");
 	FTDrivenHeuristic::writeLog(context, "PathFinder::find()");
 	Collision::writeLog(context, "PathFinder::find()");
 #endif
@@ -491,7 +491,7 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 #endif
 	optimize(optimisedPath);
 #ifdef _GRAPHPLANNER_PERFMON
-	context.debug(
+	context.write(
 		"GraphPlanner::optimize(): time_elapsed = %f [sec], len = %d\n", t.elapsed(), optimisedPath.size()
 		);
 #ifdef _HEURISTIC_PERFMON
@@ -510,7 +510,7 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 	pProfile->create(optimisedPath.begin(), optimisedPath.end(), begin, end, trajectory, iter, iend);
 	pProfile->profile(trajectory, iter, iend);
 #ifdef _GRAPHPLANNER_PERFMON
-	context.debug(
+	context.write(
 		"GraphPlanner::profile(): time_elapsed = %f [sec], len = %d\n",
 		t.elapsed(), trajectory.size()
 		);
@@ -590,10 +590,10 @@ bool RagGraphPlanner::findLocalTrajectory(const Controller::State &cbegin, GenWo
 	getCallbackDataSync()->syncFindTrajectory(begin, end, &*(wend - 1));
 
 #ifdef _GRAPHPLANNER_PERFMON
-	context.debug("GraphPlanner::findLocalTrajectory(): time_elapsed = %f [sec], len = %d\n", t.elapsed(), size);
+	context.write("GraphPlanner::findLocalTrajectory(): time_elapsed = %f [sec], len = %d\n", t.elapsed(), size);
 #ifdef _HEURISTIC_PERFMON
 	if (heuristic) {
-		context.debug("Enabled Uncertainty %s\n", heuristic->enableUnc ? "ON" : "OFF");
+		context.write("Enabled Uncertainty %s\n", heuristic->enableUnc ? "ON" : "OFF");
 		heuristic->writeLog(context, "GraphPlanner::findTarget()");
 		heuristic->getCollision()->writeLog(context, "GraphPlanner::findTarget()");;
 	}

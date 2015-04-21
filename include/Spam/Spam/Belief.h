@@ -239,6 +239,9 @@ public:
 		/** Sensory model description file */
 		SensoryDesc sensory;
 
+		/** Hypothesis description file */
+		Hypothesis::Desc::Ptr hypothesisDescPtr;
+
 		/** Number of hypothesis per model **/
 		size_t numPoses;
 		/** Number of hypothesis per model **/
@@ -261,6 +264,7 @@ public:
 		void setToDefault() {
 			grasp::RBPose::Desc::setToDefault();
 //			tactile.setToDefault();
+			hypothesisDescPtr.reset(new Hypothesis::Desc());
 			numHypotheses = 5;
 			maxSurfacePoints = 10000;
 			std::fill(&covariance[0], &covariance[3], golem::Real(0.02)); // Vec3
@@ -270,6 +274,8 @@ public:
 		/** Checks if the description is valid. */
 		bool isValid() const {
 			if (!grasp::RBPose::Desc::isValid())
+				return false;
+			if (hypothesisDescPtr == nullptr || !hypothesisDescPtr->isValid())
 				return false;
 			//if (!tactile.isValid())
 			//	return false;
@@ -302,6 +308,8 @@ public:
 	virtual void createResample();
 	/** Creates belief update (on importance weights) given the robot's pose and the current belief state. NOTE: weights are normalised. */
 	void createUpdate(const grasp::Manipulator *manipulator, const grasp::Robot *robot, const golem::Waypoint &w, const FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force);
+	/** Creates belief update (on importance weights) given the robot's pose and the current belief state. NOTE: weights are normalised. */
+	void createUpdate(const Collision::Ptr collision, const golem::Waypoint &w, const FTGuard::Seq &triggeredGuards, const grasp::RBCoord &rbPose);
 	/** Evaluates the likelihood of reading a contact between robot's pose and the sample */
 	golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const grasp::RealSeq &forces, std::vector<bool> &triggered, bool intersect = true);
 	//golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const golem::Real &force, bool jointZero, bool intersect = true);
@@ -311,6 +319,14 @@ public:
 
 	/** Probability density value=p(d) for a given distance between finger and hypothesis */
 	golem::Real density(const golem::Real dist) const;
+
+	/** Normalised weight for the input pose */
+	inline golem::Real normalise(const grasp::RBPose::Sample &pose) const {
+		return normaliseFac > golem::REAL_ZERO ? pose.weight / normaliseFac : pose.weight;
+	}
+
+	/** Returns the max weight associated to the corrent samples */
+	golem::Real maxWeight(const bool normalised = false) const;
 
 	/** Sets belief */
 	void set(const grasp::RBPose::Sample::Seq &poseSeq, const grasp::RBPose::Sample::Seq &hypothesisSeq, const golem::Mat34 &trn, const grasp::Cloud::PointSeq &points);
@@ -380,13 +396,15 @@ protected:
 	/** Kernel function */
 	golem::Real kernel(golem::Real x, golem::Real lambda = golem::REAL_ONE) const;
 
-	/** Returns the max weight associated to the corrent samples */
-	golem::Real maxWeight() const;
+	///** Returns the max weight associated to the corrent samples */
+	//golem::Real maxWeight(const bool normalised = false) const;
 
 	/** Initial belief distribution. NOTE: Used for the reset method. */
 	grasp::RBPose::Sample::Seq initPoses;
 	/** Transformation samples properties */
 	golem::SampleProperty<golem::Real, grasp::RBCoord, grasp::RBCoord::N> sampleProperties, initProperties;
+	/** Normalise factor */
+	golem::Real normaliseFac;
 
 	/** Manipulator pointer */
 	grasp::Manipulator::Ptr manipulator;

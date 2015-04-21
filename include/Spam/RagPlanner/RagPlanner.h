@@ -124,6 +124,9 @@ public:
 		/** Downsampling parameter */
 		size_t maxModelPoints;
 
+		/** Collision description file. Used for collision with the ground truth */
+		Collision::Desc::Ptr objCollisionDescPtr;
+
 		///** Query transformation */
 		//grasp::RBCoord queryPointsTrn;
 		
@@ -147,6 +150,8 @@ public:
 			withdrawToHomePose = false;
 
 			maxModelPoints = 5000;
+
+			objCollisionDescPtr.reset(new Collision::Desc());
 
 //			queryPointsTrn.fromMat34(golem::Mat34::identity());
 		}
@@ -207,8 +212,9 @@ protected:
 
 	bool printing;
 	golem::Bounds::Seq handBounds, waypointBounds;
-//	Collision::Ptr collision;
-//	Collision::Waypoint w;
+
+	/** Pointer to collision detection with the ground truth */
+	Collision::Ptr collisionPtr;
 
 	/** Resets the controllers */
 	bool enableControllers;
@@ -268,7 +274,7 @@ protected:
 	virtual void performSingleGrasp(Data::Map::iterator dataPtr);
 	/** Performs trial action (trajectory) */
 	virtual void perform(const std::string& name, const golem::Controller::State::Seq& trajectory, bool silent = false);
-	void execute(Data::Map::iterator dataPtr, golem::Controller::State::Seq& trajectory);
+	bool execute(Data::Map::iterator dataPtr, golem::Controller::State::Seq& trajectory);
 	/** Creates new data */
 	virtual Data::Ptr createData() const;
 

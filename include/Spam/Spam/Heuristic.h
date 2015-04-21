@@ -212,6 +212,12 @@ public:
 		/** Number of points in used to create the KD-trees (subsample of model points) */
 		size_t maxSurfacePoints;
 
+		/** Evaluation descritption file */
+		Collision::FlannDesc evaluationDesc;
+
+		/** Check description file */
+		Collision::FlannDesc checkDesc;
+
 		/** Constructs the description object. */
 		Desc() {
 			Desc::setToDefault();
@@ -231,6 +237,8 @@ public:
 			knearest = true;
 			trimesh = false;
 			maxSurfacePoints = 10000;
+			evaluationDesc.setToDefault();
+			checkDesc.setToDefault();
 		}
 		/** Checks if the description is valid. */
 		virtual bool isValid() const {
@@ -239,10 +247,13 @@ public:
 
 			if (!ftModelDesc.isValid())
 				return false;
+
+			if (!evaluationDesc.isValid() || !checkDesc.isValid())
+				return false;
+
 			for (size_t i = 0; i < grasp::RBCoord::N; ++i)
 				if (!golem::Math::isPositive(covariance[i]))
 					return false;
-
 			return true;
 		}
 		/** virtual destructor is required */
@@ -438,6 +449,14 @@ protected:
 //	golem::Real kernel(golem::Real x, golem::Real lambda = golem::REAL_ONE) const;
 	/** Probability density value=p(x|p) for x given the sampled particle p */
 //	golem::Real density(const grasp::RBCoord &x, const grasp::RBCoord &p) const;
+
+	/** Evaluate contact with hyptothesis */
+	golem::Real evaluate(const Hypothesis::Seq::const_iterator &hypothesis, const golem::Waypoint &w) const;
+
+	/** Estimate contact with hyptothesis */
+	inline golem::Real estimate(const Hypothesis::Seq::const_iterator &hypothesis, const golem::Waypoint &w) const {
+		return (*hypothesis)->estimate(ftDrivenDesc.evaluationDesc, manipulator->getPose(w.cpos), ftDrivenDesc.ftModelDesc.distMax);
+	}
 
 	/** Penalises configurations which collide with the mean hypothesis */
 	golem::Real getCollisionCost(const golem::Waypoint &wi, const golem::Waypoint &wj, Hypothesis::Seq::const_iterator p) const;

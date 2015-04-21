@@ -59,17 +59,19 @@ namespace spam {
 /** SPAM Pose planner. */
 class PosePlanner : public grasp::Player {
 public:
+	/** Action types */
 	enum  action {
-		NONE,
+		NONE_ACTION = 0,
 		GRASP,
 		IG_PLAN_ON_QUERY,
 		IG_PLAN_M2Q,
 		IG_TRAJ_OPT
 	};
+	/** Prints actions */
 	static std::string actionToString(action type) {
 		std::string str;
 		switch (type) {
-		case action::NONE:
+		case action::NONE_ACTION:
 			str.assign("NONE");
 			break;
 		case action::GRASP:
@@ -87,6 +89,15 @@ public:
 		}
 		return str;
 	}
+
+	/** Type of implemented algorithms */
+	enum Strategy {
+		NONE_STRATEGY = 0,
+		ELEMENTARY,
+		MYCROFT,
+		IR3NE,
+	};
+
 	/** Data */
 	class Data : public grasp::Player::Data {
 	public:
@@ -117,6 +128,9 @@ public:
 
 		/** type of action to execute */
 		action actionType;
+
+		/** Strategy to execute */
+		Strategy stratType;
 		
 		/** Reset data during construction */
 		Data() {
@@ -142,7 +156,8 @@ public:
 
 			extSamples = ".rbs";
 
-			actionType = action::NONE;
+			actionType = action::NONE_ACTION;
+			stratType = Strategy::NONE_STRATEGY;
 		}
 		/** Assert that the description is valid. */
 		virtual void assertValid(const grasp::Assert::Context& ac) const {
@@ -152,6 +167,7 @@ public:
 		/** Reads/writes object from/to a given XML context */
 		virtual void xmlData(golem::XMLContext* context, bool create = false) const;
 	};
+
 	class Trajectory {
 	public:
 		class Waypoint {
@@ -274,6 +290,8 @@ public:
 		typedef golem::shared_ptr<TrialData> Ptr;
 		/** Trial container: name -> trial */
 		typedef std::map<std::string, Ptr> Map;
+		/** RobotState collection */
+		//typedef std::map<golem::U32, grasp::RobotState::Seq> RobotStateMap;
 		
 		class Iteration {
 		public:
@@ -312,7 +330,7 @@ public:
 			void setToDefault() {
 				this->state.reset();
 				this->trajectory.clear();//.reset();
-				actionType = action::NONE;
+				actionType = action::NONE_ACTION;
 				sepName = "-";
 				extIter = ".rbs";
 			}
@@ -347,8 +365,12 @@ public:
 		std::string name;
 		/** Trial path */
 		std::string path;
+		/** Object name */
+		std::string object;
 		/** Trial extension */
 		std::string extTrial;
+		/** Name separator */
+		std::string sepName;
 
 		/** Meta parameter to generate a pseudo-random rigid body trasformation on partial point cloud (query transformation) */
 		grasp::RBDist queryStdDev;
@@ -365,9 +387,15 @@ public:
 		bool enable;
 
 		/** Iteration counter */
-		golem::U32 itIndex;
+//		golem::U32 itIndex;
 		/** Collection of iterations: num of iteration -> iteration */
-		Iteration::Map iterations;
+//		Iteration::Map iterations;
+
+		/** Trajectory file name extension */
+		std::string extTrajectory;
+		/** Collection of executed trajectories */
+		grasp::RobotState::Map trajectories;
+
 		/** Specifies if the trial converges to a grasp */
 		bool grasped;
 
@@ -378,11 +406,16 @@ public:
 			name = "Default";
 			path = "./data/rag_analysis/jug.xml";
 			extTrial = ".xml";
+			sepName = "-";
+
+			object = "";
 			silent = false;
 			enable = false;
 
-			itIndex = 0;
-			iterations.clear();
+			//itIndex = 0;
+			//iterations.clear();
+			extTrajectory = ".trj";
+			trajectories.clear();
 			grasped = false;
 
 			queryStdDev.set(golem::Real(0.02), golem::Real(1000.0));
@@ -443,22 +476,36 @@ public:
 		virtual void save() const;
 
 		/** Adds new entry */
-		void add(const Iteration::Ptr &iteration) {
-			(void)iterations.insert(iterations.end(), Iteration::Map::value_type(++itIndex, iteration));
+		//void add(const Iteration::Ptr &iteration) {
+		//	(void)iterations.insert(iterations.end(), Iteration::Map::value_type(++itIndex, iteration));
+		//}
+
+		/** Insert new executed trajectory */
+		inline size_t insert(const grasp::RobotState::Seq &trj) {
+			trajectories.insert(trajectories.end(), grasp::RobotState::Map::value_type(std::to_string(trajectories.size() + 1), trj));
+			// return number of the iterations
+			return trajectories.size();
+		}
+
+		std::string successed() {
+			return grasped ? "YES" : "NO";
 		}
 
 		/** To string */
 		std::string toString(const golem::Controller &controller) {
 			std::stringstream ss;
-			ss << "TrialData name=" << name << extTrial << " iterations=" << itIndex << "\n";
-			golem::U32 countIt = 1;
-			for (auto i = iterations.begin(); i != iterations.end(); ++i) 
-				ss << "It=" << countIt++ << " " << (*i).second->toString(controller) << "\n";
+			ss << "TrialData\nname=" << name << " path=" << path << " success=" << successed() << "\niterations=" << trajectories.size() << "\n";
+			//golem::U32 countIt = 1;
+			//for (auto i = iterations.begin(); i != iterations.end(); ++i) 
+			//	ss << "It=" << countIt++ << " " << (*i).second->toString(controller).c_str() << "\n";
 			return ss.str();
 		}
 
 		/** Reads/writes object from/to a given XML context */
 		virtual void xmlData(golem::XMLContext* context, bool create = false) const; // throws
+
+		protected:
+			golem::Controller *controller;
 	};
 
 	/** Pose planner description */
@@ -500,7 +547,7 @@ public:
 //		golem::Mat34 objectTrn;
 
 		/** Enables/disable screen capture from simulation */
-//		bool screenCapture;
+		bool screenCapture;
 
 		/** Constructs from description object */
 		Desc() {
@@ -530,7 +577,7 @@ public:
 
 			modelTrn.setToDefault();
 
-//			screenCapture = false;
+			screenCapture = false;
 		}
 		/** Checks if the description is valid. */
 		virtual bool isValid() const {
@@ -550,14 +597,34 @@ public:
 	/** Process algortihm */
 	virtual void processPoints(Data::Map::const_iterator dataPtr, const Selection& selection, const bool silent = false);
 
+	/** data collection */
+	TrialData::Map& getTrialData() {
+		return trialDataMap;
+	}
+	/** data collection */
+	const TrialData::Map& getTrialData() const {
+		return trialDataMap;
+	}
+
+	/** Reset belief state */
+	inline void createBeliefState() {
+		pRBPose = myDesc.pRBPoseDesc->create(context); // throws
+		pBelief = static_cast<Belief*>(pRBPose.get());
+	}
+
 protected:
 	/** Generator of pseudo random numbers */
 	golem::Rand rand;
 
+	/** Descriptor file */
+	Desc myDesc;
+
 	/** Collection of trials */
-	TrialData::Map trailDataMap;
+	TrialData::Map trialDataMap;
 	/** Trail data pointer */
-	TrialData::Ptr trialData;
+	TrialData::Ptr trial;
+	/** Trial data map iterator */
+	TrialData::Map::iterator trialPtr;
 	/** Creates a new trial data */
 	TrialData::Ptr createTrialData();
 
@@ -616,6 +683,8 @@ protected:
 	bool showMeanHypothesis;
 	/** Show hypothesis distribution **/
 	bool showSamplePoints;
+	/** Show query distribution */
+	bool showDistrPoints;
 	/** Show simulated pose of the object */
 	bool showObject;
 	/** Displayed feature index */
