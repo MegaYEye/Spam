@@ -57,6 +57,11 @@ namespace spam {
 
 //------------------------------------------------------------------------------
 
+/** General active ctroller debug info */
+std::string controllerDebug(grasp::ActiveCtrl &ctrl);
+
+//------------------------------------------------------------------------------
+
 /** Robot is the interafce to a robot (right arm + hand), sensing devices and objects. */
 class Robot : public grasp::Robot {
 public:
@@ -125,7 +130,7 @@ public:
 	//size_t isGrasping(FTGuard::Seq &triggeredJoints, golem::Controller::State &state);
 
 	/** Finds a target in configuration space in a new reference frame */
-	void findTarget(const golem::Mat34 &trn, const golem::Controller::State &target, golem::Controller::State &cend);
+	void findTarget(const golem::Mat34 &trn, const golem::Controller::State &target, golem::Controller::State &cend, const bool lifting = false);
 
 	/** Initialises the cycle */
 	inline void initControlCycle() { 
@@ -133,8 +138,31 @@ public:
 		hand->initControlCycle();
 	}
 
+	/** Stop active controller */
+	void stopActiveController();
+	/** Activate active controller */
+	void startActiveController(const golem::I32 steps = grasp::ActiveCtrl::STEP_DEFAULT);
+	/** Emergency mode for the controller */
+	void emergencyActiveController();
+	/** Checks for reions with high likelihood of contacts */
+	inline bool expectedCollisions(const golem::Controller::State& state) const {
+		return pFTDrivenHeuristic->expectedCollisions(state);
+	}
+
+	inline golem::Real getFilterForce(const golem::I32 i) {
+		return handFilteredForce[i];
+	}
+	inline grasp::RealSeq getFilterForce() {
+		return handFilteredForce;
+	}
+
 	/** Force reader */
 	GuardsReader guardsReader;
+	/** Collect history of FT readings for statistics */
+	grasp::ActiveCtrl::ForceReader collectFTInp;
+	/** FT 2-oreder high-pass filter */
+	grasp::ActiveCtrl::ForceReader ftFilter;
+
 	//golem::shared_ptr<grasp::Cloud::PointSeq> objectPointCloudPtr;
 	//Collision::Ptr collision;
 	//Collision::Waypoint w;
@@ -147,6 +175,37 @@ protected:
 	/** Force/torque driven heuristic for robot controller */
 	FTDrivenHeuristic* pFTDrivenHeuristic;
 
+	/** Number of averaging steps before stopping collecting readings */
+	golem::U32 windowSize;
+	golem::I32 steps;
+	// gaussian filter mask
+	grasp::RealSeq mask;
+	// computes gaussian
+	template <typename _Real> inline _Real N(const _Real mean, const _Real stdev) {
+		const _Real norm = golem::numeric_const<_Real>::ONE / (stdev*Math::sqrt(2 * golem::numeric_const<_Real>::PI));
+		return norm*golem::Math::exp(-.5*Math::sqr(_Real(mean) / _Real(stdev))); // gaussian
+	}
+	// computes guassian on a vector
+	template <typename _Ptr, typename _Real> inline std::vector<_Real> N(_Ptr begin, _Ptr end, const size_t dim, const _Real stdev) {
+		std::vector<_Real> output;
+		output.assign(dim, golem::numeric_const<_Real>::ZERO);
+		size_t idx = 0;
+		for (Ptr i = begin; i != end; ++i) {
+			output[idx++] = N(*i, stdev);
+		}
+		return output;
+	}
+
+
+	/** Input force at sensor, sequence */
+	std::vector<grasp::RealSeq> forceInpSensorSeq;
+	/** Filtered forces for the hand */
+	grasp::RealSeq handFilteredForce;
+	/** force reader access cs */
+	golem::CriticalSection csHandForce;
+
+
+	inline golem::I32 dimensions() { return (golem::I32)handInfo.getJoints().size(); }
 
 	/** Trigguered F/T guards */
 	FTGuard::Seq triggeredGuards;

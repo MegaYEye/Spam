@@ -116,6 +116,15 @@ class FTDrivenHeuristic;
 
 //------------------------------------------------------------------------------
 
+/** General planner debug info */
+std::string plannerDebug(golem::Planner& planner);
+/** Configspace coordinate planner debug info */
+std::string plannerConfigspaceDebug(golem::Planner& planner, const golem::ConfigspaceCoord* c = nullptr);
+/** Workspace coordinate planner debug info */
+std::string plannerWorkspaceDebug(golem::Planner& planner, const golem::WorkspaceChainCoord* w = nullptr);
+
+//------------------------------------------------------------------------------
+
 /** Abstract class for Arm movement planinng using Probabilistic Road Map approach. */
 class RagGraphPlanner : public golem::GraphPlanner {
 public:
@@ -321,6 +330,8 @@ public:
 	* @return			<code>TRUE</code> no errors; <code>FALSE</code> otherwise
 	*/
 	virtual bool findLocalTrajectory(const golem::Controller::State &cbegin, golem::GenWorkspaceChainState::Seq::const_iterator wbegin, golem::GenWorkspaceChainState::Seq::const_iterator end, golem::Controller::Trajectory &trajectory, golem::Controller::Trajectory::iterator iter, golem::MSecTmU32 timeOut = golem::MSEC_TM_U32_INF);
+
+	/** Prints state for debugging */
 
 	/** Finds obstacle-free (local search) trajectory in the workspace form trajectory workspace increments.
 	 * @param cbegin	trajectory begin in the configuration space

@@ -14,6 +14,7 @@
 //#include <Golem/Tools/Data.h>
 #include <Golem/PhysCtrl/Data.h>
 #include <Golem/Device/RobotJustin/RobotJustin.h>
+#include <numeric>
 
 #ifdef WIN32
 	#pragma warning (push)
@@ -35,6 +36,28 @@ using namespace spam;
 
 //------------------------------------------------------------------------------
 
+std::string spam::controllerDebug(grasp::ActiveCtrl &ctrl) {
+	std::stringstream str;
+
+	//const Heuristic& heuristic = planner.getHeuristic();
+	//FTDrivenHeuristic *pHeuristic = dynamic_cast<FTDrivenHeuristic*>(&planner.getHeuristic());
+	//const Controller& controller = planner.getController();
+	//const Heuristic::JointDesc::JointSeq& jointDesc = heuristic.getJointDesc();
+	//const Chainspace::Range chains = controller.getStateInfo().getChains();
+	//golem::U32 enabled = 0;
+	//for (Chainspace::Index i = chains.begin(); i < chains.end(); ++i) {
+	//	const Configspace::Range joints = controller.getStateInfo().getJoints(i);
+	//	for (Configspace::Index j = joints.begin(); j < joints.end(); ++j)
+	//		if (jointDesc[j]->enabled) ++enabled;
+	//}
+
+	//str << controller.getName() << ": chains=" << controller.getStateInfo().getChains().size() << ", joints=" << controller.getStateInfo().getJoints().size() << "(enabled=" << enabled << "), collisions=" << (heuristic.getDesc().collisionDesc.enabled ? "ENABLED" : "DISABLED") << ", non-Euclidian metrics=" << (pHeuristic && pHeuristic->enableUnc ? "ENABLE" : "DISABLE") << ", point cloud collisions=" << (pHeuristic && pHeuristic->getPointCloudCollision() ? "ENABLE" : "DISABLE");
+
+	return str.str();
+}
+
+//------------------------------------------------------------------------------
+
 Robot::Robot(Scene &scene) : grasp::Robot(scene) {
 }
 	
@@ -44,6 +67,29 @@ bool Robot::create(const Desc& desc) {
 	this->desc = desc;
 	// overwrite the heuristic
 	pFTDrivenHeuristic = dynamic_cast<FTDrivenHeuristic*>(&planner->getHeuristic());
+
+	steps = 0;
+	windowSize = 40;
+	// compute guassian pdf over x=[-2:.1:2]
+	 // vector index
+	grasp::RealSeq v;
+	v.assign(windowSize + 1, REAL_ZERO);
+	const Real delta(.1);
+	Real i = -2;
+	for (I32 j = 0; j < windowSize + 1; j++) {
+		v[j] = N(i, REAL_ONE);
+		i += delta;
+	}
+
+	// compute the derivative mask=diff(v)
+	mask.assign(windowSize, REAL_ZERO);
+	for (I32 i = 0; i < windowSize; ++i)
+		mask[i] = v[i + 1] - v[i];
+
+	forceInpSensorSeq.resize(dimensions());
+	for (std::vector<grasp::RealSeq>::iterator i = forceInpSensorSeq.begin(); i != forceInpSensorSeq.end(); ++i)
+		i->assign(windowSize, REAL_ZERO);
+	handFilteredForce.assign(dimensions(), REAL_ZERO);
 
 	triggeredGuards.clear();
 	triggeredGuards.reserve(fLimit.size());
@@ -128,13 +174,87 @@ bool Robot::create(const Desc& desc) {
 	//};
 	//handCtrl = desc.handCtrlDesc->create(*hand); // create and install callback (throws)
 
-	guardsReader = [=](const Controller::State&, grasp::RealSeq& force, std::vector<golem::Configspace::Index> &joints) {
-		const size_t size = std::min(force.size(), fLimit.size());
+	collectFTInp = [=](const Controller::State&, grasp::RealSeq& force) {
+		golem::CriticalSectionWrapper csw(csHandForce);
+		for (I32 i = 0; i < dimensions(); ++i)
+			forceInpSensorSeq[i][steps] = force[i];
+		steps = (I32)(++steps % windowSize);
+	};
+
+	ftFilter = [=](const Controller::State&, grasp::RealSeq& force) {
+		// find index as for circular buffer
+		auto findIndex = [&](const I32 idx) -> I32 {
+			return (I32)((steps + idx) % windowSize);
+		};
+		// high pass filter implementation
+		auto hpFilter = [&]() {
+			Real b = 1 / windowSize;
+
+		};
+		// gaussian filter
+		auto conv = [&]() -> grasp::RealSeq {
+			grasp::RealSeq output;
+			output.assign(dimensions(), REAL_ZERO);
+			{
+				golem::CriticalSectionWrapper csw(csHandForce);
+				for (I32 i = 0; i < dimensions(); ++i) {
+					Real tmp = REAL_ZERO;
+					grasp::RealSeq& seq = forceInpSensorSeq[i];
+					// conv y[k] = x[k]h[0] + x[k-1]h[1] + ... + x[0]h[k]
+					for (I32 j = 0; j < windowSize; ++j) {
+						tmp += seq[findIndex(windowSize - j - 1)] * mask[j];
+					}
+					output[i] = tmp;
+				}
+			}
+			return output;
+		};
+
+		force = conv();
+	};
+
+	handContactDetector = nullptr;
+
+	guardsReader = [=](const Controller::State &state, grasp::RealSeq& force, std::vector<golem::Configspace::Index> &joints) {
+		//static int jj = 0;
+		//auto strStddev = [=](std::stringstream& ostr, const Controller::State& state, const grasp::RealSeq& forces) {
+		//	ostr << state.t << "\t";
+		//	for (auto i = 0; i < forces.size(); ++i)
+		//		ostr << forces[i] << "\t";
+		//};
+
+		//auto stddev = [=](grasp::RealSeq& stddevs) {
+		//	if (stddevs.size() < handInfo.getJoints().size())
+		//		return;
+		//	const size_t size = std::min(stddevs.size(), size_t(handInfo.getJoints().size()));
+		//	for (size_t i = 0; i < size; ++i) {
+		//		grasp::RealSeq& seq = forceInpSensorSeq[i];
+		//		Real sum = std::accumulate(seq.begin(), seq.end(), 0.0);
+		//		Real m = sum / seq.size();
+
+		//		Real accum = 0.0;
+		//		std::for_each(seq.begin(), seq.end(), [&](const double d) {
+		//			accum += (d - m) * (d - m);
+		//		});
+
+		//		stddevs[i] = sqrt(accum / seq.size());
+		//	}
+		//};
+		//const size_t size = std::min(force.size(), fLimit.size());
+		//grasp::RealSeq stddevs(force);
+		//stddev(stddevs);
+		//if (++jj % 10 == 0) {
+		//	std::stringstream ostr;
+		//	strStddev(ostr, state, stddevs);
+		//	context.write("%s\n", ostr.str().c_str());
+		//}
 		joints.clear();
 		joints.reserve(getStateHandInfo().getJoints().size());
+		ftFilter(state, handFilteredForce);
+		// the loop skips the last joint because it's coupled with the 3rd joint.
 		for (Configspace::Index i = getStateHandInfo().getJoints().begin(); i != getStateHandInfo().getJoints().end(); ++i) {
 			const size_t k = i - getStateHandInfo().getJoints().begin();
-			if (Math::abs(force[k]) > fLimit[k])
+			if (Math::abs(handFilteredForce[k]) > fLimit[k])
 				joints.push_back(i);
 		}
 		//for (size_t i = 0; i < size; ++i)
@@ -153,7 +273,7 @@ void Robot::render() {
 
 //------------------------------------------------------------------------------
 
-void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &target, golem::Controller::State &cend) {
+void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &target, golem::Controller::State &cend, const bool lifting) {
 	// arm chain and joints pointers
 	const golem::Chainspace::Index armChain = armInfo.getChains().begin();
 	const golem::Configspace::Range armJoints = armInfo.getJoints();
@@ -164,6 +284,7 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 	gwcs.wpos[armChain].multiply(trn, gwcs.wpos[armChain]); // new waypoint frame
 	gwcs.t = target.t;
 //	gwcs.wpos[armChain].p.x += 0.045;
+	if (lifting) gwcs.wpos[armChain].p.z += 0.07;
 
 	cend = target;
 	{
@@ -174,6 +295,9 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 			throw Message(Message::LEVEL_ERROR, "spam::Robot::findTarget(): Unable to find initial target configuration");
 	}
 //	context.write(">\n"); //std::cout << ">\n"; //context.write(">\n");
+	// set fingers pose
+	for (auto i = handInfo.getJoints().begin(); i != handInfo.getJoints().end(); ++i)
+		cend.cpos[i] = target.cpos[i];
 
 	// update arm configurations and compute average error
 	grasp::RBDist err;
@@ -268,30 +392,36 @@ void Robot::findTarget(const golem::Mat34 &trn, const golem::Controller::State &
 //}
 //
 void Robot::readFT(const Controller::State &state, grasp::RealSeq &force) const {
-	const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
-	if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
-		Real max = REAL_ZERO;
-		static int jj = 0;
-		for (Configspace::Index j = state.getInfo().getJoints().begin(); j < state.getInfo().getJoints().end(); ++j) {
-			const size_t k = j - state.getInfo().getJoints().begin();
-			force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
-			if (force[k] > max)
-				max = force[k];
+	// use simulated force
+	if (simHandForceMode != FORCE_MODE_DISABLED) {
+		const Vec3 simForce(simModeVec.z*simForceGain.v.z, simModeVec.x*simForceGain.v.x, simModeVec.y*simForceGain.v.y);
+
+		Chainspace::Index i = handInfo.getChains().begin(); // simHandForceMode corresponds to chain
+		for (Configspace::Index j = handInfo.getJoints(i).begin(); j < handInfo.getJoints(i).end(); ++j) {
+			const size_t k = j - handInfo.getJoints().begin(); // from the first joint
+			const size_t l = j - handInfo.getJoints(i).begin(); // from the first joint in the chain
+			force[k] = simForce[std::min(size_t(2), l)];
 		}
 	}
-	
-	//context.debug("robot::readFT(): retrieve torques\n");
-	//const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
-	//const Chainspace::Index handChain = state.getInfo().getChains().begin()+1;
-
-	//force.assign(handInfo.getJoints().size(), REAL_ZERO);
-	//context.debug("forces \n");
-	//if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
-	//	for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
-	//		const size_t k = j - handInfo.getJoints().begin();
-	//		force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
-	//		context.debug("hand joint %d force=%f guard=%f\n", k, force[k], ftHandGuards[k]);
-	//	}
+	// read from the state variable (if supported)
+	else {
+		const ptrdiff_t forceOffset = hand->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
+		if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
+			Real max = REAL_ZERO;
+			Real min = REAL_ZERO;
+			static int jj = 0;
+			for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j) {
+				const size_t k = j - handInfo.getJoints().begin();
+				force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
+				if (force[k] > max)
+					max = force[k];
+				if (force[k] < min)
+					min = force[k];
+			}
+			//if (++jj % 100 == 0)
+			//	printf("[%f/%f]\n", max, min);
+		}
+	}
 }
 //
 //}
@@ -364,6 +494,35 @@ void Robot::readFT(const Controller::State &state, grasp::RealSeq &force) const 
 //
 //	return res; //triggeredJoints.size();
 //}
+
+void Robot::stopActiveController() {
+	context.write("Disabled active controller\n");
+	if (armCtrl->getMode() != grasp::ActiveCtrl::MODE_DISABLED) armCtrl.get()->setMode(grasp::ActiveCtrl::MODE_DISABLED);
+	if (handCtrl->getMode() != grasp::ActiveCtrl::MODE_DISABLED) handCtrl.get()->setMode(grasp::ActiveCtrl::MODE_DISABLED);
+	//simHandForceMode = FORCE_MODE_DISABLED;
+	//simArmForceMode = FORCE_MODE_DISABLED;
+	//workspaceMode = WORKSPACE_MODE_DISABLED;
+}
+
+void Robot::startActiveController(const golem::I32 steps) {
+	context.write("Enabled active controller\n");
+	if (armCtrl->getMode() != grasp::ActiveCtrl::MODE_ENABLED) armCtrl.get()->setMode(grasp::ActiveCtrl::MODE_ENABLED);
+	if (handCtrl->getMode() != grasp::ActiveCtrl::MODE_ENABLED) handCtrl.get()->setMode(grasp::ActiveCtrl::MODE_ENABLED, steps == grasp::ActiveCtrl::STEP_DEFAULT ? grasp::ActiveCtrl::STEP_DEFAULT : steps);
+	//simHandForceMode = FORCE_MODE_DISABLED;
+	//simArmForceMode = FORCE_MODE_DISABLED;
+	//workspaceMode = WORKSPACE_MODE_DISABLED;
+}
+
+void Robot::emergencyActiveController() {
+	if (handCtrl->getMode() != grasp::ActiveCtrl::MODE_EMERGENCY) {
+		// set emergency mode
+		armCtrl->setMode(grasp::ActiveCtrl::MODE_EMERGENCY);
+		handCtrl->setMode(grasp::ActiveCtrl::MODE_EMERGENCY);
+		// stop controller and cleanup the command queue
+		controller->stop();
+	}
+}
+
 
 //------------------------------------------------------------------------------
 

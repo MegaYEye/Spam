@@ -65,6 +65,7 @@ public:
 		GRASP,
 		IG_PLAN_ON_QUERY,
 		IG_PLAN_M2Q,
+		IG_PLAN_LIFT,
 		IG_TRAJ_OPT
 	};
 	/** Prints actions */

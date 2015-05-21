@@ -365,6 +365,9 @@ public:
 	/** Draw hypotheses */
 	void drawHypotheses(golem:: DebugRenderer &renderer, const bool showOnlyMeanPose = false) const;
 
+	/** Draw volumetric region for uncertainty */
+	golem::Bounds::Seq uncertaintyRegionBounds();
+
 	/** Acquires manipulator */
 	inline void setManipulator(grasp::Manipulator *ptr) { manipulator.reset(ptr); /*collision.reset(new Collision(context, *manipulator));*/ };
 
@@ -382,6 +385,7 @@ protected:
 
 	/** Appearance */
 	Hypothesis::Appearance appearance;
+
 
 	/** Model point cloud **/
 	grasp::Cloud::PointSeq modelPoints;
@@ -405,6 +409,9 @@ protected:
 	golem::SampleProperty<golem::Real, grasp::RBCoord, grasp::RBCoord::N> sampleProperties, initProperties;
 	/** Normalise factor */
 	golem::Real normaliseFac;
+
+	/** Uncertainty region */
+	golem::BoundingBox::Desc uncertaintyDesc;
 
 	/** Manipulator pointer */
 	grasp::Manipulator::Ptr manipulator;

@@ -209,6 +209,22 @@ protected:
 	bool withdrawToHomePose;
 	/** Shows the posterior distribution */
 	bool posterior;
+	/** Avoid to activate the force reader if moving from the pre-grasp to the grasp */
+	bool isGrasping;
+
+	/** Select index */
+	template <typename _Seq, typename _Index> void selectIndex(const _Seq& seq, _Index& index, const std::string& name) {
+		if (seq.empty())
+			throw Cancel("Empty!");
+		// select index within the range
+		std::stringstream str;
+		golem::Math::clamp(index, (_Index)1, (_Index)seq.size());
+		str << "Enter " << name << " index <1.." << seq.size() << ">: ";
+		readNumber(str.str().c_str(), index);
+		if (size_t(index) < 1 || size_t(index) > seq.size())
+			throw Cancel("Invalid index");
+	}
+
 
 	bool printing;
 	golem::Bounds::Seq handBounds, waypointBounds;
@@ -224,7 +240,10 @@ protected:
 	bool enableForceReading;
 	bool forcereadersilent;
 	bool contactOccured;
-
+	
+	bool record, contact, brecord;
+	std::ofstream dataFTRaw;
+	std::ofstream dataFTFiltered;
 	/** Query transformation */
 	grasp::RBCoord queryPointsTrn;
 
@@ -263,6 +282,11 @@ protected:
 
 	/** Updates belief state */
 	void updateAndResample(Data::Map::iterator dataPtr);
+
+	/** Current state */
+	virtual golem::Controller::State lookupState(golem::SecTmReal t = golem::SEC_TM_REAL_MAX) const;
+	/** Current command */
+	virtual golem::Controller::State lookupCommand(golem::SecTmReal t = golem::SEC_TM_REAL_MAX) const;
 
 	/** Builds and performs reach and grasp actions */
 	virtual void performApproach(Data::Map::iterator dataPtr);

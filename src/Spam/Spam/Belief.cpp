@@ -314,7 +314,11 @@ void Belief::drawHypotheses(golem::DebugRenderer &renderer, const bool showOnlyM
 	//}
 }
 
-
+golem::Bounds::Seq Belief::uncertaintyRegionBounds() {
+	Bounds::Seq bounds;
+	bounds.push_back(uncertaintyDesc.create());
+	return bounds;
+}
 
 //------------------------------------------------------------------------------
 
@@ -356,6 +360,8 @@ void Belief::setPoses(const grasp::RBPose::Sample::Seq &poseSeq) {
 		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
 	// copy initial distribution properties
 	initProperties = pose;
+
+
 	context.write("spam::Belief::setPoses(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", initProperties.covariance[0], initProperties.covariance[1], initProperties.covariance[2], initProperties.covariance[3], initProperties.covariance[4], initProperties.covariance[5], initProperties.covariance[6]);
 }
 
@@ -380,13 +386,13 @@ void Belief::setHypotheses(const grasp::RBPose::Sample::Seq &hypothesisSeq) {
 		for (size_t j = 0; j < size; ++j) {
 			grasp::Cloud::Point point = size < modelPoints.size() ? modelPoints[size_t(rand.next()) % modelPoints.size()] : modelPoints[j]; // make a copy here
 			grasp::Cloud::setPoint(p->toMat34() * grasp::Cloud::getPoint(point)/* + actionFrame.p*/, point);
-			grasp::Cloud::setColour((p == hypothesisSeq.begin()) ? RGBA::YELLOW : RGBA::BLUE, point);
+			grasp::Cloud::setColour((p == hypothesisSeq.begin()) ? RGBA::GREEN : RGBA::BLUE, point);
 			sampleCloud.push_back(point);
 		}
 //		hypotheses.push_back(Hypothesis::Ptr(new Hypothesis(idx, modelFrame, *p, sampleCloud)));
 		(*i) = myDesc.hypothesisDescPtr->create(*manipulator.get());
 		(*i)->create(idx, modelFrame, *p, rand, sampleCloud);
-		(*i)->appearance.colour = (p == hypothesisSeq.begin()) ? RGBA::YELLOW : RGBA::BLUE;
+		(*i)->appearance.colour = (p == hypothesisSeq.begin()) ? RGBA::GREEN : RGBA::BLUE;
 		(*i)->appearance.showPoints = true;
 		context.debug("Hypothesis n.%d <%.4f %.4f %.4f> <%.4f %.4f %.4f %.4f>\n", idx, p->p.x, p->p.y, p->p.z, p->q.w, p->q.x, p->q.y, p->q.z);
 		idx++;
@@ -395,6 +401,12 @@ void Belief::setHypotheses(const grasp::RBPose::Sample::Seq &hypothesisSeq) {
 	// mean and covariance
 	if (!sampleProperties.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.covariance, getHypothesesToSample()))
 		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
+
+	// compute a volumetric region of the uncertainty (min 10 cms in each direction)
+	Vec3 cov(pose.covariance[0], pose.covariance[1], pose.covariance[2]*100);
+	uncertaintyDesc.dimensions = hypotheses.front()->boundsDesc.dimensions + cov*1000;//Vec3(pose.covariance[0] * 5000 > d ? pose.covariance[0] * 5000 : d, pose.covariance[1] * 5000 > d ? pose.covariance[1] * 5000 : d, pose.covariance[2] * 5000 > d ? pose.covariance[2] * 5000 : d);
+	context.write("Uncertainty dimensions = [%f, %f, %f]\n", uncertaintyDesc.dimensions.x, uncertaintyDesc.dimensions.y, uncertaintyDesc.dimensions.z);
+	uncertaintyDesc.pose.p = hypotheses.front()->toRBPoseSampleGF().p;
 
 	context.debug("Sub-sampled covariance = {(%f, %f, %f), (%f, %f, %f, %f)}\n", sampleProperties.covariance[0], sampleProperties.covariance[1], sampleProperties.covariance[2], sampleProperties.covariance[3], sampleProperties.covariance[4], sampleProperties.covariance[5], sampleProperties.covariance[6]);
 }
@@ -435,14 +447,14 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 		for (size_t j = 0; j < size; ++j) {
 			grasp::Cloud::Point p = size < model.size() ? model[size_t(rand.next())%model.size()] : model[j]; // make a copy here
 			grasp::Cloud::setPoint(actionFrame.toMat34() * grasp::Cloud::getPoint(p)/* + actionFrame.p*/, p);
-			grasp::Cloud::setColour((i == hypotheses.begin()) ? RGBA::YELLOW : RGBA::BLUE, p);
+			grasp::Cloud::setColour((i == hypotheses.begin()) ? RGBA::GREEN : RGBA::BLUE, p);
 			sampleCloud.push_back(p);
 		}
 //		hypotheses.insert(Hypothesis::Map::value_type(idx, Hypothesis::Ptr(new Hypothesis(idx, grasp::RBPose::Sample(sampleFrame), sampleCloud))));
 		//hypotheses.push_back(Hypothesis::Ptr(new Hypothesis(idx, transform, grasp::RBPose::Sample(actionFrame), sampleCloud)));
 		(*i) = myDesc.hypothesisDescPtr->create(*manipulator);
 		(*i)->create(idx, modelFrame, grasp::RBPose::Sample(actionFrame), rand, sampleCloud);
-		(*i)->appearance.colour = (i == hypotheses.begin()) ? RGBA::YELLOW : RGBA::BLUE;
+		(*i)->appearance.colour = (i == hypotheses.begin()) ? RGBA::GREEN : RGBA::BLUE;
 		(*i)->appearance.showPoints = true;
 		context.write("Hypothesis %d {(%.4f %.4f %.4f), (%.4f %.4f %.4f %.4f)}\n", idx, actionFrame.p.x, actionFrame.p.y, actionFrame.p.z, actionFrame.q.w, actionFrame.q.x, actionFrame.q.y, actionFrame.q.z);
 		idx++;
@@ -458,6 +470,11 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 	covarianceDet = REAL_ONE;
 	for (golem::U32 j = 0; j < grasp::RBCoord::N; ++j)
 			covarianceDet *= sampleProperties.covariance[j];
+
+	// compute a volumetric region of the uncertainty (min 10 cms in each direction)
+	Vec3 cov(pose.covariance[0], pose.covariance[1], pose.covariance[2] * 100);
+	uncertaintyDesc.dimensions = hypotheses.front()->boundsDesc.dimensions + cov * 1000;//Vec3(pose.covariance[0] * 5000 > d ? pose.covariance[0] * 5000 : d, pose.covariance[1] * 5000 > d ? pose.covariance[1] * 5000 : d, pose.covariance[2] * 5000 > d ? pose.covariance[2] * 5000 : d);
+	uncertaintyDesc.pose.p = hypotheses.front()->toRBPoseSampleGF().p;
 
 	//// Reduce the number of poses to reduce the computational time of belief update
 	//if (init) {
@@ -507,7 +524,7 @@ void Belief::createQuery(const grasp::Cloud::PointSeq& points) {
 		// reset RBPose::poses for the fitting dist
 		//poses.clear();
 		//poses.reserve(myDesc.kernels);
-		context.debug("Belief::Query: %d/%d\n", id++, myDesc.numPoses);
+		context.write("Belief::Query: %d/%d\r", id++, myDesc.numPoses);
 		grasp::RBPose::createQuery(points);
 		grasp::RBPose::Sample s = grasp::RBPose::maximum();
 		initPoses.push_back(s);
@@ -610,7 +627,7 @@ Real Belief::density(const Real dist) const {
 }
 
 void Belief::createUpdate(const Collision::Ptr collision, const golem::Waypoint &w, const FTGuard::Seq &triggeredGuards, const grasp::RBCoord &rbPose) {
-	context.debug("Belief::createUpdate(collision)...\n");
+//	context.debug("Belief::createUpdate(collision)...\n");
 	Collision::FlannDesc waypointDesc;
 	Collision::Desc::Ptr cloudDesc;
 	cloudDesc.reset(new Collision::Desc());
@@ -624,7 +641,7 @@ void Belief::createUpdate(const Collision::Ptr collision, const golem::Waypoint 
 		grasp::RBDist error;
 		error.lin = rbPose.p.distance(sampledPose->p);
 		error.ang = rbPose.q.distance(sampledPose->q);
-		context.debug("sample.weight = %f, Error {lin, ang} = {%f, %f}\n", sampledPose->weight, error.lin, error.ang);
+//		context.debug("sample.weight = %f, Error {lin, ang} = {%f, %f}\n", sampledPose->weight, error.lin, error.ang);
 	}
 
 	// normalise weights
@@ -635,7 +652,7 @@ void Belief::createUpdate(const Collision::Ptr collision, const golem::Waypoint 
 	c = golem::REAL_ZERO;
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
 //		sampledPose->weight /= norm;
-		context.debug("normilised sample.weight = %f\n", sampledPose->weight);
+//		context.debug("normilised sample.weight = %f\n", sampledPose->weight);
 		golem::kahanSum(cdf, c, sampledPose->weight);
 		sampledPose->cdf = cdf;
 	}

@@ -212,7 +212,7 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 
 //		std::printf("showmodel %s showquery %s showSamplePoints %s showQueryDistrib %s\n", showmodel ? "ON" : "OFF", showquery ? "ON" : "OFF", showSamplePoints ? "ON" : "OFF", showQueryDistrib ? "ON" : "OFF");
 		if (showmodel || showquery) {
-			if (showmodel) {
+			if (showmodel && !showquery) {
 				pointFeatureRenderer.addAxes(modelFrame, featureFrameSize);
 			}
 		
@@ -264,8 +264,8 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 					//	//sampleRenderer.addAxes(sampleFrame, distribFrameSize);
 					//	sampleAppearance.draw(sample, sampleRenderer);
 					for (Hypothesis::Seq::const_iterator i = pBelief->getHypotheses().begin(); i != pBelief->getHypotheses().end(); ++i) {
-						//sampleRenderer.addAxes((*i)->toRBPoseSampleGF().toMat34(), featureFrameSize);
-						sampleAppearance.colour = i == pBelief->getHypotheses().begin() ? RGBA::YELLOW : RGBA::BLUE;
+						sampleRenderer.addAxes((*i)->toRBPoseSampleGF().toMat34(), distribFrameSize);
+						sampleAppearance.colour = i == pBelief->getHypotheses().begin() ? RGBA::GREEN : RGBA::BLUE;
 						sampleAppearance.draw((*i)->getCloud(), sampleRenderer);
 						if (showMeanHypothesis)
 							break;
@@ -275,7 +275,8 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 					//sampleAppearance.draw((*pBelief->getHypotheses().begin())->getCloud(), sampleRenderer);
 //						break;
 					}
-					(*pBelief->getHypotheses().begin())->appearance.bounds.draw((*pBelief->getHypotheses().begin())->bounds(), sampleRenderer);
+					//(*pBelief->getHypotheses().begin())->appearance.bounds.draw((*pBelief->getHypotheses().begin())->bounds(), sampleRenderer);
+					//(*pBelief->getHypotheses().begin())->appearance.bounds.draw(pBelief->uncertaintyRegionBounds(), sampleRenderer);
 					/*for (auto j = pBelief->getSamples().begin(); j != pBelief->getSamples().end(); ++j) {*/
 				}
 				if (showObject) {
@@ -307,9 +308,10 @@ void spam::PosePlanner::renderData(Data::Map::const_iterator dataPtr) {
 		}
 		
 		if (!grasp::to<Data>(dataPtr)->queryPoints.empty()) {
-			pointFeatureRenderer.addAxes(grasp::to<Data>(dataPtr)->queryFrame, featureFrameSize);
-			if (showQueryPoints)
+			if (showQueryPoints) {
+				pointFeatureRenderer.addAxes(grasp::to<Data>(dataPtr)->queryFrame, featureFrameSize);
 				grasp::to<Data>(dataPtr)->draw(grasp::to<Data>(dataPtr)->queryPoints, pointFeatureRenderer);
+			}
 		}
 	}
 	if (showPoints) grasp::Player::renderData(dataPtr);
@@ -883,9 +885,14 @@ void spam::PosePlanner::function(Data::Map::iterator& dataPtr, int key) {
 		return;
 	case '6':
 		showQueryDistrib = !showQueryDistrib;
-		context.write("Query distribution %s\n", showQueryDistrib ? "ON" : "OFF");
+		context.write("Query (low-dim) distribution %s\n", showQueryDistrib ? "ON" : "OFF");
 		renderData(dataPtr);
 		return;	
+	case '0':
+		showDistrPoints = !showDistrPoints;
+		context.write("Query (high-dim) distribution %s\n", showDistrPoints ? "ON" : "OFF");
+		renderData(dataPtr);
+		return;
 	case '=':
 		showObject = showSamplePoints && showMeanHypothesis ? !showObject : showObject;
 		showMeanHypothesis = showSamplePoints && !showObject ? !showMeanHypothesis : showObject ? !showMeanHypothesis : showMeanHypothesis;

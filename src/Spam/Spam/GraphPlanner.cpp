@@ -21,15 +21,73 @@ using namespace golem;
 
 //------------------------------------------------------------------------------
 
-//RagPathFinder::RagPathFinder(DEKinematics& kinematics) :
-//PathFinder(kinematics)
-//{}
-//
-//bool RagPathFinder::create(const Desc& desc) {
-//	golem::PathFinder::create(desc);
-//
-//	return true;
-//}
+std::string spam::plannerDebug(golem::Planner& planner) {
+	std::stringstream str;
+
+	const Heuristic& heuristic = planner.getHeuristic();
+	FTDrivenHeuristic *pHeuristic = dynamic_cast<FTDrivenHeuristic*>(&planner.getHeuristic());
+	const Controller& controller = planner.getController();
+	const Heuristic::JointDesc::JointSeq& jointDesc = heuristic.getJointDesc();
+	const Chainspace::Range chains = controller.getStateInfo().getChains();
+	golem::U32 enabled = 0;
+	for (Chainspace::Index i = chains.begin(); i < chains.end(); ++i) {
+		const Configspace::Range joints = controller.getStateInfo().getJoints(i);
+		for (Configspace::Index j = joints.begin(); j < joints.end(); ++j)
+			if (jointDesc[j]->enabled) ++enabled;
+	}
+
+	str << controller.getName() << ": chains=" << controller.getStateInfo().getChains().size() << ", joints=" << controller.getStateInfo().getJoints().size() << "(enabled=" << enabled << "), collisions=" << (heuristic.getDesc().collisionDesc.enabled ? "ENABLED" : "DISABLED") << ", non-Euclidian metrics=" << (pHeuristic && pHeuristic->enableUnc ? "ENABLE" : "DISABLE") << ", point cloud collisions=" << (pHeuristic && pHeuristic->getPointCloudCollision() ? "ENABLE" : "DISABLE");
+
+	return str.str();
+}
+
+std::string spam::plannerConfigspaceDebug(golem::Planner& planner, const golem::ConfigspaceCoord* c) {
+	std::stringstream str;
+
+	const Heuristic& heuristic = planner.getHeuristic();
+	const Controller& controller = planner.getController();
+	const Heuristic::JointDesc::JointSeq& jointDesc = heuristic.getJointDesc();
+	const Chainspace::Range chains = controller.getStateInfo().getChains();
+	for (Chainspace::Index i = chains.begin(); i < chains.end(); ++i) {
+		str << std::setprecision(3) << "{" << controller.getChains()[i]->getName() << ": ";
+		const Configspace::Range joints = controller.getStateInfo().getJoints(i);
+		for (Configspace::Index j = joints.begin(); j < joints.end(); ++j) {
+			str << "(" << j - controller.getStateInfo().getJoints().begin() << ", ";
+			str << (jointDesc[j]->enabled ? "Y" : "N") << ", ";
+			if (c != nullptr) str << (*c)[j] << "/";
+			str << jointDesc[j]->dfltPos << (j < joints.end() - 1 ? "), " : ")");
+		}
+		str << (i < chains.end() - 1 ? "}, " : "}");
+	}
+
+	return str.str();
+}
+
+std::string spam::plannerWorkspaceDebug(golem::Planner& planner, const golem::WorkspaceChainCoord* w) {
+	std::stringstream str;
+
+	const Heuristic& heuristic = planner.getHeuristic();
+	const Controller& controller = planner.getController();
+	const Heuristic::ChainDesc::ChainSeq& chainDesc = heuristic.getChainDesc();
+	const Chainspace::Range chains = controller.getStateInfo().getChains();
+	for (Chainspace::Index i = chains.begin(); i < chains.end(); ++i) {
+		str << std::setprecision(3) << "{" << controller.getChains()[i]->getName() << ": ";
+		if (w != nullptr) {
+			const Vec3 p((*w)[i].p);
+			const Quat q((*w)[i].R);
+			chainDesc[i]->enabledLin ? str << "lin=(" << p.x << ", " << p.y << ", " << p.z << "), " : str << "lin=N, ";
+			chainDesc[i]->enabledAng ? str << "ang=(" << q.x << ", " << q.y << ", " << q.z << ", " << q.w << "), " : str << "ang=N";
+		}
+		else {
+			chainDesc[i]->enabledLin ? str << "lin=Y, " : str << "lin=N, ";
+			chainDesc[i]->enabledAng ? str << "ang=Y, " : str << "ang=N";
+		}
+
+		str << (i < chains.end() - 1 ? "}, " : "}");
+	}
+
+	return str.str();
+}
 
 //------------------------------------------------------------------------------
 
@@ -83,7 +141,7 @@ bool RagGraphPlanner::create(const Desc& desc) {
 	//	context.write("%s ", jointDescSeq[j] ? "ON" : "OFF");	
 	//context.write(">\n");
 //	disableHandPlanning();
-	
+	context.debug("RagGraphPlanner::create: %s\n", grasp::plannerDebug(*this).c_str());
 	return true;
 }
 
@@ -124,7 +182,11 @@ void RagGraphPlanner::enableHandPlanning() {
 
 bool RagGraphPlanner::localFind(const ConfigspaceCoord &begin, const ConfigspaceCoord &end, Waypoint::Seq &localPath) {
 	enableHandPlanning();
-	context.verbose("Rag::LocalFind: %s\n", grasp::plannerDebug(*this).c_str());
+	context.debug("localFind: %s\n", plannerDebug(*this).c_str());
+//	context.write("RagGraphPlanner::localFind: %s\n", plannerConfigspaceDebug(*this).c_str());
+//	context.write("RagGraphPlanner::localFind: %s\n", grasp::plannerWorkspaceDebug(*this).c_str());
+
+//	context.verbose("Rag::LocalFind: %s\n", grasp::plannerDebug(*this).c_str());
 	Real scale = REAL_ONE;
 	for (U32 i = 0; i < pathFinderDesc.numOfIterations; ++i) {
 		// scale maximum distance between waypoints
@@ -284,7 +346,6 @@ bool RagGraphPlanner::localFind(const ConfigspaceCoord &begin, const Configspace
 bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const GenWorkspaceChainState& wend, GenConfigspaceState &cend) {
 //	context.write("RagGraphPlanner::find target\n");
 //	return GraphPlanner::findTarget(begin, wend, cend);
-//	context.verbose("RagGraphPlanner::findTarget: %s\n", grasp::plannerDebug(*this).c_str());
 	bool enable = false;
 	spam::FTDrivenHeuristic *heuristic = getFTDrivenHeuristic();
 	if (heuristic) {
@@ -294,6 +355,9 @@ bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const 
 	}
 	// TODO: Find why the pre-grasp pose returns with close fingers
 	disableHandPlanning();
+	context.debug("findTarget: %s\n", plannerDebug(*this).c_str());
+	//context.write("RagGraphPlanner::findTarget: %s\n", grasp::plannerConfigspaceDebug(*this).c_str());
+	//context.write("RagGraphPlanner::findTarget: %s\n", grasp::plannerWorkspaceDebug(*this).c_str());
 
 #ifdef _HEURISTIC_PERFMON
 	heuristic->resetLog();
@@ -423,6 +487,9 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 	// generate global graph only for the arm
 	context.debug("GraphPlanner::findGlobalTrajectory(): Enabled Uncertainty %s. disable hand planning...\n", getFTDrivenHeuristic()->enableUnc ? "ON" : "OFF");
 	disableHandPlanning();
+	context.debug("findGlobalTrajectory(): %s\n", plannerDebug(*this).c_str());
+	//context.write("GraphPlanner::findGlobalTrajectory(): %s\n", grasp::plannerConfigspaceDebug(*this).c_str());
+	//context.write("GraphPlanner::findGlobalTrajectory(): %s\n", grasp::plannerWorkspaceDebug(*this).c_str());
 
 	// generate global graph
 	pGlobalPathFinder->generateOnlineGraph(begin.cpos, end.cpos);
@@ -517,7 +584,7 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 #endif
 
 	getCallbackDataSync()->syncFindTrajectory(trajectory.begin(), trajectory.end(), wend);
-	//	enableHandPlanning();
+//	enableHandPlanning();
 
 	return true;
 }
@@ -532,6 +599,9 @@ bool RagGraphPlanner::findLocalTrajectory(const Controller::State &cbegin, GenWo
 	Collision::resetLog();
 #endif
 #endif
+	context.debug("findLocalTrajectory(): %s\n", plannerDebug(*this).c_str());
+	//context.write("RagGraphPlanner::findLocalTrajectory: %s\n", grasp::plannerConfigspaceDebug(*this).c_str());
+	//context.write("RagGraphPlanner::findLocalTrajectory: %s\n", grasp::plannerWorkspaceDebug(*this).c_str());
 
 	spam::FTDrivenHeuristic *heuristic = getFTDrivenHeuristic();
 	// trajectory size

@@ -347,6 +347,11 @@ public:
 		//}
 	};
 
+	// Gets collision checking with object's points
+	inline bool getPointCloudCollision() {
+		return pointCloudCollision;
+	}
+
 	/** Sets surface points to be checked for collision */
 	inline void setNumCollisionPoints(const golem::U32 points) { waypoint.points = points; };
 	/** Returns surface points to be checked for collision */
@@ -375,6 +380,11 @@ public:
 
 	/** Returns a pointer to the collision interface */
 	Collision* getCollision() { return collision.get(); };
+
+	/** Returns true only if expected collisions are likely to happen */
+	inline bool expectedCollisions(const golem::Controller::State& state) const {
+		return intersect(manipulator->getBounds(manipulator->getConfig(state), manipulator->getPose(state).toMat34()), pBelief->uncertaintyRegionBounds(), false);
+	}
 
 protected:
 	/** Generator of pseudo random numbers */
