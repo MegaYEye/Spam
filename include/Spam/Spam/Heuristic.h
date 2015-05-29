@@ -46,10 +46,10 @@
 
 //------------------------------------------------------------------------------
 
-#include <Golem/PhysCtrl/PhysPlanner.h>
+//#include <Golem/PhysCtrl/PhysPlanner.h>
 #include <Golem/Device/SingleCtrl/Data.h>
 #include <Spam/Spam/Belief.h>
-#include <Grasp/Core/Robot.h>
+//#include <Grasp/Core/Robot.h>
 
 //------------------------------------------------------------------------------
 
@@ -182,7 +182,7 @@ public:
 	class Desc : public golem::Heuristic::Desc {
 	protected:
 		/** Creates the object from the description. */
-		CREATE_FROM_OBJECT_DESC1(FTDrivenHeuristic, golem::Heuristic::Ptr, golem::Controller&)
+		GRASP_CREATE_FROM_OBJECT_DESC1(FTDrivenHeuristic, golem::Heuristic::Ptr, golem::Controller&)
 
 	public:
 		/** FTModel descriptor pointer */
@@ -403,7 +403,7 @@ protected:
 	/** Sampled poses */
 //	HypSample::Map samples;
 	/** Transformation samples properties */
-	golem::SampleProperty<golem::Real, grasp::RBCoord, grasp::RBCoord::N> sampleProperties;
+	golem::SampleProperty<golem::Real, grasp::RBCoord> sampleProperties;
 	///** Inverse covariance matrix associated with the samples */
 	//grasp::RBCoord covarianceInv;
 	///** Squared covariance matrix associated with the samples */

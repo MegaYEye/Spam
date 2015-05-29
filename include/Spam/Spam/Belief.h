@@ -48,7 +48,7 @@
 
 //#include <Grasp/Grasp/Cloud.h>
 //#include <Grasp/Grasp/RBPose.h>
-#include <Grasp/Core/Robot.h>
+//#include <Grasp/Core/Robot.h>
 #include <Spam/Spam/Spam.h>
 
 ////------------------------------------------------------------------------------
@@ -82,125 +82,6 @@ class Belief : public grasp::RBPose {
 public:
 	friend class FTDrivenHeuristic;
 	typedef golem::shared_ptr<Belief> Ptr;
-
-	///** Appearance */
-	//class Appearance {
-	//public:
-	//	/** Show frame */
-	//	bool showFrames;
-	//	/** Show point cloud */
-	//	bool showPoints;
-	//	/** Frame size of the sample */
-	//	golem::Vec3 frameSize;
-	//	/** clolour of the point cloud */
-	//	golem::RGBA colour;
-
-	//	/** Constructs from description object */
-	//	Appearance() {
-	//		setToDefault();
-	//	}
-	//	/** Sets the parameters to the default values */
-	//	void setToDefault() {
-	//		showFrames = true;
-	//		showPoints = true;
-	//		frameSize.set(golem::Real(0.02));
-	//		colour = golem::RGBA::MAGENTA;
-	//	}
-	//	/** Checks if the description is valid. */
-	//	bool isValid() const {
-	//		if (!frameSize.isPositive())
-	//			return false;
-	//		return true;
-	//	}
-	//};
-
-	/** Forward model to describe hand-object interactions */
-	class RigidBodyTransformation {
-	public:
-		/** Smart pointer */
-		typedef golem::shared_ptr<RigidBodyTransformation> Ptr;
-
-		/** Contructor */
-		RigidBodyTransformation() {};
-		
-		/** Sets the initial extimated pose */
-		void set(golem::Mat34 &p) { pose = p; };
-		/** Returns the trasnformation from the a priori pose to the a posteriori */
-		golem::Mat34 transform(golem::Mat34 &p);
-
-	protected:
-		/** A priori pose of the object */
-		golem::Mat34 pose;
-	};
-
-	//	/** Hypothesis over object poses */
-	//class Hypothesis {
-	//public:
-	//	friend class FTDrivenHeuristic;
-	//	friend class Belief;
-	//	typedef golem::shared_ptr<Hypothesis> Ptr;
-	//	typedef std::map<golem::U32, Ptr> Map;
-	//	typedef std::vector<Ptr> Seq;
-
-	//	/** Default construtor */
-	//	Hypothesis() {
-	//		appearance.setToDefault();
-	//	}
-	//	/** Complete constructor */
-	//	Hypothesis(const golem::U32 idx, const golem::Mat34 &trn, const grasp::RBPose::Sample &s, grasp::Cloud::PointSeq &p) {
-	//		index = idx;
-	//		modelFrame = trn;
-	//		sample = s;
-	//		for (grasp::Cloud::PointSeq::const_iterator i = p.begin(); i != p.end(); ++i)
-	//			points.push_back(*i);
-	//		build();
-	//		//buildMesh();
-
-	//		appearance.setToDefault();
-	//	}
-	//	/** Destrutor */
-	//	~Hypothesis() {
-	//		pTree.release();
-	//		pTriangles.release();
-	//	}
-
-	//	/** Distance to nearest k points on the object's surface */
-	//	golem::Real dist2NearestKPoints(const grasp::RBCoord &pose, const golem::Real &maxDist = golem::Real(1.0), const size_t clusters = 10, const size_t &nIndeces = 100, const bool normal = true) const;
-
-	//	/** Nearest K points */
-	//	size_t nearestKPoints(const grasp::RBCoord &pose, grasp::Cloud::PointSeq &points, std::vector<float> &distances, const size_t clusters = 50) const;
-
-	//	/** Returns this sample in model frame **/
-	//	inline grasp::RBPose::Sample toRBPoseSample() const { return sample; };
-	//	/** Returns this sample in global frame (default: robot frame) **/
-	//	inline grasp::RBPose::Sample toRBPoseSampleGF() const { return grasp::RBPose::Sample(sample.toMat34() * modelFrame, sample.weight, sample.cdf); };
-	//	/** Returns the point cloud in global frame */
-	//	inline grasp::Cloud::PointSeq getCloud() const { return points; };
-
-	//	/** Draw hypothesis */
-	//	void draw(golem::DebugRenderer& renderer) const;
-
-	//	Appearance appearance;
-
-	//protected:
-	//	/** Builds a pcl::PointCloud and its kd tree */
-	//	bool build();
-	//	/** Builds a pcl::PointCloud and its mesh */
-	//	bool buildMesh();
-
-	//	/** Identifier */
-	//	golem::U32 index;
-	//	/** Model frame **/
-	//	golem::Mat34 modelFrame;
-	//	/** Hypothesis. NOTE: contains the query (or sample) frame w.r.t model frame **/
-	//	grasp::RBPose::Sample sample;
-	//	/** Point cloud */
-	//	grasp::Cloud::PointSeq points;
-	//	/** Kd tree */
-	//	golem::shared_ptr<pcl::KdTreeFLANN<pcl::PointXYZ, flann::L2_Simple<float>>> pTree;
-	//	/** Polygon mesh */
-	//	golem::shared_ptr<pcl::PolygonMesh> pTriangles;
-	//};
 
 	/** Description file of tactile observational model */
 	class SensoryDesc {
@@ -259,7 +140,7 @@ public:
 			setToDefault();
 		}
 		/** Creates object from the description. */
-		CREATE_FROM_OBJECT_DESC1(Belief, grasp::RBPose::Ptr, golem::Context&)
+		GRASP_CREATE_FROM_OBJECT_DESC1(Belief, grasp::RBPose::Ptr, golem::Context&)
 		/** Sets the parameters to the default values. */
 		void setToDefault() {
 			grasp::RBPose::Desc::setToDefault();
@@ -271,15 +152,11 @@ public:
 			std::fill(&covariance[3], &covariance[7], golem::Real(0.005)); // Quat
 			lambda = 1;
 		}
-		/** Checks if the description is valid. */
-		bool isValid() const {
-			if (!grasp::RBPose::Desc::isValid())
-				return false;
-			if (hypothesisDescPtr == nullptr || !hypothesisDescPtr->isValid())
-				return false;
-			//if (!tactile.isValid())
-			//	return false;
-			return true;
+		/** Assert that the object is valid. */
+		void assertValid(const grasp::Assert::Context& ac) const {
+			grasp::RBPose::Desc::assertValid(grasp::Assert::Context(ac, "RBPose::Desc: invalid."));
+			grasp::Assert::valid(hypothesisDescPtr != nullptr, ac, "Hypothesis: null pointer.");
+			grasp::Assert::valid(hypothesisDescPtr->isValid(), ac, "HypothesisDesc: invalid.");
 		}
 	};
 
@@ -295,7 +172,7 @@ public:
 		return hypotheses;
 	}
 	/** Returns samples properties */
-	inline golem::SampleProperty<golem::Real, grasp::RBCoord, grasp::RBCoord::N> getSampleProperties() { return sampleProperties; };
+	inline golem::SampleProperty<golem::Real, grasp::RBCoord> getSampleProperties() { return sampleProperties; };
 
 	/** Sets the hypothesis for planning. NOTE: returns the action frame **/
 	grasp::RBPose::Sample createHypotheses(const grasp::Cloud::PointSeq& model, const golem::Mat34 &transform/*, const bool init = true*/);
@@ -307,7 +184,7 @@ public:
 	/** Creates a new set of poses (resampling wheel algorithm) */
 	virtual void createResample();
 	/** Creates belief update (on importance weights) given the robot's pose and the current belief state. NOTE: weights are normalised. */
-	void createUpdate(const grasp::Manipulator *manipulator, const grasp::Robot *robot, const golem::Waypoint &w, const FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force);
+	void createUpdate(const grasp::Manipulator *manipulator, const golem::Controller::State::Info handInfo, const golem::Waypoint &w, const FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force);
 	/** Creates belief update (on importance weights) given the robot's pose and the current belief state. NOTE: weights are normalised. */
 	void createUpdate(const Collision::Ptr collision, const golem::Waypoint &w, const FTGuard::Seq &triggeredGuards, const grasp::RBCoord &rbPose);
 	/** Evaluates the likelihood of reading a contact between robot's pose and the sample */
@@ -346,16 +223,6 @@ public:
 		context.write("spam::Belief::createQuery(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", sampleProperties.covariance[0], sampleProperties.covariance[1], sampleProperties.covariance[2], sampleProperties.covariance[3], sampleProperties.covariance[4], sampleProperties.covariance[5], sampleProperties.covariance[6]);
 	}
 
-	/** Sets initial pose to the forward model */
-	inline void setInitObjPose(golem::Mat34 &p) {
-		trn.set(p);
-	};
-
-	/** Computes the transformation */
-	inline golem::Mat34 transform(golem::Mat34 &p) {
-		return trn.transform(p);
-	};
-
 	/** Gets the covariance det associated with the hypotheses **/
 	inline golem::Real getCovarianceDet() { return covarianceDet; };
 
@@ -380,8 +247,6 @@ public:
 protected:
 	/** Pointer to the RBPose object */
 	grasp::RBPose::Ptr pRBPose;
-	/** Forward model of hand-object interaction */
-	RigidBodyTransformation trn;
 
 	/** Appearance */
 	Hypothesis::Appearance appearance;
@@ -406,7 +271,7 @@ protected:
 	/** Initial belief distribution. NOTE: Used for the reset method. */
 	grasp::RBPose::Sample::Seq initPoses;
 	/** Transformation samples properties */
-	golem::SampleProperty<golem::Real, grasp::RBCoord, grasp::RBCoord::N> sampleProperties, initProperties;
+	golem::SampleProperty<golem::Real, grasp::RBCoord> sampleProperties, initProperties;
 	/** Normalise factor */
 	golem::Real normaliseFac;
 

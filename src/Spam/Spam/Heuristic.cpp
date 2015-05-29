@@ -1556,48 +1556,7 @@ bool FTDrivenHeuristic::collides(const Waypoint &w, ThreadData* data) const {
 //		}
 	}
 
-	// all chains
-	//for (Chainspace::Index i = stateInfo.getChains().begin(); i < stateInfo.getChains().end(); ++i)
-	for (Chainspace::Index i = stateInfo.getChains().end() - 1; i >= stateInfo.getChains().begin(); --i)
-	{
-		// all joints in a chain
-		//for (Configspace::Index j = stateInfo.getJoints(i).begin(); j < stateInfo.getJoints(i).end(); ++j)
-		for (Configspace::Index j = stateInfo.getJoints(i).end() - 1; j >= stateInfo.getJoints(i).begin(); --j)
-		{
-			const JointDesc* jdesc = getJointDesc()[j];
-			Bounds::Seq& jointBounds = data->jointBounds[j];
-
-			if (jointBounds.empty() || !jdesc->collisionBounds)
-				continue;
-
-			// reset to the current joint pose
-			setPose(data->jointBoundsPoses[j], w.wposex[j], jointBounds);
-
-			// check for collisions between the current joint and the environment bounds, test bounds groups
-			if (!collisionBounds.empty() && intersect(jointBounds, collisionBounds, true))
-				return true;
-
-			// check for collisions between the current joint and the collision joints, do not test bounds groups
-			const U32Seq& collisionJoints = jdesc->collisionJoints;
-			for (U32Seq::const_iterator k = collisionJoints.begin(); k != collisionJoints.end(); ++k) {
-				const Configspace::Index collisionIndex(*k);
-
-				golem::Bounds::Seq &collisionJointBounds = data->jointBounds[collisionIndex];
-				if (collisionJointBounds.empty())
-					continue;
-
-				setPose(data->jointBoundsPoses[collisionIndex], w.wposex[collisionIndex], collisionJointBounds);
-				if (intersect(jointBounds, collisionJointBounds, false))
-					return true;
-			}
-
-			// TODO joint bounds - chain bounds collisions
-		}
-
-		// TODO bounds - chain bounds collisions
-	}
-
-	return false;
+	return Heuristic::collides(w, data);
 }
 
 bool FTDrivenHeuristic::collides(const Waypoint &w0, const Waypoint &w1, ThreadData* data) const {

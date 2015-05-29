@@ -60,200 +60,6 @@ template <> void golem::Stream::write(const spam::Belief& belief) {
 	write(belief.getHypotheses().begin(), belief.getHypotheses().end());
 }
 
-
-//------------------------------------------------------------------------------
-
-Mat34 Belief::RigidBodyTransformation::transform(Mat34 &p) {
-	Mat34 poseInverse;
-	poseInverse.setInverse(pose);
-	pose.multiply(poseInverse, p);
-	return pose;
-}
-
-//------------------------------------------------------------------------------
-//
-//Real Belief::Hypothesis::dist2NearestKPoints(const grasp::RBCoord &pose,  const golem::Real &maxDist, const size_t clusters, const size_t &nIndeces, const bool normal) const {
-//	if (pose.p.distance((sample.toMat34() * modelFrame).p) > (REAL_ONE + REAL_HALF)*maxDist)
-//		return maxDist + 1;;
-//
-//	pcl::PointXYZ searchPoint;
-//	searchPoint.x = (float)pose.p.x;
-//	searchPoint.y = (float)pose.p.y;
-//	searchPoint.z = (float)pose.p.z;
-//
-//	std::vector<int> indeces;
-//	std::vector<float> distances;
-//	pcl::KdTree<pcl::PointXYZ>::PointCloudConstPtr cloud = pTree->getInputCloud();
-//	Real result = REAL_ZERO;
-//	Vec3 median;
-//	median.setZero();
-//	golem::Rand rand;
-//	if (pTree->nearestKSearch(searchPoint, clusters, indeces, distances) > 0) {
-//		const size_t size = indeces.size() < nIndeces ? indeces.size() : nIndeces;
-//		for (size_t i = 0; i < size; ++i) {
-//			idxdiff_t idx = size < indeces.size() ? indeces[size_t(rand.next())%indeces.size()] : indeces[i];
-//			//Point point;
-//			//point.frame.setId();
-//			//point.frame.p.set(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z);
-//			//result += pose.p.distance(point.frame.p);
-//			//median += Vec3(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z);
-//			result += pose.p.distance(Vec3(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z));
-//			median += Vec3(cloud->points[idx].x, cloud->points[idx].y, cloud->points[idx].z);
-//		}
-//		result /= size;
-//		median /= size;
-//	}
-//	
-//	if (normal) {
-//		Vec3 v;
-//		Mat34 jointFrame(Mat33(pose.q), pose.p);
-//		Mat34 jointFrameInv;
-//		jointFrameInv.setInverse(jointFrame);
-//		jointFrameInv.multiply(v, median);
-//		v.normalise();
-////		const Real thx(Math::atan2(v.z, v.x)), thy(Math::atan2(v.z, v.y));
-////		if (v.z < 0 || Math::abs(thx) > ftDrivenDesc.ftModelDesc.coneTheta1 || Math::abs(thy) > ftDrivenDesc.ftModelDesc.coneTheta2) 
-//		if (v.z > 0/* || v.z < golem::Real(.5)*/) // for justin v.z < 0
-//			result = maxDist + 1;
-//		//else {
-//		//	Mat33 rot;
-//		//	Real roll, pitch, yaw;
-//		//	Quat quat(pose.q);
-//		//	quat.toMat33(rot);
-//		//	rot.toEuler(roll, pitch, yaw);
-//		//	std::printf("nearest(): pose [%.4f,%.4f,%.4f]<%.4f,%.4f,%.4f>; median <%.4f,%.4f,%.4f>, thx %.4f, thy %.4f\n",
-//		//		roll, pitch, yaw, pose.p.x, pose.p.y, pose.p.z, median.x, median.y, median.z, thx, thy);
-//		//}
-//	}
-//	//if (result < ftDrivenDesc.ftModelDesc.distMax + 1) {
-//	//	std::printf("NearestKNeigh (t %.7f) %.7f\n", context.getTimer().elapsed() - init, result);
-//	//	dist2NearestPoint(pose, p, normal);
-//	//}
-//	return result;
-//}
-//
-//size_t Belief::Hypothesis::nearestKPoints(const grasp::RBCoord &pose, grasp::Cloud::PointSeq &points, std::vector<float> &distances, const size_t clusters) const {
-//	// sets the query point
-//	pcl::PointXYZ searchPoint;
-//	searchPoint.x = (float)pose.p.x;
-//	searchPoint.y = (float)pose.p.y;
-//	searchPoint.z = (float)pose.p.z;
-//
-//	// cleanns container
-//	points.clear();
-//
-//	std::vector<int> indeces;
-//	// retrieves the point cloud
-//	pcl::KdTree<pcl::PointXYZ>::PointCloudConstPtr cloud = pTree->getInputCloud();
-//	// returns a positive number if the query is successful
-//	size_t ret;
-//	if (ret = pTree->nearestKSearch(searchPoint, clusters, indeces, distances) > 0) {
-//		points.reserve(indeces.size());
-//		for (size_t i = 0; i < indeces.size(); ++i) {
-//			grasp::Cloud::Point point;
-//			point.x = cloud->points[indeces[i]].x;
-//			point.y = cloud->points[indeces[i]].y;
-//			point.z = cloud->points[indeces[i]].z;
-//			points.push_back(point);
-//		}
-//	}
-//	return ret;
-//}
-//
-//bool Belief::Hypothesis::build() {
-//	pTree.reset(new pcl::KdTreeFLANN<pcl::PointXYZ, flann::L2_Simple<float>>);
-//
-//	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>); 
-//	cloud->width = points.size();
-//	cloud->height = 1;
-//	cloud->points.resize (cloud->width * cloud->height);
-//	int j = 0;
-//	for (grasp::Cloud::PointSeq::const_iterator point = points.begin(); point != points.end(); ++point) {
-//		cloud->points[j].x = (float)point->x;
-//		cloud->points[j].y = (float)point->y;
-//		cloud->points[j++].z = (float)point->z;
-//	}
-//	pTree->setInputCloud(cloud);
-//
-//	return true;
-//}
-//
-//bool Belief::Hypothesis::buildMesh() {
-//	pTriangles.reset(new pcl::PolygonMesh);
-//	// build point cloud form set of points
-//	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>); 
-//	cloud->width = points.size();
-//	cloud->height = 1;
-//	cloud->points.resize(cloud->width * cloud->height);
-//	int j = 0;
-//	for (grasp::Cloud::PointSeq::const_iterator point = points.begin(); point != points.end(); ++point) {
-//		cloud->points[j].x = (float)point->x;
-//		cloud->points[j].y = (float)point->y;
-//		cloud->points[j++].z = (float)point->z;
-//	}
-//
-//	  // Normal estimation*
-//	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> n;
-//	pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-//	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-//	tree->setInputCloud(cloud);
-//	n.setInputCloud(cloud);
-//	n.setSearchMethod(tree);
-//	n.setKSearch(20);
-//	n.compute(*normals);
-//	//* normals should not contain the point normals + surface curvatures
-//
-//	// Concatenate the XYZ and normal fields*
-//	pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
-//	pcl::concatenateFields(*cloud, *normals, *cloud_with_normals);
-//	//* cloud_with_normals = cloud + normals
-//
-//	// Create search tree*
-//	pcl::search::KdTree<pcl::PointNormal>::Ptr tree2(new pcl::search::KdTree<pcl::PointNormal>);
-//	tree2->setInputCloud(cloud_with_normals);
-//
-//	// Initialize objects
-//	pcl::GreedyProjectionTriangulation<pcl::PointNormal> gp3;
-//	pcl::PolygonMesh triangles;
-//
-//	// Set the maximum distance between connected points (maximum edge length)
-//	gp3.setSearchRadius(0.025);
-//
-//	// Set typical values for the parameters
-//	gp3.setMu(2.5);
-//	gp3.setMaximumNearestNeighbors(1000);
-//	gp3.setMaximumSurfaceAngle(M_PI/4); // 45 degrees
-//	gp3.setMinimumAngle(M_PI/18); // 10 degrees
-//	gp3.setMaximumAngle(2*M_PI/3); // 120 degrees
-//	gp3.setNormalConsistency(false);
-//
-//	// Get result
-//	gp3.setInputCloud(cloud_with_normals);
-//	gp3.setSearchMethod(tree2);
-//	gp3.reconstruct(*pTriangles.get());
-//	std::printf("HypSample::buildMesh: Triangle vertices %d\n", pTriangles->polygons.size());
-//	//for (std::vector<pcl::Vertices>::iterator i = pTriangles->polygons.begin(); i != pTriangles->polygons.end(); ++i)
-//	//	std::printf("Vertex n.%d size %d\n", i, i->vertices.size());
-//	
-//	return true;
-//}
-//
-//void Belief::Hypothesis::draw(DebugRenderer &renderer) const {
-//	printf("Belief::Hypothesis::draw(showFrame=%s, showPoints=%s)\n", appearance.showFrames ? "ON" : "OFF", appearance.showPoints ? "ON" : "OFF");
-//	if (appearance.showFrames || true)
-//		renderer.addAxes(sample.toMat34() * modelFrame, appearance.frameSize);
-//
-//	size_t t = 0;
-//	if (appearance.showPoints || true) {
-//		for (grasp::Cloud::PointSeq::const_iterator i = points.begin(); i != points.end(); ++i) {
-//			grasp::Cloud::Point point = *i;
-//			if (++t < 10) printf("Belief::Hypothesis point %d <%.4f %.4f %.4f>\n", t, point.x, point.y, point.z);
-//			grasp::Cloud::setColour(/*appearance.colour*/RGBA::RED, point);
-//			renderer.addPoint(grasp::Cloud::getPoint(point));
-//		}
-//	}
-//}
-
 //------------------------------------------------------------------------------
 
 Belief::Belief(golem::Context& context) : grasp::RBPose(context) {
@@ -261,8 +67,7 @@ Belief::Belief(golem::Context& context) : grasp::RBPose(context) {
 }
 
 bool Belief::create(const Desc& desc) {
-	if (!desc.isValid())
-		throw Message(Message::LEVEL_CRIT, "spam::RBPose::create(): Invalid description");
+	desc.assertValid(grasp::Assert::Context("Belief::Desc."));
 	
 	grasp::RBPose::create((grasp::RBPose::Desc&)desc);
 
@@ -300,7 +105,7 @@ void Belief::drawSamples(const size_t numSamples, golem::DebugRenderer& renderer
 			}
 			grasp::Cloud::transform(sample.toMat34(), seq, seq);
 			for (grasp::Cloud::PointSeq::const_iterator i = seq.begin(); i != seq.end(); ++i)
-				renderer.addPoint(grasp::Cloud::getPoint(*i));
+				renderer.addPoint(grasp::Cloud::getPoint<Real>(*i));
 		}
 	}
 }
@@ -356,7 +161,7 @@ void Belief::setPoses(const grasp::RBPose::Sample::Seq &poseSeq) {
 	}
 
 	// mean and covariance
-	if (!pose.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.covariance, poses))
+	if (!pose.create<golem::Ref1, RBPose::Sample::Ref>(grasp::RBCoord::N, myDesc.covariance, poses))
 		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
 	// copy initial distribution properties
 	initProperties = pose;
@@ -385,7 +190,7 @@ void Belief::setHypotheses(const grasp::RBPose::Sample::Seq &hypothesisSeq) {
 		const size_t size = modelPoints.size() < myDesc.maxSurfacePoints ? modelPoints.size() : myDesc.maxSurfacePoints;
 		for (size_t j = 0; j < size; ++j) {
 			grasp::Cloud::Point point = size < modelPoints.size() ? modelPoints[size_t(rand.next()) % modelPoints.size()] : modelPoints[j]; // make a copy here
-			grasp::Cloud::setPoint(p->toMat34() * grasp::Cloud::getPoint(point)/* + actionFrame.p*/, point);
+			grasp::Cloud::setPoint(p->toMat34() * grasp::Cloud::getPoint<Real>(point)/* + actionFrame.p*/, point);
 			grasp::Cloud::setColour((p == hypothesisSeq.begin()) ? RGBA::GREEN : RGBA::BLUE, point);
 			sampleCloud.push_back(point);
 		}
@@ -399,7 +204,7 @@ void Belief::setHypotheses(const grasp::RBPose::Sample::Seq &hypothesisSeq) {
 	}
 
 	// mean and covariance
-	if (!sampleProperties.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.covariance, getHypothesesToSample()))
+	if (!sampleProperties.create<golem::Ref1, RBPose::Sample::Ref>(grasp::RBCoord::N, myDesc.covariance, getHypothesesToSample()))
 		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
 
 	// compute a volumetric region of the uncertainty (min 10 cms in each direction)
@@ -431,7 +236,7 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 	//grasp::RBPose::Sample actionFrame = maximum();
 	//	context.write("Heuristic:setBeliefState(model size = %d, max points = %d): samples: cont_fac = %f\n", model.size(), ftDrivenDesc.maxSurfacePoints, ftDrivenDesc.contactFac);
 	context.debug("----------------------------------------------------------\n");
-	context.debug("Belif:createHypotheses()\n");
+	context.debug("Belief:createHypotheses()\n");
 	for (Hypothesis::Seq::iterator i = hypotheses.begin(); i < hypotheses.end(); ++i) {
 		// sample hypothesis. NOTE: The first element is the max scoring pose
 		grasp::RBCoord actionFrame = (i == hypotheses.begin()) ? maximumFrame : sample();
@@ -446,22 +251,27 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 		const size_t size = model.size() < myDesc.maxSurfacePoints ? model.size() : myDesc.maxSurfacePoints;
 		for (size_t j = 0; j < size; ++j) {
 			grasp::Cloud::Point p = size < model.size() ? model[size_t(rand.next())%model.size()] : model[j]; // make a copy here
-			grasp::Cloud::setPoint(actionFrame.toMat34() * grasp::Cloud::getPoint(p)/* + actionFrame.p*/, p);
+			grasp::Cloud::setPoint(actionFrame.toMat34() * grasp::Cloud::getPoint<Real>(p)/* + actionFrame.p*/, p);
 			grasp::Cloud::setColour((i == hypotheses.begin()) ? RGBA::GREEN : RGBA::BLUE, p);
 			sampleCloud.push_back(p);
 		}
-//		hypotheses.insert(Hypothesis::Map::value_type(idx, Hypothesis::Ptr(new Hypothesis(idx, grasp::RBPose::Sample(sampleFrame), sampleCloud))));
+		//		hypotheses.insert(Hypothesis::Map::value_type(idx, Hypothesis::Ptr(new Hypothesis(idx, grasp::RBPose::Sample(sampleFrame), sampleCloud))));
 		//hypotheses.push_back(Hypothesis::Ptr(new Hypothesis(idx, transform, grasp::RBPose::Sample(actionFrame), sampleCloud)));
-		(*i) = myDesc.hypothesisDescPtr->create(*manipulator);
-		(*i)->create(idx, modelFrame, grasp::RBPose::Sample(actionFrame), rand, sampleCloud);
-		(*i)->appearance.colour = (i == hypotheses.begin()) ? RGBA::GREEN : RGBA::BLUE;
-		(*i)->appearance.showPoints = true;
+		try {
+			(*i) = myDesc.hypothesisDescPtr->create(*manipulator);
+			(*i)->create(idx, modelFrame, grasp::RBPose::Sample(actionFrame), rand, sampleCloud);
+			(*i)->appearance.colour = (i == hypotheses.begin()) ? RGBA::GREEN : RGBA::BLUE;
+			(*i)->appearance.showPoints = true;
+		}
+		catch (const Message &msg) {
+			context.write("%s\n", msg.what());
+		}
 		context.write("Hypothesis %d {(%.4f %.4f %.4f), (%.4f %.4f %.4f %.4f)}\n", idx, actionFrame.p.x, actionFrame.p.y, actionFrame.p.z, actionFrame.q.w, actionFrame.q.x, actionFrame.q.y, actionFrame.q.z);
 		idx++;
 	}
 	
 	// mean and covariance
-	if (!sampleProperties.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.covariance, getHypothesesToSample()))
+	if (!sampleProperties.create<golem::Ref1, RBPose::Sample::Ref>(grasp::RBCoord::N, myDesc.covariance, getHypothesesToSample()))
 		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createHypotheses(): Unable to create mean and covariance for the high dimensional representation");
 		
 	context.write("Sub-sampled covariance = {(%f, %f, %f), (%f, %f, %f, %f)}\n", sampleProperties.covariance[0], sampleProperties.covariance[1], sampleProperties.covariance[2], sampleProperties.covariance[3], sampleProperties.covariance[4], sampleProperties.covariance[5], sampleProperties.covariance[6]);
@@ -533,7 +343,7 @@ void Belief::createQuery(const grasp::Cloud::PointSeq& points) {
 	const SecTmReal t_end = context.getTimer().elapsed() - init;
 	
 	// mean and covariance
-	if (!pose.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.covariance, initPoses))
+	if (!pose.create<golem::Ref1, RBPose::Sample::Ref>(grasp::RBCoord::N, myDesc.covariance, initPoses))
 		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
 	// copy initial distribution properties
 	initProperties = pose;
@@ -610,7 +420,7 @@ void Belief::createResample() {
 	normaliseFac = REAL_ZERO;
 	
 	// compute mean and covariance
-	if (!pose.create<golem::Ref1, RBPose::Sample::Ref>(myDesc.covariance, poses))
+	if (!pose.create<golem::Ref1, RBPose::Sample::Ref>(grasp::RBCoord::N, myDesc.covariance, poses))
 		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createResample(): Unable to create mean and covariance for the high dimensional representation");
 
 	context.write("spam::Belief::createResample(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", pose.covariance[0], pose.covariance[1], pose.covariance[2], pose.covariance[3], pose.covariance[4], pose.covariance[5], pose.covariance[6]);
@@ -659,24 +469,24 @@ void Belief::createUpdate(const Collision::Ptr collision, const golem::Waypoint 
 }
 
 
-void Belief::createUpdate(const grasp::Manipulator *manipulator, const grasp::Robot *robot, const golem::Waypoint &w, const FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force) {
+void Belief::createUpdate(const grasp::Manipulator *manipulator, const golem::Controller::State::Info handInfo, const golem::Waypoint &w, const FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force) {
 	context.debug("spam::Belief::createUpdate()...\n");
 	bool intersect = false; 
 	// retrieve wrist's workspace pose and fingers configuration
 	//golem::Mat34 poses[grasp::Manipulator::JOINTS];
 	//manipulator->getPoses(manipulator->getPose(w.cpos), poses);
 //	grasp::RealSeq forces(force);
-	for (Chainspace::Index i = robot->getStateHandInfo().getChains().begin(); i != robot->getStateHandInfo().getChains().end(); ++i) {
+	for (Chainspace::Index i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i) {
 		// check if any of the joint in the current chain (finger) has been triggered
 		std::vector<bool> triggered;
-		triggered.reserve(robot->getStateHandInfo().getJoints(i).size());
+		triggered.reserve(handInfo.getJoints(i).size());
 //		context.write("Chain %d\n", i);
 		// bounds of the entire finger
 		golem::Bounds::Seq bounds;
 		grasp::RealSeq forces;
-		forces.assign(robot->getStateHandInfo().getJoints(i).size(), REAL_ZERO);
-		for (Configspace::Index j = robot->getStateHandInfo().getJoints(i).begin(); j != robot->getStateHandInfo().getJoints(i).end(); ++j) { 
-			const size_t idx = j - robot->getStateHandInfo().getJoints(i).begin();
+		forces.assign(handInfo.getJoints(i).size(), REAL_ZERO);
+		for (Configspace::Index j = handInfo.getJoints(i).begin(); j != handInfo.getJoints(i).end(); ++j) {
+			const size_t idx = j - handInfo.getJoints(i).begin();
 			triggered[idx] = [&] () -> bool {
 				for (FTGuard::Seq::const_iterator i = triggeredGuards.begin(); i < triggeredGuards.end(); ++i)
 					if (j == i->jointIdx) {
@@ -746,7 +556,7 @@ golem::Real Belief::evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCo
 			//	modelPoints.size()] : modelPoints[i];
 			//Mat34 pointFrame;
 			//pointFrame.multiply(actionFrame, point.frame);
-			const Vec3 point = grasp::Cloud::getPoint(size < modelPoints.size() ? modelPoints[size_t(rand.next())%modelPoints.size()] : modelPoints[i]);
+			const Vec3 point = grasp::Cloud::getPoint<Real>(size < modelPoints.size() ? modelPoints[size_t(rand.next())%modelPoints.size()] : modelPoints[i]);
 			Mat34 pointFrame = actionFrame;
 			pointFrame.p += point; // only position is updated
 			const Real dist = [&] () -> Real {

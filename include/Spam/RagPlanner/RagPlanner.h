@@ -46,7 +46,7 @@
 
 //------------------------------------------------------------------------------
 
-#include <Spam/ShapePlanner/ShapePlanner.h>
+#include <Spam/PosePlanner/PosePlanner.h>
 
 //------------------------------------------------------------------------------
 
@@ -64,16 +64,20 @@ namespace spam {
 	Based on Platt R. et al. "A hypothesis-based algorithm for planning and
 	control in non-Gaussian belief spaces", 2011.
 */
-class RagPlanner : public ShapePlanner {
+class RagPlanner : public PosePlanner, protected golem::Profile::CallbackDist {
 public:
 	/** Data */
-	class Data : public ShapePlanner::Data {
+	class Data : public PosePlanner::Data {
 	public:
 		friend class RagPlanner;
-
-		/** Cache (local): OpenGL settings */
-		golem::Scene::OpenGL openGL;
 		
+		/** Data bundle description */
+		class Desc : public PosePlanner::Data::Desc {
+		public:
+			/** Creates the object from the description. */
+			virtual grasp::data::Data::Ptr create(golem::Context &context) const;
+		};
+
 		/** Specifies if guard have been triggered during the perform of the action */
 		int triggered;
 
@@ -82,37 +86,31 @@ public:
 		/** Enable the release of the object before withdrawing */
 		bool release;
 
-		/** Reset data during construction */
-		Data() {
-			setToDefault();
-		}
+		/** Creates render buffer of the bundle without items */
+		virtual void createRender();
 
-		/** Sets the parameters to the default values */
-		virtual void setToDefault() {
-			ShapePlanner::Data::setToDefault();
-			triggered = 0;
-			replanning = false;
-			release = false;
-		}
-		/** Assert that the description is valid. */
-		virtual void assertValid(const grasp::Assert::Context& ac) const {
-			ShapePlanner::Data::assertValid(ac);
-		}
+	protected:
+		/** Demo */
+		RagPlanner* owner;
 
-		/** Reads/writes object from/to a given XML context */
-		virtual void xmlData(golem::XMLContext* context, bool create = false) const;
+		/** Load from xml context */
+		virtual void load(const std::string& prefix, const golem::XMLContext* xmlcontext, const grasp::data::Handler::Map& handlerMap);
+		/** Save to xml context */
+		virtual void save(const std::string& prefix, golem::XMLContext* xmlcontext) const;
+
+		/** Creates data bundle */
+		void create(const Desc& desc);
+		/** Creates data bundle */
+		Data(golem::Context &context);
 	};
 
-	class Desc : public ShapePlanner::Desc {
+	class Desc : public PosePlanner::Desc {
 	protected:
-		CREATE_FROM_OBJECT_DESC1(RagPlanner, golem::Object::Ptr, golem::Scene&)
+		GRASP_CREATE_FROM_OBJECT_DESC1(RagPlanner, golem::Object::Ptr, golem::Scene&)
 
 	public:
 		/** Smart pointer */
 		typedef golem::shared_ptr<Desc> Ptr;
-
-		/** 3D surface samples' point feature appearance */
-		grasp::Director::Data::Appearance sampleAppearance;
 
 		/** Enables/disables explicit use of uncertainty in planning */
 		bool uncEnable;
@@ -127,9 +125,21 @@ public:
 		/** Collision description file. Used for collision with the ground truth */
 		Collision::Desc::Ptr objCollisionDescPtr;
 
-		///** Query transformation */
-		//grasp::RBCoord queryPointsTrn;
-		
+		/** Trajectory duration */
+		golem::SecTmReal trjDuration;
+		/** Trajectory idle time */
+		golem::SecTmReal trjIdle;
+		/** Trajectory extrapolation */
+		grasp::RealSeq trjExtrapol;
+		/** Trajectory extrapolation factor */
+		golem::Real trjExtrapolFac;
+		/** Performance duration offset */
+		golem::SecTmReal trjPerfOff;
+		/** Trajectory profile description */
+		golem::Profile::Desc::Ptr pProfileDesc;
+		/** Trajectory profile configspace distance multiplier */
+		grasp::RealSeq distance;
+
 		/** Constructs from description object */
 		Desc() {
 			Desc::setToDefault();
@@ -138,12 +148,13 @@ public:
 		virtual void setToDefault() {
 			PosePlanner::Desc::setToDefault();
 
-			data.reset(new Data);
-
-			robotDesc.reset(new Robot::Desc);
-			pRBPoseDesc.reset(new Belief::Desc);
-
-			data->appearance.setToDefault();
+			trjDuration = golem::SecTmReal(2.0);
+			trjIdle = golem::SecTmReal(1.0);
+			trjExtrapolFac = golem::Real(1.0);
+			trjExtrapol.assign(golem::Configspace::DIM, golem::REAL_ONE);
+			trjPerfOff = golem::SecTmReal(0.0);
+			pProfileDesc.reset(new golem::Profile::Desc);
+			distance.assign(golem::Configspace::DIM, golem::REAL_ONE);
 
 			uncEnable = true;
 			singleGrasp = false;
@@ -153,24 +164,20 @@ public:
 
 			objCollisionDescPtr.reset(new Collision::Desc());
 
-//			queryPointsTrn.fromMat34(golem::Mat34::identity());
 		}
+
 		/** Checks if the description is valid. */
-		virtual bool isValid() const {
-			if (!PosePlanner::Desc::isValid())
-				return false;
-			return true;
+		virtual void assertValid(const grasp::Assert::Context &ac) const {
+			PosePlanner::Desc::assertValid(ac);
+
+			grasp::Assert::valid(maxModelPoints > 0, ac, "Max model point is not positive");
+			grasp::Assert::valid(objCollisionDescPtr != nullptr, ac, "Collision description: invalid");
 		}
+		/** Load descritpion from xml context. */
+		virtual void load(golem::Context& context, const golem::XMLContext* xmlcontext);
 	};
 
-	/** Profile state sequence */
-	virtual void profile(golem::SecTmReal duration, const golem::Controller::State::Seq& inp, golem::Controller::State::Seq& out, const bool silent = false) const;
-
-	virtual ~RagPlanner();
-
 protected:
-	/** RAG robot */
-	Robot *robot;
 	/** Particles renderer */
 	golem::DebugRenderer sampleRenderer;
 	/** ground truth renderer */
@@ -178,19 +185,12 @@ protected:
 	/** Debug renderer */
 	golem::DebugRenderer debugRenderer;
 
-	/** Smart pointer to the belief state */
-//	Belief* pBelief;
-	/** Smart pointer to the ft driven heuristic */
-	FTDrivenHeuristic* pHeuristic;
-
 	/** Object pose data */
 	Data::Map::iterator poseDataPtr;
 	
 	/** Description file */
 	Desc ragDesc;
 
-	/** 3d surface samples' point feature appearance */
-	grasp::Director::Data::Appearance sampleAppearance;
 	/** Show original colour of the point cloud */
 	bool showSampleColour;
 	/** Show Sample frame */
@@ -247,13 +247,10 @@ protected:
 	/** Query transformation */
 	grasp::RBCoord queryPointsTrn;
 
-	/** Safety configurations of the robot */
-	grasp::RobotState::Seq homeStates;
 	/** Combined action waypoints */
-	golem::Controller::State::Seq executedTrajectory;
+	golem::Controller::State::Seq robotStates;
 	/** Contains the index of the triggered guards */
 	FTGuard::Seq triggeredGuards;
-	golem::Controller::State::Seq grasps;
 
 	/** Iterations counter */
 	size_t iterations;
@@ -271,9 +268,9 @@ protected:
 	}
 
 	/** Get current points transformed */
-	grasp::Cloud::PointSeqMap::iterator getTrnPoints(Data::Map::iterator dataPtr, const golem::Mat34 &trn);
+//	grasp::Cloud::PointSeqMap::iterator getTrnPoints(Data::Map::iterator dataPtr, const golem::Mat34 &trn);
 	/** Get current points transformed */
-	grasp::Cloud::RawPointSeqMultiMap::iterator getTrnRawPoints(Data::Map::iterator dataPtr, const golem::Mat34 &trn);
+//	grasp::Cloud::RawPointSeqMultiMap::iterator getTrnRawPoints(Data::Map::iterator dataPtr, const golem::Mat34 &trn);
 
 	/** Simulates contacts between the robot's hand and object's partial point cloud */
 	golem::Real simContacts(const golem::Bounds::Seq::const_iterator &begin, const golem::Bounds::Seq::const_iterator &end, const golem::Mat34 pose);
@@ -283,69 +280,51 @@ protected:
 	/** Updates belief state */
 	void updateAndResample(Data::Map::iterator dataPtr);
 
-	/** Current state */
-	virtual golem::Controller::State lookupState(golem::SecTmReal t = golem::SEC_TM_REAL_MAX) const;
-	/** Current command */
-	virtual golem::Controller::State lookupCommand(golem::SecTmReal t = golem::SEC_TM_REAL_MAX) const;
+	/** Finds a target in configuration space in a new reference frame */
+	void findTarget(const golem::Mat34 &trn, const golem::Controller::State &target, golem::Controller::State &cend, const bool lifting = false);
 
-	/** Builds and performs reach and grasp actions */
-	virtual void performApproach(Data::Map::iterator dataPtr);
-	/** Builds and performs a moving back trajectory */
-	virtual void performWithdraw(Data::Map::iterator dataPtr);
-	/** Builds and performs a moving back trajectory */
-	virtual void performManip(Data::Map::iterator dataPtr);
-	/** Builds and performs single attempt to grasp */
-	virtual void performSingleGrasp(Data::Map::iterator dataPtr);
-	/** Performs trial action (trajectory) */
-	virtual void perform(const std::string& name, const golem::Controller::State::Seq& trajectory, bool silent = false);
-	bool execute(Data::Map::iterator dataPtr, golem::Controller::State::Seq& trajectory);
-	/** Creates new data */
-	virtual Data::Ptr createData() const;
+	/** (Global search) trajectory of the entire robot from the configuration space and/or workspace target */
+	virtual void createTrajectory(const golem::Controller::State& begin, const golem::Controller::State* pcend, const golem::Mat34* pwend, golem::SecTmReal t, const golem::Controller::State::Seq& waypoints, golem::Controller::State::Seq& trajectory);
+	/** (Local search) trajectory of the arm only from a sequence of configuration space targets in a new reference frame */
+	grasp::RBDist trnTrajectory(const golem::Mat34& actionFrame, const golem::Mat34& modelFrame, const golem::Mat34& trn, golem::Controller::State::Seq::const_iterator begin, golem::Controller::State::Seq::const_iterator end, golem::Controller::State::Seq& trajectory);
+	/** (Local search) trajectory of the arm only from a sequence of configuration space targets in a new reference frame */
+	grasp::RBDist findTrnTrajectory(const golem::Mat34& trn, const golem::Controller::State& startPose, golem::Controller::State::Seq::const_iterator begin, golem::Controller::State::Seq::const_iterator end, golem::Controller::State::Seq& trajectory);
 
-	/** Overwrite pose planner render trial data */
-	virtual void renderData(Data::Map::const_iterator dataPtr);
-	void renderContacts();
-	void renderPose(const golem::Mat34 &pose);
-	golem::DebugRenderer testPose;
-	void renderUpdate(const golem::Mat34 &pose, const grasp::RBPose::Sample::Seq &samples);
-	golem::DebugRenderer testUpdate;
-	void renderHand(const golem::Controller::State &state, const golem::Bounds::Seq &bounds, bool clear = false);
-	golem::BoundsRenderer handRenderer;
-	void renderWaypoints(const golem::Bounds::Seq &bounds, bool clear = false);
-	golem::BoundsRenderer waypointRenderer;
+	/** Trajectory profile configspace distance multiplier */
+	golem::ConfigspaceCoord distance;
+	/** Trajectory duration */
+	golem::SecTmReal trjDuration;
+	/** Trajectory idle time */
+	golem::SecTmReal trjIdle;
+	/** Trajectory extrapolation */
+	golem::ConfigspaceCoord trjExtrapol;
+	/** Trajectory extrapolation factor */
+	golem::Real trjExtrapolFac;
+	/** Performance duration offset */
+	golem::SecTmReal trjPerfOff;
+	/** Trajectory profile */
+	golem::Profile::Ptr pProfile;
 
-	// clear states
-	grasp::Robot::State::Seq robotStates;
+	/** golem::Profile::CallbackDist: Configuration space coordinate distance metric */
+	virtual golem::Real distConfigspaceCoord(const golem::ConfigspaceCoord& prev, const golem::ConfigspaceCoord& next) const;
+	/** golem::Profile::CallbackDist: Coordinate distance metric */
+	virtual golem::Real distCoord(golem::Real prev, golem::Real next) const;
+	/** golem::Profile::CallbackDist: Coordinate enabled state */
+	virtual bool distCoordEnabled(const golem::Configspace::Index& index) const;
 
-	bool unlockContact();
-	bool showIndices;
-	/** Prints out a trajectory */
-	void printTrajectory(const golem::Controller::State::Seq &trajectory, const golem::Configspace::Index &begin, const golem::Configspace::Index &end) const;
-	/** Prints out a state of the robot */
-	void printState(const golem::Controller::State &state, const golem::Configspace::Index &begin, const golem::Configspace::Index &end, const std::string &label = "", const bool readForce = false) const;
+	/** Trajectory profile */
+	void profile(golem::SecTmReal duration, const golem::Controller::State::Seq& inp, golem::Controller::State::Seq& out, const bool silent = false) const;
+	/** Perform trajectory */
+	virtual void perform(const std::string& data, const std::string& item, const golem::Controller::State::Seq& trajectory, bool testTrajectory = true);
 
-	///** Shape planner demo */
-	//void run(const Demo::Map::value_type& demo);
+	/** Plan and execute r2g, grasp, lift operations */
+	bool execute(grasp::data::Data::Map::iterator dataPtr, golem::Controller::State::Seq& trajectory);
 
-	/** User interface: menu function */
-	virtual void function(Data::Map::iterator& dataPtr, int key);
-
-	virtual void render();
+	virtual void render() const;
 
 	RagPlanner(golem::Scene &scene);
+	~RagPlanner();
 	bool create(const Desc& desc);
-};
-
-/** Reads/writes object from/to a given XML context */
-void XMLData(RagPlanner::Desc &val, golem::Context* context, golem::XMLContext* xmlcontext, bool create = false);
-
-//------------------------------------------------------------------------------
-
-/** ShapePlanner application */
-class RagPlannerApp : public golem::Application {
-protected:
-	/** Runs Application */
-	virtual void run(int argc, char *argv[]);
 };
 
 //------------------------------------------------------------------------------

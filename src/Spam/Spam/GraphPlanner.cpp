@@ -12,6 +12,7 @@
 #include <Golem/Device/SingleCtrl/SingleCtrl.h>
 #include <Golem/Plan/Data.h>
 #include <Spam/Spam/Heuristic.h>
+#include <iomanip> // std::setprecision
 //#include <Spam/Spam/Data.h>
 
 //------------------------------------------------------------------------------
@@ -141,7 +142,7 @@ bool RagGraphPlanner::create(const Desc& desc) {
 	//	context.write("%s ", jointDescSeq[j] ? "ON" : "OFF");	
 	//context.write(">\n");
 //	disableHandPlanning();
-	context.debug("RagGraphPlanner::create: %s\n", grasp::plannerDebug(*this).c_str());
+	context.debug("RagGraphPlanner::create: %s\n", spam::plannerDebug(*this).c_str());
 	return true;
 }
 

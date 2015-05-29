@@ -243,7 +243,7 @@ public:
 		}
 
 		/** Creates the object from the description. */
-		CREATE_FROM_OBJECT_DESC1(RagGraphPlanner, golem::Planner::Ptr, golem::Controller&)
+		GRASP_CREATE_FROM_OBJECT_DESC1(RagGraphPlanner, golem::Planner::Ptr, golem::Controller&)
 		
 		/** Sets the parameters to the default values */
 		virtual void setToDefault() {

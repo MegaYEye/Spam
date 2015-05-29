@@ -8,6 +8,7 @@
 cmake_minimum_required(VERSION 2.8)
 
 # Build options have to be before PROJECT(...)
+SET(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE PATH "Configuration types")
 SET(CMAKE_BUILD_TYPE "Release" CACHE PATH "Current build configuration")
 
 # Spam main workspace
@@ -25,8 +26,14 @@ GET_FILENAME_COMPONENT(PROJECT_ROOT . ABSOLUTE CACHE INTERNAL "Path prefix for t
 # Set the path where other thing should be relative to
 GET_FILENAME_COMPONENT(CMAKE_SOURCE_DIR . ABSOLUTE CACHE INTERNAL "")
 
-# Set the install directory.
-SET(CMAKE_INSTALL_PREFIX /usr/local CACHE PATH "Installation prefix")
+# Architecture
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+	SET(X86_64 1)
+	#MESSAGE("Architecture x86 64 bit")
+else(CMAKE_SIZEOF_VOID_P EQUAL 8)
+	SET(X86_32 1)
+	#MESSAGE("Architecture x86 32 bit")
+endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
 
 # Traget names
 SET(CMAKE_RELEASE_POSTFIX "" CACHE PATH "Release postfix")
@@ -67,35 +74,22 @@ MACRO(COPY_FILES TAR DST)
 	endif(POST_BUILD_COPY_FILES)
 ENDMACRO(COPY_FILES TAR DST)
 
-# Boost
-FIND_PACKAGE(Boost COMPONENTS system filesystem thread)
-
-# OpenCV
-FIND_PACKAGE(OpenCV REQUIRED)
-
-# PCL
-FIND_PACKAGE(PCL REQUIRED)
-
-ADD_DEFINITIONS(
-	${OPENCV_DEFINITIONS}
-	${PCL_DEFINITIONS}
-)
-INCLUDE_DIRECTORIES(
-	${PROJECT_ROOT}/include
-	${Boost_INCLUDE_DIRS}
-	${OPENCV_INCLUDE_DIRS}
-	${PCL_INCLUDE_DIRS}
-)
-LINK_DIRECTORIES(
-	${Boost_LIBRARY_DIRS}
-	${OPENCV_LIBRARIES}
-	${PCL_LIBRARY_DIRS}
-)
+###############################################################################
+#
+#	Bham software
+#
+###############################################################################
 
 if (WIN32)
-	SET(PROGRAM_FILES $ENV{ProgramW6432})
-	SET(X86_WIN "win64")
-	SET(X86_X64 "64")
+	if(X86_64)
+		SET(PROGRAM_FILES $ENV{ProgramW6432})
+		SET(X86_WIN "64")
+		SET(X86_X64 "/x64")
+	else(X86_64)
+		SET(PROGRAM_FILES $ENV{ProgramFiles})
+		SET(X86_WIN "32")
+		SET(X86_X64 "")
+	endif(X86_64)
 	
 	if (MSVC90)
 		SET(MSVC_VER "90")
@@ -110,12 +104,19 @@ if (WIN32)
 	# Build options
 	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D_CRT_SECURE_NO_DEPRECATE")
 	SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Ox")
-	SET(CMAKE_DLL_EXPORT_FLAGS " ")
+	SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /bigobj")
+	SET(CMAKE_DLL_EXPORT_FLAGS "/DGOLEM_LIBRARY_DECLDIR_EXPORT /wd4251 /wd4275")
 	
 	# Library settings
 	option(BUILD_DYNAMIC_LIBS "Build dynamic library versions" NO)
 	mark_as_advanced(BUILD_DYNAMIC_LIBS)
-	
+
+	# Output
+	SET(OUTPUT_DIRECTORY_POSTFIX "")
+
+	# Set the install directory.
+	SET(CMAKE_INSTALL_PREFIX "${PROGRAM_FILES}" CACHE PATH "Installation prefix")
+
 	# Expat
 	SET(EXPAT_INCLUDE "${PROGRAM_FILES}/expat/include" CACHE PATH "Path prefix for Expat include")
 	#MARK_AS_ADVANCED(EXPAT_INCLUDE)
@@ -145,30 +146,15 @@ if (WIN32)
 	#MARK_AS_ADVANCED(GRASP_LIBRARY)
 	SET(GRASP_BINARIES "${PROGRAM_FILES}/Grasp/bin" CACHE PATH "Path prefix for Grasp binaries")
 	#MARK_AS_ADVANCED(GRASP_BINARIES)
-	# National Instruments DAQmx
-	OPTION(BUILD_SPAM_FTSENSOR_DAQ "Build NI DAQ F/T sensor device" YES)
-	MARK_AS_ADVANCED(BUILD_SPAM_FTSENSOR_DAQ)
-	if(BUILD_SPAM_FTSENSOR_DAQ)
-	SET(NIDAQMX_INCLUDE "${PROGRAM_FILES}/National Instruments/Shared/ExternalCompilerSupport/C/include" CACHE PATH "Path prefix for National Instruments DAQmx include")
-		MARK_AS_ADVANCED(NIDAQMX_INCLUDE)
-		SET(NIDAQMX_LIBRARY "${PROGRAM_FILES}/National Instruments/Shared/ExternalCompilerSupport/C/lib${X86_X64}/msvc" CACHE PATH "Path prefix for National Instruments DAQmx library")
-		MARK_AS_ADVANCED(NIDAQMX_LIBRARY)
-	endif(BUILD_SPAM_FTSENSOR_DAQ)
-	# PointGray
-	OPTION(BUILD_SPAM_CAMERA_PGR "Build Point Gray camera device" YES)
-	MARK_AS_ADVANCED(BUILD_SPAM_CAMERA_PGR)
-	if(BUILD_SPAM_CAMERA_PGR)
-		SET(POINTGRAY_INCLUDE "${PROGRAM_FILES}/Point Grey Research/FlyCapture2/include" CACHE PATH "Path prefix for PointGray include")
-		MARK_AS_ADVANCED(POINTGRAY_INCLUDE)
-		SET(POINTGRAY_LIBRARY "${PROGRAM_FILES}/Point Grey Research/FlyCapture2/lib${X86_X64}" CACHE PATH "Path prefix for PointGray library")
-		MARK_AS_ADVANCED(POINTGRAY_LIBRARY)
-	endif(BUILD_SPAM_CAMERA_PGR)
-	# OpenNI
-	option(BUILD_SPAM_CAMERA_DEPTH_OPENNI "Build OpenNI camera device" YES)
-	if(BUILD_SPAM_CAMERA_DEPTH_OPENNI)
-		SET(OPENNI2_INCLUDE_DIRS "${PROGRAM_FILES}/OpenNI2/Include" CACHE PATH "Path prefix for OpenNI include")
-		SET(OPENNI2_LIBRARY "${PROGRAM_FILES}/OpenNI2/Lib/OpenNI2.lib" CACHE PATH "OpenNI library")
-	endif(BUILD_SPAM_CAMERA_DEPTH_OPENNI)
+	# Boost
+	ADD_DEFINITIONS(-DBOOST_ALL_NO_LIB)
+	SET(Boost_USE_STATIC_LIBS ON)
+	SET(Boost_ALL_DYN_LINK OFF)
+	FIND_PACKAGE(Boost COMPONENTS system filesystem thread)
+	# OpenCV
+	FIND_PACKAGE(OpenCV REQUIRED)
+	# PCL
+	FIND_PACKAGE(PCL REQUIRED)
 elseif (UNIX)
 	# Build options
 	if(X86_64)
@@ -183,7 +169,13 @@ elseif (UNIX)
 	# Library settings
 	option(BUILD_DYNAMIC_LIBS "Build dynamic library versions" YES)
 	mark_as_advanced(BUILD_DYNAMIC_LIBS)
+
+	# Output
+	SET(OUTPUT_DIRECTORY_POSTFIX "")
 	
+	# Set the install directory.
+	SET(CMAKE_INSTALL_PREFIX /usr/local CACHE PATH "Installation prefix")
+
 	# Expat
 	SET(EXPAT_INCLUDE /usr/include CACHE PATH "Path prefix for Expat include")
 	#MARK_AS_ADVANCED(EXPAT_INCLUDE)
@@ -213,33 +205,25 @@ elseif (UNIX)
 	#MARK_AS_ADVANCED(GRASP_LIBRARY)
 	SET(GRASP_BINARIES /usr/local/bin CACHE PATH "Path prefix for Grasp binaries")
 	#MARK_AS_ADVANCED(GRASP_BINARIES)
-	# National Instruments DAQmx
-	OPTION(BUILD_SPAM_FTSENSOR_DAQ "Build NI DAQ F/T sensor device" NO)
-	MARK_AS_ADVANCED(BUILD_SPAM_FTSENSOR_DAQ)
-	if(BUILD_SPAM_FTSENSOR_DAQ)
-		SET(NIDAQMX_INCLUDE "/usr/local/natinst/nidaqmxbase/include" CACHE PATH "Path prefix for National Instruments DAQmx include")
-		MARK_AS_ADVANCED(NIDAQMX_INCLUDE)
-		SET(NIDAQMX_LIBRARY "/usr/local/natinst/nidaqmxbase/lib" CACHE PATH "Path prefix for National Instruments DAQmx library")
-		MARK_AS_ADVANCED(NIDAQMX_LIBRARY)
-	endif(BUILD_SPAM_FTSENSOR_DAQ)
-	# PointGray
-	OPTION(BUILD_SPAM_CAMERA_PGR "Build Point Gray camera device" NO)
-	MARK_AS_ADVANCED(BUILD_SPAM_CAMERA_PGR)
-	if(BUILD_SPAM_CAMERA_PGR)
-		SET(POINTGRAY_INCLUDE /usr/include/flycapture CACHE PATH "Path prefix for PointGray include")
-		MARK_AS_ADVANCED(POINTGRAY_INCLUDE)
-		SET(POINTGRAY_LIBRARY /usr/lib CACHE PATH "Path prefix for PointGray library")
-		MARK_AS_ADVANCED(POINTGRAY_LIBRARY)
-	endif(BUILD_SPAM_CAMERA_PGR)
-	# OpenNI
-	option(BUILD_SPAM_CAMERA_DEPTH_OPENNI "Build OpenNI camera device" NO)
-	if(BUILD_SPAM_CAMERA_DEPTH_OPENNI)
-		SET(OPENNI2_INCLUDE_DIRS /usr/include/openni2 CACHE PATH "Path prefix for OpenNI include")
-		SET(OPENNI2_LIBRARY /usr/lib/libOpenNI2.so CACHE PATH "OpenNI library")
-	endif(BUILD_SPAM_CAMERA_DEPTH_OPENNI)
+	# Boost
+	#ADD_DEFINITIONS(-DBOOST_ALL_NO_LIB)
+	#SET(Boost_USE_STATIC_LIBS OFF)
+	#SET(Boost_ALL_DYN_LINK ON)
+	FIND_PACKAGE(Boost COMPONENTS system filesystem thread)
+	# OpenCV
+	FIND_PACKAGE(OpenCV REQUIRED)
+	# PCL
+	FIND_PACKAGE(PCL REQUIRED)
 endif()
 
+ADD_DEFINITIONS(
+	${OPENCV_DEFINITIONS}
+	${PCL_DEFINITIONS}
+)
 LINK_DIRECTORIES(
+	${Boost_LIBRARY_DIRS}
+	${OPENCV_LIBRARIES}
+	${PCL_LIBRARY_DIRS}
 	${EXPAT_LIBRARY}
 	${FREEGLUT_LIBRARY}
 	${PHYSX_LIBRARY}
@@ -247,11 +231,12 @@ LINK_DIRECTORIES(
 	${GOLEM_BINARIES}
 	${GRASP_LIBRARY}
 	${GRASP_BINARIES}
-	${OPENNI2_LIBRARY}
-	${NIDAQMX_LIBRARY}
-	${POINTGRAY_LIBRARY}
 )
 INCLUDE_DIRECTORIES(
+	${PROJECT_ROOT}/include
+	${Boost_INCLUDE_DIRS}
+	${OPENCV_INCLUDE_DIRS}
+	${PCL_INCLUDE_DIRS}
 	${EXPAT_INCLUDE}
 	${FREEGLUT_INCLUDE}
 	${PHYSX_INCLUDE}/Physics/include
@@ -260,9 +245,6 @@ INCLUDE_DIRECTORIES(
 	${PHYSX_INCLUDE}/Cooking/include
 	${GOLEM_INCLUDE}
 	${GRASP_INCLUDE}
-	${OPENNI2_INCLUDE}
-	${NIDAQMX_INCLUDE}
-	${POINTGRAY_INCLUDE}
 )
 
 # Spam library
@@ -271,14 +253,12 @@ SET(SPAM_HEADERS
 	${PROJECT_ROOT}/include/Spam/Spam/Spam.h
 	${PROJECT_ROOT}/include/Spam/Spam/GraphPlanner.h
 	${PROJECT_ROOT}/include/Spam/Spam/Heuristic.h
-	${PROJECT_ROOT}/include/Spam/Spam/Robot.h
 )
 SET(SPAM_SOURCES
 	${PROJECT_ROOT}/src/Spam/Spam/Belief.cpp
 	${PROJECT_ROOT}/src/Spam/Spam/Spam.cpp
 	${PROJECT_ROOT}/src/Spam/Spam/GraphPlanner.cpp
 	${PROJECT_ROOT}/src/Spam/Spam/Heuristic.cpp
-	${PROJECT_ROOT}/src/Spam/Spam/Robot.cpp
 )
 if(BUILD_DYNAMIC_LIBS)
 	ADD_LIBRARY(SpamSpam SHARED ${SPAM_HEADERS} ${SPAM_SOURCES})
@@ -300,37 +280,21 @@ if (WIN32)
 		optimized GolemTools${CMAKE_RELEASE_POSTFIX} debug GolemTools${CMAKE_DEBUG_POSTFIX}
 		optimized GolemCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrl${CMAKE_DEBUG_POSTFIX}
 		optimized GolemPlan${CMAKE_RELEASE_POSTFIX} debug GolemPlan${CMAKE_DEBUG_POSTFIX}
-		optimized GolemPhys${CMAKE_RELEASE_POSTFIX} debug GolemPhys${CMAKE_DEBUG_POSTFIX}
-		optimized GolemPhysCtrl${CMAKE_RELEASE_POSTFIX} debug GolemPhysCtrl${CMAKE_DEBUG_POSTFIX}
+		optimized GolemUI${CMAKE_RELEASE_POSTFIX} debug GolemUI${CMAKE_DEBUG_POSTFIX}
+		optimized GolemUICtrl${CMAKE_RELEASE_POSTFIX} debug GolemUICtrl${CMAKE_DEBUG_POSTFIX}
 		optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
-		optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
-		optimized GolemDeviceMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceMultiCtrl${CMAKE_DEBUG_POSTFIX}
-		optimized GolemDeviceRobotJustin${CMAKE_RELEASE_POSTFIX} debug GolemDeviceRobotJustin${CMAKE_DEBUG_POSTFIX} 
 		optimized CamcalbCalb${CMAKE_RELEASE_POSTFIX} debug CamcalbCalb${CMAKE_DEBUG_POSTFIX}
 		optimized CamcalbMatas${CMAKE_RELEASE_POSTFIX} debug CamcalbMatas${CMAKE_DEBUG_POSTFIX}		 
 		${PCL_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBS}
 	)
-	if(BUILD_SPAM_FTSENSOR_DAQ)
-		TARGET_LINK_LIBRARIES(
-			SpamSpam
-			optimized daqft${CMAKE_RELEASE_POSTFIX} debug daqft${CMAKE_DEBUG_POSTFIX}		 
-			NIDAQmx
-		)
-	endif(BUILD_SPAM_FTSENSOR_DAQ)
-	if(BUILD_SPAM_CAMERA_PGR)
-		TARGET_LINK_LIBRARIES(SpamSpam FlyCapture2_v${MSVC_VER})
-	endif(BUILD_SPAM_CAMERA_PGR)
-	if(BUILD_SPAM_CAMERA_DEPTH_OPENNI)
-		TARGET_LINK_LIBRARIES(SpamSpam OpenNI2)
-	endif(BUILD_SPAM_CAMERA_DEPTH_OPENNI)
 elseif (UNIX)
 	TARGET_LINK_LIBRARIES(
-		SpamSpam		
+		SpamSpam
 		${PCL_LIBRARIES}
 		optimized CamcalbCalb${CMAKE_RELEASE_POSTFIX} debug CamcalbCalb${CMAKE_DEBUG_POSTFIX}
 		optimized CamcalbMatas${CMAKE_RELEASE_POSTFIX} debug CamcalbMatas${CMAKE_DEBUG_POSTFIX}		 
 		${OpenCV_LIBS}
-		optimized GraspCore${CMAKE_RELEASE_POSTFIX} debug GraspCore${CMAKE_DEBUG_POSTFIX}		
+		optimized GraspCore${CMAKE_RELEASE_POSTFIX} debug GraspCore${CMAKE_DEBUG_POSTFIX}
 		optimized GraspGrasp${CMAKE_RELEASE_POSTFIX} debug GraspGrasp${CMAKE_DEBUG_POSTFIX}
 		optimized GraspApp${CMAKE_RELEASE_POSTFIX} debug GraspApp${CMAKE_DEBUG_POSTFIX}		 
 		${Boost_LIBRARIES}
@@ -339,32 +303,16 @@ elseif (UNIX)
 		optimized GolemTools${CMAKE_RELEASE_POSTFIX} debug GolemTools${CMAKE_DEBUG_POSTFIX}
 		optimized GolemCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrl${CMAKE_DEBUG_POSTFIX}
 		optimized GolemPlan${CMAKE_RELEASE_POSTFIX} debug GolemPlan${CMAKE_DEBUG_POSTFIX}
-		optimized GolemPhysCtrl${CMAKE_RELEASE_POSTFIX} debug GolemPhysCtrl${CMAKE_DEBUG_POSTFIX}
+		optimized GolemUICtrl${CMAKE_RELEASE_POSTFIX} debug GolemUICtrl${CMAKE_DEBUG_POSTFIX}
 		optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
-		optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
-		optimized GolemDeviceMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceMultiCtrl${CMAKE_DEBUG_POSTFIX}
-		optimized GolemDeviceRobotJustin${CMAKE_RELEASE_POSTFIX} debug GolemDeviceRobotJustin${CMAKE_DEBUG_POSTFIX}
 		${CMAKE_DL_LIBS}
 		optimized GolemMath${CMAKE_RELEASE_POSTFIX} debug GolemMath${CMAKE_DEBUG_POSTFIX}
-		optimized GolemPhys${CMAKE_RELEASE_POSTFIX} debug GolemPhys${CMAKE_DEBUG_POSTFIX}
+		optimized GolemUI${CMAKE_RELEASE_POSTFIX} debug GolemUI${CMAKE_DEBUG_POSTFIX}
 		GL
 		GLU
 		glut
 		NxCharacter NxCooking PhysXCore PhysXLoader
 	)
-	if(BUILD_SPAM_FTSENSOR_DAQ)
-		TARGET_LINK_LIBRARIES(
-			SpamSpam
-			optimized daqft${CMAKE_RELEASE_POSTFIX} debug daqft${CMAKE_DEBUG_POSTFIX}		 
-			nidaqmxbase
-		)
-	endif(BUILD_SPAM_FTSENSOR_DAQ)
-	if(BUILD_SPAM_CAMERA_PGR)
-		TARGET_LINK_LIBRARIES(SpamSpam flycapture)
-	endif(BUILD_SPAM_CAMERA_PGR)
-	if(BUILD_SPAM_CAMERA_DEPTH_OPENNI)
-		TARGET_LINK_LIBRARIES(SpamSpam OpenNI2)
-	endif(BUILD_SPAM_CAMERA_DEPTH_OPENNI)
 endif()	
 SET_PROPERTY(TARGET SpamSpam PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
 SET_PROPERTY(TARGET SpamSpam PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
@@ -380,18 +328,13 @@ INSTALL(FILES ${SPAM_HEADERS} DESTINATION include/Spam/Spam/)
 ###############################################################################
 
 SET(POSE_PLANNER_SOURCES
-	${PROJECT_ROOT}/../Grasp/src/Grasp/Director/Director.cpp
-	${PROJECT_ROOT}/../Grasp/src/Grasp/Player/Player.cpp
 	${PROJECT_ROOT}/src/Spam/PosePlanner/PosePlanner.cpp
 )
 SET(POSE_PLANNER_HEADERS
 	${PROJECT_ROOT}/include/Spam/PosePlanner/PosePlanner.h
 )
 SET(POSE_PLANNER_FILES
-	${PROJECT_ROOT}/resources/SpamDeviceRobotBhamSim.xml
-	${PROJECT_ROOT}/resources/SpamDeviceRobotJustin.xml
-	${PROJECT_ROOT}/resources/SpamPosePlanner_RobotBham.xml
-	${PROJECT_ROOT}/resources/SpamPosePlanner_RobotJustin.xml
+	${PROJECT_ROOT}/resources/SpamPosePlanner_RobotBoris.xml
 )
 
 ADD_EXECUTABLE(SpamPosePlanner ${POSE_PLANNER_SOURCES} ${POSE_PLANNER_HEADERS} ${POSE_PLANNER_FILES})
@@ -405,52 +348,9 @@ INSTALL(FILES ${POSE_PLANNER_HEADERS} DESTINATION include/Spam/PosePlanner/)
 INSTALL(FILES ${POSE_PLANNER_FILES} DESTINATION bin)
 
 SET_PROPERTY(TARGET SpamPosePlanner PROPERTY PROJECT_LABEL "PosePlanner")
-SET_PROPERTY(TARGET SpamPosePlanner PROPERTY FOLDER "Programs")
+SET_PROPERTY(TARGET SpamPosePlanner PROPERTY FOLDER "Spam")
 SOURCE_GROUP("Include Files" FILES ${POSE_PLANNER_HEADERS})
 SOURCE_GROUP("Resource Files" FILES ${POSE_PLANNER_FILES})
-
-###############################################################################
-#
-# ShapePlanner executables
-#
-###############################################################################
-
-SET(SHAPE_PLANNER_SOURCES
-	${PROJECT_ROOT}/../Grasp/src/Grasp/Director/Director.cpp
-	${PROJECT_ROOT}/../Grasp/src/Grasp/Player/Player.cpp
-	${PROJECT_ROOT}/src/Spam/PosePlanner/PosePlanner.cpp
-	${PROJECT_ROOT}/src/Spam/ShapePlanner/ShapePlanner.cpp
-)
-SET(SHAPE_PLANNER_HEADERS
-	${PROJECT_ROOT}/include/Spam/ShapePlanner/ShapePlanner.h
-)
-SET(SHAPE_PLANNER_FILES
-	${PROJECT_ROOT}/resources/SpamShapePlanner_RobotBham.xml
-	${PROJECT_ROOT}/resources/SpamShapePlanner_RobotBoris.xml
-	${PROJECT_ROOT}/resources/SpamShapePlanner_RobotJustin.xml
-	${PROJECT_ROOT}/resources/SpamShapePlanner_RobotUIBK.xml
-)
-SET(SHAPE_PLANNER_DEMO_FILES
-	${PROJECT_ROOT}/../Grasp/resources/Grasp/RobotBorisDefault.graspclass
-	${PROJECT_ROOT}/../Grasp/resources/Grasp/Demo/GraspShapePlannerDemo_Jug.pcd
-	${PROJECT_ROOT}/../Grasp/resources/Grasp/Demo/GraspShapePlannerDemo_JugTop.trj
-)
-	
-ADD_EXECUTABLE(SpamShapePlanner ${SHAPE_PLANNER_SOURCES} ${SHAPE_PLANNER_HEADERS} ${SHAPE_PLANNER_FILES})
-SET_TARGET_PROPERTIES(SpamShapePlanner PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -D_SPAM_SHAPEPLANNER_MAIN_")
-TARGET_LINK_LIBRARIES(SpamShapePlanner SpamSpam)
-COPY_FILES(SpamShapePlanner ${RUNTIME_OUTPUT_DIRECTORY} ${SHAPE_PLANNER_FILES})
-COPY_FILES(SpamShapePlanner ${RUNTIME_OUTPUT_DIRECTORY} ${SHAPE_PLANNER_DEMO_FILES})
-SET_PROPERTY(TARGET SpamShapePlanner PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
-SET_PROPERTY(TARGET SpamShapePlanner PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
-INSTALL(TARGETS SpamShapePlanner RUNTIME DESTINATION bin)
-INSTALL(FILES ${SHAPE_PLANNER_HEADERS} DESTINATION include/Spam/ShapePlanner/)
-INSTALL(FILES ${SHAPE_PLANNER_FILES} DESTINATION bin)
-
-SET_PROPERTY(TARGET SpamShapePlanner PROPERTY PROJECT_LABEL "ShapePlanner")
-SET_PROPERTY(TARGET SpamShapePlanner PROPERTY FOLDER "Programs")
-SOURCE_GROUP("Include Files" FILES ${SHAPE_PLANNER_HEADERS})
-SOURCE_GROUP("Resource Files" FILES ${SHAPE_PLANNER_FILES})
 
 ###############################################################################
 #
@@ -459,20 +359,14 @@ SOURCE_GROUP("Resource Files" FILES ${SHAPE_PLANNER_FILES})
 ###############################################################################
 
 SET(RAG_PLANNER_SOURCES
-	${PROJECT_ROOT}/../Grasp/src/Grasp/Director/Director.cpp
-	${PROJECT_ROOT}/../Grasp/src/Grasp/Player/Player.cpp
 	${PROJECT_ROOT}/src/Spam/PosePlanner/PosePlanner.cpp
-	${PROJECT_ROOT}/src/Spam/ShapePlanner/ShapePlanner.cpp
 	${PROJECT_ROOT}/src/Spam/RagPlanner/RagPlanner.cpp
 )
 SET(RAG_PLANNER_HEADERS
 	${PROJECT_ROOT}/include/Spam/RagPlanner/RagPlanner.h
 )
 SET(RAG_PLANNER_FILES
-	${PROJECT_ROOT}/resources/SpamDeviceRobotBhamSim.xml
-	${PROJECT_ROOT}/resources/SpamDeviceRobotJustin.xml
-	${PROJECT_ROOT}/resources/SpamRagPlanner_RobotBham.xml
-	${PROJECT_ROOT}/resources/SpamRagPlanner_RobotJustin.xml
+	${PROJECT_ROOT}/resources/SpamRagPlanner_RobotBoris.xml
 )
 
 ADD_EXECUTABLE(SpamRagPlanner ${RAG_PLANNER_SOURCES} ${RAG_PLANNER_HEADERS} ${RAG_PLANNER_FILES})
@@ -486,6 +380,6 @@ INSTALL(FILES ${RAG_PLANNER_HEADERS} DESTINATION include/Spam/RagPlanner/)
 INSTALL(FILES ${RAG_PLANNER_FILES} DESTINATION bin)
 
 SET_PROPERTY(TARGET SpamRagPlanner PROPERTY PROJECT_LABEL "RagPlanner")
-SET_PROPERTY(TARGET SpamRagPlanner PROPERTY FOLDER "Programs")
+SET_PROPERTY(TARGET SpamRagPlanner PROPERTY FOLDER "Spam")
 SOURCE_GROUP("Include Files" FILES ${RAG_PLANNER_HEADERS})
 SOURCE_GROUP("Resource Files" FILES ${RAG_PLANNER_FILES})
