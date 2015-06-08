@@ -47,6 +47,7 @@
 //------------------------------------------------------------------------------
 
 #include <Spam/PosePlanner/PosePlanner.h>
+#include <Grasp/ActiveCtrl/ArmHandForce/ArmHandForce.h>
 
 //------------------------------------------------------------------------------
 
@@ -66,6 +67,9 @@ namespace spam {
 */
 class RagPlanner : public PosePlanner, protected golem::Profile::CallbackDist {
 public:
+	/** Force reader. Overwrite the ActiveCtrl reader. this retrieves the triggered joints */
+	typedef std::function<void(const golem::Controller::State&, grasp::RealSeq&, std::vector<golem::Configspace::Index>&)> GuardsReader;
+
 	/** Data */
 	class Data : public PosePlanner::Data {
 	public:
@@ -177,7 +181,52 @@ public:
 		virtual void load(golem::Context& context, const golem::XMLContext* xmlcontext);
 	};
 
+	inline golem::Real getFilterForce(const golem::I32 i) {
+		return handFilteredForce[i];
+	}
+	inline grasp::RealSeq getFilterForce() {
+		return handFilteredForce;
+	}
+
+	/** Force reader */
+	GuardsReader guardsReader;
+	/** Collect history of FT readings for statistics */
+	grasp::ActiveCtrlForce::ForceReader collectFTInp;
+	/** FT 2-oreder high-pass filter */
+	grasp::ActiveCtrlForce::ForceReader ftFilter;
+
 protected:
+	/** Number of averaging steps before stopping collecting readings */
+	golem::U32 windowSize;
+	golem::I32 steps;
+	// gaussian filter mask
+	grasp::RealSeq mask;
+	// computes gaussian
+	template <typename _Real> inline _Real N(const _Real mean, const _Real stdev) {
+		const _Real norm = golem::numeric_const<_Real>::ONE / (stdev*Math::sqrt(2 * golem::numeric_const<_Real>::PI));
+		return norm*golem::Math::exp(-.5*Math::sqr(_Real(mean) / _Real(stdev))); // gaussian
+	}
+	// computes guassian on a vector
+	template <typename _Ptr, typename _Real> inline std::vector<_Real> N(_Ptr begin, _Ptr end, const size_t dim, const _Real stdev) {
+		std::vector<_Real> output;
+		output.assign(dim, golem::numeric_const<_Real>::ZERO);
+		size_t idx = 0;
+		for (Ptr i = begin; i != end; ++i) {
+			output[idx++] = N(*i, stdev);
+		}
+		return output;
+	}
+
+	/** Input force at sensor, sequence */
+	std::vector<grasp::RealSeq> forceInpSensorSeq;
+	/** Filtered forces for the hand */
+	grasp::RealSeq handFilteredForce;
+	/** force reader access cs */
+	golem::CriticalSection csHandForce;
+	// Return hand DOFs */
+	inline golem::I32 dimensions() { return (golem::I32)handInfo.getJoints().size(); }
+
+
 	/** Particles renderer */
 	golem::DebugRenderer sampleRenderer;
 	/** ground truth renderer */

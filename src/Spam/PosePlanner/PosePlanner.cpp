@@ -579,25 +579,25 @@ bool spam::PosePlanner::create(const Desc& desc) {
 		// render hypotheses
 		showQueryDistrib = !showQueryDistrib;
 		context.write("Query (low-dim) distribution %s\n", showQueryDistrib ? "ON" : "OFF");
-		renderData(dataCurrentPtr);
+		createRender();
 	}));
 	menuCmdMap.insert(std::make_pair("Z_", [=]() {
 		// render query distribution
 		showDistrPoints = !showDistrPoints;
 		context.write("Query (high-dim) distribution %s\n", showDistrPoints ? "ON" : "OFF");
-		renderData(dataCurrentPtr);
+		createRender();
 	}));
 	menuCmdMap.insert(std::make_pair("Z=", [=]() {
 		showObject = showSamplePoints && showMeanHypothesis ? !showObject : showObject;
 		showMeanHypothesis = showSamplePoints && !showObject ? !showMeanHypothesis : showObject ? !showMeanHypothesis : showMeanHypothesis;
 		showSamplePoints = !showMeanHypothesis && !showObject ? !showSamplePoints : showObject ? !showSamplePoints : showSamplePoints;
-		context.write("Hypotheses distribution %s\nShow Mean Pose %s\nObject Points %s\n-----------\n", showSamplePoints ? "ON" : "OFF", showMeanHypothesis ? "ON" : "OFF", showObject ? "ON" : "OFF");		renderData(dataCurrentPtr);
-		renderData(dataCurrentPtr);
+		context.write("Hypotheses distribution %s\nShow Mean Pose %s\nObject Points %s\n-----------\n", showSamplePoints ? "ON" : "OFF", showMeanHypothesis ? "ON" : "OFF", showObject ? "ON" : "OFF");		
+		createRender();
 	}));
 	menuCmdMap.insert(std::make_pair("Z+", [=]() {
 		showQueryPoints = !showQueryPoints;
 		context.write("Query points %s\n", showQueryPoints ? "ON" : "OFF");
-		renderData(dataCurrentPtr);
+		createRender();
 	}));
 
 	return true;

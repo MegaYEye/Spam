@@ -136,8 +136,150 @@ bool RagPlanner::create(const Desc& desc) {
 	contact = false;
 	record = false;
 	brecord = false;
+	std::string sepField = "\t";
 
-//	auto strTorquesDesc = [=](std::ostream& ostr) {
+	// Forcereader utilities
+	collectFTInp = [=](const Controller::State&, grasp::RealSeq& force) {
+		golem::CriticalSectionWrapper csw(csHandForce);
+		for (I32 i = 0; i < dimensions(); ++i)
+			forceInpSensorSeq[i][steps] = force[i];
+		steps = (I32)(++steps % windowSize);
+	};
+
+	ftFilter = [=](const Controller::State&, grasp::RealSeq& force) {
+		// find index as for circular buffer
+		auto findIndex = [&](const I32 idx) -> I32 {
+			return (I32)((steps + idx) % windowSize);
+		};
+		// high pass filter implementation
+		auto hpFilter = [&]() {
+			Real b = 1 / windowSize;
+
+		};
+		// gaussian filter
+		auto conv = [&]() -> grasp::RealSeq {
+			grasp::RealSeq output;
+			output.assign(dimensions(), REAL_ZERO);
+			{
+				golem::CriticalSectionWrapper csw(csHandForce);
+				for (I32 i = 0; i < dimensions(); ++i) {
+					Real tmp = REAL_ZERO;
+					grasp::RealSeq& seq = forceInpSensorSeq[i];
+					// conv y[k] = x[k]h[0] + x[k-1]h[1] + ... + x[0]h[k]
+					for (I32 j = 0; j < windowSize; ++j) {
+						tmp += seq[findIndex(windowSize - j - 1)] * mask[j];
+					}
+					output[i] = tmp;
+				}
+			}
+			return output;
+		};
+
+		force = conv();
+	};
+
+	//ActiveCtrl::Map::iterator handActiveCtrl = activectrlMap.begin();
+	//handActiveCtrl++; // hand controller is the second in the map.
+
+	ArmHandForce *armHandForce = dynamic_cast<ArmHandForce*>(&*activectrlMap.find("GraspArmHandForce")->second);
+	// set guards for the hand
+	RealSeq fLimit;
+	fLimit.assign(dimensions(), REAL_ZERO);
+	armHandForce->getLimits(fLimit);
+	guardsReader = [=](const Controller::State &state, grasp::RealSeq& force, std::vector<golem::Configspace::Index> &joints) {
+		joints.clear();
+		joints.reserve(handInfo.getJoints().size());
+		ftFilter(state, handFilteredForce);
+		// the loop skips the last joint because it's coupled with the 3rd joint.
+		for (Configspace::Index i = handInfo.getJoints().begin(); i != handInfo.getJoints().end(); ++i) {
+			const size_t k = i - handInfo.getJoints().begin();
+			if (Math::abs(handFilteredForce[k]) > fLimit[k])
+				joints.push_back(i);
+		}
+		//for (size_t i = 0; i < size; ++i)
+		//	if (Math::abs(force[i]) > fLimit[i])
+		//		throw Message(Message::LEVEL_NOTICE, "Robot::handForceReaderDflt(): F[%u/%u] = (%3.3lf)", i, size, force[i]);
+	};
+
+	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws		
+		// associate random noise [-0.1, 0.1]
+		static int indexjj = 0;
+		if (enableSimContact)
+			for (auto i = 0; i < force.size(); ++i)
+				force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
+		
+		size_t jointInCollision = enableSimContact && !objectPointCloudPtr->empty() ? collisionPtr->simulate(desc.objCollisionDescPtr->flannDesc, rand, manipulator->getPose(lookupState()), force) : 0;
+		
+		auto strTorques = [=](std::ostream& ostr, const Controller::State& state, const grasp::RealSeq& forces, const bool contact) {
+			ostr << state.t << sepField;
+			std::string c = contact ? "y" : "n";
+			ostr << c.c_str() << sepField;
+			//grasp::RealSeq torques;
+			//torques.assign((size_t)robot->getStateHandInfo().getJoints().size(), REAL_ZERO);
+			//robot->readFT(state, torques);
+			for (auto i = 0; i < forces.size(); ++i)
+				ostr << forces[i] << sepField;
+		};
+		if (++indexjj % 10 == 0) 	{
+			collectFTInp(state, force);
+			if (record) {
+				//breakPoint();
+				dataFTRaw << indexjj << sepField;
+				strTorques(dataFTRaw, state, force, contact);
+				dataFTRaw << std::endl;
+				grasp::RealSeq f = getFilterForce();
+				dataFTFiltered << indexjj << sepField;
+				strTorques(dataFTFiltered, state, f, contact);
+				dataFTFiltered << std::endl;
+			}
+		}
+
+		if (!enableForceReading)
+			return;
+		
+		triggeredGuards.clear();
+		std::vector<Configspace::Index> joints;
+		guardsReader(lookupState(), force, joints);
+		for (U32 i = 0; i != joints.size(); ++i) {
+			FTGuard guard(*manipulator);
+			guard.create(joints[i]);
+			const size_t k = joints[i] - handInfo.getJoints().begin();
+			guard.force = force[k];
+			guard.threshold = fLimit[k];
+			triggeredGuards.push_back(guard);
+		}
+		if (!triggeredGuards.empty()) {
+//			std::stringstream str;
+			for (FTGuard::Seq::const_iterator g = triggeredGuards.begin(); g != triggeredGuards.end(); ++g)
+				g->str();
+			if (force.size() >= 20) {
+				context.write("Forces: Thumb: [%3.3lf %3.3lf %3.3lf %3.3lf] Index [%3.3lf %3.3lf %3.3lf %3.3lf] Middle [%3.3lf %3.3lf %3.3lf %3.3lf] Ring [%3.3lf %3.3lf %3.3lf %3.3lf] Pinky [%3.3lf %3.3lf %3.3lf %3.3lf]\n",
+					force[0], force[1], force[2], force[3],
+					force[4], force[5], force[6], force[7], 
+					force[8], force[9], force[10], force[11], 
+					force[12], force[13], force[14], force[15],
+					force[16], force[17], force[18], force[19]);
+				grasp::RealSeq f = getFilterForce();
+				context.write("filter: Thumb: [%3.3lf %3.3lf %3.3lf %3.3lf] Index [%3.3lf %3.3lf %3.3lf %3.3lf] Middle [%3.3lf %3.3lf %3.3lf %3.3lf] Ring [%3.3lf %3.3lf %3.3lf %3.3lf] Pinky [%3.3lf %3.3lf %3.3lf %3.3lf]\n",
+					f[0], f[1], f[2], f[3],
+					f[4], f[5], f[6], f[7],
+					f[8], f[9], f[10], f[11],
+					f[12], f[13], f[14], f[15],
+					f[16], f[17], f[18], f[19]);
+			}
+		
+			throw Message(Message::LEVEL_NOTICE, "spam::Robot::handForceReader(): Triggered %d guard(s).\n", triggeredGuards.size());
+		}
+	}); // end robot->setHandForceReader
+
+	armHandForce->setEmergencyModeHandler([=]() {
+		enableForceReading = false;
+		contactOccured = true;
+		armHandForce->getArmCtrl()->setMode(ActiveCtrlForce::MODE_ENABLED);
+		armHandForce->getHandCtrl()->setMode(ActiveCtrlForce::MODE_ENABLED);
+	}); // end robot->setEmergencyModeHandler
+
+	//	auto strTorquesDesc = [=](std::ostream& ostr) {
 //		ostr << "timestamp" << grasp::to<Data>(data)->sepField << "contact" << grasp::to<Data>(data)->sepField << "thumb_0" << grasp::to<Data>(data)->sepField << "thumb_1" << grasp::to<Data>(data)->sepField << "thumb_2" << grasp::to<Data>(data)->sepField << "thumb_3" << grasp::to<Data>(data)->sepField <<
 //			"index_0" << grasp::to<Data>(data)->sepField << "index_1" << grasp::to<Data>(data)->sepField << "index_2" << grasp::to<Data>(data)->sepField << "index_3" << grasp::to<Data>(data)->sepField <<
 //			"middle_0" << grasp::to<Data>(data)->sepField << "middle_1" << grasp::to<Data>(data)->sepField << "middle_2" << grasp::to<Data>(data)->sepField << "middle_3" << grasp::to<Data>(data)->sepField <<
@@ -300,22 +442,10 @@ bool RagPlanner::create(const Desc& desc) {
 //		//robot->getHandCtrl()->setMode(grasp::ActiveCtrl::MODE_ENABLED);
 //	}); // end robot->setEmergencyModeHandler
 
-//	poseDataPtr = getData().end();
-
-//	pBelief = static_cast<Belief*>(pRBPose.get());
-//	pHeuristic = dynamic_cast<FTDrivenHeuristic*>(&planner->getHeuristic()); 
-//	Bounds::Seq b = manipulator->getBounds(manipulator->getConfig(robot->recvState().command), manipulator->getPose(robot->recvState().command).toMat34());
-////	context.write("RagPlanner::create(): bound size=%d\n", b.size());
-//	pHeuristic->setBelief(pBelief);
-//	pHeuristic->setManipulator(manipulator.get());
-	//	robot->setManipulator(manipulator.get());
-
 	uncEnable = desc.uncEnable;
 	singleGrasp = desc.singleGrasp;
 	withdrawToHomePose = desc.withdrawToHomePose;
 	posterior = true;
-
-//	queryPointsTrn.set(desc.queryPointsTrn.p, desc.queryPointsTrn.q);
 
 	triggeredGuards.clear();
 
@@ -325,6 +455,10 @@ bool RagPlanner::create(const Desc& desc) {
 	robotStates.clear();
 
 	isGrasping = false;
+
+	//	collisionPtr->create(rand, grasp::to<Data>(dataPtr)->simulateObjectPose);
+	//	objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataPtr)->simulateObjectPose));
+
 
 	return true;
 }
@@ -1288,7 +1422,7 @@ void RagPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	//showMeanHypothesis = false;
 	//showDistrPoints = true;
 //	if (screenCapture) universe.postScreenCaptureFrames(-1);
-	renderData(dataPtr);
+	createRender();
 	//::Sleep(100);
 //	if (screenCapture) universe.postScreenCaptureFrames(0);
 

@@ -271,7 +271,9 @@ if (WIN32)
 		SpamSpam
 		optimized GraspCore${CMAKE_RELEASE_POSTFIX} debug GraspCore${CMAKE_DEBUG_POSTFIX}
 		optimized GraspGrasp${CMAKE_RELEASE_POSTFIX} debug GraspGrasp${CMAKE_DEBUG_POSTFIX}
-		optimized GraspApp${CMAKE_RELEASE_POSTFIX} debug GraspApp${CMAKE_DEBUG_POSTFIX}		 
+		optimized GraspApp${CMAKE_RELEASE_POSTFIX} debug GraspApp${CMAKE_DEBUG_POSTFIX}
+		optimized GraspActiveCtrl${CMAKE_RELEASE_POSTFIX} debug GraspActiveCtrl${CMAKE_DEBUG_POSTFIX}
+		optimized GraspArmHandForce${CMAKE_RELEASE_POSTFIX} debug GraspArmHandForce${CMAKE_DEBUG_POSTFIX}		 
 		NxCharacter64 PhysXCooking64 PhysXCore64 PhysXLoader64
 		expat freeglut Gdiplus
 		optimized GolemDefs${CMAKE_RELEASE_POSTFIX} debug GolemDefs${CMAKE_DEBUG_POSTFIX}
@@ -296,7 +298,9 @@ elseif (UNIX)
 		${OpenCV_LIBS}
 		optimized GraspCore${CMAKE_RELEASE_POSTFIX} debug GraspCore${CMAKE_DEBUG_POSTFIX}
 		optimized GraspGrasp${CMAKE_RELEASE_POSTFIX} debug GraspGrasp${CMAKE_DEBUG_POSTFIX}
-		optimized GraspApp${CMAKE_RELEASE_POSTFIX} debug GraspApp${CMAKE_DEBUG_POSTFIX}		 
+		optimized GraspApp${CMAKE_RELEASE_POSTFIX} debug GraspApp${CMAKE_DEBUG_POSTFIX}	
+		optimized GraspActiveCtrl${CMAKE_RELEASE_POSTFIX} debug GraspActiveCtrl${CMAKE_DEBUG_POSTFIX}
+		optimized GraspArmHandForce${CMAKE_RELEASE_POSTFIX} debug GraspArmHandForce${CMAKE_DEBUG_POSTFIX}	 
 		${Boost_LIBRARIES}
 		optimized GolemDefs${CMAKE_RELEASE_POSTFIX} debug GolemDefs${CMAKE_DEBUG_POSTFIX}
 		optimized GolemSys${CMAKE_RELEASE_POSTFIX} debug GolemSys${CMAKE_DEBUG_POSTFIX}

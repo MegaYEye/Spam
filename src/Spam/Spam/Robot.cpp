@@ -216,38 +216,6 @@ bool Robot::create(const Desc& desc) {
 	handContactDetector = nullptr;
 
 	guardsReader = [=](const Controller::State &state, grasp::RealSeq& force, std::vector<golem::Configspace::Index> &joints) {
-		//static int jj = 0;
-		//auto strStddev = [=](std::stringstream& ostr, const Controller::State& state, const grasp::RealSeq& forces) {
-		//	ostr << state.t << "\t";
-		//	for (auto i = 0; i < forces.size(); ++i)
-		//		ostr << forces[i] << "\t";
-		//};
-
-		//auto stddev = [=](grasp::RealSeq& stddevs) {
-		//	if (stddevs.size() < handInfo.getJoints().size())
-		//		return;
-		//	const size_t size = std::min(stddevs.size(), size_t(handInfo.getJoints().size()));
-		//	for (size_t i = 0; i < size; ++i) {
-		//		grasp::RealSeq& seq = forceInpSensorSeq[i];
-		//		Real sum = std::accumulate(seq.begin(), seq.end(), 0.0);
-		//		Real m = sum / seq.size();
-
-		//		Real accum = 0.0;
-		//		std::for_each(seq.begin(), seq.end(), [&](const double d) {
-		//			accum += (d - m) * (d - m);
-		//		});
-
-		//		stddevs[i] = sqrt(accum / seq.size());
-		//	}
-		//};
-		//const size_t size = std::min(force.size(), fLimit.size());
-		//grasp::RealSeq stddevs(force);
-		//stddev(stddevs);
-		//if (++jj % 10 == 0) {
-		//	std::stringstream ostr;
-		//	strStddev(ostr, state, stddevs);
-		//	context.write("%s\n", ostr.str().c_str());
-		//}
 		joints.clear();
 		joints.reserve(getStateHandInfo().getJoints().size());
 		ftFilter(state, handFilteredForce);
