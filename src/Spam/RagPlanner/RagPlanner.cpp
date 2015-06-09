@@ -467,7 +467,7 @@ void RagPlanner::render() const {
 	PosePlanner::render();
 //	handRenderer.reset();
 	{
-		golem::CriticalSectionWrapper csw(csRenderer);
+		golem::CriticalSectionWrapper csw(getCS());
 		debugRenderer.render();
 	}
 }
@@ -756,13 +756,13 @@ void RagPlanner::perform(const std::string& data, const std::string& item, const
 		ScopeGuard removeItem([&]() {
 			UI::removeCallback(*this, getCurrentHandler());
 			{
-				golem::CriticalSectionWrapper csw(csData);
+				golem::CriticalSectionWrapper csw(getCS());
 				to<Data>(dataCurrentPtr)->itemMap.erase(itemLabelTmp);
 			}
 			createRender();
 		});
 		{
-			golem::CriticalSectionWrapper csw(csData);
+			golem::CriticalSectionWrapper csw(getCS());
 			const data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), data::Item::Map::value_type(itemLabelTmp, itemTrajectory));
 			Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, ptr, to<Data>(dataCurrentPtr)->getView());
 		}
@@ -804,7 +804,7 @@ void RagPlanner::perform(const std::string& data, const std::string& item, const
 
 	// insert trajectory
 	{
-		golem::CriticalSectionWrapper csw(csData);
+		golem::CriticalSectionWrapper csw(getCS());
 		data::Data::Map::iterator data = dataMap.find(recorderData);
 		if (data == dataMap.end())
 			throw Message(Message::LEVEL_ERROR, "Player::perform(): unable to find Data %s", recorderData.c_str());
@@ -890,7 +890,7 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 		grasp::data::Item::Map::iterator ptr;
 		{
 			RenderBlock renderBlock(*this);
-			golem::CriticalSectionWrapper cswData(csData);
+			golem::CriticalSectionWrapper cswData(getCS());
 			to<Data>(dataPtr)->itemMap.erase(queryItemTrj);
 			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), data::Item::Map::value_type(queryItemTrj, modelHandlerTrj->create()));
 			data::Trajectory* trajectory = is<data::Trajectory>(ptr);
@@ -929,7 +929,7 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 		grasp::data::Item::Map::iterator ptr;
 		{
 			RenderBlock renderBlock(*this);
-			golem::CriticalSectionWrapper cswData(csData);
+			golem::CriticalSectionWrapper cswData(getCS());
 			to<Data>(dataPtr)->itemMap.erase(queryItemTrj);
 			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), data::Item::Map::value_type(queryItemTrj, modelHandlerTrj->create()));
 			data::Trajectory* trajectory = is<data::Trajectory>(ptr);
@@ -986,7 +986,7 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 		grasp::data::Item::Map::iterator ptr;
 		{
 			RenderBlock renderBlock(*this);
-			golem::CriticalSectionWrapper cswData(csData);
+			golem::CriticalSectionWrapper cswData(getCS());
 			to<Data>(dataPtr)->itemMap.erase(queryItemTrj);
 			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), data::Item::Map::value_type(queryItemTrj, modelHandlerTrj->create()));
 			data::Trajectory* trajectory = is<data::Trajectory>(ptr);
@@ -1044,7 +1044,7 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 		grasp::data::Item::Map::iterator ptr;
 		{
 			RenderBlock renderBlock(*this);
-			golem::CriticalSectionWrapper cswData(csData);
+			golem::CriticalSectionWrapper cswData(getCS());
 			to<Data>(dataPtr)->itemMap.erase(queryItemTrj);
 			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), data::Item::Map::value_type(queryItemTrj, modelHandlerTrj->create()));
 			data::Trajectory* trajectory = is<data::Trajectory>(ptr);
@@ -1107,7 +1107,7 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 		grasp::data::Item::Map::iterator ptr;
 		{
 			RenderBlock renderBlock(*this);
-			golem::CriticalSectionWrapper cswData(csData);
+			golem::CriticalSectionWrapper cswData(getCS());
 			to<Data>(dataPtr)->itemMap.erase(queryItemTrj);
 			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), data::Item::Map::value_type(queryItemTrj, modelHandlerTrj->create()));
 			data::Trajectory* trajectory = is<data::Trajectory>(ptr);

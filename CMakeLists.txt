@@ -128,9 +128,9 @@ if (WIN32)
 	SET(FREEGLUT_LIBRARY "${PROGRAM_FILES}/freeglut/lib" CACHE PATH "Path prefix for Freeglut library")
 	#MARK_AS_ADVANCED(FREEGLUT_LIBRARY)
 	# PhysX
-	SET(PHYSX_INCLUDE "${PROGRAM_FILES}/NVIDIA Corporation/NVIDIA PhysX SDK/v2.8.4_win/SDKs" CACHE PATH "Path prefix for PhysX include")
+	#SET(PHYSX_INCLUDE "${PROGRAM_FILES}/NVIDIA Corporation/NVIDIA PhysX SDK/v2.8.4_win/SDKs" CACHE PATH "Path prefix for PhysX include")
 	#MARK_AS_ADVANCED(PHYSX_INCLUDE)
-	SET(PHYSX_LIBRARY "${PROGRAM_FILES}/NVIDIA Corporation/NVIDIA PhysX SDK/v2.8.4_win/SDKs/lib/${X86_WIN}" CACHE PATH "Path prefix for PhysX library")
+	#SET(PHYSX_LIBRARY "${PROGRAM_FILES}/NVIDIA Corporation/NVIDIA PhysX SDK/v2.8.4_win/SDKs/lib/${X86_WIN}" CACHE PATH "Path prefix for PhysX library")
 	#MARK_AS_ADVANCED(PHYSX_LIBRARY)
 	# Golem
 	SET(GOLEM_INCLUDE "${PROGRAM_FILES}/Golem/include" CACHE PATH "Path prefix for Golem include")
@@ -187,9 +187,9 @@ elseif (UNIX)
 	SET(FREEGLUT_LIBRARY /usr/lib CACHE PATH "Path prefix for Freeglut library")
 	#MARK_AS_ADVANCED(FREEGLUT_LIBRARY)
 	# PhysX
-	SET(PHYSX_INCLUDE /usr/include/PhysX/v2.8.3/SDKs CACHE PATH "Path prefix for PhysX include")
+	#SET(PHYSX_INCLUDE /usr/include/PhysX/v2.8.3/SDKs CACHE PATH "Path prefix for PhysX include")
 	#MARK_AS_ADVANCED(PHYSX_INCLUDE)
-	SET(PHYSX_LIBRARY /usr/lib/PhysX/v2.8.3 CACHE PATH "Path prefix for PhysX library")
+	#SET(PHYSX_LIBRARY /usr/lib/PhysX/v2.8.3 CACHE PATH "Path prefix for PhysX library")
 	#MARK_AS_ADVANCED(PHYSX_LIBRARY)
 	# Golem
 	SET(GOLEM_INCLUDE /usr/local/include CACHE PATH "Path prefix for Golem include")
@@ -226,7 +226,7 @@ LINK_DIRECTORIES(
 	${PCL_LIBRARY_DIRS}
 	${EXPAT_LIBRARY}
 	${FREEGLUT_LIBRARY}
-	${PHYSX_LIBRARY}
+	#${PHYSX_LIBRARY}
 	${GOLEM_LIBRARY}
 	${GOLEM_BINARIES}
 	${GRASP_LIBRARY}
@@ -239,10 +239,10 @@ INCLUDE_DIRECTORIES(
 	${PCL_INCLUDE_DIRS}
 	${EXPAT_INCLUDE}
 	${FREEGLUT_INCLUDE}
-	${PHYSX_INCLUDE}/Physics/include
-	${PHYSX_INCLUDE}/Foundation/include
-	${PHYSX_INCLUDE}/PhysXLoader/include
-	${PHYSX_INCLUDE}/Cooking/include
+	#${PHYSX_INCLUDE}/Physics/include
+	#${PHYSX_INCLUDE}/Foundation/include
+	#${PHYSX_INCLUDE}/PhysXLoader/include
+	#${PHYSX_INCLUDE}/Cooking/include
 	${GOLEM_INCLUDE}
 	${GRASP_INCLUDE}
 )
@@ -274,7 +274,7 @@ if (WIN32)
 		optimized GraspApp${CMAKE_RELEASE_POSTFIX} debug GraspApp${CMAKE_DEBUG_POSTFIX}
 		optimized GraspActiveCtrl${CMAKE_RELEASE_POSTFIX} debug GraspActiveCtrl${CMAKE_DEBUG_POSTFIX}
 		optimized GraspArmHandForce${CMAKE_RELEASE_POSTFIX} debug GraspArmHandForce${CMAKE_DEBUG_POSTFIX}		 
-		NxCharacter64 PhysXCooking64 PhysXCore64 PhysXLoader64
+		#NxCharacter64 PhysXCooking64 PhysXCore64 PhysXLoader64
 		expat freeglut Gdiplus
 		optimized GolemDefs${CMAKE_RELEASE_POSTFIX} debug GolemDefs${CMAKE_DEBUG_POSTFIX}
 		optimized GolemMath${CMAKE_RELEASE_POSTFIX} debug GolemMath${CMAKE_DEBUG_POSTFIX}
@@ -285,6 +285,7 @@ if (WIN32)
 		optimized GolemUI${CMAKE_RELEASE_POSTFIX} debug GolemUI${CMAKE_DEBUG_POSTFIX}
 		optimized GolemUICtrl${CMAKE_RELEASE_POSTFIX} debug GolemUICtrl${CMAKE_DEBUG_POSTFIX}
 		optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
+		optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
 		optimized CamcalbCalb${CMAKE_RELEASE_POSTFIX} debug CamcalbCalb${CMAKE_DEBUG_POSTFIX}
 		optimized CamcalbMatas${CMAKE_RELEASE_POSTFIX} debug CamcalbMatas${CMAKE_DEBUG_POSTFIX}		 
 		${PCL_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBS}
@@ -309,13 +310,14 @@ elseif (UNIX)
 		optimized GolemPlan${CMAKE_RELEASE_POSTFIX} debug GolemPlan${CMAKE_DEBUG_POSTFIX}
 		optimized GolemUICtrl${CMAKE_RELEASE_POSTFIX} debug GolemUICtrl${CMAKE_DEBUG_POSTFIX}
 		optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
+		optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
 		${CMAKE_DL_LIBS}
 		optimized GolemMath${CMAKE_RELEASE_POSTFIX} debug GolemMath${CMAKE_DEBUG_POSTFIX}
 		optimized GolemUI${CMAKE_RELEASE_POSTFIX} debug GolemUI${CMAKE_DEBUG_POSTFIX}
 		GL
 		GLU
 		glut
-		NxCharacter NxCooking PhysXCore PhysXLoader
+		#NxCharacter NxCooking PhysXCore PhysXLoader
 	)
 endif()	
 SET_PROPERTY(TARGET SpamSpam PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})

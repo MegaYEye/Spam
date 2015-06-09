@@ -17,7 +17,7 @@
 #include <Grasp/Data/PointsCurv/PointsCurv.h>
 #include <Grasp/Core/Import.h>
 #include <Grasp/App/Player/Data.h>
-#include <Golem/Phys/Data.h>
+#include <Golem/UI/Data.h>
 #include <Grasp/Core/RBPose.h>
 
 using namespace golem;
@@ -146,7 +146,7 @@ void spam::PosePlanner::Data::setOwner(grasp::Manager* owner) {
 void spam::PosePlanner::Data::createRender() {
 	Player::Data::createRender();
 	{
-		golem::CriticalSectionWrapper csw(owner->csRenderer);
+		golem::CriticalSectionWrapper csw(owner->getCS());
 		owner->modelRenderer.reset();
 		owner->objectRenderer.reset();
 		owner->beliefRenderer.reset();
@@ -608,7 +608,7 @@ bool spam::PosePlanner::create(const Desc& desc) {
 void spam::PosePlanner::render() const {
 	Player::render();
 
-	golem::CriticalSectionWrapper cswRenderer(csRenderer);
+	golem::CriticalSectionWrapper cswRenderer(getCS());
 	beliefRenderer.render();
 	modelRenderer.render();
 	objectRenderer.render();
@@ -751,7 +751,7 @@ grasp::data::Item::Map::iterator spam::PosePlanner::objectCapture(const Data::Mo
 	RenderBlock renderBlock(*this);
 	data::Item::Map::iterator ptr;
 	{
-		golem::CriticalSectionWrapper cswData(csData);
+		golem::CriticalSectionWrapper cswData(getCS());
 		data::Item::Ptr item = capture->capture(*objectCamera, [&](const grasp::TimeStamp*) -> bool { return true; });
 
 		// Finally: insert object scan, remove old one
@@ -779,7 +779,7 @@ grasp::data::Item::Map::iterator spam::PosePlanner::objectProcess(const Data::Mo
 
 	// insert processed object, remove old one
 	RenderBlock renderBlock(*this);
-	golem::CriticalSectionWrapper cswData(csData);
+	golem::CriticalSectionWrapper cswData(getCS());
 	to<Data>(dataCurrentPtr)->itemMap.erase(itemName);
 	ptr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), data::Item::Map::value_type(itemName, item));
 	Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, ptr, to<Data>(dataCurrentPtr)->getView());
