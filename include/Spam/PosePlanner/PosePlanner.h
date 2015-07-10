@@ -48,11 +48,10 @@
 
 #include <Grasp/App/Player/Player.h>
 
-#include <Grasp/Grasp/Model.h>
 #include <Grasp/Core/Ctrl.h>
-#include <Grasp/Grasp/Model.h>
-#include <Grasp/Grasp/Query.h>
-#include <Grasp/Grasp/Manipulator.h>
+#include <Grasp/Contact/Model.h>
+#include <Grasp/Contact/Query.h>
+#include <Grasp/Contact/Manipulator.h>
 
 #include <Spam/Spam/GraphPlanner.h>
 #include <Spam/Spam/Heuristic.h>
@@ -557,15 +556,21 @@ public:
 
 		/** Model pose estimation camera */
 		std::string modelCamera;
+		/** Model data handler (scan) */
+		std::string modelHandlerScan;
 		/** Model data handler */
 		std::string modelHandler;
 		/** Model data item */
 		std::string modelItem;
 		/** Model data item object */
 		std::string modelItemObj;
+		/** Model data handler */
+		std::string modelGraspHandler;
+		/** Model data item */
+		std::string modelGraspItem;
 
 		/** Model scan pose */
-		grasp::ConfigMat34 modelScanPose;
+		grasp::ConfigMat34::Seq modelScanPoseSeq;
 		/** Model colour solid */
 		golem::RGBA modelColourSolid;
 		/** Model colour wireframe */
@@ -578,13 +583,21 @@ public:
 
 		/** Query pose estimation camera */
 		std::string queryCamera;
+		/** Model data handler (scan) */
+		std::string queryHandlerScan;
 		/** Query data handler */
 		std::string queryHandler;
 		/** Query data item */
 		std::string queryItem;
 		/** Query data item object */
 		std::string queryItemObj;
+		/** Query data handler */
+		std::string queryGraspHandler;
+		/** Query data item */
+		std::string queryGraspItem;
 
+		/** Object scan pose */
+		grasp::ConfigMat34::Seq queryScanPoseSeq;
 		/** Query colour solid */
 		golem::RGBA queryColourSolid;
 		/** Query colour wireframe */
@@ -609,6 +622,8 @@ public:
 		grasp::ConfigMat34::Seq objectScanPoseSeq;
 		/** Object manual frame adjustment */
 		grasp::RBAdjust objectFrameAdjustment;
+		/** Pose estimation for simulated object */
+		grasp::RBPose::Desc::Ptr simRBPoseDesc;
 
 		/** Model descriptions */
 		grasp::Model::Desc::Map modelDescMap;
@@ -617,6 +632,19 @@ public:
 
 		/** Query descriptions */
 		grasp::Query::Desc::Map queryDescMap;
+
+		/** Grasp force sensor */
+		std::string graspSensorForce;
+		/** Grasp force threshold */
+		golem::Twist graspThresholdForce;
+		/** Grasp force event - hand close time wait */
+		golem::SecTmReal graspEventTimeWait;
+		/** Grasp hand close duration */
+		golem::SecTmReal graspCloseDuration;
+		/** Grasp pose open (pre-grasp) */
+		grasp::ConfigMat34 graspPoseOpen;
+		/** Grasp pose closed (grasp) */
+		grasp::ConfigMat34 graspPoseClosed;
 
 		///** Model feature appearance */
 		//grasp::RBPose::Feature::Appearance modelAppearance;
@@ -656,21 +684,31 @@ public:
 			pRBPoseDesc.reset(new grasp::RBPose::Desc);
 
 			modelCamera.clear();
+			modelHandlerScan.clear();
 			modelHandler.clear();
 			modelItem.clear();
 			modelItemObj.clear();
+			modelGraspHandler.clear();
+			modelGraspItem.clear();
 
-			modelScanPose.setToDefault();
-			modelColourSolid.set(golem::RGBA::GREEN._U8[0], golem::RGBA::GREEN._U8[1], golem::RGBA::GREEN._U8[2], golem::numeric_const<golem::U8>::MAX / 8);
-			modelColourWire.set(golem::RGBA::GREEN);
+			modelScanPoseSeq.clear();
+			modelColourSolid.set(golem::RGBA::RED._U8[0], golem::RGBA::RED._U8[1], golem::RGBA::RED._U8[2], golem::numeric_const<golem::U8>::MAX / 8);
+			modelColourWire.set(golem::RGBA::RED);
 
 			modelHandlerTrj.clear();
 			modelItemTrj.clear();
 
 			queryCamera.clear();
+			queryHandlerScan.clear();
 			queryHandler.clear();
 			queryItem.clear();
 			queryItemObj.clear();
+			queryGraspHandler.clear();
+			queryGraspItem.clear();
+
+			queryScanPoseSeq.clear();
+			queryColourSolid.set(golem::RGBA::GREEN._U8[0], golem::RGBA::GREEN._U8[1], golem::RGBA::GREEN._U8[2], golem::numeric_const<golem::U8>::MAX / 8);
+			queryColourWire.set(golem::RGBA::GREEN);
 
 			queryHandlerTrj.clear();
 			queryItemTrj.clear();
@@ -682,11 +720,19 @@ public:
 			objectItem.clear();
 			objectScanPoseSeq.clear();
 			objectFrameAdjustment.setToDefault();
+			simRBPoseDesc.reset(new grasp::RBPose::Desc);
 
 			modelDescMap.clear();
 			contactAppearance.setToDefault();
 
 			queryDescMap.clear();
+
+			graspSensorForce.clear();
+			graspThresholdForce.setZero();
+			graspEventTimeWait = golem::SecTmReal(2.0);
+			graspCloseDuration = golem::SecTmReal(2.0);
+			graspPoseOpen.setToDefault();
+			graspPoseClosed.setToDefault();
 
 			//modelAppearance.setToDefault();
 			//queryAppearance.setToDefault();
@@ -721,6 +767,13 @@ public:
 			grasp::Assert::valid(manipulatorDesc != nullptr, ac, "manipulatorDesc: null");
 			manipulatorDesc->assertValid(grasp::Assert::Context(ac, "manipulatorDesc->"));
 			manipulatorAppearance.assertValid(grasp::Assert::Context(ac, "manipulatorAppearance."));
+
+			//grasp::Assert::valid(graspSensorForce.length() > 0, ac, "graspSensorForce: invalid");
+			//grasp::Assert::valid(graspThresholdForce.isPositive(), ac, "graspThresholdForce: negative");
+			//grasp::Assert::valid(graspEventTimeWait > golem::SEC_TM_REAL_ZERO, ac, "graspEventTimeWait: <= 0");
+			//grasp::Assert::valid(graspCloseDuration > golem::SEC_TM_REAL_ZERO, ac, "graspCloseDuration: <= 0");
+			//graspPoseOpen.assertValid(grasp::Assert::Context(ac, "graspPoseOpen."));
+			//graspPoseClosed.assertValid(grasp::Assert::Context(ac, "graspPoseClosed."));
 		}
 		/** Load descritpion from xml context. */
 		virtual void load(golem::Context& context, const golem::XMLContext* xmlcontext);
@@ -766,15 +819,21 @@ protected:
 
 	/** Model pose estimation camera */
 	grasp::Camera* modelCamera;
+	/** Model data handler (scan) */
+	grasp::data::Handler* modelHandlerScan;
 	/** Model data handler */
 	grasp::data::Handler* modelHandler;
 	/** Model data item */
 	std::string modelItem;
 	/** Model data item object */
 	std::string modelItemObj;
+	/** Model data handler */
+	grasp::data::Handler* modelGraspHandler;
+	/** Model data item */
+	std::string modelGraspItem;
 
 	/** Model scan pose */
-	grasp::ConfigMat34 modelScanPose;
+	grasp::ConfigMat34::Seq modelScanPoseSeq;
 	/** Model colour solid */
 	golem::RGBA modelColourSolid;
 	/** Model colour wireframe */
@@ -790,13 +849,21 @@ protected:
 
 	/** Query pose estimation camera */
 	grasp::Camera* queryCamera;
+	/** Query data handler (scan) */
+	grasp::data::Handler* queryHandlerScan;
 	/** Query data handler */
 	grasp::data::Handler* queryHandler;
 	/** Query data item */
 	std::string queryItem;
 	/** Query data item object */
 	std::string queryItemObj;
+	/** Query data handler */
+	grasp::data::Handler* queryGraspHandler;
+	/** Query data item */
+	std::string queryGraspItem;
 
+	/** Query scan pose */
+	grasp::ConfigMat34::Seq queryScanPoseSeq;
 	/** Query colour solid */
 	golem::RGBA queryColourSolid;
 	/** Query colour wireframe */
@@ -839,6 +906,10 @@ protected:
 	grasp::RBAdjust objectFrameAdjustment;
 	/** Object renderer */
 	golem::DebugRenderer objectRenderer;
+	/** Accurate pose estimation for the simulated object */
+	grasp::RBPose::Ptr simRBPose;
+	/** Reference frames */
+	golem::Mat34 simModelFrame, simQueryFrame;
 
 	/** Models */
 	grasp::Model::Map modelMap;

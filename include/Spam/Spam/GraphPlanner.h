@@ -274,6 +274,8 @@ public:
 	};
 
 protected:
+	/** Enable/disable uncertainty */
+	bool enableUnc;
 	///** Overwrites the path finder desc */
 	//RagPathFinderDesc ragPathFinderDesc;
 	//RagPathFinder::Ptr pGlobalPathFinder, pLocalPathFinder;

@@ -186,7 +186,7 @@ public:
 	/** Creates belief update (on importance weights) given the robot's pose and the current belief state. NOTE: weights are normalised. */
 	void createUpdate(const grasp::Manipulator *manipulator, const golem::Controller::State::Info handInfo, const golem::Waypoint &w, const FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force);
 	/** Creates belief update (on importance weights) given the robot's pose and the current belief state. NOTE: weights are normalised. */
-	void createUpdate(const Collision::Ptr collision, const golem::Waypoint &w, const FTGuard::Seq &triggeredGuards, const grasp::RBCoord &rbPose);
+	void createUpdate(const Collision::Ptr collision, const golem::Waypoint &w, FTGuard::Seq &triggeredGuards, const grasp::RBCoord &rbPose);
 	/** Evaluates the likelihood of reading a contact between robot's pose and the sample */
 	golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const grasp::RealSeq &forces, std::vector<bool> &triggered, bool intersect = true);
 	//golem::Real evaluate(const golem::Bounds::Seq &bounds, const grasp::RBCoord &pose, const grasp::RBPose::Sample &sample, const golem::Real &force, bool jointZero, bool intersect = true);

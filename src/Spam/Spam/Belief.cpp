@@ -10,7 +10,7 @@
 #include <Golem/Tools/Data.h>
 #include <Golem/UI/Data.h>
 #include <Spam/Spam/Belief.h>
-#include <Grasp/Grasp/Grasp.h>
+#include <Grasp/Contact/Contact.h>
 
 #ifdef WIN32
 	#pragma warning (push)
@@ -266,7 +266,10 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 		catch (const Message &msg) {
 			context.write("%s\n", msg.what());
 		}
-		context.write("Hypothesis %d {(%.4f %.4f %.4f), (%.4f %.4f %.4f %.4f)}\n", idx, actionFrame.p.x, actionFrame.p.y, actionFrame.p.z, actionFrame.q.w, actionFrame.q.x, actionFrame.q.y, actionFrame.q.z);
+		Mat34 sampleFrame; 
+		sampleFrame.multiply(actionFrame.toMat34(), modelFrame);
+		grasp::RBCoord sf(sampleFrame);
+		context.write("Hypothesis %d {(%.4f %.4f %.4f), (%.4f %.4f %.4f %.4f)}\n", idx, sf.p.x, sf.p.y, sf.p.z, sf.q.w, sf.q.x, sf.q.y, sf.q.z);
 		idx++;
 	}
 	
@@ -436,7 +439,7 @@ Real Belief::density(const Real dist) const {
 	return (dist > myDesc.sensory.sensoryRange) ? REAL_ZERO : (dist < REAL_EPS) ? kernel(REAL_EPS, myDesc.lambda) : kernel(dist, myDesc.lambda); // esponential up to norm factor
 }
 
-void Belief::createUpdate(const Collision::Ptr collision, const golem::Waypoint &w, const FTGuard::Seq &triggeredGuards, const grasp::RBCoord &rbPose) {
+void Belief::createUpdate(const Collision::Ptr collision, const golem::Waypoint &w, FTGuard::Seq &triggeredGuards, const grasp::RBCoord &rbPose) {
 //	context.debug("Belief::createUpdate(collision)...\n");
 	Collision::FlannDesc waypointDesc;
 	Collision::Desc::Ptr cloudDesc;
@@ -451,7 +454,7 @@ void Belief::createUpdate(const Collision::Ptr collision, const golem::Waypoint 
 		grasp::RBDist error;
 		error.lin = rbPose.p.distance(sampledPose->p);
 		error.ang = rbPose.q.distance(sampledPose->q);
-//		context.debug("sample.weight = %f, Error {lin, ang} = {%f, %f}\n", sampledPose->weight, error.lin, error.ang);
+		context.write("sample.weight = %f, Error {lin, ang} = {%f, %f}\n", sampledPose->weight, error.lin, error.ang);
 	}
 
 	// normalise weights
@@ -462,7 +465,7 @@ void Belief::createUpdate(const Collision::Ptr collision, const golem::Waypoint 
 	c = golem::REAL_ZERO;
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
 //		sampledPose->weight /= norm;
-//		context.debug("normilised sample.weight = %f\n", sampledPose->weight);
+//		context.write("normilised sample.weight = %f\n", sampledPose->weight);
 		golem::kahanSum(cdf, c, sampledPose->weight);
 		sampledPose->cdf = cdf;
 	}

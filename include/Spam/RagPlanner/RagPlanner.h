@@ -129,6 +129,9 @@ public:
 		/** Collision description file. Used for collision with the ground truth */
 		Collision::Desc::Ptr objCollisionDescPtr;
 
+		/** Guards to retrieve a contact */
+		grasp::RealSeq fLimit;
+
 		/** Trajectory duration */
 		golem::SecTmReal trjDuration;
 		/** Trajectory idle time */
@@ -164,10 +167,11 @@ public:
 			singleGrasp = false;
 			withdrawToHomePose = false;
 
+			fLimit.assign(20, golem::REAL_ZERO);
+
 			maxModelPoints = 5000;
 
 			objCollisionDescPtr.reset(new Collision::Desc());
-
 		}
 
 		/** Checks if the description is valid. */
@@ -196,6 +200,12 @@ public:
 	grasp::ActiveCtrlForce::ForceReader ftFilter;
 
 protected:
+	/** Mode of Active Ctrl */
+	grasp::ActiveCtrlForce::Mode armMode, handMode;
+	/** Pointer to the hand active controller */
+	grasp::ArmHandForce *armHandForce;
+	/** Guards to retrieve a contact */
+	grasp::RealSeq fLimit;
 	/** Number of averaging steps before stopping collecting readings */
 	golem::U32 windowSize;
 	golem::I32 steps;
@@ -225,6 +235,11 @@ protected:
 	golem::CriticalSection csHandForce;
 	// Return hand DOFs */
 	inline golem::I32 dimensions() { return (golem::I32)handInfo.getJoints().size(); }
+
+	/** Checks for reions with high likelihood of contacts */
+	inline bool expectedCollisions(const golem::Controller::State& state) const {
+		return pHeuristic->expectedCollisions(state);
+	}
 
 
 	/** Particles renderer */
@@ -290,9 +305,9 @@ protected:
 	bool forcereadersilent;
 	bool contactOccured;
 	
+	/** File to collect data from the ft sensor of the hand */
+	std::ofstream dataFTRaw, dataFTFiltered, dataSimContact;
 	bool record, contact, brecord;
-	std::ofstream dataFTRaw;
-	std::ofstream dataFTFiltered;
 	/** Query transformation */
 	grasp::RBCoord queryPointsTrn;
 
@@ -354,6 +369,7 @@ protected:
 	/** Trajectory profile */
 	golem::Profile::Ptr pProfile;
 
+	std::string sepField;
 	/** golem::Profile::CallbackDist: Configuration space coordinate distance metric */
 	virtual golem::Real distConfigspaceCoord(const golem::ConfigspaceCoord& prev, const golem::ConfigspaceCoord& next) const;
 	/** golem::Profile::CallbackDist: Coordinate distance metric */

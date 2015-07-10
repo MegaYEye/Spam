@@ -46,7 +46,7 @@
 
 //------------------------------------------------------------------------------
 
-#include <Grasp/Grasp/Grasp.h>
+#include <Grasp/Contact/Contact.h>
 #include <Grasp/Core/Cloud.h>
 #include <Grasp/Core/RBPose.h>
 #include <Golem/Plan/GraphPlanner.h>
@@ -349,7 +349,7 @@ public:
 			for (_Ptr i = begin; i < end; ++i) {
 				const Real depth = getDepth(*i, true); // penetration depth (positive values) or distance from the closest surfaces (negative values)
 				const bool direction = match(pose, *i, force);
-				// this hypothesis generate a contact that does not match the observatio
+				// this hypothesis generate a contact that does not match the observation
 				if (!observation && depth > golem::numeric_const<Real>::ZERO) {
 //					printf("wrong direction\n");
 					return golem::numeric_const<_RealEval>::ZERO;
@@ -370,7 +370,7 @@ public:
 			return eval;
 		}
 
-		inline bool match(const golem::Mat34 &pose, const Feature& point, const golem::Real &force) const {
+		inline bool match(const golem::Mat34& pose, const Feature& point, const golem::Real &force) const {
 			golem::Mat34 inverse; inverse.setInverse(pose); // compute the inverse of the joint frame
 			golem::Vec3 v; inverse.multiply(v, point.getPoint()); //v.normalise(); // compute the point in the joint's reference frame
 
@@ -379,7 +379,7 @@ public:
 
 
 		/** Penetration depth of a given point, zero if none */
-		inline Real getDistance(const golem::Mat34 &pose, const Vec3& point, const Real maxDist) const {
+		inline Real getDistance(const golem::Mat34& pose, const Vec3& point, const Real maxDist) const {
 			golem::Mat34 inverse; inverse.setInverse(pose); // compute the inverse of the joint frame
 			golem::Vec3 v; inverse.multiply(v, point); v.normalise(); // compute the point in the joint's reference frame
 
@@ -387,12 +387,12 @@ public:
 		}
 
 		/** Penetration depth of a given point, zero if none */
-		inline Real getDistance(const golem::Mat34 &pose, const Feature& feature, const Real maxDist) const {
+		inline Real getDistance(const golem::Mat34& pose, const Feature& feature, const Real maxDist) const {
 			return getDistance(pose, (Bounds::Vec3)feature.getPoint(), maxDist);
 		}
 
 		/** Expected collision likelihood model */
-		template <typename _Ptr> inline _RealEval estimate(golem::Mat34 &pose, _Ptr begin, _Ptr end, _RealEval depthStdDev, size_t& collisions, const _RealEval maxDist = golem::numeric_const<_RealEval>::MAX) const {
+		template <typename _Ptr> inline _RealEval estimate(golem::Mat34& pose, _Ptr begin, _Ptr end, _RealEval depthStdDev, size_t& collisions, const _RealEval maxDist = golem::numeric_const<_RealEval>::MAX) const {
 			_RealEval eval = golem::numeric_const<_RealEval>::ZERO, c = golem::numeric_const<_RealEval>::ZERO;
 			for (_Ptr i = begin; i < end; ++i) {
 				const Real distance = getDistance(pose, *i, maxDist);
@@ -594,20 +594,20 @@ public:
 //	virtual bool estimate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Pose& pose, bool debug = false) const;
 
 	/** Collision detection to simulate contact at execution time */
-	virtual size_t simulate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Pose& pose, std::vector<golem::Configspace::Index> &joints, grasp::RealSeq &forces, bool debug = false) const;
+	virtual size_t simulate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Pose& pose, std::vector<golem::Configspace::Index>& joints, grasp::RealSeq& forces, bool debug = false) const;
 	/** Collision detection to simulate contact at execution time */
-	virtual size_t simulate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Pose& pose, FTGuard::Seq &joints, bool debug = false) const;
+	virtual size_t simulate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Pose& pose, FTGuard::Seq& joints, bool debug = false) const;
 	/** Collision detection to simulate contact at execution time */
-	virtual size_t simulate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Pose& pose, grasp::RealSeq &forces, bool debug = false) const;
+	virtual size_t simulate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Pose& pose, grasp::RealSeq& forces, bool debug = false) const;
 
 	/** Collision likelihood estimation at a given waypoint */
 	virtual golem::Real evaluate(const Waypoint& waypoint, const grasp::Manipulator::Pose& pose, bool debug = false) const;
 
 	/** Collision likelihood estimation at a given waypoint for belief update */
-	virtual golem::Real evaluate(const Waypoint& waypoint, const grasp::Manipulator::Pose& pose, const FTGuard::Seq &triggeredGuards, bool debug = false) const;
+	virtual golem::Real evaluate(const Waypoint& waypoint, const grasp::Manipulator::Pose& pose, const FTGuard::Seq& triggeredGuards, bool debug = false) const;
 
 	/** Collision likelihood estimation at a given waypoint for belief update */
-	virtual golem::Real evaluate(const FlannDesc& desc, const grasp::Manipulator::Pose& pose, const FTGuard::Seq &triggeredGuards, bool debug = false) const;
+	virtual golem::Real evaluate(const FlannDesc& desc, const grasp::Manipulator::Pose& pose, FTGuard::Seq& triggeredGuards, bool debug = false) const;
 
 	/** Collision likelihood estimation at a given waypoint */
 	virtual golem::Real evaluate(const FlannDesc& desc, const grasp::Manipulator::Pose& pose, bool debug = false) const;

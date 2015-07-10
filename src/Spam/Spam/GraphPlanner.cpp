@@ -28,16 +28,18 @@ std::string spam::plannerDebug(golem::Planner& planner) {
 	const Heuristic& heuristic = planner.getHeuristic();
 	FTDrivenHeuristic *pHeuristic = dynamic_cast<FTDrivenHeuristic*>(&planner.getHeuristic());
 	const Controller& controller = planner.getController();
+	const Heuristic::ChainDesc::ChainSeq& chainDesc = heuristic.getChainDesc();
 	const Heuristic::JointDesc::JointSeq& jointDesc = heuristic.getJointDesc();
 	const Chainspace::Range chains = controller.getStateInfo().getChains();
-	golem::U32 enabled = 0;
+	golem::U32 enabled = 0, enabledObs = 0;
 	for (Chainspace::Index i = chains.begin(); i < chains.end(); ++i) {
+		if (chainDesc[i]->enabledObs) ++enabledObs;
 		const Configspace::Range joints = controller.getStateInfo().getJoints(i);
 		for (Configspace::Index j = joints.begin(); j < joints.end(); ++j)
 			if (jointDesc[j]->enabled) ++enabled;
 	}
 
-	str << controller.getName() << ": chains=" << controller.getStateInfo().getChains().size() << ", joints=" << controller.getStateInfo().getJoints().size() << "(enabled=" << enabled << "), collisions=" << (heuristic.getDesc().collisionDesc.enabled ? "ENABLED" : "DISABLED") << ", non-Euclidian metrics=" << (pHeuristic && pHeuristic->enableUnc ? "ENABLE" : "DISABLE") << ", point cloud collisions=" << (pHeuristic && pHeuristic->getPointCloudCollision() ? "ENABLE" : "DISABLE");
+	str << controller.getName() << ": chains=" << controller.getStateInfo().getChains().size() << "(enabledObs=" << enabledObs << "), joints=" << controller.getStateInfo().getJoints().size() << "(enabled=" << enabled << "), collisions=" << (heuristic.getDesc().collisionDesc.enabled ? "ENABLED" : "DISABLED") << ", non-Euclidian metrics=" << (pHeuristic && pHeuristic->enableUnc ? "ENABLE" : "DISABLE") << ", point cloud collisions=" << (pHeuristic && pHeuristic->getPointCloudCollision() ? "ENABLE" : "DISABLE");
 
 	return str.str();
 }
@@ -142,6 +144,9 @@ bool RagGraphPlanner::create(const Desc& desc) {
 	//	context.write("%s ", jointDescSeq[j] ? "ON" : "OFF");	
 	//context.write(">\n");
 //	disableHandPlanning();
+
+	enableUnc = false;
+
 	context.debug("RagGraphPlanner::create: %s\n", spam::plannerDebug(*this).c_str());
 	return true;
 }
@@ -153,6 +158,10 @@ FTDrivenHeuristic* RagGraphPlanner::getFTDrivenHeuristic() const {
 }
 
 void RagGraphPlanner::disableHandPlanning() {
+	//spam::FTDrivenHeuristic *heuristic = getFTDrivenHeuristic();
+	//if (heuristic) {
+	//	heuristic->enableUnc = false;
+	//}
 	Chainspace::Index hand = stateInfo.getChains().begin() + 1;
 	for (Configspace::Index j = stateInfo.getJoints(hand).begin(); j < stateInfo.getJoints().end(); ++j) {
 		pHeuristic->getJointDesc()[j]->enabled = false;	
@@ -166,6 +175,10 @@ void RagGraphPlanner::disableHandPlanning() {
 }
 
 void RagGraphPlanner::enableHandPlanning() {
+	//spam::FTDrivenHeuristic *heuristic = getFTDrivenHeuristic();
+	//if (heuristic) {
+	//	heuristic->enableUnc = enableUnc;
+	//}
 	size_t i = 0;
 	for (Configspace::Index j = stateInfo.getJoints().begin(); j < stateInfo.getJoints().end(); ++j, ++i) {
 		pHeuristic->getJointDesc()[j]->enabled = jointDescSeq[i];
@@ -347,10 +360,10 @@ bool RagGraphPlanner::localFind(const ConfigspaceCoord &begin, const Configspace
 bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const GenWorkspaceChainState& wend, GenConfigspaceState &cend) {
 //	context.write("RagGraphPlanner::find target\n");
 //	return GraphPlanner::findTarget(begin, wend, cend);
-	bool enable = false;
+//	bool enable = false;
 	spam::FTDrivenHeuristic *heuristic = getFTDrivenHeuristic();
 	if (heuristic) {
-		enable = heuristic->enableUnc;
+		enableUnc = heuristic->enableUnc;
 		heuristic->enableUnc = false;
 		context.debug("RagGraphPlanner::findTarget(): enable unc %s\n", heuristic->enableUnc ? "ON" : "OFF");
 	}
@@ -419,7 +432,7 @@ bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const 
 #endif
 
 	if (heuristic)
-		heuristic->enableUnc = enable;
+		heuristic->enableUnc = enableUnc;
 
 	enableHandPlanning();
 

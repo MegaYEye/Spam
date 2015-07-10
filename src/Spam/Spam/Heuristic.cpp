@@ -299,6 +299,8 @@ bool FTDrivenHeuristic::create(const Desc &desc) {
 	waypoint.setToDefault();
 	waypoint.points = 100000;//ftDrivenDesc.ftModelDesc.points;
 
+	hypothesisBoundsSeq.clear();
+
 	testCollision = false;
 
 	return true;
@@ -641,6 +643,11 @@ void FTDrivenHeuristic::h(const golem::Waypoint &wi, const golem::Waypoint &wj, 
 	const U32 meanIdx = 0;
 	U32 steps = 1;
 
+	// computes the estimate of contact for the starting PRM node
+	//grasp::RealSeq estimates; estimates.assign(pBelief->getHypotheses().size(), REAL_ZERO); U32 hypIndex = 0;
+	//for (auto p = pBelief->getHypotheses().cbegin(); p != pBelief->getHypotheses().cend(); ++p)
+	//	estimates[hypIndex++] = estimate(p, wi);
+
 	if (false) {
 		const Real dist = getDist(wi, wj);	
 		steps = (U32)Math::round(dist/(desc.collisionDesc.pathDistDelta));
@@ -760,23 +767,29 @@ void FTDrivenHeuristic::h(const golem::Waypoint &wi, const golem::Waypoint &wj, 
 		
 }); // end parallels task
 #endif
-		U32 index = 0;
+		//U32 index = 0;
 
-		const Parallels* parallels = context.getParallels();
-		if (parallels != NULL) {
-			const Job* job = parallels->getCurrentJob();
-			if (job != NULL) {
-				index = job->getJobId();
-			}
-		}
-
-		const Real likelihood_p1 = estimate(pBelief->getHypotheses().cbegin(), w);//pBelief->getHypotheses().front()->evaluate(ftDrivenDesc.evaluationDesc, manipulator->getPose(w.cpos), testCollision);
+		//const Parallels* parallels = context.getParallels();
+		//if (parallels != NULL) {
+		//	const Job* job = parallels->getCurrentJob();
+		//	if (job != NULL) {
+		//		index = job->getJobId();
+		//	}
+		//}
+		//auto discountedEstimation = [&](const Hypothesis::Seq::const_iterator& ptr, const Waypoint& w, const U32 prev) -> Real {
+		//	const Real next = estimate(ptr, w);
+		//	const Real delta = Math::exp(next - prev);
+		//	return next * (delta > 1 ? 1 : delta);
+		//};
+		//const Real estimate_p1 = estimate(pBelief->getHypotheses().cbegin(), w);
+		const Real likelihood_p1 = estimate(pBelief->getHypotheses().cbegin(), w); //Math::exp(estimate_p1 - estimates[0]);//pBelief->getHypotheses().front()->evaluate(ftDrivenDesc.evaluationDesc, manipulator->getPose(w.cpos), testCollision);
+		//hypIndex = 1;
 		for (auto p = ++pBelief->getHypotheses().cbegin(); p != pBelief->getHypotheses().cend(); ++p) {
 		//for (auto j = 1; j < pBelief->getHypotheses().size(); ++j) {
 			//const Real likelihood_pi = pBelief->getHypotheses()[j]->evaluate(ftDrivenDesc.evaluationDesc, manipulator->getPose(w.cpos), testCollision);
 			//			y.push_back(likelihood_pi - likelihood_p1);
+			//y.push_back(Math::exp(estimates[hypIndex++] - estimate(p, w)) - likelihood_p1);
 			y.push_back(estimate(p, w) - likelihood_p1);
-
 		}
 
 		//for (Belief::Hypothesis::Seq::const_iterator p = ++pBelief->getHypotheses().begin(); p != pBelief->getHypotheses().end(); ++p) {

@@ -383,8 +383,31 @@ public:
 
 	/** Returns true only if expected collisions are likely to happen */
 	inline bool expectedCollisions(const golem::Controller::State& state) const {
-		return intersect(manipulator->getBounds(manipulator->getConfig(state), manipulator->getPose(state).toMat34()), pBelief->uncertaintyRegionBounds(), false);
+		if (intersect(manipulator->getBounds(manipulator->getConfig(state), manipulator->getPose(state).toMat34()), pBelief->uncertaintyRegionBounds(), false) && !hypothesisBoundsSeq.empty()) {
+			return intersect(manipulator->getBounds(manipulator->getConfig(state), manipulator->getPose(state).toMat34()), hypothesisBoundsSeq, false);
+			//for (auto i = pBelief->getHypotheses().begin(); i != pBelief->getHypotheses().end(); ++i)
+			//	if (intersect(manipulator->getBounds(manipulator->getConfig(state), manipulator->getPose(state).toMat34()), (*i)->bounds(), false))
+			//		return true;
+		}
+		return false;
+		//return intersect(manipulator->getBounds(manipulator->getConfig(state), manipulator->getPose(state).toMat34()), pBelief->uncertaintyRegionBounds(), false);
 	}
+
+	void renderHypothesisCollisionBounds(golem::DebugRenderer& renderer) {
+		renderer.setColour(golem::RGBA(golem::U8(255), golem::U8(255), golem::U8(0), golem::U8(127)));
+		renderer.setLineWidth(golem::Real(1.0));
+		renderer.addWire(hypothesisBoundsSeq.begin(), hypothesisBoundsSeq.end());
+	}
+	
+	/** Reset collision bounds */
+	inline void setHypothesisBounds() {
+		hypothesisBoundsSeq.clear();
+		for (auto i = pBelief->getHypotheses().begin(); i != pBelief->getHypotheses().end(); ++i) {
+			golem::Bounds::Seq tmp = (*i)->bounds();
+			hypothesisBoundsSeq.insert(hypothesisBoundsSeq.begin(), tmp.begin(), tmp.end());
+		}
+	}
+
 
 protected:
 	/** Generator of pseudo random numbers */
@@ -399,6 +422,9 @@ protected:
 	Collision::Ptr collision;
 	/** Collision waypoint */
 	Collision::Waypoint waypoint;
+
+	/** Collision bound for check for expected collisions */
+	golem::Bounds::Seq hypothesisBoundsSeq;
 
 	/** Sampled poses */
 //	HypSample::Map samples;

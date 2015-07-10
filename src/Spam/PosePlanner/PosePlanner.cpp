@@ -12,7 +12,7 @@
 #include <Spam/PosePlanner/PosePlanner.h>
 
 #include <Golem/Math/Rand.h>
-#include <Grasp/Grasp/Model.h>
+#include <Grasp/Contact/Model.h>
 #include <Grasp/Data/Image/Image.h>
 #include <Grasp/Data/PointsCurv/PointsCurv.h>
 #include <Grasp/Core/Import.h>
@@ -20,9 +20,124 @@
 #include <Golem/UI/Data.h>
 #include <Grasp/Core/RBPose.h>
 
+//-----------------------------------------------------------------------------
+
 using namespace golem;
 using namespace grasp;
 using namespace spam;
+
+//-----------------------------------------------------------------------------
+
+namespace {
+	std::string toXMLString(const golem::Mat34& m)
+	{
+		char buf[BUFSIZ], *begin = buf, *const end = buf + sizeof(buf) - 1;
+		golem::snprintf(begin, end,
+			"m11=\"%f\" m12=\"%f\" m13=\"%f\" m21=\"%f\" m22=\"%f\" m23=\"%f\" m31=\"%f\" m32=\"%f\" m33=\"%f\" v1=\"%f\" v2=\"%f\" v3=\"%f\"",
+			m.R.m11, m.R.m12, m.R.m13, m.R.m21, m.R.m22, m.R.m23, m.R.m31, m.R.m32, m.R.m33, m.p.x, m.p.y, m.p.z);
+		return std::string(buf);
+	}
+
+	std::string toXMLString(const grasp::ConfigMat34& cfg, const bool shortFormat = false)
+	{
+		std::ostringstream os;
+		os.precision(6);
+		const size_t n = shortFormat ? 7 : cfg.c.size();
+		for (size_t i = 0; i < n; ++i)
+		{
+			os << (i == 0 ? "c" : " c") << i + 1 << "=\"" << cfg.c[i] << "\"";
+		}
+
+		return os.str();
+	}
+
+	class ForceEvent
+	{
+	public:
+		ForceEvent(grasp::FT* pFTSensor_, const golem::Twist& threshold_) :
+			threshold(threshold_),
+			bias(Vec3::zero(), Vec3::zero()),
+			maxExcursion(Vec3::zero(), Vec3::zero()),
+			//logFile("FT-debug.log", std::ios::out | std::ios::app),
+			pFTSensor(pFTSensor_)
+		{
+			if (pFTSensor == nullptr)
+				throw Message(Message::LEVEL_CRIT, "ForceEvent(): pFTSensor is nullptr");
+		}
+
+		void setBias()
+		{
+			grasp::FT::Data ftdata;
+			pFTSensor->read(ftdata, true);
+			bias = ftdata.wrench;
+		}
+
+		bool detected(golem::Context* pContext = nullptr)
+		{
+			bool tripped = false;
+			grasp::FT::Data ftdata;
+			pFTSensor->read(ftdata, true);
+			golem::Twist current = ftdata.wrench;
+			double currentFT[6], biasFT[6], thresholdFT[6], maxExcursionFT[6];
+			current.get(currentFT);
+			bias.get(biasFT);
+			threshold.get(thresholdFT);
+			maxExcursion.get(maxExcursionFT);
+			for (size_t i = 0; i < 6; ++i)
+			{
+				const double excursion = abs(currentFT[i] - biasFT[i]);
+
+				if (excursion > maxExcursionFT[i])
+					maxExcursionFT[i] = excursion;
+
+				if (excursion > thresholdFT[i])
+				{
+					tripped = true;
+					if (pContext != nullptr)
+						pContext->debug("Force event detected on axis %d: |%f - %f| > %f\n", i + 1, currentFT[i], biasFT[i], thresholdFT[i]);
+					//break; // test on all axes
+				}
+			}
+			maxExcursion.set(maxExcursionFT);
+			return tripped;
+		}
+
+		void showMaxExcursion(golem::Context* pContext)
+		{
+			const golem::Twist& m = maxExcursion;
+			pContext->debug("ForceEvent: max excursion: %g %g %g;  %g %g %g\n", m.v.x, m.v.y, m.v.z, m.w.x, m.w.y, m.w.z);
+		}
+
+		void showFT(golem::Context* pContext)
+		{
+			grasp::FT::Data ft1, ft2;
+			pFTSensor->read(ft1, false);
+			pFTSensor->read(ft2, true);
+
+			SecTmReal t1 = ft1.timeStamp;
+			golem::Twist raw = ft1.wrench;
+			SecTmReal t2 = ft2.timeStamp;
+			golem::Twist in = ft2.wrench;
+
+			pContext->debug("FT raw[%8.3f]: %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f; FT inertia[%8.3f]: %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f\n",
+				t1, raw.v.x, raw.v.y, raw.v.z, raw.w.x, raw.w.y, raw.w.z,
+				t2, in.v.x, in.v.y, in.v.z, in.w.x, in.w.y, in.w.z);
+		}
+
+	public:
+		golem::Twist threshold;
+		golem::Twist bias;
+		golem::Twist maxExcursion;
+
+		//golem::FileStream logFile;
+
+	private:
+		grasp::FT* pFTSensor;
+
+		ForceEvent();
+	};
+
+}
 
 //------------------------------------------------------------------------------
 
@@ -164,7 +279,7 @@ void spam::PosePlanner::Data::createRender() {
 
 		const bool showmodel = !modelPoints.empty() && queryPoints.empty();
 		const bool showquery = !queryPoints.empty();
-		printf("renderData showmodel %s showquery %s showSamplePoints %s\n", showmodel ? "ON" : "OFF", showquery ? "ON" : "OFF", owner->showSamplePoints ? "ON" : "OFF");
+//		printf("renderData showmodel %s showquery %s showSamplePoints %s\n", showmodel ? "ON" : "OFF", showquery ? "ON" : "OFF", owner->showSamplePoints ? "ON" : "OFF");
 
 		if (showmodel || showquery) {
 			if (showmodel && !showquery) {
@@ -200,11 +315,16 @@ void spam::PosePlanner::Data::createRender() {
 					//context.write("showSamplePoints hypotheses size %d\n", pBelief->getHypotheses().size());
 					for (Hypothesis::Seq::const_iterator i = owner->pBelief->getHypotheses().begin(); i != owner->pBelief->getHypotheses().end(); ++i) {
 						owner->objectRenderer.addAxes((*i)->toRBPoseSampleGF().toMat34(), owner->hypothesisFrameSize);
-						owner->sampleAppearance.colour = RGBA::BLACK;
+						owner->sampleAppearance.colour = i == owner->pBelief->getHypotheses().begin() ? RGBA::GREEN : RGBA::BLUE;
 						owner->sampleAppearance.draw((*i)->getCloud(), owner->objectRenderer);
 						if (owner->showMeanHypothesis)
 							break;
 					}
+					owner->pHeuristic->renderHypothesisCollisionBounds(owner->objectRenderer);
+				}
+				if (owner->showObject) {
+					owner->sampleAppearance.colour = RGBA::RED;
+					owner->sampleAppearance.draw(simulateObjectPose, owner->objectRenderer);
 				}
 				if (owner->showQueryDistrib) {
 					for (size_t i = 0; i < owner->distribSamples; ++i) {
@@ -372,11 +492,15 @@ void PosePlanner::Desc::load(golem::Context& context, const golem::XMLContext* x
 	golem::XMLData("screen_capture", screenCapture, const_cast<golem::XMLContext*>(xmlcontext));
 
 	golem::XMLData("camera", modelCamera, xmlcontext->getContextFirst("model"));
+	golem::XMLData("handler_scan", modelHandlerScan, xmlcontext->getContextFirst("model"));
 	golem::XMLData("handler", modelHandler, xmlcontext->getContextFirst("model"));
 	golem::XMLData("item", modelItem, xmlcontext->getContextFirst("model"));
 	golem::XMLData("item_obj", modelItemObj, xmlcontext->getContextFirst("model"));
+	golem::XMLData("handler_grasp", modelGraspHandler, xmlcontext->getContextFirst("model"));
+	golem::XMLData("item_grasp", modelGraspItem, xmlcontext->getContextFirst("model"));
 
-	modelScanPose.xmlData(xmlcontext->getContextFirst("model scan_pose"));
+	modelScanPoseSeq.clear();
+	XMLData(modelScanPoseSeq, modelScanPoseSeq.max_size(), xmlcontext->getContextFirst("model"), "scan_pose");
 	golem::XMLData(modelColourSolid, xmlcontext->getContextFirst("model colour solid"));
 	golem::XMLData(modelColourWire, xmlcontext->getContextFirst("model colour wire"));
 
@@ -384,9 +508,17 @@ void PosePlanner::Desc::load(golem::Context& context, const golem::XMLContext* x
 	golem::XMLData("item_trj", modelItemTrj, xmlcontext->getContextFirst("model"));
 
 	golem::XMLData("camera", queryCamera, xmlcontext->getContextFirst("query"));
+	golem::XMLData("handler_scan", queryHandlerScan, xmlcontext->getContextFirst("query"));
 	golem::XMLData("handler", queryHandler, xmlcontext->getContextFirst("query"));
 	golem::XMLData("item", queryItem, xmlcontext->getContextFirst("query"));
 	golem::XMLData("item_obj", queryItemObj, xmlcontext->getContextFirst("query"));
+	golem::XMLData("handler_grasp", queryGraspHandler, xmlcontext->getContextFirst("query"));
+	golem::XMLData("item_grasp", queryGraspItem, xmlcontext->getContextFirst("query"));
+
+	queryScanPoseSeq.clear();
+	XMLData(queryScanPoseSeq, queryScanPoseSeq.max_size(), xmlcontext->getContextFirst("query"), "scan_pose");
+	golem::XMLData(queryColourSolid, xmlcontext->getContextFirst("query colour solid"));
+	golem::XMLData(queryColourWire, xmlcontext->getContextFirst("query colour wire"));
 
 	golem::XMLData("handler_trj", queryHandlerTrj, xmlcontext->getContextFirst("query"));
 	golem::XMLData("item_trj", queryItemTrj, xmlcontext->getContextFirst("query"));
@@ -399,6 +531,20 @@ void PosePlanner::Desc::load(golem::Context& context, const golem::XMLContext* x
 	objectScanPoseSeq.clear();
 	XMLData(objectScanPoseSeq, objectScanPoseSeq.max_size(), xmlcontext->getContextFirst("object"), "scan_pose");
 	objectFrameAdjustment.load(xmlcontext->getContextFirst("object frame_adjustment"));
+	try {
+		XMLData((grasp::RBPose::Desc&)*simRBPoseDesc, xmlcontext->getContextFirst("pose_estimation_sim"));
+	}
+	catch (const golem::MsgXMLParser& msg) { context.write("%s\n", msg.str().c_str()); }
+
+	try{
+		golem::XMLData("sensor", graspSensorForce, xmlcontext->getContextFirst("grasp"));
+		golem::XMLData(graspThresholdForce, xmlcontext->getContextFirst("grasp threshold"));
+		golem::XMLData("event_time_wait", graspEventTimeWait, xmlcontext->getContextFirst("grasp"));
+		golem::XMLData("close_duration", graspCloseDuration, xmlcontext->getContextFirst("grasp"));
+		graspPoseOpen.xmlData(xmlcontext->getContextFirst("grasp pose_open"));
+		graspPoseClosed.xmlData(xmlcontext->getContextFirst("grasp pose_closed"));
+	}
+	catch (const golem::MsgXMLParser& msg) { context.write("%s\n", msg.str().c_str()); }
 
 	modelDescMap.clear();
 	golem::XMLData(modelDescMap, modelDescMap.max_size(), xmlcontext->getContextFirst("model"), "model", false);
@@ -441,14 +587,23 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	modelCamera = modelCameraPtr != sensorMap.end() ? is<Camera>(modelCameraPtr->second.get()) : nullptr;
 	if (!modelCamera)
 		throw Message(Message::LEVEL_CRIT, "spam::PosePlanner::create(): unknown model pose estimation camera: %s", desc.modelCamera.c_str());
+	grasp::data::Handler::Map::const_iterator modelHandlerScanPtr = handlerMap.find(desc.modelHandlerScan);
+	modelHandlerScan = modelHandlerScanPtr != handlerMap.end() ? modelHandlerScanPtr->second.get() : nullptr;
+	if (!modelHandlerScan)
+		throw Message(Message::LEVEL_CRIT, "spam::PosePlanner::create(): unknown model (scan) data handler: %s", desc.modelHandlerScan.c_str());
 	grasp::data::Handler::Map::const_iterator modelHandlerPtr = handlerMap.find(desc.modelHandler);
 	modelHandler = modelHandlerPtr != handlerMap.end() ? modelHandlerPtr->second.get() : nullptr;
 	if (!modelHandler)
 		throw Message(Message::LEVEL_CRIT, "spam::PosePlanner::create(): unknown model data handler: %s", desc.modelHandler.c_str());
 	modelItem = desc.modelItem;
 	modelItemObj = desc.modelItemObj;
+	grasp::data::Handler::Map::const_iterator modelGraspHandlerPtr = handlerMap.find(desc.modelGraspHandler);
+	modelGraspHandler = modelGraspHandlerPtr != handlerMap.end() ? modelGraspHandlerPtr->second.get() : nullptr;
+	if (!modelGraspHandler)
+		throw Message(Message::LEVEL_CRIT, "spam::PosePlanner::create(): unknown model data handler: %s", desc.modelHandler.c_str());
+	modelGraspItem = desc.modelGraspItem;
 
-	modelScanPose = desc.modelScanPose;
+	modelScanPoseSeq = desc.modelScanPoseSeq;
 	modelColourSolid = desc.modelColourSolid;
 	modelColourWire = desc.modelColourWire;
 
@@ -458,17 +613,38 @@ bool spam::PosePlanner::create(const Desc& desc) {
 		throw Message(Message::LEVEL_CRIT, "spam::PosePlanner::create(): unknown model trajectory handler: %s", desc.modelHandlerTrj.c_str());
 	modelItemTrj = desc.modelItemTrj;
 
+	graspSensorForce = nullptr;
+	//grasp::Sensor::Map::const_iterator graspSensorForcePtr = sensorMap.find(desc.graspSensorForce);
+	//graspSensorForce = graspSensorForcePtr != sensorMap.end() ? is<FT>(graspSensorForcePtr->second.get()) : nullptr;
+	//if (!graspSensorForce)
+	//	throw Message(Message::LEVEL_CRIT, "pacman::Demo::create(): unknown grasp F/T sensor: %s", desc.graspSensorForce.c_str());
+	//graspThresholdForce = desc.graspThresholdForce;
+	//graspEventTimeWait = desc.graspEventTimeWait;
+	//graspCloseDuration = desc.graspCloseDuration;
+	//graspPoseOpen = desc.graspPoseOpen;
+	//graspPoseClosed = desc.graspPoseClosed;
+
 	grasp::Sensor::Map::const_iterator queryCameraPtr = sensorMap.find(desc.queryCamera);
 	queryCamera = queryCameraPtr != sensorMap.end() ? is<Camera>(queryCameraPtr->second.get()) : nullptr;
 	if (!queryCamera)
 		throw Message(Message::LEVEL_CRIT, "spam::PosePlanner::create(): unknown query pose estimation camera: %s", desc.queryCamera.c_str());
+	grasp::data::Handler::Map::const_iterator queryHandlerScanPtr = handlerMap.find(desc.queryHandlerScan);
+	queryHandlerScan = queryHandlerScanPtr != handlerMap.end() ? queryHandlerScanPtr->second.get() : nullptr;
+	if (!queryHandlerScan)
+		throw Message(Message::LEVEL_CRIT, "spam::PosePlanner::create(): unknown query (scan) data handler: %s", desc.queryHandlerScan.c_str());
 	grasp::data::Handler::Map::const_iterator queryHandlerPtr = handlerMap.find(desc.queryHandler);
 	queryHandler = queryHandlerPtr != handlerMap.end() ? queryHandlerPtr->second.get() : nullptr;
 	if (!queryHandler)
 		throw Message(Message::LEVEL_CRIT, "spam::PosePlanner::create(): unknown query data handler: %s", desc.queryHandler.c_str());
+	grasp::data::Handler::Map::const_iterator queryGraspHandlerPtr = handlerMap.find(desc.queryGraspHandler);
+	queryGraspHandler = queryGraspHandlerPtr != handlerMap.end() ? queryGraspHandlerPtr->second.get() : nullptr;
+	if (!queryGraspHandler)
+		throw Message(Message::LEVEL_CRIT, "spam::PosePlanner::create(): unknown model data handler: %s", desc.queryHandler.c_str());
+	queryGraspItem = desc.queryGraspItem;
 	queryItem = desc.queryItem;
 	queryItemObj = desc.queryItemObj;
 
+	queryScanPoseSeq = desc.queryScanPoseSeq;
 	queryColourSolid = desc.queryColourSolid;
 	queryColourWire = desc.queryColourWire;
 
@@ -494,6 +670,7 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	objectItem = desc.objectItem;
 	objectScanPoseSeq = desc.objectScanPoseSeq;
 	objectFrameAdjustment = desc.objectFrameAdjustment;
+	simRBPose = desc.simRBPoseDesc->create(context); // throws
 
 	// models
 	modelMap.clear();
@@ -551,6 +728,9 @@ bool spam::PosePlanner::create(const Desc& desc) {
 		desc = "Press a key to: (M)odel/(Q)ery estimation...";
 	}));
 	menuCmdMap.insert(std::make_pair("PM", [=]() {
+		// scan, if needed
+		if (option("YN", "Scan? (Y/N)") == 'Y')
+			(void)objectCapture(Data::MODE_MODEL);
 		// estimate
 		try {
 			(void)estimatePose(Data::MODE_MODEL);
@@ -562,6 +742,9 @@ bool spam::PosePlanner::create(const Desc& desc) {
 		context.write("Done!\n");
 	}));
 	menuCmdMap.insert(std::make_pair("PQ", [=]() {
+		// scan, if needed
+		if (option("YN", "Scan? (Y/N)") == 'Y')
+			(void)objectCapture(Data::MODE_QUERY);
 		// estimate
 		try {
 			(void)estimatePose(Data::MODE_QUERY);
@@ -673,9 +856,11 @@ void spam::PosePlanner::create(const golem::Controller::State::Seq& inp, golem::
 //------------------------------------------------------------------------------
 
 grasp::data::Item::Map::iterator spam::PosePlanner::estimatePose(Data::Mode mode) {
-	const std::string itemName = mode != Data::MODE_MODEL ? queryItem : modelItem;
+	std::string itemName = mode != Data::MODE_MODEL ? queryItem : modelItem;
 	grasp::data::Handler* handler = mode != Data::MODE_MODEL ? queryHandler : modelHandler;
 
+	// item name
+	readString("Enter item name: ", itemName);
 	grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(itemName);
 	if (ptr == to<Data>(dataCurrentPtr)->itemMap.end())
 		throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): Does not find %s.", itemName.c_str());
@@ -707,6 +892,8 @@ grasp::data::Item::Map::iterator spam::PosePlanner::estimatePose(Data::Mode mode
 		resetDataPointers();
 		showModelPoints = true;
 		to<Data>(dataCurrentPtr)->createRender();
+		simRBPose->createModel(curvPoints);
+		simModelFrame = simRBPose->createFrame(mPoints);
 	}
 	else {
 		if (modelPoints.empty())
@@ -717,11 +904,13 @@ grasp::data::Item::Map::iterator spam::PosePlanner::estimatePose(Data::Mode mode
 		grasp::to<Data>(dataCurrentPtr)->queryTransform = trn.toMat34();
 		grasp::to<Data>(dataCurrentPtr)->queryFrame.multiply(grasp::to<Data>(dataCurrentPtr)->queryTransform, modelFrame);
 		grasp::Cloud::transform(grasp::to<Data>(dataCurrentPtr)->queryTransform, modelPoints, grasp::to<Data>(dataCurrentPtr)->queryPoints);
+		grasp::to<Data>(dataCurrentPtr)->queryPoints = points;
 		grasp::to<Data>(dataCurrentPtr)->poses.clear();
 		grasp::to<Data>(dataCurrentPtr)->poses = pBelief->getSamples();
 		grasp::to<Data>(dataCurrentPtr)->hypotheses.clear();
 		grasp::to<Data>(dataCurrentPtr)->hypotheses = pBelief->getHypothesesToSample();
-		
+		pHeuristic->setHypothesisBounds();
+
 		if (option("YN", "Do you want to load the simulated object? (Y/N)") == 'Y') {
 			grasp::to<Data>(dataCurrentPtr)->simulateObjectPose.clear();
 			grasp::to<Data>(dataCurrentPtr)->simulateObjectPose.reserve(modelPoints.size());
@@ -730,7 +919,11 @@ grasp::data::Item::Map::iterator spam::PosePlanner::estimatePose(Data::Mode mode
 				grasp::Cloud::setColour(golem::RGBA::MAGENTA, p);
 				grasp::to<Data>(dataCurrentPtr)->simulateObjectPose.push_back(p);
 			}
-			grasp::Cloud::transform(grasp::to<Data>(dataCurrentPtr)->queryTransform, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+			if (option("YN", "Do you want to tranform the simulated object? (Y/N)") == 'Y') {
+				simRBPose->createQuery(points);
+				simQueryFrame = simRBPose->maximum().toMat34();
+				grasp::Cloud::transform(/*grasp::to<Data>(dataCurrentPtr)->queryTransform*/simQueryFrame, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+			}
 		}
 		resetDataPointers();
 		showSamplePoints = true; // shows hypotheses and mean pose
@@ -743,23 +936,55 @@ grasp::data::Item::Map::iterator spam::PosePlanner::estimatePose(Data::Mode mode
 
 grasp::data::Item::Map::iterator spam::PosePlanner::objectCapture(const Data::Mode mode) {
 	const std::string itemName = mode == Data::MODE_DEFAULT ? objectItem : mode != Data::MODE_MODEL ? queryItem : modelItem;
-
-	data::Capture* capture = is<data::Capture>(objectHandlerScan);
+	grasp::data::Handler* handler = mode == Data::MODE_DEFAULT ? objectHandler : mode != Data::MODE_MODEL ? queryHandler : modelHandler;
+	grasp::data::Handler* handlerScan = mode != Data::MODE_MODEL ? queryHandlerScan : modelHandlerScan;
+	grasp::Camera* camera = mode != Data::MODE_MODEL ? queryCamera : modelCamera;
+	grasp::ConfigMat34::Seq scanPoseSeq = mode != Data::MODE_MODEL ? queryScanPoseSeq : modelScanPoseSeq;
+	
+	data::Capture* capture = is<data::Capture>(handlerScan);
 	if (!capture)
 		throw Message(Message::LEVEL_ERROR, "Handler %s does not support Capture interface", objectHandlerScan->getID().c_str());
 
-	RenderBlock renderBlock(*this);
-	data::Item::Map::iterator ptr;
-	{
-		golem::CriticalSectionWrapper cswData(getCS());
-		data::Item::Ptr item = capture->capture(*objectCamera, [&](const grasp::TimeStamp*) -> bool { return true; });
+	// Scan object
+	const bool isEnabledDeformationMap = camera && camera->getCurrentCalibration()->isEnabledDeformationMap();
+	ScopeGuard guard([&]() { if (camera) camera->getCurrentCalibration()->enableDeformationMap(isEnabledDeformationMap); });
+	if (camera && camera->getCurrentCalibration()->hasDeformationMap())
+		camera->getCurrentCalibration()->enableDeformationMap(option("YN", "Use deformation map (Y/N)...") == 'Y');
 
-		// Finally: insert object scan, remove old one
-		data::Item::Map& itemMap = to<Data>(dataCurrentPtr)->itemMap;
-		itemMap.erase(objectItemScan);
-		ptr = itemMap.insert(itemMap.end(), data::Item::Map::value_type(itemName, item));
-		Data::View::setItem(itemMap, ptr, to<Data>(dataCurrentPtr)->getView());
+	ConfigMat34::Seq::const_iterator pose = scanPoseSeq.begin();
+	size_t index = 0, size = scanPoseSeq.size();
+	auto scanPoseCommand = [&]() -> bool {
+		context.write("Going to scan pose #%d/%d\n", index + 1, size);
+		this->gotoPose(*pose++);
+		return ++index < size;
+	};
+	data::Item::Map::iterator ptr;
+	for (bool stop = false; !stop;) {
+		stop = !scanPoseCommand();
+		RenderBlock renderBlock(*this);
+		{
+			golem::CriticalSectionWrapper cswData(scene.getCS());
+			ptr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), data::Item::Map::value_type(itemName, capture->capture(*to<Camera>(sensorCurrentPtr), [&](const grasp::TimeStamp*) -> bool { return true; })));
+			Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, ptr, to<Data>(dataCurrentPtr)->getView());
+		}
 	}
+
+	// Transform to point curv
+	// generate features
+	data::Transform* transform = is<data::Transform>(handler);
+	if (!transform)
+		throw Message(Message::LEVEL_ERROR, "Handler %s does not support Transform interface", handler->getID().c_str());
+
+	data::Item::List list;
+	list.insert(list.end(), ptr);
+	data::Item::Ptr item = transform->transform(list);
+
+	// insert processed object, remove old one
+	RenderBlock renderBlock(*this);
+	golem::CriticalSectionWrapper cswData(getCS());
+	to<Data>(dataCurrentPtr)->itemMap.erase(itemName);
+	ptr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), data::Item::Map::value_type(itemName, item));
+	Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, ptr, to<Data>(dataCurrentPtr)->getView());
 
 	return ptr;
 }
