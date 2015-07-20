@@ -348,24 +348,22 @@ void Belief::createQuery(const grasp::Cloud::PointSeq& points) {
 	// mean and covariance
 	if (!pose.create<golem::Ref1, RBPose::Sample::Ref>(grasp::RBCoord::N, myDesc.covariance, initPoses))
 		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
-	// copy initial distribution properties
-	initProperties = pose;
 	
 	// generate new (noisy) samples out of selected subset of poses 
 	for (size_t i = 0; i < myDesc.numPoses; ++i)
-		rand.nextGaussianArray<golem::Real>(&(initPoses[i])[0], &(initPoses[i])[0] + grasp::RBCoord::N, &((initPoses[i]))[0], &initProperties.covarianceSqrt[0]); // normalised multivariate Gaussian
+		rand.nextGaussianArray<golem::Real>(&(initPoses[i])[0], &(initPoses[i])[0] + grasp::RBCoord::N, &((initPoses[i]))[0], &pose.covarianceSqrt[0]); // normalised multivariate Gaussian
 
 	// Overwriting RBPose::poses
 	poses.clear();
 	poses.reserve(myDesc.numPoses);
 	for (grasp::RBPose::Sample::Seq::const_iterator i = initPoses.begin(); i != initPoses.end(); ++i)
 		poses.push_back(*i);
-	pose = initProperties;
+	initProperties = pose;
 
 	context.write("Belief::createQuery(): elapsed_time=%f\n", t_end);
 	context.write("Belief::createQuery(): sampled covariance = {(%f, %f, %f), (%f, %f, %f, %f)}\n",
-		initProperties.covariance[0], initProperties.covariance[1], initProperties.covariance[2], initProperties.covariance[3],
-		initProperties.covariance[4], initProperties.covariance[5], initProperties.covariance[6]);
+		pose.covariance[0], pose.covariance[1], pose.covariance[2], pose.covariance[3],
+		pose.covariance[4], pose.covariance[5], pose.covariance[6]);
 }
 
 //void Belief::createUpdate(const Mat34 &trn) {
@@ -445,7 +443,7 @@ void Belief::createUpdate(const Collision::Ptr collision, const golem::Waypoint 
 	Collision::Desc::Ptr cloudDesc;
 	cloudDesc.reset(new Collision::Desc());
 	Collision::Ptr cloud = cloudDesc->create(*manipulator);
-	waypointDesc.depthStdDev = 100.0; waypointDesc.likelihood = 1000.0; waypointDesc.points = 10000, waypointDesc.neighbours = 100;
+	waypointDesc.depthStdDev = 0.0005; waypointDesc.likelihood = 1000.0; waypointDesc.points = 10000, waypointDesc.neighbours = 100;
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
 		grasp::Cloud::PointSeq points;
 		grasp::Cloud::transform(sampledPose->toMat34(), modelPoints, points);
@@ -454,7 +452,9 @@ void Belief::createUpdate(const Collision::Ptr collision, const golem::Waypoint 
 		grasp::RBDist error;
 		error.lin = rbPose.p.distance(sampledPose->p);
 		error.ang = rbPose.q.distance(sampledPose->q);
-		context.write("sample.weight = %f, Error {lin, ang} = {%f, %f}\n", sampledPose->weight, error.lin, error.ang);
+//		context.write("sample.weight = %f, Error {lin, ang} = {%f, %f}\n", sampledPose->weight, error.lin, error.ang);
+		//Mat34 p; p.multiply(sampledPose->toMat34(), modelFrame);
+		//context.write("%.2f\t%.2f\t%.2f\t%.2f\n", p.p.x, p.p.y, p.p.z, sampledPose->weight);
 	}
 
 	// normalise weights

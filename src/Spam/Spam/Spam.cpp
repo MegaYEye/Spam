@@ -778,31 +778,46 @@ golem::Real Collision::evaluate(const FlannDesc& desc, const grasp::Manipulator:
 	golem::Real eval = REAL_ZERO, c = REAL_ZERO;
 	const Real norm = golem::numeric_const<Real>::ONE / ((desc.depthStdDev * 100) * Math::sqrt(2 * golem::numeric_const<Real>::PI));
 	size_t collisions = 0, checks = 0;
+	static size_t debugjj = 0;
 
 	const U32 jointPerFinger = 4;
 	const U32 fingers = 5;
+	enum jointIndex {
+		abductor = 0,
+		joint1,
+		joint2
+	};
 	// Utilities
 	std::vector<bool> triggeredFingers; triggeredFingers.assign(fingers, false);
-	typedef std::map<U32, FTGuard> GuardMap; GuardMap guardMap;
+	std::vector<grasp::RealSeq> fingerGuardSeq;
+	fingerGuardSeq.resize(fingers);
+	for (std::vector<grasp::RealSeq>::iterator i = fingerGuardSeq.begin(); i != fingerGuardSeq.end(); ++i)
+		i->assign(jointPerFinger, REAL_ZERO);
+	//typedef std::map<U32, FTGuard> GuardMap; GuardMap guardMap;
+	typedef std::map<U32, grasp::RealSeq> GuardMap; GuardMap guardMap;
 	// retrive trigguered guards
 	for (FTGuard::Seq::iterator guard = triggeredGuards.begin(); guard != triggeredGuards.end(); ++guard) {
 		triggeredFingers[guard->getHandChain() - 1] = true;
 		const U32 k = U32(0 - guard->jointIdx);
-		manipulator.getContext().write("guard map key %d\n", -k);
-		guardMap.insert(guardMap.begin(), GuardMap::value_type(-k, *guard));
+		fingerGuardSeq[guard->getHandChain() - 1][guard->getHandJoint()] = guard->force;
+		//manipulator.getContext().write("guard map key %d\n", -k);
+//		guardMap.insert(guardMap.begin(), GuardMap::value_type(-k, *guard));
 	}
-	manipulator.getContext().write("triggered finger [%s,%s,%s,%s,%s], guard %d\n", triggeredFingers[0] ? "T" : "F", triggeredFingers[1] ? "T" : "F", triggeredFingers[2] ? "T" : "F", triggeredFingers[3] ? "T" : "F", triggeredFingers[4] ? "T" : "F", guardMap.size());
+//	if (debugjj % 100 == 0) manipulator.getContext().write("triggered finger [%s,%s,%s,%s,%s], guardMap size %d\n", triggeredFingers[0] ? "T" : "F", triggeredFingers[1] ? "T" : "F", triggeredFingers[2] ? "T" : "F", triggeredFingers[3] ? "T" : "F", triggeredFingers[4] ? "T" : "F", guardMap.size());
 
 	// loops over fingers: thumb = 0,..., pinky = 4
 	for (U32 finger = 0; finger < fingers; ++finger) {
 		// thumb: begin=7, end=10
 		const U32 begin = manipulator.getArmJoints() + (finger*jointPerFinger), end = begin + jointPerFinger;
+		// finger frame
+		Mat34 fingerFrameInv; fingerFrameInv.setInverse(poses[end - 1]);
 		// abductor has no bounds. Retrive contact there at the beginning
-		bool triggeredAbductor = false;
-		GuardMap::const_iterator abductor = guardMap.find(begin);
-		if (abductor != guardMap.end())
-			triggeredAbductor = true;
-		//manipulator.getContext().write("abductor %d\n", triggeredAbductor);
+		const bool triggeredAbductor = Math::abs(fingerGuardSeq[finger][jointIndex::abductor]) > REAL_ZERO;//false;
+		const bool triggeredFlex = Math::abs(fingerGuardSeq[finger][jointIndex::joint1]) > REAL_ZERO || Math::abs(fingerGuardSeq[finger][jointIndex::joint2]) > REAL_ZERO;
+		//GuardMap::const_iterator abductor = guardMap.find(begin);
+		//if (abductor != guardMap.end())
+		//	triggeredAbductor = true;
+//		if (debugjj % 100 == 0) manipulator.getContext().write("abductor %d\n", triggeredAbductor);
 
 		for (U32 i = begin; i < end; ++i) {
 			Bounds bounds = this->bounds[i];
@@ -811,7 +826,7 @@ golem::Real Collision::evaluate(const FlannDesc& desc, const grasp::Manipulator:
 
 			// set current pose to the bounds
 			bounds.setPose(Bounds::Mat34(i < manipulator.getJoints() ? poses[i] : pose));
-
+			
 			// extract the closest point to the joint's bounds as feature
 			Feature query(poses[i].p);
 			nnSearch->knnSearch(query, desc.neighbours, indices, distances);
@@ -823,54 +838,70 @@ golem::Real Collision::evaluate(const FlannDesc& desc, const grasp::Manipulator:
 			
 			Real maxDepth = -golem::numeric_const<Real>::MAX;
 			U32 boundCollisions = golem::numeric_const<U32>::ZERO;
-			Real force = REAL_ZERO;
-			GuardMap::const_iterator jointGuard = guardMap.find(i);
-			if (jointGuard != guardMap.end()) force = jointGuard->second.force;
-			//manipulator.getContext().write("joint %d, triggered %s, torque %d\n", i, jointGuard != guardMap.end() ? "T" : "F", force);
+//			Real force = REAL_ZERO;
+//			GuardMap::const_iterator jointGuard = guardMap.find(i);
+//			if (jointGuard != guardMap.end()) force = jointGuard->second.force;
+////			if (debugjj % 100 == 0) manipulator.getContext().write("joint %d, triggered %s, torque %d\n", i, jointGuard != guardMap.end() ? "T" : "F", force);
 
-			golem::Mat34 inverse; inverse.setInverse(Bounds::Mat34(i < manipulator.getJoints() ? poses[i] : pose)); // compute the inverse of the joint frame
-
+			//golem::Mat34 inverse; inverse.setInverse(Bounds::Mat34(i < manipulator.getJoints() ? poses[i] : pose)); // compute the inverse of the joint frame
+			Vec3 median;
+			median.setZero();
 			for (size_t j = 0; j < seq.size(); ++j) {
 				const Feature f = seq[j];
 				const Real depth = bounds.getDepth(f, true);
+				median += f.getPoint();
 				if (depth > REAL_ZERO) ++boundCollisions; // number of collisions with this bound
 				if (depth > maxDepth) {
-					// computes the direction of contact
-					golem::Vec3 v; inverse.multiply(v, f.getPoint()); //v.normalise(); // compute the point in the joint's reference frame
-					const bool adbDirection = triggeredAbductor ? !((v.y > 0 && abductor->second.force >= 0) || (v.y < 0 && abductor->second.force <= 0)) : true;
-					const bool flexDirection = !((v.z > 0 && force >= 0) || (v.z < 0 && force <= 0));
-					//if (j % 100 == 0) manipulator.getContext().write("adbDirection %s, flexDirection %s\n", adbDirection ? "T" : "F", flexDirection ? "T" : "F");
-					if (adbDirection && flexDirection)
-						maxDepth = depth; // record max depth
+					maxDepth = depth; // record max depth
 				}
-			}
-			if (maxDepth > -golem::numeric_const<Real>::MAX) manipulator.getContext().write("max depth %f\n", maxDepth);
+			}				
 
 			if (!triggeredFingers[finger] && maxDepth > REAL_ZERO) // the hypothesis intersects a finger that has no contact retrieved
 				return REAL_EPS;
 			// if no contact is retrieve and there is no intersection, don't change eval
 
 			// if contact is retrieved
+			Real pointEval = REAL_ZERO;
 			if (triggeredFingers[finger]) {
-				Real pointEval = REAL_ZERO;
-				// there is penetration
-				if (maxDepth > REAL_ZERO)
-					pointEval = Math::exp(-Real(desc.depthStdDev * 100)*(maxDepth / boundCollisions));
-				else // maxDepth here has to be <= 0. no penetration.
-					pointEval = norm*golem::Math::exp(-.5*Math::sqr(Real(maxDepth) / Real(desc.depthStdDev * 100))); // gaussian 
+				median /= seq.size();
+				Vec3 patchPose; fingerFrameInv.multiply(patchPose, median);
+				// abd direction is true if:
+				//   1. patchpose is the y-axis side to produce the observed direction of force. (e.g. y>0 && force<0)
+				//   2. there is no observed direction (so the patch could be anywhere)
+				const bool abdDirection = triggeredAbductor ? !((patchPose.x > REAL_ZERO && fingerGuardSeq[finger][jointIndex::abductor] > REAL_ZERO) || (patchPose.x < REAL_ZERO && fingerGuardSeq[finger][jointIndex::abductor] < REAL_ZERO)) : true;
+				const bool flexDirection = triggeredFlex ? !((patchPose.z > REAL_ZERO && (fingerGuardSeq[finger][jointIndex::joint1] > REAL_ZERO || fingerGuardSeq[finger][jointIndex::joint2] > REAL_ZERO)) || (patchPose.z < REAL_ZERO && (fingerGuardSeq[finger][jointIndex::joint1] < REAL_ZERO || fingerGuardSeq[finger][jointIndex::joint2] < REAL_ZERO))) : true;
+				const Real scalingFac = abdDirection && flexDirection ? 1 : 0.1;
+				//// computes the direction of contact
+				//golem::Vec3 v; inverse.multiply(v, median); //v.normalise(); // compute the point in the joint's reference frame
+				//const bool adbDirection = triggeredAbductor ? !((v.y > 0 && abductor->second.force >= 0) || (v.y < 0 && abductor->second.force <= 0)) : true;
+				//const bool flexDirection = Math::abs(force) > REAL_ZERO ? !((v.z > 0 && force > 0) || (v.z < 0 && force < 0)) : true;
+				//const Real coef = Math::abs(maxDepth) >= 1 ? 1 / Math::abs(maxDepth) : Math::abs(maxDepth);
+				////if (debugjj % 100 == 0) manipulator.getContext().write("coef %f\n", coef);
+				//const Real direction = adbDirection && flexDirection ? 1 /*Math::exp(Real(maxDepth))*/ : Math::exp(Real(maxDepth - 0.01));
+				////if (debugjj % 100 == 0) manipulator.getContext().write("direction %f\n", direction);
+
+				//// there is penetration
+				//if (maxDepth > REAL_ZERO)
+				//	pointEval = Math::exp(-Real(desc.depthStdDev/* * 100*/)*(Real(maxDepth)));
+				//else // maxDepth here has to be <= 0. no penetration.
+				pointEval = scalingFac*norm*golem::Math::exp(-.5*Math::sqr(Real(maxDepth) / Real(desc.depthStdDev/* * 100*/))); // gaussian 
+				//if (debugjj++ % 100 == 0) manipulator.getContext().write("PointEval %f adbDirection %s, flexDirection %s, direction %f\n", pointEval, adbDirection ? "T" : "F", flexDirection ? "T" : "F", direction);
 				golem::kahanSum(eval, c, pointEval);
-				collisions += boundCollisions;
 			}
+			//if (debugjj++ % 100 == 0)  
+			//	manipulator.getContext().write("joint %d [%s, %d] depth %f, eval %f, Lx %f, x %f, collisions %d\n", i, jointGuard != guardMap.end() ? "T" : "F", force, maxDepth, pointEval, 
+			//	maxDepth > REAL_ZERO ? -Real(desc.depthStdDev * 100)*(maxDepth) : -.5*Math::sqr(Real(maxDepth) / Real(desc.depthStdDev * 100)), Real(maxDepth), boundCollisions);
+			collisions += boundCollisions;
 		}
 	}
 
-	const Real likelihood = desc.likelihood*eval / collisions/*((eval + (checks - collisions)) / checks - REAL_ONE)*/;
+	const Real likelihood = desc.likelihood*eval;// / collisions/*((eval + (checks - collisions)) / checks - REAL_ONE)*/;
 
 #ifdef _COLLISION_PERFMON
 	SecTmReal t_end = t.elapsed();
 	tperfEvalPoints += t_end /*tperfEvalPoints < t_end ? t_end : tperfEvalPoints*/;
 	//if (debug /*&& eval < REAL_ONE*/)
-		manipulator.getContext().write("Collision::evaluate(): points=%u, checks=%u, collisions=%u, likelihhod=%f, eval=%f\n", indices.size(), checks, collisions, likelihood, eval / collisions);
+//	if (debugjj++ % 100 == 0)	manipulator.getContext().write("Collision::evaluate(): points=%u, checks=%u, collisions=%u, likelihhod=%f, eval=%f\n", indices.size(), checks, collisions, likelihood, eval / collisions);
 #endif
 
 	return likelihood;

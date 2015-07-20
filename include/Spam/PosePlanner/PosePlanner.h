@@ -94,7 +94,11 @@ public:
 		case action::IG_TRAJ_OPT:
 			str.assign("IG_TRAJ_OPT");
 			break;
+		case action::IG_PLAN_LIFT:
+			str.assign("IG_PLAN_LIFT");
+			break;
 		}
+
 		return str;
 	}
 

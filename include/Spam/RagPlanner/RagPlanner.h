@@ -346,6 +346,8 @@ protected:
 
 	/** Finds a target in configuration space in a new reference frame */
 	void findTarget(const golem::Mat34 &trn, const golem::Controller::State &target, golem::Controller::State &cend, const bool lifting = false);
+	// Finds a grasp frame w.r.t. the world's reference frame
+	void findTarget(const golem::Mat34& queryTrn, const golem::Mat34& modelFrame, const golem::Controller::State& target, golem::Controller::State& cend, const bool lifting = false);
 
 	/** (Global search) trajectory of the entire robot from the configuration space and/or workspace target */
 	virtual void createTrajectory(const golem::Controller::State& begin, const golem::Controller::State* pcend, const golem::Mat34* pwend, golem::SecTmReal t, const golem::Controller::State::Seq& waypoints, golem::Controller::State::Seq& trajectory);
@@ -386,6 +388,7 @@ protected:
 	bool execute(grasp::data::Data::Map::iterator dataPtr, golem::Controller::State::Seq& trajectory);
 
 	virtual void render() const;
+	void renderHand(const golem::Controller::State &state, const golem::Bounds::Seq &bounds, bool clear = true);
 
 	RagPlanner(golem::Scene &scene);
 	~RagPlanner();
