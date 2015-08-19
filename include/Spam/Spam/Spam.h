@@ -233,7 +233,6 @@ public:
 		inline const golem::Vec3 getPoint() const {
 			return (const golem::Vec3)point;
 		}
-
 	};
 
 	/** Bounds */
@@ -313,6 +312,7 @@ public:
 		}
 		/** Penetration depth of a given point, zero if none */
 		inline Real getDepth(const Vec3& point, const bool distance = false) const {
+			//static size_t jj = 0;
 			// if distance true, and there are not collisions, then returns the closest point outside the bounds (negative values) 
 			Real depth = distance ? -golem::numeric_const<Real>::MAX : golem::numeric_const<Real>::ZERO; // if no bounds or collisions, no effect
 			for (typename Triangle::SeqSeq::const_iterator i = triangles.begin(); i != triangles.end(); ++i) {
@@ -320,12 +320,69 @@ public:
 				if (depth < d) // search for maximum depth (can collide only with one mesh within bounds)
 					depth = d;
 			}
-			//if (depth < golem::numeric_const<Real>::ZERO) printf("getdepth=%f\n", depth);
+			//if (jj % 100 == 0) printf("getdepth=%f\n", depth);
 			return depth;
 		}
 
 		inline Real getDepth(const Feature &data, const bool distance = false) const {
 			return getDepth((Bounds::Vec3)data.getPoint(), distance);
+		}
+
+		/** Get surface distance */
+		static inline Real getSurfaceDistance(const typename Triangle::Seq& triangles, const Vec3& point) {
+			Real distance = golem::numeric_const<Real>::MAX;
+			Real penetration = golem::numeric_const<Real>::ONE;
+			for (typename Triangle::Seq::const_iterator i = triangles.begin(); i != triangles.end(); ++i) {
+				const Real d2 = i->point.distance(point);
+				if (distance > d2) // search for minimum distance
+					distance = d2;
+				// check for penetration
+				if (penetration > golem::numeric_const<Real>::ZERO) {
+					const Real d = i->distance - i->normal.dot(point);
+					if (d < golem::numeric_const<Real>::ZERO) // no collision
+						penetration = -golem::numeric_const<Real>::ONE;
+				}
+			}
+			return penetration*distance;
+		}
+		/** Get surface distance */
+		inline Real getSurfaceDistance(const Vec3& point) const {
+			// penetration value is positive if there is a penetration
+//			const Real penetration = getDepth(point) > REAL_ZERO ? REAL_ONE : -REAL_ONE;
+			// distance to the closest surface of this bound
+			Real distance = -golem::numeric_const<Real>::MAX;
+			for (typename Triangle::SeqSeq::const_iterator i = triangles.begin(); i != triangles.end(); ++i) {
+				const Real d = getSurfaceDistance(*i, point);
+				if (distance < d) // search for minimum distance
+					distance = d;
+			}
+			//if (jj % 100 == 0) printf("getdepth=%f\n", depth);
+			return /*penetration**/distance;
+		}
+		
+		/** Get surface distance: negative is outside the bounds */
+		inline Real getSurfaceDistance(const Feature &data) const {
+			return getSurfaceDistance((Bounds::Vec3)data.getPoint());
+		}
+
+		/** Compute minimal distance or avarage penetration */
+		template <typename _Ptr> inline _RealEval distance(_Ptr begin, _Ptr end, golem::Vec3& frame, golem::U32& collisions) const {
+			golem::Vec3 inFrame, outFrame; inFrame.setZero(); outFrame.setZero();
+			_RealEval eval = golem::numeric_const<_RealEval>::ZERO, c = golem::numeric_const<_RealEval>::ZERO, minDist = -golem::numeric_const<Real>::MAX;
+			for (_Ptr i = begin; i < end; ++i) {
+				const Real distance = getSurfaceDistance(*i);
+				if (distance > golem::numeric_const<Real>::ZERO) {
+					golem::kahanSum(eval, c, distance);
+					inFrame += (*i).getPoint();
+					++collisions;
+				}
+				else if (minDist < distance) {
+					minDist = distance;
+					outFrame = (*i).getPoint();
+				}
+			}
+			frame = collisions > 0 ? inFrame / collisions : outFrame;
+			return collisions > 0 ? eval/collisions : minDist;
 		}
 
 		/** Collision likelihood model. No evaluation for points outside the bounds. */
@@ -475,6 +532,9 @@ public:
 		/** Likelihood multiplier */
 		golem::Real likelihood;
 
+		/** Consider a point as a sphere to increase accuracy */
+		golem::Real radius;
+
 		/** Contructor */
 		FlannDesc() {
 			setToDefault();
@@ -487,6 +547,8 @@ public:
 			points = 250;
 			depthStdDev = golem::Real(1000.0);
 			likelihood = golem::Real(1000.0);
+
+			radius = golem::REAL_ZERO;
 		}
 		/** Checks if the description is valid. */
 		virtual bool isValid() const {

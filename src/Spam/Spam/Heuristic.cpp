@@ -637,8 +637,11 @@ void FTDrivenHeuristic::h(const golem::Waypoint &wi, const golem::Waypoint &wj, 
 #ifdef _HEURISTIC_PERFMON
 	++perfH;
 #endif
+	auto kernel = [&] (Real x, Real lambda) -> Real {
+		return /*lambda**/golem::Math::exp(-lambda*x);
+	};
 	Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
-	const Real norm = (REAL_ONE - pBelief->kernel(pBelief->myDesc.sensory.sensoryRange, pBelief->myDesc.lambda));//(ftDrivenDesc.ftModelDesc.enabledLikelihood)?/*REAL_ONE/*/(REAL_ONE - kernel(ftDrivenDesc.ftModelDesc.distMax, ftDrivenDesc.ftModelDesc.lambda)):REAL_ONE;
+	const Real norm = (REAL_ONE - /*pBelief->*/kernel(ftDrivenDesc.ftModelDesc.distMax, /*pBelief->*/ftDrivenDesc.ftModelDesc.lambda));//(ftDrivenDesc.ftModelDesc.enabledLikelihood)?/*REAL_ONE/*/(REAL_ONE - kernel(ftDrivenDesc.ftModelDesc.distMax, ftDrivenDesc.ftModelDesc.lambda)):REAL_ONE;
 	y.clear();
 	const U32 meanIdx = 0;
 	U32 steps = 1;
@@ -1647,8 +1650,16 @@ golem::Real FTDrivenHeuristic::getCollisionCost(const golem::Waypoint &wi, const
 
 	//// Compute the features
 	//ne.compute(*cloudNormals);		// compute the normal at the closest point of the surface
+	auto kernel = [&](Real x, Real lambda) -> Real {
+		return /*lambda**/golem::Math::exp(-lambda*x);
+	};
+
+	auto density = [&](const Real dist) -> Real {
+		return (dist > ftDrivenDesc.ftModelDesc.distMax) ? REAL_ZERO : (dist < REAL_EPS) ? kernel(REAL_EPS, ftDrivenDesc.ftModelDesc.lambda) : kernel(dist, ftDrivenDesc.ftModelDesc.lambda); // esponential up to norm factor
+	};
+
 	Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
-	const Real norm = (REAL_ONE - pBelief->density(pBelief->myDesc.sensory.sensoryRange));//const Real norm = //(ftDrivenDesc.ftModelDesc.enabledLikelihood)?/*REAL_ONE/*/(REAL_ONE - kernel(ftDrivenDesc.ftModelDesc.lambda*ftDrivenDesc.ftModelDesc.distMax)):REAL_ONE;
+	const Real norm = (REAL_ONE - density(ftDrivenDesc.ftModelDesc.distMax/*pBelief->myDesc.sensory.sensoryRange*/));//const Real norm = //(ftDrivenDesc.ftModelDesc.enabledLikelihood)?/*REAL_ONE/*/(REAL_ONE - kernel(ftDrivenDesc.ftModelDesc.lambda*ftDrivenDesc.ftModelDesc.distMax)):REAL_ONE;
 	Real threshold(0.01), cost(REAL_ZERO);
 	for (Chainspace::Index i = handInfo.getChains().begin(); i < handInfo.getChains().end(); ++i) {
 		const RBCoord c(wj.wpos[i]);
@@ -1678,7 +1689,14 @@ golem::Real FTDrivenHeuristic::getCollisionCost(const golem::Waypoint &wi, const
 
 Real FTDrivenHeuristic::testObservations(const grasp::RBCoord &pose, const bool normal) const {
 //	const Real norm = (ftDrivenDesc.ftModelDesc.enabledLikelihood)?/*REAL_ONE/*/(REAL_ONE - density(ftDrivenDesc.ftModelDesc.distMax)):REAL_ONE;
-	const Real norm = (REAL_ONE - pBelief->density(pBelief->myDesc.sensory.sensoryRange));//(ftDrivenDesc.ftModelDesc.enabledLikelihood)?/*REAL_ONE/*/(REAL_ONE - kernel(ftDrivenDesc.ftModelDesc.distMax, ftDrivenDesc.ftModelDesc.lambda)):REAL_ONE;
+	auto kernel = [&](Real x, Real lambda) -> Real {
+		return /*lambda**/golem::Math::exp(-lambda*x);
+	};
+
+	auto density = [&](const Real dist) -> Real {
+		return (dist > ftDrivenDesc.ftModelDesc.distMax) ? REAL_ZERO : (dist < REAL_EPS) ? kernel(REAL_EPS, ftDrivenDesc.ftModelDesc.lambda) : kernel(dist, ftDrivenDesc.ftModelDesc.lambda); // esponential up to norm factor
+	};
+	const Real norm = (REAL_ONE - density(ftDrivenDesc.ftModelDesc.distMax));//(ftDrivenDesc.ftModelDesc.enabledLikelihood)?/*REAL_ONE/*/(REAL_ONE - kernel(ftDrivenDesc.ftModelDesc.distMax, ftDrivenDesc.ftModelDesc.lambda)):REAL_ONE;
 	pcl::PointXYZ searchPoint;
 	searchPoint.x = (float)pose.p.x;
 	searchPoint.y = (float)pose.p.y;
@@ -1719,7 +1737,7 @@ Real FTDrivenHeuristic::testObservations(const grasp::RBCoord &pose, const bool 
 
 		context.write("joint pose <%f %f %f> mug frame <%f %f %f> v <%f %f %f> distance=%f result=%f density=%f\n",
 			pose.p.x, pose.p.y, pose.p.z, (*pBelief->getHypotheses().begin())->sample.p.x, (*pBelief->getHypotheses().begin())->sample.p.y, (*pBelief->getHypotheses().begin())->sample.p.z,
-			v.x, v.y, v.z, pose.p.distance(median), result, norm*pBelief->density(result));
+			v.x, v.y, v.z, pose.p.distance(median), result, norm*density(result));
 		//else {
 		//	Mat33 rot;
 		//	Real roll, pitch, yaw;
@@ -1733,7 +1751,7 @@ Real FTDrivenHeuristic::testObservations(const grasp::RBCoord &pose, const bool 
 	else {
 	context.write("joint pose <%f %f %f> mug frame <%f %f %f> distance=%f result=%f density=%f\n",
 		pose.p.x, pose.p.y, pose.p.z, (*pBelief->getHypotheses().begin())->sample.p.x, (*pBelief->getHypotheses().begin())->sample.p.y, (*pBelief->getHypotheses().begin())->sample.p.z,
-		pose.p.distance(median), result, norm*pBelief->density(result));
+		pose.p.distance(median), result, norm*density(result));
 	}
 	return result;
 }

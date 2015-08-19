@@ -263,8 +263,10 @@ void spam::PosePlanner::Data::createRender() {
 	{
 		golem::CriticalSectionWrapper csw(owner->getCS());
 		owner->modelRenderer.reset();
-		owner->objectRenderer.reset();
 		owner->beliefRenderer.reset();
+		owner->hypothesisRenderer.reset();
+		owner->groundTruthRenderer.reset();
+		owner->queryRenderer.reset();
 
 		// model/query
 		const grasp::Vec3Seq& vertices = mode == MODE_MODEL ? modelVertices : queryVertices;
@@ -283,20 +285,22 @@ void spam::PosePlanner::Data::createRender() {
 
 		if (showmodel || showquery) {
 			if (showmodel && !showquery) {
-				owner->objectRenderer.addAxes(modelFrame, owner->modelFrameSize);
+				owner->modelRenderer.addAxes(modelFrame, owner->modelFrameSize);
+				if (owner->showModelPointCloud)
+					owner->modelAppearance.drawPoints(modelPoints, owner->modelRenderer);
 			}
 
 			if (showquery) {
-				if (owner->showDistrPoints) {
+				if (owner->showQueryDistribPointClouds) {
 					U8 id = 0;
 					const Real max = owner->pBelief->maxWeight(true);
 					//1 / (2 * (sigma*sqrt(2 * pi)))*exp(-.5*((x - mu) / sigma). ^ 2);
 					const Real sigma = 0.2, norm = 1 / (2 * (sigma*Math::sqrt(2 * REAL_PI)));
 					for (auto i = 0; i < owner->pBelief->getSamples().size(); ++i) {
-						if (owner->pBelief->getSamples().size() > 100 && i % 10 != 0) continue;
+						if (owner->pBelief->getSamples().size() > 10 && i % 10 != 0) continue;
 						grasp::RBPose::Sample &j = owner->pBelief->getSamples()[i];
 						owner->beliefRenderer.addAxes(j.toMat34() * modelFrame, owner->distrFrameSize*owner->pBelief->normalise(j));
-						owner->sampleAppearance.colourOverride = true;
+						owner->debugAppearance.colourOverride = true;
 						const Real weight = owner->pBelief->normalise(j) / max;
 						const Real red = norm*Math::exp(-.5*Math::sqr((weight - 1) / sigma)) * 255;
 						//context.write("red = %f, U8(red)=%f\n", norm*Math::exp(-.5*Math::sqr((weight - 1) / sigma)), U8(norm*Math::exp(-.5*Math::sqr((weight - 1) / sigma))));
@@ -304,29 +308,29 @@ void spam::PosePlanner::Data::createRender() {
 						const Real blue = norm*Math::exp(-.5*Math::sqr((weight - .0) / sigma)) * 255;
 						///*j.weight*/Math::log2(1+pBelief->normalise(j)/max)*255;
 						//context.debug("weight=%f, normalised=%f, red=%u, green=%u, blue=%u\n", pBelief->normalise(j), pBelief->normalise(j) / max, U8(red), U8(green), U8(blue));
-						owner->sampleAppearance.colour = RGBA(U8(red), U8(green), U8(blue), 200);//RGBA(red > 255 ? 255 : U8(red), 255 - red < 0 ? 0 : U8(1-red), 0, 200);
+						owner->debugAppearance.colour = weight > REAL_ZERO ? RGBA(U8(red), U8(green), U8(blue), 200) : RGBA::BLACK;//RGBA(red > 255 ? 255 : U8(red), 255 - red < 0 ? 0 : U8(1-red), 0, 200);
 						grasp::Cloud::PointSeq m;
 						grasp::Cloud::transform(j.toMat34(), modelPoints, m);
-						owner->sampleAppearance.draw(m, owner->beliefRenderer);
+//						if (weight > 0.7)
+						owner->debugAppearance.draw(m, owner->beliefRenderer);
 					}
 				}
-				if (owner->showSamplePoints) {
-					//owner->sampleAppearance.colourOverride = true;
+				if (owner->showHypothesesPointClouds) {
+					owner->hypothesisAppearance.colourOverride = true;
 					//context.write("showSamplePoints hypotheses size %d\n", pBelief->getHypotheses().size());
 					for (Hypothesis::Seq::const_iterator i = owner->pBelief->getHypotheses().begin(); i != owner->pBelief->getHypotheses().end(); ++i) {
-						owner->objectRenderer.addAxes((*i)->toRBPoseSampleGF().toMat34(), owner->hypothesisFrameSize);
-						owner->sampleAppearance.colour = i == owner->pBelief->getHypotheses().begin() ? RGBA::GREEN : RGBA::BLUE;
-						owner->sampleAppearance.draw((*i)->getCloud(), owner->objectRenderer);
-						if (owner->showMeanHypothesis)
+						owner->hypothesisRenderer.addAxes((*i)->toRBPoseSampleGF().toMat34(), owner->hypothesisFrameSize);
+						owner->hypothesisAppearance.colour = i == owner->pBelief->getHypotheses().begin() ? RGBA::GREEN : RGBA::BLUE;
+						owner->hypothesisAppearance.draw((*i)->getCloud(), owner->hypothesisRenderer);
+						if (owner->showMeanHypothesisPointClouds)
 							break;
 					}
-					owner->pHeuristic->renderHypothesisCollisionBounds(owner->objectRenderer);
+					if (owner->showHypothesisBounds) owner->pHeuristic->renderHypothesisCollisionBounds(owner->hypothesisRenderer);
 				}
-				if (owner->showObject) {
-					owner->sampleAppearance.colour = RGBA::YELLOW;
-					owner->sampleAppearance.draw(simulateObjectPose, owner->objectRenderer);
+				if (owner->showGroundTruth) {
+					owner->groundTruthAppearance.draw(simulateObjectPose, owner->groundTruthRenderer);
 				}
-				if (owner->showQueryDistrib) {
+				if (owner->showQueryDistribFrames) {
 					for (size_t i = 0; i < owner->distribSamples; ++i) {
 						owner->beliefRenderer.addAxes(owner->pBelief->sample().toMat34() * modelFrame, owner->distrFrameSize);
 					}
@@ -335,9 +339,9 @@ void spam::PosePlanner::Data::createRender() {
 		}
 
 		if (!queryPoints.empty()) {
-			if (owner->showQueryPoints) {
-				owner->beliefRenderer.addAxes(queryFrame, owner->queryFrameSize);
-				owner->sampleAppearance.draw(queryPoints, owner->beliefRenderer);
+			if (owner->showQueryPointCloud) {
+				owner->queryRenderer.addAxes(queryFrame, owner->queryFrameSize);
+				owner->queryAppearance.draw(queryPoints, owner->queryRenderer);
 			}
 		}
 	}
@@ -462,15 +466,15 @@ void PosePlanner::Desc::load(golem::Context& context, const golem::XMLContext* x
 	uiPlannerDesc->pPlannerDesc->pHeuristicDesc.reset(pFTDrivenHeuristic);
 	spam::XMLData((FTDrivenHeuristic::Desc&)*uiPlannerDesc->pPlannerDesc->pHeuristicDesc, xmlcontext->getContextFirst("heuristic"));
 
-	try {
-		XMLData((grasp::RBPose::Desc&)*pRBPoseDesc, const_cast<golem::XMLContext*>(xmlcontext));
-	}
-	catch (const golem::MsgXMLParser& msg) { context.write("%s\n", msg.str().c_str()); }
-	
-	Belief::Desc* pBeliefDesc(new Belief::Desc);
-	(grasp::RBPose::Desc&)*pBeliefDesc = *pRBPoseDesc;
-	pRBPoseDesc.reset(pBeliefDesc);
-	spam::XMLData((Belief::Desc&)*pRBPoseDesc, const_cast<golem::XMLContext*>(xmlcontext));
+	//try {
+	//	XMLData((grasp::RBPose::Desc&)*pRBPoseDesc, const_cast<golem::XMLContext*>(xmlcontext));
+	//}
+	//catch (const golem::MsgXMLParser& msg) { context.write("%s\n", msg.str().c_str()); }
+	//
+	//Belief::Desc* pBeliefDesc(new Belief::Desc);
+	//(grasp::RBPose::Desc&)*pBeliefDesc = *pRBPoseDesc;
+	//pRBPoseDesc.reset(pBeliefDesc);
+	spam::XMLData((Belief::Desc&)*pBeliefDesc, xmlcontext->getContextFirst("belief")/*const_cast<golem::XMLContext*>(xmlcontext)*/);
 
 	try {
 		XMLData(modelTrn, xmlcontext->getContextFirst("model_trn_frame"));
@@ -486,9 +490,13 @@ void PosePlanner::Desc::load(golem::Context& context, const golem::XMLContext* x
 	//golem::XMLData("num_poses", val.numPoses, xmlcontext);
 	//golem::XMLData("num_hypotheses", val.numHypotheses, xmlcontext);
 	golem::XMLData("distrib_samples", distribSamples, xmlcontext->getContextFirst("appearance"));
-//	XMLData(modelAppearance, xmlcontext->getContextFirst("appearance model"));
-//	XMLData(queryAppearance, xmlcontext->getContextFirst("appearance query"));
-	
+
+	modelAppearance.xmlData(xmlcontext->getContextFirst("model_appearance", false), false);
+	queryAppearance.xmlData(xmlcontext->getContextFirst("query_appearance", false), false);
+	hypothesisAppearance.xmlData(xmlcontext->getContextFirst("hypothesis_appearance", false), false);
+	debugAppearance.xmlData(xmlcontext->getContextFirst("debug_appearance", false), false);
+	groundTruthAppearance.xmlData(xmlcontext->getContextFirst("groundtruth_appearance", false), false);
+
 	golem::XMLData("data_name", dataName, const_cast<golem::XMLContext*>(xmlcontext));
 	golem::XMLData("screen_capture", screenCapture, const_cast<golem::XMLContext*>(xmlcontext));
 
@@ -581,8 +589,8 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	golem::mkdir(trial->path.c_str()); // make sure that the directory exists
 	trialPtr = trialDataMap.end();
 
-	pRBPose = desc.pRBPoseDesc->create(context); // throws
-	pBelief = static_cast<Belief*>(pRBPose.get());
+	//pRBPose = desc.pRBPoseDesc->create(context); // throws
+	pBelief = desc.pBeliefDesc->create(context); //static_cast<Belief*>(pRBPose.get());
 
 	grasp::Sensor::Map::const_iterator modelCameraPtr = sensorMap.find(desc.modelCamera);
 	modelCamera = modelCameraPtr != sensorMap.end() ? is<Camera>(modelCameraPtr->second.get()) : nullptr;
@@ -684,9 +692,12 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	for (Query::Desc::Map::const_iterator i = desc.queryDescMap.begin(); i != desc.queryDescMap.end(); ++i)
 		queryMap.insert(std::make_pair(i->first, i->second->create(context, i->first)));
 
-		//	modelAppearance = desc.modelAppearance;
-//	queryAppearance = desc.queryAppearance;
-////	sampleAppearance.setToDefault();
+	modelAppearance = desc.modelAppearance;
+	queryAppearance = desc.queryAppearance;
+	hypothesisAppearance = desc.hypothesisAppearance;
+	debugAppearance = desc.debugAppearance;
+	groundTruthAppearance = desc.groundTruthAppearance;
+	sampleAppearance.setToDefault();
 //
 //	featureFrameSize = desc.featureFrameSize;
 //	distribFrameSize = desc.distribFrameSize;
@@ -710,7 +721,7 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	manipulatorAppearance = desc.manipulatorAppearance;
 
 	pHeuristic = dynamic_cast<FTDrivenHeuristic*>(&planner->getHeuristic());
-	pHeuristic->setBelief(pBelief);
+	pHeuristic->setBelief(&*pBelief);
 	pHeuristic->setManipulator(manipulator.get());
 
 	myDesc = desc;
@@ -729,16 +740,18 @@ bool spam::PosePlanner::create(const Desc& desc) {
 		desc = "Press a key to: (M)odel/(Q)ery estimation...";
 	}));
 	menuCmdMap.insert(std::make_pair("PM", [=]() {
+		// item name
+		readString("Enter item name: ", modelItem);
 		// scan, if needed
 		if (option("YN", "Scan? (Y/N)") == 'Y') {
 			try {
-				(void)objectCapture(Data::MODE_MODEL);
+				(void)objectCapture(Data::MODE_MODEL, modelItem);
 			}
 			catch (const Message &msg) { context.write("%s\n", msg.what()); return;  }
 		}
 		// estimate
 		try {
-			(void)estimatePose(Data::MODE_MODEL);
+			(void)estimatePose(Data::MODE_MODEL, modelItem);
 		}
 			catch (const Message &msg) {
 			context.write("%s\n", msg.what());
@@ -747,16 +760,19 @@ bool spam::PosePlanner::create(const Desc& desc) {
 		context.write("Done!\n");
 	}));
 	menuCmdMap.insert(std::make_pair("PQ", [=]() {
+		// item name
+		showModelPointCloud = false;
+		readString("Enter item name: ", queryItem);
 		// scan, if needed
 		if (option("YN", "Scan? (Y/N)") == 'Y') {
 			try {
-				(void)objectCapture(Data::MODE_QUERY);
+				(void)objectCapture(Data::MODE_QUERY, queryItem);
 			}
 			catch (const Message &msg) { context.write("%s\n", msg.what()); return; }
 		}
 		// estimate
 		try {
-			(void)estimatePose(Data::MODE_QUERY);
+			(void)estimatePose(Data::MODE_QUERY, queryItem);
 		}
 		catch (const Message &msg) {
 			context.write("%s\n", msg.what());
@@ -764,33 +780,33 @@ bool spam::PosePlanner::create(const Desc& desc) {
 		// finish
 		context.write("Done!\n");
 	}));
-	menuCtrlMap.insert(std::make_pair("Z", [=](MenuCmdMap& menuCmdMap, std::string& desc) {
-		desc = "Belief state rendering options...";
-	}));
-	menuCmdMap.insert(std::make_pair("Z-", [=]() {
-		// render hypotheses
-		showQueryDistrib = !showQueryDistrib;
-		context.write("Query (low-dim) distribution %s\n", showQueryDistrib ? "ON" : "OFF");
-		createRender();
-	}));
-	menuCmdMap.insert(std::make_pair("Z_", [=]() {
-		// render query distribution
-		showDistrPoints = !showDistrPoints;
-		context.write("Query (high-dim) distribution %s\n", showDistrPoints ? "ON" : "OFF");
-		createRender();
-	}));
-	menuCmdMap.insert(std::make_pair("Z=", [=]() {
-		showObject = showSamplePoints && showMeanHypothesis ? !showObject : showObject;
-		showMeanHypothesis = showSamplePoints && !showObject ? !showMeanHypothesis : showObject ? !showMeanHypothesis : showMeanHypothesis;
-		showSamplePoints = !showMeanHypothesis && !showObject ? !showSamplePoints : showObject ? !showSamplePoints : showSamplePoints;
-		context.write("Hypotheses distribution %s\nShow Mean Pose %s\nObject Points %s\n-----------\n", showSamplePoints ? "ON" : "OFF", showMeanHypothesis ? "ON" : "OFF", showObject ? "ON" : "OFF");		
-		createRender();
-	}));
-	menuCmdMap.insert(std::make_pair("Z+", [=]() {
-		showQueryPoints = !showQueryPoints;
-		context.write("Query points %s\n", showQueryPoints ? "ON" : "OFF");
-		createRender();
-	}));
+	//menuCtrlMap.insert(std::make_pair("Z", [=](MenuCmdMap& menuCmdMap, std::string& desc) {
+	//	desc = "Belief state rendering options...";
+	//}));
+	//menuCmdMap.insert(std::make_pair("Z-", [=]() {
+	//	// render hypotheses
+	//	showQueryDistrib = !showQueryDistrib;
+	//	context.write("Query (low-dim) distribution %s\n", showQueryDistrib ? "ON" : "OFF");
+	//	createRender();
+	//}));
+	//menuCmdMap.insert(std::make_pair("Z_", [=]() {
+	//	// render query distribution
+	//	showDistrPoints = !showDistrPoints;
+	//	context.write("Query (high-dim) distribution %s\n", showDistrPoints ? "ON" : "OFF");
+	//	createRender();
+	//}));
+	//menuCmdMap.insert(std::make_pair("Z=", [=]() {
+	//	showObject = showSamplePoints && showMeanHypothesis ? !showObject : showObject;
+	//	showMeanHypothesis = showSamplePoints && !showObject ? !showMeanHypothesis : showObject ? !showMeanHypothesis : showMeanHypothesis;
+	//	showSamplePoints = !showMeanHypothesis && !showObject ? !showSamplePoints : showObject ? !showSamplePoints : showSamplePoints;
+	//	context.write("Hypotheses distribution %s\nShow Mean Pose %s\nObject Points %s\n-----------\n", showSamplePoints ? "ON" : "OFF", showMeanHypothesis ? "ON" : "OFF", showObject ? "ON" : "OFF");		
+	//	createRender();
+	//}));
+	//menuCmdMap.insert(std::make_pair("Z+", [=]() {
+	//	showQueryPoints = !showQueryPoints;
+	//	context.write("Query points %s\n", showQueryPoints ? "ON" : "OFF");
+	//	createRender();
+	//}));
 
 	return true;
 }
@@ -801,27 +817,25 @@ void spam::PosePlanner::render() const {
 	Player::render();
 
 	golem::CriticalSectionWrapper cswRenderer(getCS());
-	beliefRenderer.render();
 	modelRenderer.render();
-	objectRenderer.render();
+	beliefRenderer.render();
+	hypothesisRenderer.render();
+	groundTruthRenderer.render();
+	queryRenderer.render();
 }
 
 //------------------------------------------------------------------------------
 
 void spam::PosePlanner::resetDataPointers() {
-	//auto ptr = getPtr<Data>(queryDataPtr);
-	//if (ptr != nullptr) ptr->queryPoints.clear();
-//	queryDataPtr = getData().end();
-	showModelPoints = false;
-	showQueryPoints = false;
+	showModelPointCloud = false;
 	showModelFeatures = false;
-	showQueryDistrib = false;
-	showSamplePoints = false;
-	showDistrPoints = false;
-	showMeanHypothesis = false;
-	showObject = false;
-	showPoints = true;
-//	showTest = false;
+	showQueryPointCloud = false;
+	showHypothesesPointClouds = false;
+	showMeanHypothesisPointClouds = false;
+	showHypothesisBounds = false;
+	showQueryDistribFrames = false;
+	showQueryDistribPointClouds = false;
+	showGroundTruth = false;
 	featureIndex = -1;
 }
 
@@ -864,13 +878,12 @@ void spam::PosePlanner::create(const golem::Controller::State::Seq& inp, golem::
 
 //------------------------------------------------------------------------------
 
-grasp::data::Item::Map::iterator spam::PosePlanner::estimatePose(Data::Mode mode) {
-	std::string &itemName = mode != Data::MODE_MODEL ? queryItem : modelItem;
+grasp::data::Item::Map::iterator spam::PosePlanner::estimatePose(Data::Mode mode, std::string &itemName) {
+//	std::string &itemName = mode != Data::MODE_MODEL ? queryItem : modelItem;
 	grasp::data::Handler* handler = mode != Data::MODE_MODEL ? queryHandler : modelHandler;
 	
-	context.write("Create %s\n", mode != Data::MODE_MODEL ? "query" : "model");
 	// item name
-	readString("Enter item name: ", itemName);
+//	readString("Enter item name: ", itemName);
 	grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(itemName);
 	if (ptr == to<Data>(dataCurrentPtr)->itemMap.end())
 		throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): Does not find %s.", itemName.c_str());
@@ -893,25 +906,47 @@ grasp::data::Item::Map::iterator spam::PosePlanner::estimatePose(Data::Mode mode
 	Cloud::PointSeq points;
 	points.resize(curvPoints.size());
 	Cloud::copy(curvPoints, points);
-
+	// reset pointer for rendering
+	resetDataPointers();
 	if (mode == Data::MODE_MODEL) {
+		context.write("Create model on %s handler:%s\n", ptr->first.c_str(), pointsCurv->getHandler().getID().c_str());
 		pBelief->createModel(curvPoints);
-		modelFrame = Belief::createFrame(mPoints);
+		modelFrame = pBelief->createFrame(mPoints);
 		grasp::to<Data>(dataCurrentPtr)->modelFrame = modelFrame;
 		grasp::to<Data>(dataCurrentPtr)->modelPoints = modelPoints = points;
-		resetDataPointers();
-		showModelPoints = true;
-		to<Data>(dataCurrentPtr)->createRender();
+		showModelPointCloud = true;
 		simRBPose->createModel(curvPoints);
 		simModelFrame = simRBPose->createFrame(mPoints);
 	}
 	else {
+		context.write("Create query on %s handler:%s\n", ptr->first.c_str(), pointsCurv->getHandler().getID().c_str());
 		if (modelPoints.empty())
 			throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): no model has been created.");
+
 		//Mat34 t;
 		//t.setId();
 		//t.p = Vec3(.1, .1, 0);
 		//Cloud::transform(t, points, points);
+		if (true/*option("YN", "Do you want to load the simulated object? (Y/N)") == 'Y'*/) {
+			grasp::to<Data>(dataCurrentPtr)->simulateObjectPose.clear();
+			grasp::to<Data>(dataCurrentPtr)->simulateObjectPose.reserve(modelPoints.size());
+			for (grasp::Cloud::PointSeq::const_iterator point = modelPoints.begin(); point != modelPoints.end(); ++point) {
+				grasp::Cloud::Point p = *point;
+				grasp::Cloud::setColour(golem::RGBA::YELLOW, p);
+				grasp::to<Data>(dataCurrentPtr)->simulateObjectPose.push_back(p);
+			}
+			if (true/*option("YN", "Do you want to tranform the simulated object? (Y/N)") == 'Y'*/) {
+				simRBPose->createQuery(points);
+				simQueryFrame = simRBPose->maximum().toMat34();
+				grasp::Cloud::transform(/*grasp::to<Data>(dataCurrentPtr)->queryTransform*/simQueryFrame, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+				showGroundTruth = true;
+			}
+			else
+				grasp::Cloud::transform(grasp::to<Data>(dataCurrentPtr)->queryTransform, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+
+			pBelief->realPose = simQueryFrame*modelFrame;
+
+		}
 		pBelief->createQuery(points);
 		// compute transformation model -> query
 		const grasp::RBPose::Sample trn = pBelief->createHypotheses(modelPoints, modelFrame);
@@ -925,38 +960,20 @@ grasp::data::Item::Map::iterator spam::PosePlanner::estimatePose(Data::Mode mode
 		grasp::to<Data>(dataCurrentPtr)->hypotheses = pBelief->getHypothesesToSample();
 		pHeuristic->setHypothesisBounds();
 
-		if (option("YN", "Do you want to load the simulated object? (Y/N)") == 'Y') {
-			grasp::to<Data>(dataCurrentPtr)->simulateObjectPose.clear();
-			grasp::to<Data>(dataCurrentPtr)->simulateObjectPose.reserve(modelPoints.size());
-			for (grasp::Cloud::PointSeq::const_iterator point = modelPoints.begin(); point != modelPoints.end(); ++point) {
-				grasp::Cloud::Point p = *point;
-				grasp::Cloud::setColour(golem::RGBA::YELLOW, p);
-				grasp::to<Data>(dataCurrentPtr)->simulateObjectPose.push_back(p);
-			}
-			if (option("YN", "Do you want to tranform the simulated object? (Y/N)") == 'Y') {
-				simRBPose->createQuery(points);
-				simQueryFrame = simRBPose->maximum().toMat34();
-				grasp::Cloud::transform(/*grasp::to<Data>(dataCurrentPtr)->queryTransform*/simQueryFrame, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
-			}
-			else
-				grasp::Cloud::transform(grasp::to<Data>(dataCurrentPtr)->queryTransform, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
-
-		}
-
-		resetDataPointers();
-		//showSamplePoints = true; // shows hypotheses and mean pose
-		showMeanHypothesis = true;
-		showObject = true;
-		showQueryPoints = true;	
-		showQueryDistrib = true;
-		to<Data>(dataCurrentPtr)->createRender();
+		showModelPointCloud = false;
+		showQueryPointCloud = false;
+		showQueryDistribPointClouds = false;
+		showQueryDistribFrames = true;
+		showHypothesesPointClouds = true;
+		showMeanHypothesisPointClouds = false;
 	}
-
+	// render point cloud
+	to<Data>(dataCurrentPtr)->createRender();
 	return ptr;
 }
 
-grasp::data::Item::Map::iterator spam::PosePlanner::objectCapture(const Data::Mode mode) {
-	std::string& itemName = mode == Data::MODE_DEFAULT ? objectItem : mode != Data::MODE_MODEL ? queryItem : modelItem;
+grasp::data::Item::Map::iterator spam::PosePlanner::objectCapture(const Data::Mode mode, std::string &itemName) {
+//	std::string& itemName = mode == Data::MODE_DEFAULT ? objectItem : mode != Data::MODE_MODEL ? queryItem : modelItem;
 	const std::string itemNameRaw = itemName + "_raw";
 	grasp::data::Handler* handler = mode == Data::MODE_DEFAULT ? objectHandler : mode != Data::MODE_MODEL ? queryHandler : modelHandler;
 	grasp::data::Handler* handlerScan = mode != Data::MODE_MODEL ? queryHandlerScan : modelHandlerScan;
@@ -978,7 +995,7 @@ grasp::data::Item::Map::iterator spam::PosePlanner::objectCapture(const Data::Mo
 	const bool isEnabledDeformationMap = camera && camera->getCurrentCalibration()->isEnabledDeformationMap();
 	ScopeGuard guard([&]() { if (camera) camera->getCurrentCalibration()->enableDeformationMap(isEnabledDeformationMap); });
 	if (camera && camera->getCurrentCalibration()->hasDeformationMap())
-		camera->getCurrentCalibration()->enableDeformationMap(option("YN", "Use deformation map (Y/N)...") == 'Y');
+		camera->getCurrentCalibration()->enableDeformationMap(true);
 
 	ConfigMat34::Seq::const_iterator pose = scanPoseSeq.begin();
 	size_t index = 0, size = scanPoseSeq.size();
@@ -1013,7 +1030,7 @@ grasp::data::Item::Map::iterator spam::PosePlanner::objectCapture(const Data::Mo
 	data::Item::Ptr item = transform->transform(list);
 
 	// item name
-	readString("Save point Curv as: ", itemName);
+//	readString("Save point Curv as: ", itemName);
 
 	// insert processed object, remove old one
 	data::Item::Map::iterator pointCurvPtr;

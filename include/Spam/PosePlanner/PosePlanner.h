@@ -397,6 +397,8 @@ public:
 		std::string name;
 		/** Trial path */
 		std::string path;
+		/** Trial path only to the last directory */
+		std::string dirPath;
 		/** Object name */
 		std::string object;
 		/** Trial extension */
@@ -437,6 +439,7 @@ public:
 
 			name = "Default";
 			path = "./data/rag_analysis/jug.xml";
+			dirPath = "./data/rag_analysis/";
 			extTrial = ".xml";
 			sepName = "-";
 
@@ -555,7 +558,7 @@ public:
 		TrialData::Ptr trialData;
 
 		/** Pose distribution */
-		grasp::RBPose::Desc::Ptr pRBPoseDesc;
+		Belief::Desc::Ptr pBeliefDesc;
 
 
 		/** Model pose estimation camera */
@@ -650,10 +653,16 @@ public:
 		/** Grasp pose closed (grasp) */
 		grasp::ConfigMat34 graspPoseClosed;
 
-		///** Model feature appearance */
-		//grasp::RBPose::Feature::Appearance modelAppearance;
-		///** Query feature appearance */
-		//grasp::RBPose::Feature::Appearance queryAppearance;
+		/** Model feature appearance */
+		grasp::Cloud::Appearance modelAppearance;
+		/** Query feature appearance */
+		grasp::Cloud::Appearance queryAppearance;
+		/** Appereance for point clouds: hypothesis point clouds */
+		grasp::Cloud::Appearance hypothesisAppearance;
+		/** Appereance for point clouds: debug point clouds */
+		grasp::Cloud::Appearance debugAppearance;
+		/** Appereance for point clouds: ground truth point clouds */
+		grasp::Cloud::Appearance groundTruthAppearance;
 		///** Feature frame size */
 		//golem::Vec3 featureFrameSize;
 		///** Distribution frame size */
@@ -685,7 +694,7 @@ public:
 			dataName.clear();
 			trialData.reset(new TrialData);
 
-			pRBPoseDesc.reset(new grasp::RBPose::Desc);
+			pBeliefDesc.reset(new Belief::Desc);
 
 			modelCamera.clear();
 			modelHandlerScan.clear();
@@ -738,8 +747,11 @@ public:
 			graspPoseOpen.setToDefault();
 			graspPoseClosed.setToDefault();
 
-			//modelAppearance.setToDefault();
-			//queryAppearance.setToDefault();
+			modelAppearance.setToDefault();
+			queryAppearance.setToDefault();
+			hypothesisAppearance.setToDefault();
+			debugAppearance.setToDefault();
+			groundTruthAppearance.setToDefault();
 			//featureFrameSize.set(golem::Real(0.1));
 			//distribFrameSize.set(golem::Real(0.01));
 			distribSamples = 100;
@@ -766,7 +778,7 @@ public:
 			grasp::Assert::valid(dataDesc != nullptr && grasp::is<Data::Desc>(dataDesc.get()), ac, "dataDesc: unknown type");
 
 			grasp::Assert::valid(dataName.length() > 0, ac, "dataName: invalid");
-			pRBPoseDesc->assertValid(grasp::Assert::Context(ac, "RBPose desc: invalid"));
+			pBeliefDesc->assertValid(grasp::Assert::Context(ac, "Belief desc: invalid"));
 
 			grasp::Assert::valid(manipulatorDesc != nullptr, ac, "manipulatorDesc: null");
 			manipulatorDesc->assertValid(grasp::Assert::Context(ac, "manipulatorDesc->"));
@@ -797,8 +809,8 @@ public:
 
 	/** Reset belief state */
 	inline void createBeliefState() {
-		pRBPose = myDesc.pRBPoseDesc->create(context); // throws
-		pBelief = static_cast<Belief*>(pRBPose.get());
+//		pRBPose = myDesc.pRBPoseDesc->create(context); // throws
+		pBelief = myDesc.pBeliefDesc->create(context);  //static_cast<Belief*>(pRBPose.get());
 	}
 
 protected:
@@ -818,8 +830,8 @@ protected:
 	TrialData::Ptr createTrialData();
 
 	/** Pose distribution */
-	grasp::RBPose::Ptr pRBPose;
-	Belief* pBelief; //grasp::RBPose::Ptr pRBPose;
+//	grasp::RBPose::Ptr pRBPose;
+	Belief::Ptr pBelief; //grasp::RBPose::Ptr pRBPose;
 
 	/** Model pose estimation camera */
 	grasp::Camera* modelCamera;
@@ -842,9 +854,6 @@ protected:
 	golem::RGBA modelColourSolid;
 	/** Model colour wireframe */
 	golem::RGBA modelColourWire;
-
-	/** Model renderer */
-	golem::DebugRenderer modelRenderer;
 
 	/** Model trajectory handler */
 	grasp::data::Handler* modelHandlerTrj;
@@ -872,9 +881,6 @@ protected:
 	golem::RGBA queryColourSolid;
 	/** Query colour wireframe */
 	golem::RGBA queryColourWire;
-
-	/** Query renderer */
-	golem::DebugRenderer beliefRenderer;
 
 	/** Query trajectory handler */
 	grasp::data::Handler* queryHandlerTrj;
@@ -908,8 +914,6 @@ protected:
 	grasp::ConfigMat34::Seq objectScanPoseSeq;
 	/** Object manual frame adjustment */
 	grasp::RBAdjust objectFrameAdjustment;
-	/** Object renderer */
-	golem::DebugRenderer objectRenderer;
 	/** Accurate pose estimation for the simulated object */
 	grasp::RBPose::Ptr simRBPose;
 	/** Reference frames */
@@ -942,28 +946,51 @@ protected:
 	/** Object transformation (for test porpuses) */
 	golem::Mat34 objectTrn;
 
-	/** Show model points */
-	bool showModelPoints;
-	/** Show query points */
-	bool showQueryPoints;
+	/** Appereance for point clouds: model point cloud */
+	grasp::Cloud::Appearance modelAppearance;
+	/** Show model point cloud */
+	bool showModelPointCloud;
 	/** Show model features */
 	bool showModelFeatures;
-	/** Show query distribution */
-	bool showQueryDistrib;
-	/** Show pose distribution **/
-	bool showPoseDistrib;
-	/** Show mean hypothesis */
-	bool showMeanHypothesis;
-	/** Show hypothesis distribution **/
-	bool showSamplePoints;
-	/** Show query distribution */
-	bool showDistrPoints;
-	/** Show simulated pose of the object */
-	bool showObject;
 	/** Displayed feature index */
 	golem::U32 featureIndex;
-	/** Show processed points */
-	bool showPoints;
+	/** Model renderer */
+	golem::DebugRenderer modelRenderer;
+
+	/** Appereance for point clouds: query point cloud */
+	grasp::Cloud::Appearance queryAppearance;
+	/** Show the query point cloud */
+	bool showQueryPointCloud;
+	/** Query renderer */
+	golem::DebugRenderer queryRenderer;
+
+	/** Appereance for point clouds: hypothesis point clouds */
+	grasp::Cloud::Appearance hypothesisAppearance;
+	/** Show the query point cloud */
+	bool showHypothesesPointClouds;
+	/** Show only the mean hypothesis */
+	bool showMeanHypothesisPointClouds;
+	/** Show only the mean hypothesis */
+	bool showHypothesisBounds;
+	/** Hypothesis renderer */
+	golem::DebugRenderer hypothesisRenderer;
+
+	/** Appereance for point clouds: debug point clouds */
+	grasp::Cloud::Appearance debugAppearance;
+	/** Show query distribution (as frames) */
+	bool showQueryDistribFrames;
+	/** Show pose distribution **/
+	bool showQueryDistribPointClouds;
+	/** Query renderer */
+	golem::DebugRenderer beliefRenderer;
+
+
+	/** Appereance for point clouds: ground truth point clouds */
+	grasp::Cloud::Appearance groundTruthAppearance;
+	/** Show simulated pose of the object */
+	bool showGroundTruth;
+	/** Query renderer */
+	golem::DebugRenderer groundTruthRenderer;
 
 	/** Rendering model frame size */
 	golem::Vec3 modelFrameSize;
@@ -981,9 +1008,9 @@ protected:
 	FTDrivenHeuristic* pHeuristic;
 
 	/** Pose estimation */
-	grasp::data::Item::Map::iterator estimatePose(const Data::Mode mode);
+	grasp::data::Item::Map::iterator estimatePose(const Data::Mode mode, std::string &itemName);
 	/** Grasp and capture object */
-	grasp::data::Item::Map::iterator objectCapture(const Data::Mode mode);
+	grasp::data::Item::Map::iterator objectCapture(const Data::Mode mode, std::string &itemName);
 	/** Process object image and add to data bundle */
 	grasp::data::Item::Map::iterator objectProcess(const Data::Mode mode, grasp::data::Item::Map::iterator ptr);
 

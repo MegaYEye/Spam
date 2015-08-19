@@ -383,13 +383,14 @@ public:
 
 	/** Returns true only if expected collisions are likely to happen */
 	inline bool expectedCollisions(const golem::Controller::State& state) const {
-		if (intersect(manipulator->getBounds(manipulator->getConfig(state), manipulator->getPose(state).toMat34()), pBelief->uncertaintyRegionBounds(), false) && !hypothesisBoundsSeq.empty()) {
-			return intersect(manipulator->getBounds(manipulator->getConfig(state), manipulator->getPose(state).toMat34()), hypothesisBoundsSeq, false);
+		return hypothesisBoundsSeq.empty() ? false : intersect(manipulator->getBounds(manipulator->getConfig(state), manipulator->getPose(state).toMat34()), hypothesisBoundsSeq, false);
+		//if (intersect(manipulator->getBounds(manipulator->getConfig(state), manipulator->getPose(state).toMat34()), pBelief->uncertaintyRegionBounds(), false) && !hypothesisBoundsSeq.empty()) {
+		//	return intersect(manipulator->getBounds(manipulator->getConfig(state), manipulator->getPose(state).toMat34()), hypothesisBoundsSeq, false);
 			//for (auto i = pBelief->getHypotheses().begin(); i != pBelief->getHypotheses().end(); ++i)
 			//	if (intersect(manipulator->getBounds(manipulator->getConfig(state), manipulator->getPose(state).toMat34()), (*i)->bounds(), false))
 			//		return true;
-		}
-		return false;
+		//}
+		//return false;
 		//return intersect(manipulator->getBounds(manipulator->getConfig(state), manipulator->getPose(state).toMat34()), pBelief->uncertaintyRegionBounds(), false);
 	}
 

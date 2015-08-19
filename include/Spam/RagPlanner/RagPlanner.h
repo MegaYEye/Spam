@@ -293,6 +293,9 @@ protected:
 	bool printing;
 	golem::Bounds::Seq handBounds, waypointBounds;
 
+	/** Item to remove from data after a trial is saved */
+	std::vector<std::string> itemPerformedTrj;
+
 	/** Pointer to collision detection with the ground truth */
 	Collision::Ptr collisionPtr;
 

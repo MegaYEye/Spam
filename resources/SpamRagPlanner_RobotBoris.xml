@@ -30,6 +30,13 @@
       <clear_color R="255" G="255" B="255" A="255"/>
       <draw solid="1" wire="0" shadow="0" simulation="0" normals="0"/>
     </opengl>
+    <opengl view_name="Recording" view_inc="0.2">
+      <view_point v1="7.5987" v2="-0.2458" v3="0.8593"/>
+      <view_dir v1="-0.3430" v2="-0.6648" v3="-0.6636"/>
+      <view_up v1="0.0000" v2="0.0000" v3="1.0000"/>
+      <clear_color R="255" G="255" B="255" A="255"/>
+      <draw solid="1" wire="0" shadow="0" simulation="0" normals="0"/>
+    </opengl>
   </scene>
 
   <rag_planner planning_uncertainty="1" single_grasp_attempt="0" withdraw_to_home_pose="1">
@@ -61,14 +68,14 @@
     </point_appearance>
     <!--<model_points_trn dim="7" c1="-0.05" c2="-0.05" c3="0.05" c4="1" c5="-0.0001" c6="-0.0001" c7="0.0001"/>-->
     <query_points_trn v1="-0.001" v2="-0.05" v3="0.01" q0="0.75" q1="0.0" q2="0.0" q3="-0.2"/>
-    <heuristic contact_fac="1000.0" non_contact_fac="1000.0" max_surface_points_inkd="5000">
+    <!--<heuristic contact_fac="1000.0" non_contact_fac="1000.0" max_surface_points_inkd="5000">
       <evaluation_model neighbours="50" points="250" depth_stddev="1.0" likelihood="1.0"/>
       <check_model neighbours="100" points="10000" depth_stddev="1000.0" likelihood="1000.0"/>
       <ftmodel dist_max="0.8" cone_theta_orizontal_axis="0.5" cone_theta_vertical_axis="0.785" num_nearest_points="5" num_points="5000" mahalanobis_fac="0.05" enabled_likelihood="1" intrinsic_exp_parameter="1">
         <joint_fac dim="16" c1="0.01" c2="0.01" c3="0.38" c4="0.60" c5="0.01" c6="0.01" c7="0.38" c8="0.60" c9="0.01" c10="0.01" c11="0.38" c12="0.60" c13="0.01" c14="0.01" c15="0.38" c16="0.60"/>
       </ftmodel>
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
-    </heuristic>
+    </heuristic>-->
     <collision>
       <!-- collision with the ground truth -->
       <waypoint path_dist="0.0" points="100000" depth_stddev="1000.0" likelihood="1000.0"/>
@@ -82,34 +89,27 @@
         <ft_std dim="20" c1="0.5" c2="0.5" c3="0.015307701" c4="0.5" c5="0.5" c6="0.5" c7="0.5" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5"/>
       </ft_contact>
     </collision>
-    <limit dim="20" c1="0.005" c2="0.005" c3="0.005" c4="0.005" c5="0.005" c6="0.005" c7="0.005" c8="0.005" c9="0.3" c10="0.3" c11="0.3" c12="0.3" c13="0.3" c14="0.3" c15="0.3" c16="0.3" c17="0.3" c18="0.3" c19="0.3" c20="0.3"/>
+    <limit dim="20" c1="0.004" c2="0.004" c3="0.003" c4="0.003" c5="0.004" c6="0.004" c7="0.003" c8="0.003" c9="0.007" c10="0.007" c11="0.3" c12="0.3" c13="0.3" c14="0.3" c15="0.3" c16="0.3" c17="0.3" c18="0.3" c19="0.3" c20="0.3"/>
   </rag_planner>
 
-  <pose_planner data_name="data.ragplanner" screen_capture="1" points="1000" features="1000" attempts="10" kernels="1000" neighbours="500" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7">
-    <nn_search neighbours="0" search_checks="32" search_kdtrees="4" search_leaf_max_size="10"/>
-    <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.1" c5="0.1" c6="0.1" c7="0.1"/>
-    <!--<covariance dim="7" c1="10" c2="10" c3="1" c4="1" c5="1" c6="1" c7="1"/>-->
-    <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
-    <pose_stddev lin="0.001" ang="500.0"/>
-    <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
-    <optimisation minimum="1" population_size="10" generations_num="1000" de_diff_fac="0.5" de_cross_prob="0.1" test_generations="100" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest"/>
-
+  <pose_planner data_name="data.ragplanner" screen_capture="1">    
+ 
     <heuristic contact_fac="1000.0" non_contact_fac="1000.0" max_surface_points_inkd="5000">
-      <evaluation_model neighbours="50" points="250" depth_stddev="1.0" likelihood="1.0"/>
-      <check_model neighbours="100" points="10000" depth_stddev="1000.0" likelihood="1000.0"/>
+      <evaluation_model neighbours="1" points="250" depth_stddev="1.0" likelihood="1.0"/>
+      <check_model neighbours="50" points="10000" depth_stddev="0.10" likelihood="1000.0" radius="0.0005"/>
       <ftmodel dist_max="0.1" cone_theta_orizontal_axis="0.5" cone_theta_vertical_axis="0.785" num_nearest_points="5" num_points="5000" mahalanobis_fac="0.05" enabled_likelihood="1" intrinsic_exp_parameter="1">
         <joint_fac dim="16" c1="0.01" c2="0.01" c3="0.38" c4="0.60" c5="0.01" c6="0.01" c7="0.38" c8="0.60" c9="0.01" c10="0.01" c11="0.38" c12="0.60" c13="0.01" c14="0.01" c15="0.38" c16="0.60"/>
       </ftmodel>
-      <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
+      <covariance dim="7" c1="0.01" c2="0.01" c3="0.001" c4="0.0001" c5="0.0001" c6="0.0001" c7="0.0001"/>
     </heuristic>
 
-    <!--<model camera="DepthSim+DepthSim" handler_scan="Image+ImageSPAM"  handler="PointsCurv+PointsCurvSPAM" item="jug-curv-5_views" item_obj="modelObj" item_grasp="grasp-bowl-pinchsupp" handler_grasp="ContactModel+ContactModelSPAM" handler_trj="Trajectory+TrajectorySPAM" item_trj="grasp_model_trj_trial">-->
-    <model camera="OpenNI+OpenNISPAM" handler_scan="Image+ImageSPAM"  handler="PointsCurv+PointsCurvSPAM" item="jug-curv-5_views" item_obj="modelObj" item_grasp="grasp-bowl-pinchsupp" handler_grasp="ContactModel+ContactModelSPAM" handler_trj="Trajectory+TrajectorySPAM" item_trj="grasp_model_trj_trial">
+    <!--<model camera="DepthSim+DepthSimSPAM" handler_scan="Image+ImageSPAM"  handler="PointsCurv+PointsCurvSPAM" item="jug-curv-5_views" item_obj="modelObj" item_grasp="grasp-bowl-pinchsupp" handler_grasp="ContactModel+ContactModelSPAM" handler_trj="Trajectory+TrajectorySPAM" item_trj="grasp_model_trj_trial">-->
+    <model camera="OpenNI+OpenNISPAM" handler_scan="Image+ImageSPAM"  handler="PointsCurv+PointsCurvSPAM" item="model-curv-6_views" item_obj="modelObj" item_grasp="grasp-bowl-pinchsupp" handler_grasp="ContactModel+ContactModelSPAM" handler_trj="Trajectory+TrajectorySPAM" item_trj="grasp_model_trj_trial">
       <scan_pose dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <scan_pose dim="61" c1="1.98703" c2="-1.82022" c3="2.68371" c4="-0.993679" c5="-0.472118" c6="0.701058" c7="-0.601755" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <scan_pose dim="61" c1="1.60132" c2="-1.8583" c3="1.77602" c4="-0.0109462" c5="0.450068" c6="1.04633" c7="-0.639206" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <!--<scan_pose dim="61" c1="1.65994" c2="-1.53044" c3="1.68963" c4="-0.361575" c5="0.208216" c6="0.61754" c7="-0.0829202" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>-->
-      <!--<scan_pose dim="61" c1="1.64565" c2="-1.20667" c3="1.61824" c4="-0.496629" c5="-0.143018" c6="0.587833" c7="0.634178" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>-->
+      <scan_pose dim="61" c1="1.64565" c2="-1.20667" c3="1.61824" c4="-0.496629" c5="-0.143018" c6="0.587833" c7="0.634178" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <scan_pose dim="61" c1="1.7097" c2="-0.944053" c3="1.20653" c4="-0.707639" c5="0.126298" c6="0.751986" c7="0.84115" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <scan_pose dim="61" c1="2.05575" c2="-0.926678" c3="0.688772" c4="-1.6953" c5="0.721298" c6="0.410064" c7="0.531536" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       
@@ -134,8 +134,8 @@
       </appearance>
     </model>
 
-    <!--<query camera="DepthSim+DepthSim" handler_scan="Image+ImageSPAM"  handler="PointsCurv+PointsCurvSPAM" item="jug-curv-3_views" item_obj="queryObj" item_grasp="grasp-jug-5_views-pinchsupp" handler_grasp="ContactQuery+ContactQuerySPAM" handler_trj="Trajectory+TrajectorySPAM" item_trj="grasp_query_trj_trial">-->
-    <query camera="OpenNI+OpenNISPAM" handler_scan="Image+ImageSPAM"  handler="PointsCurv+PointsCurvSPAM" item="jug-curv-3_views" item_obj="queryObj" item_grasp="grasp-jug-5_views-pinchsupp" handler_grasp="ContactQuery+ContactQuerySPAM" handler_trj="Trajectory+TrajectorySPAM" item_trj="grasp_query_trj_trial">
+    <!--<query camera="DepthSim+DepthSimSPAM" handler_scan="Image+ImageSPAM"  handler="PointsCurv+PointsCurvSPAM" item="jug-curv-3_views" item_obj="queryObj" item_grasp="grasp-jug-5_views-pinchsupp" handler_grasp="ContactQuery+ContactQuerySPAM" handler_trj="Trajectory+TrajectorySPAM" item_trj="grasp_query_trj_trial">-->
+    <query camera="OpenNI+OpenNISPAM" handler_scan="Image+ImageSPAM"  handler="PointsCurv+PointsCurvSPAM" item="query-curv-3_views" item_obj="queryObj" item_grasp="grasp-model-5_views-pinchsupp" handler_grasp="ContactQuery+ContactQuerySPAM" handler_trj="Trajectory+TrajectorySPAM" item_trj="grasp_query_trj_trial">
       <scan_pose dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <!--<scan_pose dim="61" c1="1.98703" c2="-1.82022" c3="2.68371" c4="-0.993679" c5="-0.472118" c6="0.701058" c7="-0.601755" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>-->
       <scan_pose dim="61" c1="1.60132" c2="-1.8583" c3="1.77602" c4="-0.0109462" c5="0.450068" c6="1.04633" c7="-0.639206" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
@@ -164,15 +164,22 @@
       <cluster_map type="cup" slot="2"/>
     </query>
 
-    <pose_estimation_sim points="100000" features="500000" attempts="10" kernels="500000" neighbours="20000" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7" search_checks="32" search_kdtrees="4">
-      <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
+    <pose_estimation_sim points="100000" features="500000" attempts="10" kernels="50000" neighbours="20000" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7" search_checks="32" search_kdtrees="4">
+      <nn_search neighbours="0" search_checks="32" search_kdtrees="4" search_leaf_max_size="10"/>
+      <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.1" c5="0.1" c6="0.1" c7="0.1"/>
+      <!--<covariance dim="7" c1="10" c2="10" c3="1" c4="1" c5="1" c6="1" c7="1"/>-->
       <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
       <pose_stddev lin="0.001" ang="500.0"/>
       <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
       <optimisation minimum="1" population_size="20" generations_num="2000" de_diff_fac="0.5" de_cross_prob="0.1" test_generations="100" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest"/>
+      <!--<covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
+      <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
+      <pose_stddev lin="0.001" ang="500.0"/>
+      <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
+      <optimisation minimum="1" population_size="20" generations_num="2000" de_diff_fac="0.5" de_cross_prob="0.1" test_generations="100" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest"/>-->
     </pose_estimation_sim>
     
-    <object camera="DepthSim+DepthSim" handler_scan="Image+ImageSPAM" handler="PointsCurv+PointsCurvSPAM" item_scan="ObjectScan" item="Object">
+    <object camera="DepthSim+DepthSimSPAM" handler_scan="Image+ImageSPAM" handler="PointsCurv+PointsCurvSPAM" item_scan="ObjectScan" item="Object">
       <scan_pose dim="61" c1="2.47067" c2="-0.850383" c3="2.35997" c4="-1.65389" c5="2.47979" c6="-1.14518" c7="1" c8="0.22" c9="0.6" c10="0.1" c11="0.1" c12="0.05" c13="0.8" c14="0.2" c15="0.2" c16="0.05" c17="0.8" c18="0.2" c19="0.2" c20="0" c21="0.8" c22="0.2" c23="0.2" c24="0" c25="0.8" c26="0.2" c27="0.2" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
 
       <frame_adjustment lin_keys="wsedrf" ang_keys="WSEDRF" inc_keys="-+">
@@ -227,18 +234,74 @@
         <frame show="1" v1="0.02" v2="0.02" v3="0.02"/>
       </query>
     </appearance>
-    <hypothesis>
-      <collision>
-        <waypoint path_dist="0.0" points="1000" depth_stddev="1000.0" likelihood="1000.0"/>
-        <kdtree neighbours="1" points="1000" depth_stddev="1000.0" likelihood="1000.0"/>
-      </collision>
-    </hypothesis>
-    <tactile_model num_poses="1000" num_hypotheses="5" max_surface_points="10000000">
-      <!--<covariance dim="7" c1="1.0" c2="1.0" c3="1.0" c4="1.0" c5="1.0" c6="1.0" c7="1.0"/>-->
-      <!--<covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>-->
-      <covariance dim="7" c1="0.001" c2="0.001" c3="0.001" c4="0.001" c5="0.001" c6="0.001" c7="0.001"/>
-    </tactile_model>
-    <trial_data enable="1" silent="0" name="default" path="./data/boris/experiments/" ext_trial=".xml">
+
+    <model_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="100" camera_frame="1" camera_frame_size="0.05" feature_curv_pow="1.0">
+      <frame_size v1="0.1" v2="0.1" v3="0.1"/>
+      <colour override="1" R="127" G="127" B="127" A="255"/>
+    </model_appearance>
+    <query_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="100" camera_frame="1" camera_frame_size="0.05" feature_curv_pow="1.0">
+      <frame_size v1="0.1" v2="0.1" v3="0.1"/>
+      <!--<colour override="1" R="127" G="127" B="127" A="255"/>-->
+      <colour override="1" R="255" G="0" B="0" A="255"/>
+    </query_appearance>
+    <hypothesis_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="100" camera_frame="1" camera_frame_size="0.05" feature_curv_pow="1.0">
+      <frame_size v1="0.1" v2="0.1" v3="0.1"/>
+      <colour override="1" R="127" G="127" B="127" A="255"/>
+    </hypothesis_appearance>
+    <debug_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="100" camera_frame="1" camera_frame_size="0.05" feature_curv_pow="1.0">
+      <frame_size v1="0.1" v2="0.1" v3="0.1"/>
+      <colour override="1" R="0" G="0" B="0" A="255"/>
+    </debug_appearance>
+    <groundtruth_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="100" camera_frame="1" camera_frame_size="0.05" feature_curv_pow="1.0">
+      <frame_size v1="0.1" v2="0.1" v3="0.1"/>
+      <colour override="1" R="0" G="0" B="0" A="255"/>
+    </groundtruth_appearance>
+
+    <belief points="1" features="1" attempts="10" kernels="100" neighbours="5" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7" cluster="1">
+      <nn_search neighbours="0" search_checks="32" search_kdtrees="4" search_leaf_max_size="10"/>
+      <covariance dim="7" c1="0.01" c2="0.01" c3="0.001" c4="0.001" c5="0.0001" c6="0.0001" c7="0.0001"/>
+      <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
+      <pose_stddev lin="0.001" ang="500.0"/>
+      <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
+      <optimisation minimum="1" population_size="200" generations_num="2000" de_diff_fac="0.5" de_cross_prob="0.1" test_generations="100" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest"/>
+      <align lin_keys="wsedrf" ang_keys="WSEDRF" inc_keys="-+">
+        <increment lin="0.05" ang="0.2617993877991494"/>
+        <frame_size v1="0.1" v2="0.1" v3="0.1"/>
+        <colour>
+          <solid R="0" G="0" B="255" A="32"/>
+          <wire R="0" G="0" B="255" A="255"/>
+        </colour>
+      </align>
+
+      <hypothesis>
+        <collision>
+          <waypoint path_dist="0.0" points="1000" depth_stddev="1000.0" likelihood="1000.0"/>
+          <kdtree neighbours="1" points="1000" depth_stddev="1000.0" likelihood="1000.0" radius="0.0"/>
+        </collision>
+      </hypothesis>
+      <tactile_model num_hypotheses="5" max_surface_points="10000000">
+        <!--<covariance dim="7" c1="1.0" c2="1.0" c3="1.0" c4="1.0" c5="1.0" c6="1.0" c7="1.0"/>-->
+        <!--<covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>-->
+      </tactile_model>
+      <pose_estimation points="5000" features="5000" attempts="10" kernels="5000" neighbours="2000" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7" search_checks="32" search_kdtrees="4">
+        <nn_search neighbours="0" search_checks="32" search_kdtrees="4" search_leaf_max_size="10"/>
+        <covariance dim="7" c1="0.01" c2="0.01" c3="0.001" c4="0.001" c5="0.001" c6="0.001" c7="0.001"/>
+        <!--<covariance dim="7" c1="10" c2="10" c3="1" c4="1" c5="1" c6="1" c7="1"/>-->
+        <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
+        <pose_stddev lin="0.001" ang="500.0"/>
+        <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
+        <optimisation minimum="1" population_size="10" generations_num="1000" de_diff_fac="0.5" de_cross_prob="0.1" test_generations="100" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest"/>
+        <align lin_keys="wsedrf" ang_keys="WSEDRF" inc_keys="-+">
+          <increment lin="0.05" ang="0.2617993877991494"/>
+          <frame_size v1="0.1" v2="0.1" v3="0.1"/>
+          <colour>
+            <solid R="0" G="0" B="255" A="32"/>
+            <wire R="0" G="0" B="255" A="255"/>
+          </colour>
+        </align>
+      </pose_estimation>
+    </belief>
+    <trial_data enable="1" silent="0" name="default" path="F:/data/boris/experiments/" ext_trial=".xml">
       <meta_query_transformation lin="0.1" ang="0.01"/>
       <meta_obj_pose_transformation lin="0.005" ang="0.01"/>
     </trial_data>
@@ -265,7 +328,7 @@
     <!-- DLR Justin robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotJustin" -->
     <!-- DLR Justin robot (controller, planner): library_path="GolemDeviceRobotJustin" config_path="GolemDeviceRobotJustin" -->
 
-    <controller library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBorisSim">
+    <controller library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBoris">
       <renderer>
         <joint_appearance line_width="1.0">
           <solid_colour R="192" G="192" B="0" A="100"></solid_colour>
@@ -285,7 +348,7 @@
         </state_renderer>
       </renderer>
     </controller>
-    <planner library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBorisSim">
+    <planner library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBoris">
       <renderer show_duration="600.0">
         <goal_renderer show="1" vertex_position_show="0" vertex_frame_show="1" edge_show="0">
           <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
@@ -325,8 +388,8 @@
       </renderer>
     </planner>
 
-    <controller id="KukaLWRSim+KukaLWRBorisR"/>
-    <controller id="DLRHitHandIISim+DLRHitHandIIBorisR"/>
+    <controller id="KukaLWR+KukaLWRBorisR"/>
+    <controller id="DLRHitHandII+DLRHitHandIIBorisR"/>
 
     <!--<sensor id="FTClient+FTClient"/>-->
 
@@ -335,7 +398,7 @@
     <activectrl library_path="GraspWorkspaceCtrl" config_path="GraspWorkspaceCtrl"/>
     <activectrl library_path="GraspOspaceCtrl" config_path="GraspOspaceCtrl"/>
 
-    <trajectory name="trajectory" handler="Trajectory+Trajectory" idle_begin="0.5" idle_end="2.0" idle_perf="5.0" duration="5.0" trials="5"/>
+    <trajectory name="trajectory" handler="Trajectory+TrajectorySPAM" idle_begin="0.5" idle_end="2.0" idle_perf="5.0" duration="5.0" trials="5"/>
 
     <!--<arm_tool_bounds type="box" group="1">
       <dimensions v1="0.07" v2="0.07" v3="0.15"/>
@@ -376,19 +439,19 @@
   </player>
 
   <recorder>
-    <sensor library_path="GraspCameraDepthSim" config_path="GraspCameraDepthSim"/>
-    <!--<sensor library_path="GraspCameraKinect" config_path="GraspCameraKinect"/>-->
-    <!--<sensor library_path="GraspCameraOpenCV" config_path="GraspCameraOpenCV"/>-->
-    <sensor library_path="GraspCameraOpenGL" config_path="GraspCameraOpenGL"/>
+    <sensor library_path="GraspCameraDepthSim" config_path="GraspCameraDepthSimSPAM"/>
+    <!--<sensor library_path="GraspCameraKinect" config_path="GraspCameraKinectSPAM"/>-->
+    <!--<sensor library_path="GraspCameraOpenCV" config_path="GraspCameraOpenCVSPAM"/>-->
+    <sensor library_path="GraspCameraOpenGL" config_path="GraspCameraOpenGLSPAM"/>
     <sensor library_path="GraspCameraOpenNI" config_path="GraspCameraOpenNISPAM"/>
-    <!--<sensor library_path="GraspCameraPointGrey" config_path="GraspCameraPointGrey"/>-->
+    <sensor library_path="GraspCameraPointGrey" config_path="GraspCameraPointGreySPAM"/>
     <!--<sensor library_path="GraspFTClient" config_path="GraspFTClient"/>-->
     <!--<sensor library_path="GraspFTDAQ" config_path="GraspFTDAQ"/>-->
 
     <recording label="recorder">
-      <sensor id="OpenNI+OpenNISPAM"/>
-      <sensor id="PointGrey+PointGrey"/>
-      <sensor id="OpenGL+OpenGL"/>
+      <!--<sensor id="OpenNI+OpenNISPAM"/>-->
+      <sensor id="PointGrey+PointGreySPAM"/>
+      <sensor id="OpenGL+OpenGLSPAM"/>
     </recording>
   </recorder>
 
@@ -397,7 +460,7 @@
 
     <handler library_path="GraspDataImage" config_path="GraspDataImage"/>
     <handler library_path="GraspDataPointsCurv" config_path="GraspDataPointsCurv"/>
-    <handler library_path="GraspDataVideo" config_path="GraspDataVideo"/>
+    <!--<handler library_path="GraspDataVideo" config_path="GraspDataVideo"/>-->
     <handler library_path="GraspDataTrajectory" config_path="GraspDataTrajectory"/>
     <handler library_path="GraspDataContactModel" config_path="GraspDataContactModel"/>
     <handler library_path="GraspDataContactQuery" config_path="GraspDataContactQuery"/>
@@ -411,6 +474,7 @@
     <handler library_path="GraspDataContactQuery" config_path="GraspDataContactQuerySPAM"/>
 
     <data path="./data/boris/jug/spam.xml"></data>
+    <!--<data path="./data/boris/models.xml"></data>-->
   </manager>
 
   <pose name="zero" dim="70" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0" c27="0.0" c28="0.0" c29="0.0" c30="0.0" c31="0.0" c32="0.0" c33="0.0" c34="0.0" c35="0.0" c36="0.0" c37="0.0" c38="0.0" c39="0.0" c40="0.0" c41="0.0" c42="0.0" c43="0.0" c44="0.0" c45="0.0" c46="0.0" c47="0.0" c48="0.0" c49="0.0" c50="0.0" c51="0.0" c52="0.0" c53="0.0" c54="0.0" c55="0.0" c56="0.0" c57="0.0" c58="0.0" c59="0.0" c60="0.0" c61="0.0" c62="0.0" c63="0.0" c64="0.0" c65="0.0" c66="0.0" c67="0.0" c68="0.0" c69="0.0" c70="0.0"/>

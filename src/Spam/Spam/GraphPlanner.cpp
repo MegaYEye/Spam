@@ -598,7 +598,7 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 #endif
 
 	getCallbackDataSync()->syncFindTrajectory(trajectory.begin(), trajectory.end(), wend);
-//	enableHandPlanning();
+	enableHandPlanning();
 
 	return true;
 }

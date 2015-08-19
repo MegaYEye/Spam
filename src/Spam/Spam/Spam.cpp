@@ -516,54 +516,52 @@ bool Collision::check(const FlannDesc& desc, const golem::Rand& rand, const gras
 
 	grasp::NNSearch::IndexSeq indices;
 	grasp::NNSearch::DistanceF64Seq distances;
+	// Collision consider a point as a sphere
+//	const Real radius = -0.005; //REAL_ZERO; // -Real(0.0001);
+////	manipulator.getContext().write("radius %f\n", radius);
 
-	const size_t size = desc.points < desc.neighbours ? desc.points : desc.neighbours;
-
-	for (U32 i = manipulator.getArmJoints(); i < manipulator.getJoints() + 1; ++i) {
+	const size_t size = /*desc.points < desc.neighbours ? desc.points : */desc.neighbours;
+	Real maxDepth = -golem::numeric_const<Real>::MAX, maxDistance = -golem::numeric_const<Real>::MAX;
+	for (U32 i = manipulator.getArmJoints(); i < manipulator.getJoints(); ++i) {
 		Bounds bounds = this->bounds[i];
-		if (bounds.empty()) {
-//			manipulator.getContext().write("Collision::checkNN(): No bounds.\n");
+		if (bounds.empty())
 			continue;
-		}
 
 		const Mat34 boundsPose = i < manipulator.getJoints() ? poses[i] : pose;
 		bounds.setPose(i < manipulator.getJoints() ? poses[i] : pose);
-//		manipulator.getContext().write("-----------------------------\nBound pose <%f, %f, %f> (<%f, %f, %f>)\n", poses[i].p.x, poses[i].p.y, poses[i].p.z, poses[i].p.v[0], poses[i].p.v[1], poses[i].p.v[2]);
 				
 		Feature query(poses[i].p);
 		//nnSearch->knnSearch(/*(const Real*)&*/poses[i].p/*.x*//*.v*/, neighbours, indices, distances);
 		nnSearch->knnSearch(query, desc.neighbours, indices, distances);
 		
-		// if true, only a subset of neighbours are used to eval the collision
-		//if (desc.points < desc.neighbours)
-		//	std::random_shuffle(indices.begin(), indices.end(), rand);
-
 		for (size_t j = 0; j < size; ++j) {
-//			const Real depth = Math::abs(bounds.getDepth(points[indices[j]]/*.getPoint()*/));
-			const Feature f = desc.points < desc.neighbours ? points[indices[size_t(rand.next()) % indices.size()]] : points[indices[j]];
+			const Feature f = /*desc.points < desc.neighbours ? points[indices[size_t(rand.next()) % indices.size()]] : */points[indices[j]];
 			//if (j % 10 == 0) manipulator.getContext().write("point=%d <%f, %f, %f> index=%d distance=%f depth=%f collision=%s\n", j, f.getPoint().x, f.getPoint().y, f.getPoint().z,
 			//	indices[j], distances[j], bounds.getDepth(points[j]), bounds.getDepth(f) > REAL_ZERO ? "YES" : "NO");
-			if (bounds.getDepth(f) > REAL_ZERO) {
+			const Real depth = REAL_ZERO; // bounds.getDepth(f, true);
+			const Real distance = bounds.getSurfaceDistance(f);//bounds.getDepth(f, true);
+//			if (debug && maxDepth < depth) maxDepth = depth;
+			if (debug && maxDistance < distance) maxDistance = distance;
+			if (distance > -desc.radius) {
 #ifdef _COLLISION_PERFMON
 				SecTmReal t_end = t.elapsed();
 				tperfCheckNN += t_end /*tperfEvalPoints < t_end ? t_end : tperfEvalPoints*/;
 				if (debug /*&& eval < REAL_ONE*/)
-					manipulator.getContext().debug(
-					"Collision::check(kd-tree): time_elapsed = %f [sec], collision=yes, neighbours=%u, points=%u\n",
-					t_end, desc.neighbours, desc.points
+					manipulator.getContext().write(
+					"Collision::check(kd-tree): time_elapsed = %f [sec], collision=yes, depth=%.7f, distance=%.7f, neighbours=%u, points=%u\n",
+					t_end, depth, distance, desc.neighbours, desc.points
 					);
 #endif
 				return true;
 			}
 		}
-		//break;
 	}
 
 #ifdef _COLLISION_PERFMON
 	SecTmReal t_end = t.elapsed();
 	tperfCheckNN += t_end /*tperfEvalPoints < t_end ? t_end : tperfEvalPoints*/;
 	if (debug /*&& eval < REAL_ONE*/)
-		manipulator.getContext().debug("Collision::evaluate(): neighbours=%u, , points=%u, collision=no\n", desc.neighbours, desc.points);
+		manipulator.getContext().write("Collision::evaluate(): depth=%.7f, distance=%f, neighbours=%u, points=%u, collision=no\n", maxDepth, maxDistance, desc.neighbours, desc.points);
 #endif
 
 	return false;
@@ -846,31 +844,32 @@ golem::Real Collision::evaluate(const FlannDesc& desc, const grasp::Manipulator:
 			//golem::Mat34 inverse; inverse.setInverse(Bounds::Mat34(i < manipulator.getJoints() ? poses[i] : pose)); // compute the inverse of the joint frame
 			Vec3 median;
 			median.setZero();
-			for (size_t j = 0; j < seq.size(); ++j) {
-				const Feature f = seq[j];
-				const Real depth = bounds.getDepth(f, true);
-				median += f.getPoint();
-				if (depth > REAL_ZERO) ++boundCollisions; // number of collisions with this bound
-				if (depth > maxDepth) {
-					maxDepth = depth; // record max depth
-				}
-			}				
+			//for (size_t j = 0; j < seq.size(); ++j) {
+			//	const Feature f = seq[j];
+			//	const Real depth = bounds.getSurfaceDistance(f);// bounds.getDepth(f, true);
+			//	median += f.getPoint();
+			//	if (depth > REAL_ZERO) ++boundCollisions; // number of collisions with this bound
+			//	if (depth > maxDepth) {
+			//		maxDepth = depth; // record max depth
+			//	}
+			//}
+			maxDepth = bounds.distance(seq.data(), seq.data() + seq.size(), median, boundCollisions);
 
 			if (!triggeredFingers[finger] && maxDepth > REAL_ZERO) // the hypothesis intersects a finger that has no contact retrieved
-				return REAL_EPS;
+				return REAL_ZERO;
 			// if no contact is retrieve and there is no intersection, don't change eval
 
 			// if contact is retrieved
 			Real pointEval = REAL_ZERO;
 			if (triggeredFingers[finger]) {
-				median /= seq.size();
+				//median /= seq.size();
 				Vec3 patchPose; fingerFrameInv.multiply(patchPose, median);
 				// abd direction is true if:
 				//   1. patchpose is the y-axis side to produce the observed direction of force. (e.g. y>0 && force<0)
 				//   2. there is no observed direction (so the patch could be anywhere)
 				const bool abdDirection = triggeredAbductor ? !((patchPose.x > REAL_ZERO && fingerGuardSeq[finger][jointIndex::abductor] > REAL_ZERO) || (patchPose.x < REAL_ZERO && fingerGuardSeq[finger][jointIndex::abductor] < REAL_ZERO)) : true;
 				const bool flexDirection = triggeredFlex ? !((patchPose.z > REAL_ZERO && (fingerGuardSeq[finger][jointIndex::joint1] > REAL_ZERO || fingerGuardSeq[finger][jointIndex::joint2] > REAL_ZERO)) || (patchPose.z < REAL_ZERO && (fingerGuardSeq[finger][jointIndex::joint1] < REAL_ZERO || fingerGuardSeq[finger][jointIndex::joint2] < REAL_ZERO))) : true;
-				const Real scalingFac = abdDirection && flexDirection ? 1 : 0.1;
+				const Real scalingFac = abdDirection && flexDirection ? 1 : 0.01;
 				//// computes the direction of contact
 				//golem::Vec3 v; inverse.multiply(v, median); //v.normalise(); // compute the point in the joint's reference frame
 				//const bool adbDirection = triggeredAbductor ? !((v.y > 0 && abductor->second.force >= 0) || (v.y < 0 && abductor->second.force <= 0)) : true;
@@ -884,7 +883,7 @@ golem::Real Collision::evaluate(const FlannDesc& desc, const grasp::Manipulator:
 				//if (maxDepth > REAL_ZERO)
 				//	pointEval = Math::exp(-Real(desc.depthStdDev/* * 100*/)*(Real(maxDepth)));
 				//else // maxDepth here has to be <= 0. no penetration.
-				pointEval = scalingFac*norm*golem::Math::exp(-.5*Math::sqr(Real(maxDepth) / Real(desc.depthStdDev/* * 100*/))); // gaussian 
+				pointEval = Math::abs(maxDepth) > desc.depthStdDev*3 ? REAL_ZERO : scalingFac*norm*golem::Math::exp(-.5*Math::sqr(Real(maxDepth) / Real(desc.depthStdDev/* * 100*/))); // gaussian 
 				//if (debugjj++ % 100 == 0) manipulator.getContext().write("PointEval %f adbDirection %s, flexDirection %s, direction %f\n", pointEval, adbDirection ? "T" : "F", flexDirection ? "T" : "F", direction);
 				golem::kahanSum(eval, c, pointEval);
 			}
@@ -1204,6 +1203,11 @@ void spam::XMLData(spam::Collision::FlannDesc& val, golem::XMLContext* xmlcontex
 	golem::XMLData("points", val.points, xmlcontext, create);
 	golem::XMLData("depth_stddev", val.depthStdDev, xmlcontext, create);
 	golem::XMLData("likelihood", val.likelihood, xmlcontext, create);
+	
+	try {
+		golem::XMLData("radius", val.points, xmlcontext, create);
+	}
+	catch (const Message&) {}
 }
 
 void spam::XMLData(spam::Collision::FTSensorDesc& val, golem::XMLContext* xmlcontext, bool create) {
@@ -1284,7 +1288,7 @@ void Hypothesis::draw(DebugRenderer &renderer) const {
 	if (appearance.showPoints || true) {
 		for (grasp::Cloud::PointSeq::const_iterator i = points.begin(); i != points.end(); ++i) {
 			grasp::Cloud::Point point = *i;
-			if (++t < 10) printf("Belief::Hypothesis point %d <%.4f %.4f %.4f>\n", t, point.x, point.y, point.z);
+			//if (++t < 10) printf("Belief::Hypothesis point %d <%.4f %.4f %.4f>\n", t, point.x, point.y, point.z);
 			grasp::Cloud::setColour(/*appearance.colour*/RGBA::RED, point);
 			renderer.addPoint(grasp::Cloud::getPoint<Real>(point));
 		}
