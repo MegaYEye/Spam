@@ -10,19 +10,19 @@
 #include <Golem/Device/MultiCtrl/MultiCtrl.h>
 #include <Golem/Plan/Data.h>
 
-#ifdef WIN32
-	#pragma warning (push)
-	#pragma warning (disable : 4244)
-	#pragma warning (disable : 4996)
-#endif
-#include <pcl/point_types.h>
-#include <pcl/point_cloud.h>
-#include <pcl/kdtree/kdtree_flann.h>
-#include <pcl/features/normal_3d.h>
-#include <pcl/surface/gp3.h>
-#ifdef WIN32
-	#pragma warning (pop)
-#endif
+//#ifdef WIN32
+//	#pragma warning (push)
+//	#pragma warning (disable : 4244)
+//	#pragma warning (disable : 4996)
+//#endif
+//#include <pcl/point_types.h>
+//#include <pcl/point_cloud.h>
+//#include <pcl/kdtree/kdtree_flann.h>
+//#include <pcl/features/normal_3d.h>
+//#include <pcl/surface/gp3.h>
+//#ifdef WIN32
+//	#pragma warning (pop)
+//#endif
 
 //------------------------------------------------------------------------------
 
@@ -440,7 +440,7 @@ golem::Real FTDrivenHeuristic::cost(const golem::Waypoint &w, const golem::Waypo
 	return c;
 }
 
-Real FTDrivenHeuristic::cost(const Waypoint &w0, const Waypoint &w1) const {
+Real FTDrivenHeuristic::cost(const golem::Waypoint &w0, const golem::Waypoint &w1) const {
 //	SecTmReal init = context.getTimer().elapsed();
 	//if (collides(w0, w1))
 	//	return Node::COST_INF;
@@ -555,7 +555,7 @@ golem::Real FTDrivenHeuristic::getMahalanobisDist(const golem::Waypoint& w0, con
  J(wi, wj)=SUM_k e^-PSI(wi, wj, k)
  where PSI(wi, wj, k)=||h(wj,p^k)-h(wj,p^1)||^2_Q
 */
-Real FTDrivenHeuristic::expectedObservationCost(const Waypoint &wi, const Waypoint &wj) const {
+Real FTDrivenHeuristic::expectedObservationCost(const golem::Waypoint &wi, const golem::Waypoint &wj) const {
 //	context.write("FTDrivenHeuristic::getObservationalCost(const Waypoint &wi, const Waypoint &wj)\n");
 	if (pBelief->getHypotheses().size() == 0)
 		return REAL_ONE;
@@ -657,7 +657,7 @@ void FTDrivenHeuristic::h(const golem::Waypoint &wi, const golem::Waypoint &wj, 
 	}
 	y.reserve((pBelief->getHypotheses().size() - 1)*steps/**(armInfo.getChains().size() + handInfo.getJoints().size())*/);
 
-	Waypoint w;
+	golem::Waypoint w;
 	U32 i = (steps == 1) ? 0 : 1;
 	for (; i < steps; ++i) {
 			if (steps != 1) {
@@ -804,10 +804,15 @@ void FTDrivenHeuristic::h(const golem::Waypoint &wi, const golem::Waypoint &wj, 
 
 Real FTDrivenHeuristic::evaluate(const Hypothesis::Seq::const_iterator &hypothesis, const golem::Waypoint &w) const {
 	Real eval = REAL_ZERO;
-	if (intersect(manipulator->getBounds(manipulator->getConfig(w.cpos), manipulator->getPose(w.cpos).toMat34()), (*hypothesis)->bounds(), false))
-		eval = (*hypothesis)->evaluate(ftDrivenDesc.evaluationDesc, manipulator->getPose(w.cpos));
+	golem::Controller::State state = manipulator->getController().createState();
+	manipulator->getController().lookupState(golem::SEC_TM_REAL_MAX, state);
+	// position control
+	state.cpos = w.cpos;
+	grasp::Manipulator::Config config(w.cpos);
+	if (intersect(manipulator->getBounds(config.config, config.frame.toMat34()), (*hypothesis)->bounds(), false))
+		eval = (*hypothesis)->evaluate(ftDrivenDesc.evaluationDesc, config.config);
 	else {
-		const Real dist = manipulator->getPose(w.cpos).toMat34().p.distance((*hypothesis)->toRBPoseSampleGF().p);
+		const Real dist = config.frame.toMat34().p.distance((*hypothesis)->toRBPoseSampleGF().p);
 		if (dist < ftDrivenDesc.ftModelDesc.distMax)
 			eval = dist;
 	}
@@ -1340,7 +1345,7 @@ Real FTDrivenHeuristic::evaluate(const Hypothesis::Seq::const_iterator &hypothes
 
 //------------------------------------------------------------------------------
 
-Real FTDrivenHeuristic::directionApproach(const Waypoint &w) const {
+Real FTDrivenHeuristic::directionApproach(const golem::Waypoint &w) const {
 	const Chainspace::Index armIndex = armInfo.getChains().begin();
 	
 	Vec3 v;
@@ -1554,19 +1559,20 @@ Real FTDrivenHeuristic::directionApproach(const Waypoint &w) const {
 //	return false;
 //}
 
-bool FTDrivenHeuristic::collides(const Waypoint &w, ThreadData* data) const {
+bool FTDrivenHeuristic::collides(const golem::Waypoint &w, ThreadData* data) const {
 #ifdef _HEURISTIC_PERFMON
 	++perfCollisionWaypoint;
 #endif
 	// check for collisions with the object to grasp. only the hand
+	grasp::Manipulator::Config config(w.cpos);
 	if (pointCloudCollision && !pBelief->getHypotheses().empty()) {
 		Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
-		if (intersect(manipulator->getBounds(manipulator->getConfig(w.cpos), manipulator->getPose(w.cpos).toMat34()), (*maxLhdPose)->bounds(), false)) {
+		if (intersect(manipulator->getBounds(config.config, config.frame.toMat34()), (*maxLhdPose)->bounds(), false)) {
 #ifdef _HEURISTIC_PERFMON
 			++perfCollisionPointCloud;
 #endif
 			//if ((*maxLhdPose)->check(waypoint, manipulator->getPose(w.cpos)))
-			if ((*maxLhdPose)->check(ftDrivenDesc.checkDesc, rand, manipulator->getPose(w.cpos)))
+			if ((*maxLhdPose)->check(ftDrivenDesc.checkDesc, rand, config.config))
 				return true;
 		}
 //		}
@@ -1575,11 +1581,11 @@ bool FTDrivenHeuristic::collides(const Waypoint &w, ThreadData* data) const {
 	return Heuristic::collides(w, data);
 }
 
-bool FTDrivenHeuristic::collides(const Waypoint &w0, const Waypoint &w1, ThreadData* data) const {
+bool FTDrivenHeuristic::collides(const golem::Waypoint &w0, const golem::Waypoint &w1, ThreadData* data) const {
 	const Real dist = getDist(w0, w1);
 	const U32 size = (U32)Math::round(dist / desc.collisionDesc.pathDistDelta) + 1;
 	Real p[2];
-	Waypoint w;
+	golem::Waypoint w;
 
 #ifdef _HEURISTIC_PERFMON
 	++perfCollisionPath;
@@ -1608,7 +1614,7 @@ bool FTDrivenHeuristic::collides(const Waypoint &w0, const Waypoint &w1, ThreadD
 
 //------------------------------------------------------------------------------
 
-bool FTDrivenHeuristic::collides(const Waypoint &w) const {
+bool FTDrivenHeuristic::collides(const golem::Waypoint &w) const {
 	if (!desc.collisionDesc.enabled && !pointCloudCollision)
 		return false;
 
@@ -1618,7 +1624,7 @@ bool FTDrivenHeuristic::collides(const Waypoint &w) const {
 	return collides(w, data);
 }
 
-bool FTDrivenHeuristic::collides(const Waypoint &w0, const Waypoint &w1) const {
+bool FTDrivenHeuristic::collides(const golem::Waypoint &w0, const golem::Waypoint &w1) const {
 	if (!desc.collisionDesc.enabled && !pointCloudCollision)
 		return false;
 

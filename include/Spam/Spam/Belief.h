@@ -241,7 +241,7 @@ public:
 	/** Creates query object pose distribution */
 	void createQuery(const grasp::Cloud::PointSeq& points);
 	/** Creates a new set of poses (resampling wheel algorithm) */
-	virtual void createResample(const grasp::Manipulator::Pose& robotPose);
+	virtual void createResample(/*const grasp::Manipulator::Config& robotPose*/);
 	/** Creates belief update (on importance weights) given the robot's pose and the current belief state. NOTE: weights are normalised. */
 //	void createUpdate(const grasp::Manipulator *manipulator, const golem::Controller::State::Info handInfo, const golem::Waypoint &w, const FTGuard::Seq &triggeredGuards, const grasp::RealSeq &force);
 	/** Creates belief update (on importance weights) given the robot's pose and the current belief state. NOTE: weights are normalised. */

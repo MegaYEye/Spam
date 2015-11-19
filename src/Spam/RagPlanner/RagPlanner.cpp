@@ -110,7 +110,7 @@ bool RagPlanner::create(const Desc& desc) {
 	try {
 		pProfile = desc.pProfileDesc->create(*controller); // throws
 	}
-	catch (const Message &msg) {
+	catch (const Message&) {
 		throw Message(Message::LEVEL_ERROR, "Demo::performTrajectory(): unable to create profile");
 	}
 
@@ -264,7 +264,7 @@ bool RagPlanner::create(const Desc& desc) {
 				force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
 		
 		RealSeq links; links.assign(dimensions(), REAL_ZERO);
-		size_t jointInCollision = enableSimContact && !objectPointCloudPtr->empty() ? collisionPtr->simulate(desc.objCollisionDescPtr->flannDesc, rand, manipulator->getPose(lookupState()), /*links*/force, true) : 0;
+		size_t jointInCollision = enableSimContact && !objectPointCloudPtr->empty() ? collisionPtr->simulate(desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), /*links*/force, true) : 0;
 		RealSeq filteredForces; filteredForces.assign(dimensions(), REAL_ZERO);
 		auto strTorques = [=](std::ostream& ostr, const Controller::State& state, const grasp::RealSeq& forces, const RealSeq& guardSeq/*const bool contact*/) {
 			ostr << state.t << "\t";
@@ -372,7 +372,7 @@ bool RagPlanner::create(const Desc& desc) {
 //			for (auto i = 0; i < force.size(); ++i)
 //				force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
 //
-//		size_t jointInCollision = enableSimContact && !objectPointCloudPtr->empty() ? collisionPtr->simulate(desc.objCollisionDescPtr->flannDesc, rand, manipulator->getPose(robot->recvState().config), force) : 0;
+//		size_t jointInCollision = enableSimContact && !objectPointCloudPtr->empty() ? collisionPtr->simulate(desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(robot->recvState().config), force) : 0;
 //
 //		//// writing data into a text file
 //		auto strTorques = [=](std::ostream& ostr, const Controller::State& state, const grasp::RealSeq& forces, const bool contact) {
@@ -578,7 +578,8 @@ bool RagPlanner::create(const Desc& desc) {
 		if (!trajectory)
 			throw Cancel("Error: no trajectory selected.");
 		// play
-		Controller::State::Seq inp = trajectory->getWaypoints();
+		//Controller::State::Seq inp = trajectory->getWaypoints();
+		grasp::Waypoint::Seq inp = trajectory->getWaypoints();
 		if (inp.size() < 3)
 			throw Cancel("Error: the selected trajectory have not at least 3 waypoints.");
 		
@@ -887,7 +888,7 @@ bool RagPlanner::create(const Desc& desc) {
 				data::Trajectory* trajectory = is<data::Trajectory>(queryGraspTrjPtr);
 				if (!trajectory)
 					throw Message(Message::LEVEL_ERROR, "Handler %s does not support Trajectory interface", queryHandlerTrj->getID().c_str());
-				Controller::State::Seq inp = trajectory->getWaypoints();
+				grasp::Waypoint::Seq inp = trajectory->getWaypoints();
 				if (inp.size() < 3)
 					throw Cancel("Error: the selected trajectory have not at least 3 waypoints.");
 
@@ -1083,12 +1084,12 @@ bool RagPlanner::create(const Desc& desc) {
 		data::Item::Map::const_iterator item = to<Data>(dataCurrentPtr)->getItem<data::Item::Map::const_iterator>(true);
 		data::Trajectory* trajectory = is<data::Trajectory>(item->second.get());
 		// play
-		Controller::State::Seq inp = trajectory->getWaypoints();
+		grasp::Waypoint::Seq inp = trajectory->getWaypoints();
 		if (inp.size() < 3)
 			throw Cancel("Error: the selected trajectory have not at least 3 waypoints.");
 
 		// select strategy in order: ELEMENTARY, MYCROFT, IR3NE, NONE. 
-		Controller::State cend = inp[1];
+		Controller::State cend = inp[1].state;
 		resetPlanning();
 		pHeuristic->setPointCloudCollision(true);
 		Controller::State::Seq approach;
@@ -1129,7 +1130,7 @@ bool RagPlanner::create(const Desc& desc) {
 		if (!trajectory)
 			throw Cancel("Error: no trajectory selected.");
 		// play
-		Controller::State::Seq inp = trajectory->getWaypoints();
+		grasp::Waypoint::Seq inp = trajectory->getWaypoints();
 		if (inp.size() < 3)
 			throw Cancel("Error: the selected trajectory have not at least 3 waypoints.");
 		pHeuristic->enableUnc = false;
@@ -1137,21 +1138,21 @@ bool RagPlanner::create(const Desc& desc) {
 
 		Controller::State cend = lookupState();
 		// transform w.r.t. query frame
-		findTarget(grasp::to<Data>(dataCurrentPtr)->queryTransform, grasp::to<Data>(dataCurrentPtr)->modelFrame, inp[1], cend);
+		findTarget(grasp::to<Data>(dataCurrentPtr)->queryTransform, grasp::to<Data>(dataCurrentPtr)->modelFrame, inp[1].state, cend);
 
 		Controller::State::Seq approach;
 		(void)findTrajectory(lookupState(), &cend, nullptr, 0, approach);
 		context.write("path dist delta %f\n", pHeuristic->getDesc().collisionDesc.pathDistDelta);
 		Real delta = 0.0025;//pHeuristic->getDesc().collisionDesc.pathDistDelta;
 		for (auto j = approach.begin(); j != approach.end(); ++j) {
-//			const bool res = (*pBelief->getHypotheses().begin())->check(pHeuristic->ftDrivenDesc.checkDesc, rand, manipulator->getPose(*i), true);
+//			const bool res = (*pBelief->getHypotheses().begin())->check(pHeuristic->ftDrivenDesc.checkDesc, rand, manipulator->getConfig(*i), true);
 			if (j != approach.end() - 1) {
-				Waypoint w0, w1;
+				golem::Waypoint w0, w1;
 				w1.cpos = j->cpos; w0.cpos = (j + 1)->cpos;
 				const Real dist = pHeuristic->getDist(w0, w1);
 				const U32 size = (U32)Math::round(dist / delta) + 1;
 				Real p[2];
-				Waypoint w;
+				golem::Waypoint w;
 
 				// test for collisions in the range (w0, w1) - excluding w0 and w1
 				for (U32 i = 1; i < size;) {
@@ -1159,16 +1160,17 @@ bool RagPlanner::create(const Desc& desc) {
 					p[1] = REAL_ONE - p[0];
 
 					// lineary interpolate coordinates
-					for (Configspace::Index j = armInfo.getJoints().begin(); j < armInfo.getJoints().end(); ++j)
-						w.cpos[j] = p[0] * w0.cpos[j] + p[1] * w1.cpos[j];
-					for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j)
-						w.cpos[j] = p[0] * w0.cpos[j] + p[1] * w1.cpos[j];
+					for (Configspace::Index l = armInfo.getJoints().begin(); l < armInfo.getJoints().end(); ++l)
+						w.cpos[l] = p[0] * w0.cpos[l] + p[1] * w1.cpos[l];
+					for (Configspace::Index l = handInfo.getJoints().begin(); l < handInfo.getJoints().end(); ++l)
+						w.cpos[l] = p[0] * w0.cpos[l] + p[1] * w1.cpos[l];
 
 					// skip reference pose computation
 					w.setup(*controller, false, true);
-					Bounds::Seq bounds = manipulator->getBounds(manipulator->getConfig(w.cpos), manipulator->getPose(w.cpos).toMat34());
+					const grasp::Manipulator::Config config(w.cpos);
+					Bounds::Seq bounds = manipulator->getBounds(config.config, config.frame.toMat34());
 					renderHand(*j, bounds, true);
-					const bool res = (*pBelief->getHypotheses().begin())->check(pHeuristic->ftDrivenDesc.checkDesc, rand, manipulator->getPose(w.cpos), true);
+					const bool res = (*pBelief->getHypotheses().begin())->check(pHeuristic->ftDrivenDesc.checkDesc, rand, config.config, true);
 					if (option("PN", "(N)ext, (P)revious") == 'N') {
 						if (i < size) ++i;
 						else {
@@ -1649,7 +1651,7 @@ void RagPlanner::perform(const std::string& data, const std::string& item, const
 	data::Trajectory* trajectoryIf = is<data::Trajectory>(itemTrajectory.get());
 	if (!trajectoryIf)
 		throw Message(Message::LEVEL_ERROR, "Player::perform(): unable to create trajectory using handler %s", trajectoryHandler.c_str());
-	trajectoryIf->setWaypoints(/*completeTrajectory*/trajectory);
+	trajectoryIf->setWaypoints(/*completeTrajectory*/grasp::Waypoint::make(trajectory, trajectory));
 
 	// block displaying the current item
 	RenderBlock renderBlock(*this);
@@ -1810,7 +1812,7 @@ void RagPlanner::perform(const std::string& data, const std::string& item, const
 		//}
 		for (U32 indexjj = 0; indexjj < robotPoses.size(); ++indexjj) {
 			//RealSeq links; links.assign(dimensions(), REAL_ZERO);
-			//size_t jointInCollision = !objectPointCloudPtr->empty() ? collisionPtr->simulate(ragDesc.objCollisionDescPtr->flannDesc, rand, manipulator->getPose(robotPoses[indexjj]), links, true) : 0;
+			//size_t jointInCollision = !objectPointCloudPtr->empty() ? collisionPtr->simulate(ragDesc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(robotPoses[indexjj]), links, true) : 0;
 			//dataSimContact << indexjj << "\t";
 			//strTorques(dataSimContact, links, jointInCollision);
 			//dataSimContact << std::endl;
@@ -1820,7 +1822,7 @@ void RagPlanner::perform(const std::string& data, const std::string& item, const
 			strFT(dataIndex, ftSeq[indexjj]);
 			strTorques(dataIndex, forceInpSensorSeq[indexjj]);
 			RealSeq links; links.assign(dimensions(), REAL_ZERO);
-			size_t jointInCollision = !objectPointCloudPtr->empty() ? collisionPtr->simulate(ragDesc.objCollisionDescPtr->flannDesc, rand, manipulator->getPose(robotPoses[indexjj]), links, true) : 0;
+			size_t jointInCollision = !objectPointCloudPtr->empty() ? collisionPtr->simulate(ragDesc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(robotPoses[indexjj]), links, true) : 0;
 			strSimTorques(dataIndex, robotPoses[indexjj], links, jointInCollision);
 			dataIndex << std::endl;
 		}
@@ -1844,7 +1846,7 @@ void RagPlanner::perform(const std::string& data, const std::string& item, const
 
 //------------------------------------------------------------------------------
 
-bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::State::Seq& trajectory) {
+bool RagPlanner::execute(data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq& trajectory) {
 	const golem::Chainspace::Index armChain = armInfo.getChains().begin();
 	bool silent = to<Data>(dataPtr)->actionType != action::NONE_ACTION;
 //	context.debug("execute(): silen=%s, actionType=%s\n", silent ? "TRUE" : "FALSE", actionToString(grasp::to<Data>(dataPtr)->actionType));
@@ -1893,7 +1895,7 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 		Controller::State cend = lookupState();
 		// transform w.r.t. query frame
 		try {
-			findTarget(grasp::to<Data>(dataPtr)->queryTransform, grasp::to<Data>(dataPtr)->modelFrame, trajectory[1], cend);
+			findTarget(grasp::to<Data>(dataPtr)->queryTransform, grasp::to<Data>(dataPtr)->modelFrame, trajectory[1].state, cend);
 		}
 		catch (const Message& msg) {
 			context.write("%s\n", msg.str().c_str());
@@ -1913,7 +1915,7 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 		//	}
 		//}
 
-		Bounds::Seq bounds = manipulator->getBounds(manipulator->getConfig(cend), manipulator->getPose(cend).toMat34());
+		Bounds::Seq bounds = manipulator->getBounds(manipulator->getConfig(cend).config, manipulator->getConfig(cend).frame.toMat34());
 		renderHand(cend, bounds, true);
 
 		Controller::State::Seq approach;
@@ -1939,8 +1941,8 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 			data::Trajectory* trajectory = is<data::Trajectory>(ptr);
 			if (!trajectory)
 				throw Message(Message::LEVEL_ERROR, "Demo::selectTrajectory(): Trajectory handler does not implement data::Trajectory");
-			// add current state
-			trajectory->setWaypoints(out);
+			// add current states
+			trajectory->setWaypoints(grasp::Waypoint::make(out, out));
 			Data::View::setItem(to<Data>(dataPtr)->itemMap, ptr, to<Data>(dataPtr)->getView());
 		}
 
@@ -1967,7 +1969,7 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 		resetPlanning();
 		pHeuristic->enableUnc = grasp::to<Data>(dataPtr)->stratType == Strategy::IR3NE ? true : false;
 		// pre-grasp pose w.r.t. query frame
-		Controller::State cend = trajectory[1];
+		Controller::State cend = trajectory[1].state;
 		pHeuristic->setPointCloudCollision(true);
 		Controller::State::Seq approach;
 		findTrajectory(lookupState(), &cend, nullptr, 0, approach);
@@ -1985,7 +1987,7 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 			if (!trajectory)
 				throw Message(Message::LEVEL_ERROR, "Demo::selectTrajectory(): Trajectory handler does not implement data::Trajectory");
 			// add current state
-			trajectory->setWaypoints(out);
+			trajectory->setWaypoints(grasp::Waypoint::make(out, out));
 			Data::View::setItem(to<Data>(dataPtr)->itemMap, ptr, to<Data>(dataPtr)->getView());
 		}
 
@@ -2015,19 +2017,19 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 		index -= 1;
 
 		Controller::State cend = lookupState();
-		cend.cpos = trajectory[index].cpos;
+		cend.cpos = trajectory[index].state.cpos;
 
 		// transform w.r.t. query frame
-		findTarget(grasp::to<Data>(dataPtr)->queryTransform, trajectory[index], cend);
+		findTarget(grasp::to<Data>(dataPtr)->queryTransform, trajectory[index].state, cend);
 
-		//Bounds::Seq bounds = manipulator->getBounds(manipulator->getConfig(cend), manipulator->getPose(cend).toMat34());
+		//Bounds::Seq bounds = manipulator->getBounds(manipulator->getConfig(cend), manipulator->getConfig(cend).toMat34());
 		//renderHand(cend, bounds, true);
 
 		Controller::State::Seq approach;
 		try {
 			findTrajectory(lookupState(), &cend, nullptr, 0, approach);
 		}
-		catch (const Message &msg) { return false; }
+		catch (const Message&) { return false; }
 
 		Controller::State::Seq out;
 		profile(this->trjDuration, approach, out, silent);
@@ -2044,7 +2046,7 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 			if (!trajectory)
 				throw Message(Message::LEVEL_ERROR, "Demo::selectTrajectory(): Trajectory handler does not implement data::Trajectory");
 			// add current state
-			trajectory->setWaypoints(out);
+			trajectory->setWaypoints(grasp::Waypoint::make(out, out));
 			Data::View::setItem(to<Data>(dataPtr)->itemMap, ptr, to<Data>(dataPtr)->getView());
 		}
 
@@ -2079,7 +2081,7 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 		// grasp configuration (fingers closed)
 		Controller::State cend = lookupState();
 		for (auto i = handInfo.getJoints().begin(); i != handInfo.getJoints().end(); ++i)
-			cend.cpos[i] = trajectory[index].cpos[i];
+			cend.cpos[i] = trajectory[index].state.cpos[i];
 
 		for (auto i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i) {
 			for (auto j = handInfo.getJoints(i).begin(); j != handInfo.getJoints(i).end(); ++j) {
@@ -2109,7 +2111,7 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 			if (!trajectory)
 				throw Message(Message::LEVEL_ERROR, "Demo::selectTrajectory(): Trajectory handler does not implement data::Trajectory");
 			// add current state
-			trajectory->setWaypoints(out);
+			trajectory->setWaypoints(grasp::Waypoint::make(out, out));
 			Data::View::setItem(to<Data>(dataPtr)->itemMap, ptr, to<Data>(dataPtr)->getView());
 		}
 
@@ -2169,7 +2171,7 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 			return false;
 		}
 
-		//Bounds::Seq bounds = manipulator->getBounds(manipulator->getConfig(target), manipulator->getPose(target).toMat34());
+		//Bounds::Seq bounds = manipulator->getBounds(manipulator->getConfig(target), manipulator->getConfig(target).toMat34());
 		//renderHand(target, bounds, true);
 
 		//for (auto j = handInfo.getJoints().begin() + 1; j != handInfo.getJoints().end(); ++j) {
@@ -2201,7 +2203,7 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 			if (!trajectory)
 				throw Message(Message::LEVEL_ERROR, "Demo::selectTrajectory(): Trajectory handler does not implement data::Trajectory");
 			// add current state
-			trajectory->setWaypoints(out);
+			trajectory->setWaypoints(grasp::Waypoint::make(out, out));
 			Data::View::setItem(to<Data>(dataPtr)->itemMap, ptr, to<Data>(dataPtr)->getView());
 		}
 
@@ -2227,14 +2229,14 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 		Controller::State cnow = lookupState();
 		for (auto i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i) {
 			for (auto j = handInfo.getJoints(i).begin(); j != handInfo.getJoints(i).end(); ++j)
-				openfingers.cpos[j] = trajectory[1].cpos[j]; // pre-grasp fingers' pose
+				openfingers.cpos[j] = trajectory[1].state.cpos[j]; // pre-grasp fingers' pose
 		}
 		// transform w.r.t. query frame 
 		findTarget(Mat34::identity(), openfingers, openfingers);
 		
-		//Bounds::Seq bounds = manipulator->getBounds(manipulator->getConfig(openfingers), manipulator->getPose(openfingers).toMat34());
+		//Bounds::Seq bounds = manipulator->getBounds(manipulator->getConfig(openfingers), manipulator->getConfig(openfingers).toMat34());
 		//renderHand(openfingers, bounds, true);
-		//Bounds::Seq bounds2 = manipulator->getBounds(manipulator->getConfig(cnow), manipulator->getPose(cnow).toMat34());
+		//Bounds::Seq bounds2 = manipulator->getBounds(manipulator->getConfig(cnow), manipulator->getConfig(cnow).toMat34());
 		//renderHand(openfingers, bounds2, false);
 
 		Controller::State::Seq openTrj;
@@ -2255,7 +2257,7 @@ bool RagPlanner::execute(data::Data::Map::iterator dataPtr, golem::Controller::S
 			if (!trajectory)
 				throw Message(Message::LEVEL_ERROR, "Demo::selectTrajectory(): Trajectory handler does not implement data::Trajectory");
 			// add current state
-			trajectory->setWaypoints(out);
+			trajectory->setWaypoints(grasp::Waypoint::make(out, out));
 			Data::View::setItem(to<Data>(dataPtr)->itemMap, ptr, to<Data>(dataPtr)->getView());
 		}
 
@@ -2407,8 +2409,8 @@ Real RagPlanner::simContacts(const golem::Bounds::Seq::const_iterator &begin, co
 //		Collision::Waypoint w;
 //		w.points = 1000;
 //		if (showIndices) {
-//			//collision->draw(manipulator->getPose(state), debugRenderer);
-//			//(*pBelief->getHypotheses().begin())->draw(debugRenderer, rand, manipulator->getPose(state));
+//			//collision->draw(manipulator->getConfig(state), debugRenderer);
+//			//(*pBelief->getHypotheses().begin())->draw(debugRenderer, rand, manipulator->getConfig(state));
 //			Collision::FlannDesc flann;
 //			flann.neighbours = 100;
 //			flann.points = 1000;
@@ -2416,9 +2418,9 @@ Real RagPlanner::simContacts(const golem::Bounds::Seq::const_iterator &begin, co
 //			flann.likelihood = Real(100);
 //			std::vector<Configspace::Index> joints;
 //			grasp::RealSeq forces;
-//			(*pBelief->getHypotheses().begin())->draw(debugRenderer, manipulator->getPose(state), joints, forces, flann);
+//			(*pBelief->getHypotheses().begin())->draw(debugRenderer, manipulator->getConfig(state), joints, forces, flann);
 //		}
-//			//(*pBelief->getHypotheses().begin())->draw(w, manipulator->getPose(state), debugRenderer);
+//			//(*pBelief->getHypotheses().begin())->draw(w, manipulator->getConfig(state), debugRenderer);
 //			//		handRenderer.renderWire(handBounds.begin(), handBounds.end());
 //		//context.write("Hand bounds (size=%d)\n", handBounds.size());
 //		//for (Bounds::Seq::const_iterator i = handBounds.begin(); i != handBounds.end(); ++i)
@@ -2498,12 +2500,13 @@ void RagPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 
 	context.debug("resample (wheel algorithm)...\n");
 	// resampling (wheel algorithm)
-	pBelief->createResample(manipulator->getPose(w.cpos));
+	pBelief->createResample(/*manipulator->getConfig(getStateFrom(w))*/);
 
 	// update the query frame
 	context.debug("create hypotheses and update query frame...\n");
 	grasp::RBPose::Sample mlFrame = pBelief->createHypotheses(modelPoints, modelFrame);
-	grasp::to<Data>(dataPtr)->queryTransform/*actionFrame = grasp::to<Data>(queryDataPtr)->actionFrame*/ = Mat34(mlFrame.q, mlFrame.p);
+	Mat33 qq; mlFrame.q.toMat33(qq);
+	grasp::to<Data>(dataPtr)->queryTransform/*actionFrame = grasp::to<Data>(queryDataPtr)->actionFrame*/ = Mat34(qq, mlFrame.p);
 
 	// update query settings
 	grasp::to<Data>(dataPtr)->queryFrame.multiply(grasp::to<Data>(dataPtr)->queryTransform, modelFrame);

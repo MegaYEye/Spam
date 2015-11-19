@@ -12,21 +12,21 @@
 #include <Spam/Spam/Belief.h>
 #include <Grasp/Contact/Contact.h>
 
-#ifdef WIN32
-	#pragma warning (push)
-	#pragma warning (disable : 4291 4244 4996 4305)
-#endif
-#include <pcl/point_types.h>
-#include <pcl/point_cloud.h>
-#include <pcl/common/centroid.h>
-#include <pcl/common/eigen.h>
-#include <flann/flann.hpp>
-#include <pcl/kdtree/kdtree_flann.h>
-#include <pcl/features/normal_3d.h>
-#include <pcl/surface/gp3.h>
-#ifdef WIN32
-	#pragma warning (pop)
-#endif
+//#ifdef WIN32
+//	#pragma warning (push)
+//	#pragma warning (disable : 4291 4244 4996 4305)
+//#endif
+//#include <pcl/point_types.h>
+//#include <pcl/point_cloud.h>
+//#include <pcl/common/centroid.h>
+//#include <pcl/common/eigen.h>
+//#include <flann/flann.hpp>
+//#include <pcl/kdtree/kdtree_flann.h>
+//#include <pcl/features/normal_3d.h>
+//#include <pcl/surface/gp3.h>
+//#ifdef WIN32
+//	#pragma warning (pop)
+//#endif
 
 //------------------------------------------------------------------------------
 
@@ -68,7 +68,7 @@ void spam::XMLData(Belief::Desc& val, golem::XMLContext* context, bool create) {
 	try {
 		XMLData((grasp::RBPose::Desc&)*val.rbPoseDescPtr, context->getContextFirst("pose_estimation"));
 	}
-	catch (const golem::MsgXMLParser& msg) {}
+	catch (const golem::MsgXMLParser&) {}
 
 	//golem::XMLData("kernels", val.tactile.kernels, context, create);
 	//golem::XMLData("test", val.tactile.test, context, create);
@@ -688,7 +688,7 @@ grasp::RBPose::Sample Belief::maximum() {
 }
 
 
-void Belief::createResample(const grasp::Manipulator::Pose& robotPose) {
+void Belief::createResample(/*const grasp::Manipulator::Config& robotPose*/) {
 	// check for collisions to reject samples
 	//Collision::FlannDesc waypointDesc;
 	//Collision::Desc::Ptr cloudDesc;
@@ -792,11 +792,19 @@ void Belief::createUpdate(const Collision::Ptr collision, const golem::Waypoint 
 	Collision::Ptr cloud = cloudDesc->create(*manipulator);
 	waypointDesc.depthStdDev = 0.0035/*0.0005*/; waypointDesc.likelihood = 1000.0; waypointDesc.points = 10000; waypointDesc.neighbours = 100;
 	waypointDesc.radius = REAL_ZERO;
+	
+	golem::Controller::State state = manipulator->getController().createState();
+
+	manipulator->getController().lookupState(golem::SEC_TM_REAL_MAX, state);
+
+	// position control
+	state.cpos = w.cpos;
+
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
 		grasp::Cloud::PointSeq points;
 		grasp::Cloud::transform(sampledPose->toMat34(), modelPoints, points);
 		cloud->create(rand, points);
-		sampledPose->weight = cloud->evaluate(waypointDesc, manipulator->getPose(w.cpos), triggeredGuards, false);
+		sampledPose->weight = cloud->evaluate(waypointDesc, manipulator->getConfig(state), triggeredGuards, false);
 		grasp::RBDist error;
 		error.lin = rbPose.p.distance(sampledPose->p);
 		error.ang = rbPose.q.distance(sampledPose->q);

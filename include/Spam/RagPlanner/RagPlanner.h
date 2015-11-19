@@ -388,7 +388,7 @@ protected:
 	virtual void perform(const std::string& data, const std::string& item, const golem::Controller::State::Seq& trajectory, bool testTrajectory = true);
 
 	/** Plan and execute r2g, grasp, lift operations */
-	bool execute(grasp::data::Data::Map::iterator dataPtr, golem::Controller::State::Seq& trajectory);
+	bool execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq& trajectory);
 
 	virtual void render() const;
 	void renderHand(const golem::Controller::State &state, const golem::Bounds::Seq &bounds, bool clear = true);

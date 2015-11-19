@@ -383,7 +383,8 @@ public:
 
 	/** Returns true only if expected collisions are likely to happen */
 	inline bool expectedCollisions(const golem::Controller::State& state) const {
-		return hypothesisBoundsSeq.empty() ? false : intersect(manipulator->getBounds(manipulator->getConfig(state), manipulator->getPose(state).toMat34()), hypothesisBoundsSeq, false);
+		const grasp::Manipulator::Config config = manipulator->getConfig(state);
+		return hypothesisBoundsSeq.empty() ? false : intersect(manipulator->getBounds(config.config, config.frame.toMat34()), hypothesisBoundsSeq, false);
 		//if (intersect(manipulator->getBounds(manipulator->getConfig(state), manipulator->getPose(state).toMat34()), pBelief->uncertaintyRegionBounds(), false) && !hypothesisBoundsSeq.empty()) {
 		//	return intersect(manipulator->getBounds(manipulator->getConfig(state), manipulator->getPose(state).toMat34()), hypothesisBoundsSeq, false);
 			//for (auto i = pBelief->getHypotheses().begin(); i != pBelief->getHypotheses().end(); ++i)
@@ -491,8 +492,9 @@ protected:
 	golem::Real evaluate(const Hypothesis::Seq::const_iterator &hypothesis, const golem::Waypoint &w) const;
 
 	/** Estimate contact with hyptothesis */
-	inline golem::Real estimate(const Hypothesis::Seq::const_iterator &hypothesis, const golem::Waypoint &w) const {
-		return (*hypothesis)->estimate(ftDrivenDesc.evaluationDesc, manipulator->getPose(w.cpos), ftDrivenDesc.ftModelDesc.distMax);
+	inline golem::Real estimate(const Hypothesis::Seq::const_iterator &hypothesis, const golem::Waypoint& w) const {
+		const grasp::Manipulator::Config config(w.cpos);
+		return (*hypothesis)->estimate(ftDrivenDesc.evaluationDesc, config, ftDrivenDesc.ftModelDesc.distMax);
 	}
 
 	/** Penalises configurations which collide with the mean hypothesis */

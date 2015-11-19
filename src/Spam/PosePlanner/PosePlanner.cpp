@@ -592,6 +592,14 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	//pRBPose = desc.pRBPoseDesc->create(context); // throws
 	pBelief = desc.pBeliefDesc->create(context); //static_cast<Belief*>(pRBPose.get());
 
+	// manipulator
+	manipulator = desc.manipulatorDesc->create(*planner, desc.controllerIDSeq);
+	manipulatorAppearance = desc.manipulatorAppearance;
+
+	pHeuristic = dynamic_cast<FTDrivenHeuristic*>(&planner->getHeuristic());
+	pHeuristic->setBelief(&*pBelief);
+	pHeuristic->setManipulator(manipulator.get());
+
 	grasp::Sensor::Map::const_iterator modelCameraPtr = sensorMap.find(desc.modelCamera);
 	modelCamera = modelCameraPtr != sensorMap.end() ? is<Camera>(modelCameraPtr->second.get()) : nullptr;
 	if (!modelCamera)
@@ -715,14 +723,6 @@ bool spam::PosePlanner::create(const Desc& desc) {
 //	modelDataPtr = getData().end();
 	resetDataPointers();
 	screenCapture = desc.screenCapture;
-
-	// manipulator
-	manipulator = desc.manipulatorDesc->create(*planner, desc.controllerIDSeq);
-	manipulatorAppearance = desc.manipulatorAppearance;
-
-	pHeuristic = dynamic_cast<FTDrivenHeuristic*>(&planner->getHeuristic());
-	pHeuristic->setBelief(&*pBelief);
-	pHeuristic->setManipulator(manipulator.get());
 
 	myDesc = desc;
 
@@ -1123,7 +1123,7 @@ void spam::PosePlanner::TrialData::xmlData(golem::XMLContext* context, bool crea
 	try {
 		golem::XMLData("data_path", const_cast<std::string&>(dataPath), context, create);
 	}
-	catch (const golem::MsgXMLParser &msg) { printf("%s: %s\n", msg.what(), msg.str().c_str()); }
+	catch (const golem::MsgXMLParser &msg) { printf("%s\n", msg.str().c_str()); }
 
 	golem::XMLData("enable", const_cast<bool&>(enable), context, create);
 	golem::XMLData("silent", const_cast<bool&>(silent), context, create);
@@ -1143,7 +1143,7 @@ void spam::PosePlanner::TrialData::xmlData(golem::XMLContext* context, bool crea
 	}
 
 	// TRAJECTORIES
-	golem::XMLData("ext_trajectory", const_cast<std::string&>(extTrajectory), context, create);
+	golem::XMLData("ext_trj", const_cast<std::string&>(extTrajectory), context, create);
 
 	if (!controller) {
 		printf("TrialData::xmlData: no controller.\n");

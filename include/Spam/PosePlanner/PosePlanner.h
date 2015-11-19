@@ -1025,6 +1025,25 @@ protected:
 	/** Point selection */
 //	grasp::Cloud::PointSeqMap::iterator getPointsTrn(Data::Map::iterator dataPtr, golem::Mat34 &trn);
 
+	inline golem::Controller::State lookupState(golem::SecTmReal time = golem::SEC_TM_REAL_MAX) const {
+		golem::Controller::State dflt = controller->createState();
+		controller->setToDefault(dflt);
+
+		controller->lookupState(time, dflt);
+		dflt.cvel.setToDefault(info.getJoints());
+		dflt.cacc.setToDefault(info.getJoints());
+		return dflt;
+	}
+
+	inline golem::Controller::State lookupCommand(golem::SecTmReal time = golem::SEC_TM_REAL_MAX) const {
+		golem::Controller::State dflt = controller->createState();
+		controller->setToDefault(dflt);
+
+		controller->lookupCommand(time, dflt);
+		dflt.cvel.setToDefault(info.getJoints());
+		dflt.cacc.setToDefault(info.getJoints());
+		return dflt;
+	}
 
 	virtual void render() const;
 

@@ -245,7 +245,8 @@ public:
 		typedef golem::_Mat34<_Real> Mat34;
 		typedef std::vector<Vec3> Vec3Seq;
 
-		typedef std::vector<_Bounds> Seq;
+		//typedef std::vector<_Bounds> Seq;
+		typedef golem::ScalarCoord<_Bounds, golem::Configspace> Coord;
 
 		/** Surface */
 		struct Surface {
@@ -646,40 +647,44 @@ public:
 	virtual void create(golem::Rand& rand, const grasp::Cloud::PointSeq& points);
 
 	/** Collision detection at a given waypoint */
-	virtual bool check(const Waypoint& waypoint, const grasp::Manipulator::Pose& pose, bool debug = false) const;
+	virtual bool check(const Waypoint& waypoint, const grasp::Manipulator::Config& config, bool debug = false) const;
 	/** Collision detection using kdtree */
-	virtual bool check(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Pose& pose, bool debug = false) const;
+	virtual bool check(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, bool debug = false) const;
 
 	/** Collision detection for the observational model durin hypopthesis-based planning */
-	virtual golem::Real estimate(const FlannDesc& desc, const grasp::Manipulator::Pose& pose, golem::Real maxDist = golem::REAL_MAX, bool debug = false) const;
+	virtual golem::Real estimate(const FlannDesc& desc, const grasp::Manipulator::Config& config, golem::Real maxDist = golem::REAL_MAX, bool debug = false) const;
 	/** Collision detection using kdtree */
 //	virtual bool estimate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Pose& pose, bool debug = false) const;
 
 	/** Collision detection to simulate contact at execution time */
-	virtual size_t simulate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Pose& pose, std::vector<golem::Configspace::Index>& joints, grasp::RealSeq& forces, bool debug = false) const;
+	virtual size_t simulate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, std::vector<golem::Configspace::Index>& joints, grasp::RealSeq& forces, bool debug = false) const;
 	/** Collision detection to simulate contact at execution time */
-	virtual size_t simulate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Pose& pose, FTGuard::Seq& joints, bool debug = false) const;
+	virtual size_t simulate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, FTGuard::Seq& joints, bool debug = false) const;
 	/** Collision detection to simulate contact at execution time */
-	virtual size_t simulate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Pose& pose, grasp::RealSeq& forces, bool debug = false) const;
+	virtual size_t simulate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, grasp::RealSeq& forces, bool debug = false) const;
 
 	/** Collision likelihood estimation at a given waypoint */
-	virtual golem::Real evaluate(const Waypoint& waypoint, const grasp::Manipulator::Pose& pose, bool debug = false) const;
+	virtual golem::Real evaluate(const Waypoint& waypoint, const grasp::Manipulator::Config& config, bool debug = false) const;
 
 	/** Collision likelihood estimation at a given waypoint for belief update */
-	virtual golem::Real evaluate(const Waypoint& waypoint, const grasp::Manipulator::Pose& pose, const FTGuard::Seq& triggeredGuards, bool debug = false) const;
+	virtual golem::Real evaluate(const Waypoint& waypoint, const grasp::Manipulator::Config& config, const FTGuard::Seq& triggeredGuards, bool debug = false) const;
 
 	/** Collision likelihood estimation at a given waypoint for belief update */
-	virtual golem::Real evaluate(const FlannDesc& desc, const grasp::Manipulator::Pose& pose, FTGuard::Seq& triggeredGuards, bool debug = false) const;
+	virtual golem::Real evaluate(const FlannDesc& desc, const grasp::Manipulator::Config& config, FTGuard::Seq& triggeredGuards, bool debug = false) const;
 
 	/** Collision likelihood estimation at a given waypoint */
-	virtual golem::Real evaluate(const FlannDesc& desc, const grasp::Manipulator::Pose& pose, bool debug = false) const;
+	virtual golem::Real evaluate(const FlannDesc& desc, const grasp::Manipulator::Config& config, bool debug = false) const;
 
 	/** Collision likelihood estimation on a given path */
 	virtual golem::Real evaluate(const grasp::Manipulator::Waypoint::Seq& path, bool debug = false) const;
 
-	/** Bounds */
-	inline const Bounds::Seq& getBounds() const {
-		return bounds;
+	/** Joints bounds */
+	inline const Bounds::Coord& getJointBounds() const {
+		return jointBounds;
+	}
+	/** Base bounds */
+	inline const Bounds& getBaseBounds() const {
+		return baseBounds;
 	}
 	/** Points */
 	//inline const Bounds::Vec3Seq& getPoints() const {
@@ -691,15 +696,15 @@ public:
 
 
 	/** Draw collisions */
-	void draw(const Waypoint& waypoint, const grasp::Manipulator::Pose& rbpose, golem::DebugRenderer& renderer) const;
+	void draw(const Waypoint& waypoint, const grasp::Manipulator::Config& config, golem::DebugRenderer& renderer) const;
 	/** Draw collisions with kdtree */
-	void draw(golem::DebugRenderer& renderer, const golem::Rand& rand, const grasp::Manipulator::Pose& rbpose, const Collision::FlannDesc& desc) const;
+	void draw(golem::DebugRenderer& renderer, const golem::Rand& rand, const grasp::Manipulator::Config& config, const Collision::FlannDesc& desc) const;
 	/** Draw estimate */
-	void draw(golem::DebugRenderer& renderer, const grasp::Manipulator::Pose& rbpose, const Collision::FlannDesc& desc) const;
+	void draw(golem::DebugRenderer& renderer, const grasp::Manipulator::Config& config, const Collision::FlannDesc& desc) const;
 	/** Draw simulate */
-	void draw(golem::DebugRenderer& renderer, const grasp::Manipulator::Pose& rbpose, std::vector<golem::Configspace::Index> &joints, grasp::RealSeq &forces, const Collision::FlannDesc& desc) const;
+	void draw(golem::DebugRenderer& renderer, const grasp::Manipulator::Config& config, std::vector<golem::Configspace::Index> &joints, grasp::RealSeq &forces, const Collision::FlannDesc& desc) const;
 	/** Collision likelihood estimation at a given waypoint for belief update */
-	void draw(golem::DebugRenderer& renderer, const Waypoint& waypoint, const grasp::Manipulator::Pose& rbpose, const FTGuard::Seq &triggeredGuards, bool debug = false) const;
+	void draw(golem::DebugRenderer& renderer, const Waypoint& waypoint, const grasp::Manipulator::Config& config, const FTGuard::Seq &triggeredGuards, bool debug = false) const;
 
 	/** Returns ft_sensor desc in free space */
 	FTSensorDesc getFTBaseSensor() {
@@ -725,8 +730,10 @@ protected:
 	/** Description */
 	const Desc desc;
 
-	/** Joints + base */
-	Bounds::Seq bounds;
+	/** Joints */
+	Bounds::Coord jointBounds;
+	/** Base */
+	Bounds baseBounds;
 	/** Points */
 	Feature::Seq points;
 	//	Bounds::Vec3Seq points;
@@ -890,26 +897,26 @@ public:
 	inline grasp::Cloud::PointSeq getCloud() const { return points; };
 
 	/** Collision detection at a given waypoint */
-	inline bool check(const Collision::Waypoint& waypoint, const grasp::Manipulator::Pose& pose, bool debug = false) const {
-		return collisionPtr->check(waypoint, pose, debug);
+	inline bool check(const Collision::Waypoint& waypoint, const grasp::Manipulator::Config& config, bool debug = false) const {
+		return collisionPtr->check(waypoint, config, debug);
 	};
 	/** Collision detection at a given waypoint */
-	inline bool check(const Collision::FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Pose& pose, bool debug = false) const {
-		return collisionPtr->check(desc, rand, pose, debug);
+	inline bool check(const Collision::FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, bool debug = false) const {
+		return collisionPtr->check(desc, rand, config, debug);
 	}
 
 	/** Collision detection at a given waypoint */
-	inline virtual golem::Real estimate(const Collision::FlannDesc& desc, const grasp::Manipulator::Pose& pose, golem::Real maxDist = golem::REAL_MAX, bool debug = false) const {
-		return collisionPtr->estimate(desc, pose, maxDist, debug);
+	inline virtual golem::Real estimate(const Collision::FlannDesc& desc, const grasp::Manipulator::Config& config, golem::Real maxDist = golem::REAL_MAX, bool debug = false) const {
+		return collisionPtr->estimate(desc, config, maxDist, debug);
 	}
 
 	/** Collision likelihood estimation at a given waypoint */
-	inline golem::Real evaluate(const Collision::Waypoint& waypoint, const grasp::Manipulator::Pose& pose, bool debug = false) const {
-		return collisionPtr->evaluate(waypoint, pose, debug);
+	inline golem::Real evaluate(const Collision::Waypoint& waypoint, const grasp::Manipulator::Config& config, bool debug = false) const {
+		return collisionPtr->evaluate(waypoint, config, debug);
 	}
 	/** Collision likelihood estimation at a given waypoint */
-	inline golem::Real evaluate(const Collision::FlannDesc& desc, const grasp::Manipulator::Pose& pose, bool debug = false) const {
-		return collisionPtr->evaluate(desc, pose, debug);
+	inline golem::Real evaluate(const Collision::FlannDesc& desc, const grasp::Manipulator::Config& config, bool debug = false) const {
+		return collisionPtr->evaluate(desc, config, debug);
 	}
 
 	/** Return seq of bounds */
@@ -922,16 +929,16 @@ public:
 	void draw(golem::DebugRenderer &renderer) const;
 
 	/** Draw collisions */
-	void draw(const Collision::Waypoint &waypoint, const grasp::Manipulator::Pose& rbpose, golem::DebugRenderer& renderer) const;
+	void draw(const Collision::Waypoint &waypoint, const grasp::Manipulator::Config& config, golem::DebugRenderer& renderer) const;
 	/** Draw collision using kdtree */
-	void draw(golem::DebugRenderer& renderer, const golem::Rand& rand, const grasp::Manipulator::Pose& rbpose) const;
+	void draw(golem::DebugRenderer& renderer, const golem::Rand& rand, const grasp::Manipulator::Config& config) const;
 	/** Draw estimate */
-	void draw(golem::DebugRenderer& renderer, const grasp::Manipulator::Pose& rbpose, const Collision::FlannDesc& desc) const {
-		collisionPtr->draw(renderer, rbpose, desc);
+	void draw(golem::DebugRenderer& renderer, const grasp::Manipulator::Config& config, const Collision::FlannDesc& desc) const {
+		collisionPtr->draw(renderer, config, desc);
 	}
 	/** Draw simulate */
-	void draw(golem::DebugRenderer& renderer, const grasp::Manipulator::Pose& rbpose, std::vector<golem::Configspace::Index> &joints, grasp::RealSeq &forces, const Collision::FlannDesc& desc) const {
-		collisionPtr->draw(renderer, rbpose, joints, forces, desc);
+	void draw(golem::DebugRenderer& renderer, const grasp::Manipulator::Config& config, std::vector<golem::Configspace::Index> &joints, grasp::RealSeq &forces, const Collision::FlannDesc& desc) const {
+		collisionPtr->draw(renderer, config, joints, forces, desc);
 	}
 	Appearance appearance;
 

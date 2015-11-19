@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <grasp>
-  <data tmp_dir="F:\HandlerVideoTmp" frame_suffix=".frame" delete_if_moved="1" delete_if_unlinked="1" delete_if_temporary="1">
+  <data tmp_dir="HandlerVideoTmp" frame_suffix=".frame" delete_if_moved="1" delete_if_unlinked="1" delete_if_temporary="1">
     <cloud suffix=".pcd">
       <region_capture>
         <bounds type="box" group="1">
