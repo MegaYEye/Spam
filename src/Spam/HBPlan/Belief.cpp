@@ -49,7 +49,7 @@ void spam::XMLData(Belief::Desc& val, golem::XMLContext* context, bool create) {
 	try {
 		XMLData((grasp::RBPose::Desc&)*val.rbPoseDescPtr, context->getContextFirst("pose_estimation"));
 	}
-	catch (const golem::MsgXMLParser&) {}
+	catch (const golem::MsgXMLParser& msg) {}
 
 	//golem::XMLData("kernels", val.tactile.kernels, context, create);
 	//golem::XMLData("test", val.tactile.test, context, create);

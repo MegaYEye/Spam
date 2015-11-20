@@ -1145,5 +1145,5 @@ void spam::XMLData(spam::Collision::Desc& val, golem::XMLContext* xmlcontext, bo
 		spam::XMLData(val.ftBase, xmlcontext->getContextFirst("ft_base"), create);
 		spam::XMLData(val.ftContact, xmlcontext->getContextFirst("ft_contact"), create);
 	}
-	catch (const golem::MsgXMLParser&) {  }
+	catch (const golem::MsgXMLParser& msg) { }
 }
