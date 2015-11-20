@@ -6,6 +6,9 @@
 
 # cmake requirements
 cmake_minimum_required(VERSION 2.8)
+if(COMMAND cmake_policy)
+	cmake_policy(SET CMP0003 NEW)
+endif(COMMAND cmake_policy)
 
 # Build options have to be before PROJECT(...)
 SET(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE PATH "Configuration types")
@@ -34,6 +37,29 @@ else(CMAKE_SIZEOF_VOID_P EQUAL 8)
 	SET(X86_32 1)
 	#MESSAGE("Architecture x86 32 bit")
 endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
+
+###############################################################################
+# Core libraries
+
+option(BUILD_SPAM_CORE "Build Spam Core library" YES)
+option(BUILD_SPAM_HBPLAN "Build Spam hypothesis-based planning library" YES)
+
+###############################################################################
+# Applications
+option(BUILD_SPAM_APP "Build Spam application library" YES)
+option(BUILD_SPAM_POSEPLANNER "Build Spam pose planner application" YES)
+option(BUILD_SPAM_R2GPLANNER "Build Spam RAG planner application" YES)
+
+###############################################################################
+# Data Libraries
+option(BUILD_SPAM_DATA_BELIEF "Build Spam data belief library" YES)
+option(BUILD_SPAM_DATA_R2GTRAJECTORY "Build Spam data R2G trajectory library" YES)
+
+###############################################################################
+# Demos 
+option(BUILD_SPAM_DEMO_RAG "Build Spam demo reach-to-grasp library" YES)
+
+###############################################################################
 
 # Traget names
 SET(CMAKE_RELEASE_POSTFIX "" CACHE PATH "Release postfix")
@@ -99,7 +125,7 @@ if (WIN32)
 		SET(MSVC_VER "110")
 	elseif(MSVC12)
 		SET(MSVC_VER "120")
-	endif()
+	endif(MSVC90)
 	
 	# Build options
 	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D_CRT_SECURE_NO_DEPRECATE")
@@ -214,7 +240,7 @@ elseif (UNIX)
 	FIND_PACKAGE(OpenCV REQUIRED)
 	# PCL
 	FIND_PACKAGE(PCL REQUIRED)
-endif()
+endif(WIN32)
 
 ADD_DEFINITIONS(
 	${OPENCV_DEFINITIONS}
@@ -247,147 +273,408 @@ INCLUDE_DIRECTORIES(
 	${GRASP_INCLUDE}
 )
 
-# Spam library
-SET(SPAM_HEADERS
-	${PROJECT_ROOT}/include/Spam/Spam/Belief.h
-	${PROJECT_ROOT}/include/Spam/Spam/Spam.h
-	${PROJECT_ROOT}/include/Spam/Spam/GraphPlanner.h
-	${PROJECT_ROOT}/include/Spam/Spam/Heuristic.h
-)
-SET(SPAM_SOURCES
-	${PROJECT_ROOT}/src/Spam/Spam/Belief.cpp
-	${PROJECT_ROOT}/src/Spam/Spam/Spam.cpp
-	${PROJECT_ROOT}/src/Spam/Spam/GraphPlanner.cpp
-	${PROJECT_ROOT}/src/Spam/Spam/Heuristic.cpp
-)
-if(BUILD_DYNAMIC_LIBS)
-	ADD_LIBRARY(SpamSpam SHARED ${SPAM_HEADERS} ${SPAM_SOURCES})
-	#SET_TARGET_PROPERTIES(SpamSpam PROPERTIES COMPILE_FLAGS ${CMAKE_DLL_EXPORT_FLAGS})
-else(BUILD_DYNAMIC_LIBS)
-	ADD_LIBRARY(SpamSpam STATIC ${SPAM_HEADERS} ${SPAM_SOURCES})
-endif(BUILD_DYNAMIC_LIBS)
-if (WIN32)
-	TARGET_LINK_LIBRARIES(
-		SpamSpam
-		optimized GraspCore${CMAKE_RELEASE_POSTFIX} debug GraspCore${CMAKE_DEBUG_POSTFIX}
-		optimized GraspContact${CMAKE_RELEASE_POSTFIX} debug GraspContact${CMAKE_DEBUG_POSTFIX}
-		#optimized GraspGrasp${CMAKE_RELEASE_POSTFIX} debug GraspGrasp${CMAKE_DEBUG_POSTFIX}
-		optimized GraspApp${CMAKE_RELEASE_POSTFIX} debug GraspApp${CMAKE_DEBUG_POSTFIX}
-		optimized GraspActiveCtrl${CMAKE_RELEASE_POSTFIX} debug GraspActiveCtrl${CMAKE_DEBUG_POSTFIX}
-		optimized GraspArmHandForce${CMAKE_RELEASE_POSTFIX} debug GraspArmHandForce${CMAKE_DEBUG_POSTFIX}		 
-		#NxCharacter64 PhysXCooking64 PhysXCore64 PhysXLoader64
-		expat freeglut Gdiplus
-		optimized GolemDefs${CMAKE_RELEASE_POSTFIX} debug GolemDefs${CMAKE_DEBUG_POSTFIX}
-		optimized GolemMath${CMAKE_RELEASE_POSTFIX} debug GolemMath${CMAKE_DEBUG_POSTFIX}
-		optimized GolemSys${CMAKE_RELEASE_POSTFIX} debug GolemSys${CMAKE_DEBUG_POSTFIX}
-		optimized GolemTools${CMAKE_RELEASE_POSTFIX} debug GolemTools${CMAKE_DEBUG_POSTFIX}
-		optimized GolemCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrl${CMAKE_DEBUG_POSTFIX}
-		optimized GolemPlan${CMAKE_RELEASE_POSTFIX} debug GolemPlan${CMAKE_DEBUG_POSTFIX}
-		optimized GolemUI${CMAKE_RELEASE_POSTFIX} debug GolemUI${CMAKE_DEBUG_POSTFIX}
-		optimized GolemUICtrl${CMAKE_RELEASE_POSTFIX} debug GolemUICtrl${CMAKE_DEBUG_POSTFIX}
-		optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
-		optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
-		optimized CamcalbCalb${CMAKE_RELEASE_POSTFIX} debug CamcalbCalb${CMAKE_DEBUG_POSTFIX}
-		optimized CamcalbMatas${CMAKE_RELEASE_POSTFIX} debug CamcalbMatas${CMAKE_DEBUG_POSTFIX}		 
-		${PCL_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBS}
+###############################################################################
+#
+# CORE library
+#
+###############################################################################
+IF (BUILD_SPAM_CORE)
+	SET(CORE_HEADERS
+		${PROJECT_ROOT}/include/Spam/Core/Collision.h
+		${PROJECT_ROOT}/include/Spam/Core/JContact.h
 	)
-elseif (UNIX)
-	TARGET_LINK_LIBRARIES(
-		SpamSpam
-		${PCL_LIBRARIES}
-		optimized CamcalbCalb${CMAKE_RELEASE_POSTFIX} debug CamcalbCalb${CMAKE_DEBUG_POSTFIX}
-		optimized CamcalbMatas${CMAKE_RELEASE_POSTFIX} debug CamcalbMatas${CMAKE_DEBUG_POSTFIX}		 
-		${OpenCV_LIBS}
-		optimized GraspCore${CMAKE_RELEASE_POSTFIX} debug GraspCore${CMAKE_DEBUG_POSTFIX}
-		optimized GraspContact${CMAKE_RELEASE_POSTFIX} debug GraspContact${CMAKE_DEBUG_POSTFIX}
-		#optimized GraspGrasp${CMAKE_RELEASE_POSTFIX} debug GraspGrasp${CMAKE_DEBUG_POSTFIX}
-		optimized GraspApp${CMAKE_RELEASE_POSTFIX} debug GraspApp${CMAKE_DEBUG_POSTFIX}	
-		optimized GraspActiveCtrl${CMAKE_RELEASE_POSTFIX} debug GraspActiveCtrl${CMAKE_DEBUG_POSTFIX}
-		optimized GraspArmHandForce${CMAKE_RELEASE_POSTFIX} debug GraspArmHandForce${CMAKE_DEBUG_POSTFIX}	 
-		${Boost_LIBRARIES}
-		optimized GolemDefs${CMAKE_RELEASE_POSTFIX} debug GolemDefs${CMAKE_DEBUG_POSTFIX}
-		optimized GolemSys${CMAKE_RELEASE_POSTFIX} debug GolemSys${CMAKE_DEBUG_POSTFIX}
-		optimized GolemTools${CMAKE_RELEASE_POSTFIX} debug GolemTools${CMAKE_DEBUG_POSTFIX}
-		optimized GolemCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrl${CMAKE_DEBUG_POSTFIX}
-		optimized GolemPlan${CMAKE_RELEASE_POSTFIX} debug GolemPlan${CMAKE_DEBUG_POSTFIX}
-		optimized GolemUICtrl${CMAKE_RELEASE_POSTFIX} debug GolemUICtrl${CMAKE_DEBUG_POSTFIX}
-		optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
-		optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
-		${CMAKE_DL_LIBS}
-		optimized GolemMath${CMAKE_RELEASE_POSTFIX} debug GolemMath${CMAKE_DEBUG_POSTFIX}
-		optimized GolemUI${CMAKE_RELEASE_POSTFIX} debug GolemUI${CMAKE_DEBUG_POSTFIX}
-		GL
-		GLU
-		glut
-		#NxCharacter NxCooking PhysXCore PhysXLoader
+	SET(CORE_SOURCES
+		${PROJECT_ROOT}/src/Spam/Core/Collision.cpp
+		${PROJECT_ROOT}/src/Spam/Core/JContact.cpp
 	)
-endif()	
-SET_PROPERTY(TARGET SpamSpam PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
-SET_PROPERTY(TARGET SpamSpam PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
-SET_PROPERTY(TARGET SpamSpam PROPERTY PROJECT_LABEL "Spam")
-SET_PROPERTY(TARGET SpamSpam PROPERTY FOLDER "Spam")
-INSTALL(TARGETS SpamSpam RUNTIME DESTINATION bin LIBRARY DESTINATION bin ARCHIVE DESTINATION lib)
-INSTALL(FILES ${SPAM_HEADERS} DESTINATION include/Spam/Spam/)
+	if(BUILD_DYNAMIC_LIBS)
+		ADD_LIBRARY(SpamCore SHARED ${CORE_HEADERS} ${CORE_SOURCES})
+		#SET_TARGET_PROPERTIES(SpamSpam PROPERTIES COMPILE_FLAGS ${CMAKE_DLL_EXPORT_FLAGS})
+	else(BUILD_DYNAMIC_LIBS)
+		ADD_LIBRARY(SpamCore STATIC ${CORE_HEADERS} ${CORE_SOURCES})
+	endif(BUILD_DYNAMIC_LIBS)
+	if (WIN32)
+		TARGET_LINK_LIBRARIES(
+			SpamCore
+			optimized GraspCore${CMAKE_RELEASE_POSTFIX} debug GraspCore${CMAKE_DEBUG_POSTFIX}
+			optimized GraspContact${CMAKE_RELEASE_POSTFIX} debug GraspContact${CMAKE_DEBUG_POSTFIX}
+			#optimized GraspGrasp${CMAKE_RELEASE_POSTFIX} debug GraspGrasp${CMAKE_DEBUG_POSTFIX}
+			optimized GraspApp${CMAKE_RELEASE_POSTFIX} debug GraspApp${CMAKE_DEBUG_POSTFIX}
+			optimized GraspActiveCtrl${CMAKE_RELEASE_POSTFIX} debug GraspActiveCtrl${CMAKE_DEBUG_POSTFIX}
+			optimized GraspArmHandForce${CMAKE_RELEASE_POSTFIX} debug GraspArmHandForce${CMAKE_DEBUG_POSTFIX}		 
+			#NxCharacter64 PhysXCooking64 PhysXCore64 PhysXLoader64
+			expat freeglut Gdiplus
+			optimized GolemDefs${CMAKE_RELEASE_POSTFIX} debug GolemDefs${CMAKE_DEBUG_POSTFIX}
+			optimized GolemMath${CMAKE_RELEASE_POSTFIX} debug GolemMath${CMAKE_DEBUG_POSTFIX}
+			optimized GolemSys${CMAKE_RELEASE_POSTFIX} debug GolemSys${CMAKE_DEBUG_POSTFIX}
+			optimized GolemTools${CMAKE_RELEASE_POSTFIX} debug GolemTools${CMAKE_DEBUG_POSTFIX}
+			optimized GolemCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrl${CMAKE_DEBUG_POSTFIX}
+			optimized GolemPlan${CMAKE_RELEASE_POSTFIX} debug GolemPlan${CMAKE_DEBUG_POSTFIX}
+			optimized GolemUI${CMAKE_RELEASE_POSTFIX} debug GolemUI${CMAKE_DEBUG_POSTFIX}
+			optimized GolemUICtrl${CMAKE_RELEASE_POSTFIX} debug GolemUICtrl${CMAKE_DEBUG_POSTFIX}
+			optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
+			optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
+			optimized CamcalbCalb${CMAKE_RELEASE_POSTFIX} debug CamcalbCalb${CMAKE_DEBUG_POSTFIX}
+			optimized CamcalbMatas${CMAKE_RELEASE_POSTFIX} debug CamcalbMatas${CMAKE_DEBUG_POSTFIX}		 
+			${PCL_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBS}
+		)
+	elseif (UNIX)
+		TARGET_LINK_LIBRARIES(
+			SpamCore
+			${PCL_LIBRARIES}
+			optimized CamcalbCalb${CMAKE_RELEASE_POSTFIX} debug CamcalbCalb${CMAKE_DEBUG_POSTFIX}
+			optimized CamcalbMatas${CMAKE_RELEASE_POSTFIX} debug CamcalbMatas${CMAKE_DEBUG_POSTFIX}		 
+			${OpenCV_LIBS}
+			optimized GraspCore${CMAKE_RELEASE_POSTFIX} debug GraspCore${CMAKE_DEBUG_POSTFIX}
+			optimized GraspContact${CMAKE_RELEASE_POSTFIX} debug GraspContact${CMAKE_DEBUG_POSTFIX}
+			#optimized GraspGrasp${CMAKE_RELEASE_POSTFIX} debug GraspGrasp${CMAKE_DEBUG_POSTFIX}
+			optimized GraspApp${CMAKE_RELEASE_POSTFIX} debug GraspApp${CMAKE_DEBUG_POSTFIX}	
+			optimized GraspActiveCtrl${CMAKE_RELEASE_POSTFIX} debug GraspActiveCtrl${CMAKE_DEBUG_POSTFIX}
+			optimized GraspArmHandForce${CMAKE_RELEASE_POSTFIX} debug GraspArmHandForce${CMAKE_DEBUG_POSTFIX}	 
+			${Boost_LIBRARIES}
+			optimized GolemDefs${CMAKE_RELEASE_POSTFIX} debug GolemDefs${CMAKE_DEBUG_POSTFIX}
+			optimized GolemSys${CMAKE_RELEASE_POSTFIX} debug GolemSys${CMAKE_DEBUG_POSTFIX}
+			optimized GolemTools${CMAKE_RELEASE_POSTFIX} debug GolemTools${CMAKE_DEBUG_POSTFIX}
+			optimized GolemCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrl${CMAKE_DEBUG_POSTFIX}
+			optimized GolemPlan${CMAKE_RELEASE_POSTFIX} debug GolemPlan${CMAKE_DEBUG_POSTFIX}
+			optimized GolemUICtrl${CMAKE_RELEASE_POSTFIX} debug GolemUICtrl${CMAKE_DEBUG_POSTFIX}
+			optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
+			optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
+			${CMAKE_DL_LIBS}
+			optimized GolemMath${CMAKE_RELEASE_POSTFIX} debug GolemMath${CMAKE_DEBUG_POSTFIX}
+			optimized GolemUI${CMAKE_RELEASE_POSTFIX} debug GolemUI${CMAKE_DEBUG_POSTFIX}
+			GL
+			GLU
+			glut
+			#NxCharacter NxCooking PhysXCore PhysXLoader
+		)
+	endif(WIN32)	
+	SET_PROPERTY(TARGET SpamCore PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
+	SET_PROPERTY(TARGET SpamCore PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
+	SET_PROPERTY(TARGET SpamCore PROPERTY PROJECT_LABEL "Core")
+	SET_PROPERTY(TARGET SpamCore PROPERTY FOLDER "Spam")
+	if(BUILD_DYNAMIC_LIBS)
+		if (WIN32)
+			INSTALL(TARGETS SpamCore RUNTIME DESTINATION bin LIBRARY DESTINATION bin ARCHIVE DESTINATION core_libs)
+		elseif (UNIX)
+			INSTALL(TARGETS SpamCore LIBRARY DESTINATION bin LIBRARY DESTINATION bin ARCHIVE DESTINATION core_libs)
+		endif()
+	else(BUILD_DYNAMIC_LIBS)
+		INSTALL(TARGETS SpamCore ARCHIVE DESTINATION lib COMPONENT core_libs)
+	endif(BUILD_DYNAMIC_LIBS)
+	INSTALL(FILES ${CORE_HEADERS} DESTINATION include/Spam/Core/ COMPONENT core_headers)
+	SOURCE_GROUP("Include Files" FILES ${CORE_HEADERS})
+ENDIF (BUILD_SPAM_CORE)
+
+###############################################################################
+#
+# HBPLAN library
+#
+###############################################################################
+IF (BUILD_SPAM_HBPLAN)
+	SET(HBPLAN_HEADERS
+		${PROJECT_ROOT}/include/Spam/HBPlan/Belief.h
+		${PROJECT_ROOT}/include/Spam/HBPlan/GraphPlanner.h
+		${PROJECT_ROOT}/include/Spam/HBPlan/Heuristic.h
+		${PROJECT_ROOT}/include/Spam/HBPlan/Hypothesis.h
+	)
+	SET(HBPLAN_SOURCES
+		${PROJECT_ROOT}/src/Spam/HBPlan/Belief.cpp
+		${PROJECT_ROOT}/src/Spam/HBPlan/GraphPlanner.cpp
+		${PROJECT_ROOT}/src/Spam/HBPlan/Heuristic.cpp
+		${PROJECT_ROOT}/src/Spam/HBPlan/Hypothesis.cpp
+	)
+	if(BUILD_DYNAMIC_LIBS)
+		ADD_LIBRARY(SpamHBPlan SHARED ${HBPLAN_HEADERS} ${HBPLAN_SOURCES})
+		#SET_TARGET_PROPERTIES(SpamSpam PROPERTIES COMPILE_FLAGS ${CMAKE_DLL_EXPORT_FLAGS})
+	else(BUILD_DYNAMIC_LIBS)
+		ADD_LIBRARY(SpamHBPlan STATIC ${HBPLAN_HEADERS} ${HBPLAN_SOURCES})
+	endif(BUILD_DYNAMIC_LIBS)
+	if (WIN32)
+		TARGET_LINK_LIBRARIES(SpamHBPlan SpamCore)
+	elseif (UNIX)
+		TARGET_LINK_LIBRARIES(SpamHBPlan SpamCore)
+	endif()	
+	SET_PROPERTY(TARGET SpamHBPlan PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
+	SET_PROPERTY(TARGET SpamHBPlan PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
+	SET_PROPERTY(TARGET SpamHBPlan PROPERTY PROJECT_LABEL "HBPlan")
+	SET_PROPERTY(TARGET SpamHBPlan PROPERTY FOLDER "Spam")
+	if(BUILD_DYNAMIC_LIBS)
+		if (WIN32)
+			INSTALL(TARGETS SpamHBPlan RUNTIME DESTINATION bin LIBRARY DESTINATION bin ARCHIVE DESTINATION core_libs)
+		elseif (UNIX)
+			INSTALL(TARGETS SpamHBPlan LIBRARY DESTINATION bin LIBRARY DESTINATION bin ARCHIVE DESTINATION core_libs)
+		endif()
+	else(BUILD_DYNAMIC_LIBS)
+		INSTALL(TARGETS SpamHBPlan ARCHIVE DESTINATION lib COMPONENT core_libs)
+	endif(BUILD_DYNAMIC_LIBS)
+	INSTALL(FILES ${HBPLAN_HEADERS} DESTINATION include/Spam/HBPlan/ COMPONENT core_headers)
+	SOURCE_GROUP("Include Files" FILES ${HBPLAN_HEADERS})
+ENDIF (BUILD_SPAM_HBPLAN)
+
+###############################################################################
+#
+# APP library
+#
+###############################################################################
+IF (BUILD_SPAM_APP)
+	SET(APP_POSEPLANNER_HEADERS
+		${PROJECT_ROOT}/include/Spam/App/PosePlanner/Data.h
+		${PROJECT_ROOT}/include/Spam/App/PosePlanner/PosePlanner.h
+	)
+	SET(APP_R2GPlanner_HEADERS
+		${PROJECT_ROOT}/include/Spam/App/R2GPlanner/Data.h
+		${PROJECT_ROOT}/include/Spam/App/R2GPlanner/R2GPlanner.h
+	)
+	SET(APP_SOURCES
+		${PROJECT_ROOT}/src/Spam/App/PosePlanner/PosePlanner.cpp
+		${PROJECT_ROOT}/src/Spam/App/R2GPlanner/R2GPlanner.cpp
+	)
+	SET(APP_FILES
+	)
+	
+	if(BUILD_DYNAMIC_LIBS)
+		ADD_LIBRARY(SpamApp SHARED ${APP_POSEPLANNER_HEADERS} ${APP_R2GPlanner_HEADERS} ${APP_SOURCES} ${APP_FILES})
+		#SET_TARGET_PROPERTIES(SpamSpam PROPERTIES COMPILE_FLAGS ${CMAKE_DLL_EXPORT_FLAGS})
+	else(BUILD_DYNAMIC_LIBS)
+		ADD_LIBRARY(SpamApp STATIC ${APP_POSEPLANNER_HEADERS} ${APP_R2GPlanner_HEADERS} ${APP_SOURCES})
+	endif(BUILD_DYNAMIC_LIBS)
+	if (WIN32)
+		TARGET_LINK_LIBRARIES(SpamApp SpamHBPlan)
+	elseif (UNIX)
+		TARGET_LINK_LIBRARIES(SpamApp SpamHBPlan)
+	endif()
+	
+	SET_PROPERTY(TARGET SpamApp PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
+	SET_PROPERTY(TARGET SpamApp PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
+	SET_PROPERTY(TARGET SpamApp PROPERTY PROJECT_LABEL "App")
+	SET_PROPERTY(TARGET SpamApp PROPERTY FOLDER "Spam/App")
+	
+	if(BUILD_DYNAMIC_LIBS)
+		if (WIN32)
+			INSTALL(TARGETS SpamApp RUNTIME DESTINATION bin LIBRARY DESTINATION bin ARCHIVE DESTINATION app_libs)
+		elseif (UNIX)
+			INSTALL(TARGETS SpamApp LIBRARY DESTINATION bin LIBRARY DESTINATION bin ARCHIVE DESTINATION app_libs)
+		endif()
+	else(BUILD_DYNAMIC_LIBS)
+		INSTALL(TARGETS SpamApp ARCHIVE DESTINATION lib COMPONENT core_libs)
+	endif(BUILD_DYNAMIC_LIBS)
+	INSTALL(FILES ${APP_POSEPLANNER_HEADERS} DESTINATION include/Spam/App/PosePlanner/ COMPONENT apps_headers)
+	INSTALL(FILES ${APP_R2GPlanner_HEADERS} DESTINATION include/Spam/App/R2GPlanner/ COMPONENT apps_headers)
+	INSTALL(FILES ${APP_FILES} DESTINATION bin COMPONENT apps_configs)
+	
+	SOURCE_GROUP("Include Files" FILES ${APP_POSEPLANNER_HEADERS} ${APP_R2GPlanner_HEADERS})
+	SOURCE_GROUP("Resource Files" FILES ${APP_FILES})
+ENDIF (BUILD_SPAM_APP)
 
 ###############################################################################
 #
 # PosePlanner executables
 #
 ###############################################################################
+IF (BUILD_SPAM_POSEPLANNER)
+	SET(POSE_PLANNER_SOURCES
+		${PROJECT_ROOT}/src/Spam/App/PosePlanner/Main.cpp
+	)
+	SET(POSE_PLANNER_HEADERS
+	)
+	SET(POSE_PLANNER_FILES
+	)
 
-SET(POSE_PLANNER_SOURCES
-	${PROJECT_ROOT}/src/Spam/PosePlanner/PosePlanner.cpp
-)
-SET(POSE_PLANNER_HEADERS
-	${PROJECT_ROOT}/include/Spam/PosePlanner/PosePlanner.h
-)
-SET(POSE_PLANNER_FILES
-	${PROJECT_ROOT}/resources/SpamPosePlanner_RobotBoris.xml
-)
+	ADD_EXECUTABLE(SpamPosePlanner ${POSE_PLANNER_SOURCES} ${POSE_PLANNER_HEADERS} ${POSE_PLANNER_FILES})
+	SET_TARGET_PROPERTIES(SpamPosePlanner PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -D_SPAM_POSE_MAIN_")
+	TARGET_LINK_LIBRARIES(SpamPosePlanner SpamApp)
+	COPY_FILES(SpamPosePlanner ${RUNTIME_OUTPUT_DIRECTORY} ${POSE_PLANNER_FILES})
+	SET_PROPERTY(TARGET SpamPosePlanner PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
+	SET_PROPERTY(TARGET SpamPosePlanner PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
+	INSTALL(TARGETS SpamPosePlanner RUNTIME DESTINATION bin COMPONENT apps_execs)
+	INSTALL(FILES ${POSE_PLANNER_HEADERS} DESTINATION include/Spam/PosePlanner/ COMPONENT apps_headers)
+	INSTALL(FILES ${POSE_PLANNER_FILES} DESTINATION bin COMPONENT apps_configs)
 
-ADD_EXECUTABLE(SpamPosePlanner ${POSE_PLANNER_SOURCES} ${POSE_PLANNER_HEADERS} ${POSE_PLANNER_FILES})
-SET_TARGET_PROPERTIES(SpamPosePlanner PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -D_SPAM_POSE_MAIN_")
-TARGET_LINK_LIBRARIES(SpamPosePlanner SpamSpam)
-COPY_FILES(SpamPosePlanner ${RUNTIME_OUTPUT_DIRECTORY} ${POSE_PLANNER_FILES})
-SET_PROPERTY(TARGET SpamPosePlanner PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
-SET_PROPERTY(TARGET SpamPosePlanner PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
-INSTALL(TARGETS SpamPosePlanner RUNTIME DESTINATION bin)
-INSTALL(FILES ${POSE_PLANNER_HEADERS} DESTINATION include/Spam/PosePlanner/)
-INSTALL(FILES ${POSE_PLANNER_FILES} DESTINATION bin)
-
-SET_PROPERTY(TARGET SpamPosePlanner PROPERTY PROJECT_LABEL "PosePlanner")
-SET_PROPERTY(TARGET SpamPosePlanner PROPERTY FOLDER "Spam")
-SOURCE_GROUP("Include Files" FILES ${POSE_PLANNER_HEADERS})
-SOURCE_GROUP("Resource Files" FILES ${POSE_PLANNER_FILES})
+	SET_PROPERTY(TARGET SpamPosePlanner PROPERTY PROJECT_LABEL "PosePlanner")
+	SET_PROPERTY(TARGET SpamPosePlanner PROPERTY FOLDER "Spam/App")
+	SOURCE_GROUP("Include Files" FILES ${POSE_PLANNER_HEADERS})
+	SOURCE_GROUP("Resource Files" FILES ${POSE_PLANNER_FILES})
+ENDIF (BUILD_SPAM_POSEPLANNER)
 
 ###############################################################################
 #
-# RagPlanner executables
+# R2GPlanner executables
 #
 ###############################################################################
+IF (BUILD_SPAM_R2GPLANNER)
+	SET(R2G_PLANNER_SOURCES
+		${PROJECT_ROOT}/src/Spam/App/R2GPlanner/Main.cpp
+	)
+	SET(R2G_PLANNER_HEADERS
+	)
+	SET(R2G_PLANNER_FILES
+		${PROJECT_ROOT}/resources/Spam/R2GPlanner/SpamR2GPlanner_RobotBoris.xml
+	)
 
-SET(RAG_PLANNER_SOURCES
-	${PROJECT_ROOT}/src/Spam/PosePlanner/PosePlanner.cpp
-	${PROJECT_ROOT}/src/Spam/RagPlanner/RagPlanner.cpp
-)
-SET(RAG_PLANNER_HEADERS
-	${PROJECT_ROOT}/include/Spam/RagPlanner/RagPlanner.h
-)
-SET(RAG_PLANNER_FILES
-	${PROJECT_ROOT}/resources/SpamRagPlanner_RobotBoris.xml
-)
+	ADD_EXECUTABLE(SpamR2GPlanner ${R2G_PLANNER_SOURCES} ${R2G_PLANNER_HEADERS} ${R2G_PLANNER_FILES})
+	SET_TARGET_PROPERTIES(SpamR2GPlanner PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -D_SPAM_RAG_MAIN_")
+	TARGET_LINK_LIBRARIES(SpamR2GPlanner SpamApp)
+	COPY_FILES(SpamR2GPlanner ${RUNTIME_OUTPUT_DIRECTORY} ${R2G_PLANNER_FILES})
+	SET_PROPERTY(TARGET SpamR2GPlanner PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
+	SET_PROPERTY(TARGET SpamR2GPlanner PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
+	INSTALL(TARGETS SpamR2GPlanner RUNTIME DESTINATION bin COMPONENT apps_execs)
+	INSTALL(FILES ${R2G_PLANNER_HEADERS} DESTINATION include/Spam/R2GPlanner/ COMPONENT apps_header)
+	INSTALL(FILES ${R2G_PLANNER_FILES} DESTINATION bin COMPONENT apps_configs)
 
-ADD_EXECUTABLE(SpamRagPlanner ${RAG_PLANNER_SOURCES} ${RAG_PLANNER_HEADERS} ${RAG_PLANNER_FILES})
-SET_TARGET_PROPERTIES(SpamRagPlanner PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -D_SPAM_RAG_MAIN_")
-TARGET_LINK_LIBRARIES(SpamRagPlanner SpamSpam)
-COPY_FILES(SpamRagPlanner ${RUNTIME_OUTPUT_DIRECTORY} ${RAG_PLANNER_FILES})
-SET_PROPERTY(TARGET SpamRagPlanner PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
-SET_PROPERTY(TARGET SpamRagPlanner PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
-INSTALL(TARGETS SpamRagPlanner RUNTIME DESTINATION bin)
-INSTALL(FILES ${RAG_PLANNER_HEADERS} DESTINATION include/Spam/RagPlanner/)
-INSTALL(FILES ${RAG_PLANNER_FILES} DESTINATION bin)
+	SET_PROPERTY(TARGET SpamR2GPlanner PROPERTY PROJECT_LABEL "R2GPlanner")
+	SET_PROPERTY(TARGET SpamR2GPlanner PROPERTY FOLDER "Spam/App")
+	SOURCE_GROUP("Include Files" FILES ${R2G_PLANNER_HEADERS})
+	SOURCE_GROUP("Resource Files" FILES ${R2G_PLANNER_FILES})
+ENDIF (BUILD_SPAM_R2GPLANNER)
 
-SET_PROPERTY(TARGET SpamRagPlanner PROPERTY PROJECT_LABEL "RagPlanner")
-SET_PROPERTY(TARGET SpamRagPlanner PROPERTY FOLDER "Spam")
-SOURCE_GROUP("Include Files" FILES ${RAG_PLANNER_HEADERS})
-SOURCE_GROUP("Resource Files" FILES ${RAG_PLANNER_FILES})
+###############################################################################
+#
+# Data Belief library
+#
+###############################################################################
+IF (BUILD_SPAM_DATA_BELIEF)
+	SET(DATA_BELIEF_HEADERS
+		${PROJECT_ROOT}/include/Spam/Data/Belief/Belief.h
+	)
+	SET(DATA_BELIEF_SOURCES
+		${PROJECT_ROOT}/src/Spam/Data/Belief/Belief.cpp
+	)
+	SET(DATA_BELIEF_FILES
+		${PROJECT_ROOT}/resources/Spam/Data/SpamDataBelief.xml
+	)
+	
+	if(BUILD_DYNAMIC_LIBS)
+		ADD_LIBRARY(SpamDataBelief SHARED ${DATA_BELIEF_HEADERS} ${DATA_BELIEF_SOURCES} ${DATA_BELIEF_FILES})
+		#SET_TARGET_PROPERTIES(SpamSpam PROPERTIES COMPILE_FLAGS ${CMAKE_DLL_EXPORT_FLAGS})
+	else(BUILD_DYNAMIC_LIBS)
+		ADD_LIBRARY(SpamDataBelief STATIC ${DATA_BELIEF_HEADERS} ${DATA_BELIEF_SOURCES} ${DATA_BELIEF_FILES})
+	endif(BUILD_DYNAMIC_LIBS)
+	if (WIN32)
+		TARGET_LINK_LIBRARIES(SpamDataBelief SpamHBPlan)
+	elseif (UNIX)
+		TARGET_LINK_LIBRARIES(SpamDataBelief SpamHBPlan)
+	endif()
+	
+	SET_PROPERTY(TARGET SpamDataBelief PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
+	SET_PROPERTY(TARGET SpamDataBelief PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
+	SET_PROPERTY(TARGET SpamDataBelief PROPERTY PROJECT_LABEL "Belief")
+	SET_PROPERTY(TARGET SpamDataBelief PROPERTY FOLDER "Spam/Data")
+	
+	COPY_FILES(SpamDataBelief ${RUNTIME_OUTPUT_DIRECTORY} ${DATA_BELIEF_FILES})
+	if(BUILD_DYNAMIC_LIBS)
+		if (WIN32)
+			INSTALL(TARGETS SpamDataBelief RUNTIME DESTINATION bin LIBRARY DESTINATION bin ARCHIVE DESTINATION app_libs)
+		elseif (UNIX)
+			INSTALL(TARGETS SpamDataBelief LIBRARY DESTINATION bin LIBRARY DESTINATION bin ARCHIVE DESTINATION app_libs)
+		endif()
+	else(BUILD_DYNAMIC_LIBS)
+		INSTALL(TARGETS SpamDataBelief ARCHIVE DESTINATION lib COMPONENT data_libs)
+	endif(BUILD_DYNAMIC_LIBS)
+	INSTALL(FILES ${DATA_BELIEF_HEADERS} DESTINATION include/Spam/Data/Belief/ COMPONENT data_headers)
+	INSTALL(FILES ${DATA_BELIEF_FILES} DESTINATION bin COMPONENT data_configs)
+	
+	SOURCE_GROUP("Include Files" FILES ${DATA_BELIEF_HEADERS})
+	SOURCE_GROUP("Resource Files" FILES ${DATA_BELIEF_FILES})
+ENDIF (BUILD_SPAM_DATA_BELIEF)
+
+###############################################################################
+#
+# Data Belief library
+#
+###############################################################################
+IF (BUILD_SPAM_DATA_R2GTRAJECTORY)
+	SET(DATA_R2GTRAJECTORY_HEADERS
+		${PROJECT_ROOT}/include/Spam/Data/R2GTrajectory/R2GTrajectory.h
+	)
+	SET(DATA_R2GTRAJECTORY_SOURCES
+		${PROJECT_ROOT}/src/Spam/Data/R2GTrajectory/R2GTrajectory.cpp
+	)
+	SET(DATA_R2GTRAJECTORY_FILES
+		${PROJECT_ROOT}/resources/Spam/Data/SpamDataR2GTrajectory.xml
+	)
+	
+	if(BUILD_DYNAMIC_LIBS)
+		ADD_LIBRARY(SpamDataR2GTrajectory SHARED ${DATA_R2GTRAJECTORY_HEADERS} ${DATA_R2GTRAJECTORY_SOURCES} ${DATA_R2GTRAJECTORY_FILES})
+		#SET_TARGET_PROPERTIES(SpamSpam PROPERTIES COMPILE_FLAGS ${CMAKE_DLL_EXPORT_FLAGS})
+	else(BUILD_DYNAMIC_LIBS)
+		ADD_LIBRARY(SpamDataR2GTrajectory STATIC ${DATA_R2GTRAJECTORY_HEADERS} ${DATA_R2GTRAJECTORY_SOURCES} ${DATA_R2GTRAJECTORY_FILES})
+	endif(BUILD_DYNAMIC_LIBS)
+	if (WIN32)
+		TARGET_LINK_LIBRARIES(SpamDataR2GTrajectory SpamHBPlan)
+	elseif (UNIX)
+		TARGET_LINK_LIBRARIES(SpamDataR2GTrajectory SpamHBPlan)
+	endif()
+	
+	SET_PROPERTY(TARGET SpamDataR2GTrajectory PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
+	SET_PROPERTY(TARGET SpamDataR2GTrajectory PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
+	SET_PROPERTY(TARGET SpamDataR2GTrajectory PROPERTY PROJECT_LABEL "R2GTrajectory")
+	SET_PROPERTY(TARGET SpamDataR2GTrajectory PROPERTY FOLDER "Spam/Data")
+	
+	COPY_FILES(SpamDataR2GTrajectory ${RUNTIME_OUTPUT_DIRECTORY} ${DATA_R2GTRAJECTORY_FILES})
+	if(BUILD_DYNAMIC_LIBS)
+		if (WIN32)
+			INSTALL(TARGETS SpamDataR2GTrajectory RUNTIME DESTINATION bin LIBRARY DESTINATION bin ARCHIVE DESTINATION app_libs)
+		elseif (UNIX)
+			INSTALL(TARGETS SpamDataR2GTrajectory LIBRARY DESTINATION bin LIBRARY DESTINATION bin ARCHIVE DESTINATION app_libs)
+		endif()
+	else(BUILD_DYNAMIC_LIBS)
+		INSTALL(TARGETS SpamDataR2GTrajectory ARCHIVE DESTINATION lib COMPONENT data_libs)
+	endif(BUILD_DYNAMIC_LIBS)
+	INSTALL(FILES ${DATA_R2GTRAJECTORY_HEADERS} DESTINATION include/Spam/Data/R2GTrajectory/ COMPONENT data_headers)
+	INSTALL(FILES ${DATA_R2GTRAJECTORY_FILES} DESTINATION bin COMPONENT data_configs)
+	
+	SOURCE_GROUP("Include Files" FILES ${DATA_R2GTRAJECTORY_HEADERS})
+	SOURCE_GROUP("Resource Files" FILES ${DATA_R2GTRAJECTORY_FILES})
+ENDIF (BUILD_SPAM_DATA_R2GTRAJECTORY)
+
+###############################################################################
+#
+# Spam demo
+#
+###############################################################################
+IF(BUILD_SPAM_DEMO_RAG)
+	SET(DEMO_RAG_SOURCES
+		${PROJECT_ROOT}/src/Spam/Demo/R2GPlanner/R2GDemo.cpp
+	)
+	SET(DEMO_RAG_HEADERS
+		${PROJECT_ROOT}/include/Spam/Demo/R2GPlanner/R2GDemo.h
+	)
+	SET(DEMO_RAG_FILES
+		${PROJECT_ROOT}/resources/Spam/Demo/SpamDemoR2G_RobotBoris.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraDepthSimDemoRag.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraKinectDemoRag.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraOpenCVDemoRag.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraOpenGLDemoRag.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraOpenNIDemoRag.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraPointGreyDemoRag.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraRobotDepthDemoRag.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataContactModelDemoRag.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataContactQueryDemoRag.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataImageDemoRag.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataPointsCurvDemoRag.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataTrajectoryDemoRag.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataVideoDemoRag.xml
+	)
+	
+	ADD_EXECUTABLE(SpamDemoRag ${DEMO_RAG_SOURCES} ${DEMO_RAG_HEADERS} ${DEMO_RAG_FILES})
+	if (WIN32)
+		SET_TARGET_PROPERTIES(SpamDemoRag PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS}")
+	elseif (UNIX)
+		SET_TARGET_PROPERTIES(SpamDemoRag PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -Wno-invalid-offsetof")
+	endif()
+	TARGET_LINK_LIBRARIES(SpamDemoRag SpamApp)
+	COPY_FILES(SpamDemoRag ${RUNTIME_OUTPUT_DIRECTORY} ${DEMO_RAG_FILES})
+	SET_PROPERTY(TARGET SpamDemoRag PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
+	SET_PROPERTY(TARGET SpamDemoRag PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
+	
+	INSTALL(TARGETS SpamDemoRag RUNTIME DESTINATION bin COMPONENT demo_execs)
+	INSTALL(FILES ${DEMO_RAG_HEADERS} DESTINATION include/Spam/Demo/Rag/ COMPONENT demo_headers)
+	INSTALL(FILES ${DEMO_RAG_SOURCES} DESTINATION src/Spam/Demo/Rag/ COMPONENT demo_sources)
+	INSTALL(FILES ${DEMO_RAG_FILES} DESTINATION bin COMPONENT demo_configs)
+
+	SET_PROPERTY(TARGET SpamDemoRag PROPERTY PROJECT_LABEL "Spam")
+	SET_PROPERTY(TARGET SpamDemoRag PROPERTY FOLDER "Spam/Demo")
+	SOURCE_GROUP("Include Files" FILES ${DEMO_RAG_HEADERS})
+	SOURCE_GROUP("Resource Files" FILES ${DEMO_RAG_FILES})
+ENDIF(BUILD_SPAM_DEMO_RAG)
