@@ -172,6 +172,8 @@ if (WIN32)
 	#MARK_AS_ADVANCED(GRASP_LIBRARY)
 	SET(GRASP_BINARIES "${PROGRAM_FILES}/Grasp/bin" CACHE PATH "Path prefix for Grasp binaries")
 	#MARK_AS_ADVANCED(GRASP_BINARIES)
+	# Eigen
+	SET(EIGEN_INCLUDE "${PROGRAM_FILES}/eigen" CACHE PATH "Path prefix for EIGEN include")
 	# Boost
 	ADD_DEFINITIONS(-DBOOST_ALL_NO_LIB)
 	SET(Boost_USE_STATIC_LIBS ON)
@@ -231,6 +233,8 @@ elseif (UNIX)
 	#MARK_AS_ADVANCED(GRASP_LIBRARY)
 	SET(GRASP_BINARIES /usr/local/bin CACHE PATH "Path prefix for Grasp binaries")
 	#MARK_AS_ADVANCED(GRASP_BINARIES)
+	# Eigen
+	SET(EIGEN_INCLUDE /usr/include CACHE PATH "Path prefix for EIGEN include")
 	# Boost
 	#ADD_DEFINITIONS(-DBOOST_ALL_NO_LIB)
 	#SET(Boost_USE_STATIC_LIBS OFF)
@@ -265,6 +269,7 @@ INCLUDE_DIRECTORIES(
 	${PCL_INCLUDE_DIRS}
 	${EXPAT_INCLUDE}
 	${FREEGLUT_INCLUDE}
+	${EIGEN_INCLUDE}
 	#${PHYSX_INCLUDE}/Physics/include
 	#${PHYSX_INCLUDE}/Foundation/include
 	#${PHYSX_INCLUDE}/PhysXLoader/include
@@ -272,6 +277,19 @@ INCLUDE_DIRECTORIES(
 	${GOLEM_INCLUDE}
 	${GRASP_INCLUDE}
 )
+
+###############################################################################
+
+option(POST_BUILD_COPY_FILES "Copy resource files after build" YES)
+mark_as_advanced(POST_BUILD_COPY_FILES)
+
+MACRO(COPY_FILES TAR DST)
+	if(POST_BUILD_COPY_FILES)
+		foreach(SRC ${ARGN})
+			add_custom_command(TARGET ${TAR} POST_BUILD COMMAND ${CMAKE_COMMAND} -DSRC="${SRC}" -DDST="${DST}" -P "${CMAKE_SOURCE_DIR}/copy.cmake")
+		endforeach(SRC)
+	endif(POST_BUILD_COPY_FILES)
+ENDMACRO(COPY_FILES TAR DST)
 
 ###############################################################################
 #
