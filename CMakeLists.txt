@@ -193,7 +193,7 @@ elseif (UNIX)
 	SET(CMAKE_DLL_EXPORT_FLAGS " ")
 
 	# Library settings
-	option(BUILD_DYNAMIC_LIBS "Build dynamic library versions" YES)
+	option(BUILD_DYNAMIC_LIBS "Build dynamic library versions" NO)
 	mark_as_advanced(BUILD_DYNAMIC_LIBS)
 
 	# Output
