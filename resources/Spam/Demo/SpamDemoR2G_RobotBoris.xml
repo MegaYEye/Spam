@@ -105,8 +105,8 @@
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.001" c4="0.0001" c5="0.0001" c6="0.0001" c7="0.0001"/>
     </heuristic>
 
-    <model camera="DepthSim+DepthSimSPAM" handler_scan="Image+ImageSPAM"  handler="PointsCurv+PointsCurvSPAM" item="jug-curv-5_views" item_obj="modelObj" item_grasp="grasp-bowl-pinchsupp" handler_grasp="ContactModel+ContactModelSPAM" handler_trj="Trajectory+TrajectorySPAM" item_trj="grasp_model_trj_trial">
-    <!--<model camera="OpenNI+OpenNISPAM" handler_scan="Image+ImageSPAM"  handler="PointsCurv+PointsCurvSPAM" item="model-curv-6_views" item_obj="modelObj" item_grasp="grasp-bowl-pinchsupp" handler_grasp="ContactModel+ContactModelSPAM" handler_trj="Trajectory+TrajectorySPAM" item_trj="grasp_model_trj_trial">-->
+    <model camera="DepthSim+DepthSimDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="jug-curv-5_views" item_obj="modelObj" item_grasp="grasp-bowl-pinchsupp" handler_grasp="ContactModel+ContactModelDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_model_trj_trial">
+    <!--<model camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="model-curv-6_views" item_obj="modelObj" item_grasp="grasp-bowl-pinchsupp" handler_grasp="ContactModel+ContactModelDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_model_trj_trial">-->
       <scan_pose dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <scan_pose dim="61" c1="1.98703" c2="-1.82022" c3="2.68371" c4="-0.993679" c5="-0.472118" c6="0.701058" c7="-0.601755" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <scan_pose dim="61" c1="1.60132" c2="-1.8583" c3="1.77602" c4="-0.0109462" c5="0.450068" c6="1.04633" c7="-0.639206" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
@@ -136,8 +136,8 @@
       </appearance>
     </model>
 
-    <query camera="DepthSim+DepthSimSPAM" handler_scan="Image+ImageSPAM"  handler="PointsCurv+PointsCurvSPAM" item="jug-curv-3_views" item_obj="queryObj" item_grasp="grasp-jug-5_views-pinchsupp" handler_grasp="ContactQuery+ContactQuerySPAM" handler_trj="Trajectory+TrajectorySPAM" item_trj="grasp_query_trj_trial">
-    <!--<query camera="OpenNI+OpenNISPAM" handler_scan="Image+ImageSPAM"  handler="PointsCurv+PointsCurvSPAM" item="query-curv-3_views" item_obj="queryObj" item_grasp="grasp-model-5_views-pinchsupp" handler_grasp="ContactQuery+ContactQuerySPAM" handler_trj="Trajectory+TrajectorySPAM" item_trj="grasp_query_trj_trial">-->
+    <query camera="DepthSim+DepthSimDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="jug-curv-3_views" item_obj="queryObj" item_grasp="grasp-jug-5_views-pinchsupp" handler_grasp="ContactQuery+ContactQueryDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_query_trj_trial">
+    <!--<query camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="query-curv-3_views" item_obj="queryObj" item_grasp="grasp-model-5_views-pinchsupp" handler_grasp="ContactQuery+ContactQueryDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_query_trj_trial">-->
       <scan_pose dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <!--<scan_pose dim="61" c1="1.98703" c2="-1.82022" c3="2.68371" c4="-0.993679" c5="-0.472118" c6="0.701058" c7="-0.601755" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>-->
       <scan_pose dim="61" c1="1.60132" c2="-1.8583" c3="1.77602" c4="-0.0109462" c5="0.450068" c6="1.04633" c7="-0.639206" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
@@ -181,7 +181,7 @@
       <optimisation minimum="1" population_size="20" generations_num="2000" de_diff_fac="0.5" de_cross_prob="0.1" test_generations="100" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest"/>-->
     </pose_estimation_sim>
     
-    <object camera="DepthSim+DepthSimSPAM" handler_scan="Image+ImageSPAM" handler="PointsCurv+PointsCurvSPAM" item_scan="ObjectScan" item="Object">
+    <object camera="DepthSim+DepthSimDemoR2G" handler_scan="Image+ImageDemoR2G" handler="PointsCurv+PointsCurvDemoR2G" item_scan="ObjectScan" item="Object">
       <scan_pose dim="61" c1="2.47067" c2="-0.850383" c3="2.35997" c4="-1.65389" c5="2.47979" c6="-1.14518" c7="1" c8="0.22" c9="0.6" c10="0.1" c11="0.1" c12="0.05" c13="0.8" c14="0.2" c15="0.2" c16="0.05" c17="0.8" c18="0.2" c19="0.2" c20="0" c21="0.8" c22="0.2" c23="0.2" c24="0" c25="0.8" c26="0.2" c27="0.2" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
 
       <frame_adjustment lin_keys="wsedrf" ang_keys="WSEDRF" inc_keys="-+">
@@ -400,7 +400,7 @@
     <activectrl library_path="GraspWorkspaceCtrl" config_path="GraspWorkspaceCtrl"/>
     <activectrl library_path="GraspOspaceCtrl" config_path="GraspOspaceCtrl"/>
 
-    <trajectory name="trajectory" handler="Trajectory+TrajectorySPAM" idle_begin="0.5" idle_end="2.0" idle_perf="5.0" duration="5.0" trials="5"/>
+    <trajectory name="trajectory" handler="Trajectory+TrajectoryDemoR2G" idle_begin="0.5" idle_end="2.0" idle_perf="5.0" duration="5.0" trials="5"/>
 
     <!--<arm_tool_bounds type="box" group="1">
       <dimensions v1="0.07" v2="0.07" v3="0.15"/>
@@ -441,19 +441,19 @@
   </player>
 
   <recorder>
-    <sensor library_path="GraspCameraDepthSim" config_path="GraspCameraDepthSimSPAM"/>
-    <!--<sensor library_path="GraspCameraKinect" config_path="GraspCameraKinectSPAM"/>-->
-    <!--<sensor library_path="GraspCameraOpenCV" config_path="GraspCameraOpenCVSPAM"/>-->
-    <sensor library_path="GraspCameraOpenGL" config_path="GraspCameraOpenGLSPAM"/>
-    <sensor library_path="GraspCameraOpenNI" config_path="GraspCameraOpenNISPAM"/>
-    <sensor library_path="GraspCameraPointGrey" config_path="GraspCameraPointGreySPAM"/>
+    <sensor library_path="GraspCameraDepthSim" config_path="GraspCameraDepthSimDemoR2G"/>
+    <!--<sensor library_path="GraspCameraKinect" config_path="GraspCameraKinectDemoR2G"/>-->
+    <!--<sensor library_path="GraspCameraOpenCV" config_path="GraspCameraOpenCVDemoR2G"/>-->
+    <sensor library_path="GraspCameraOpenGL" config_path="GraspCameraOpenGLDemoR2G"/>
+    <sensor library_path="GraspCameraOpenNI" config_path="GraspCameraOpenNIDemoR2G"/>
+    <sensor library_path="GraspCameraPointGrey" config_path="GraspCameraPointGreyDemoR2G"/>
     <!--<sensor library_path="GraspFTClient" config_path="GraspFTClient"/>-->
     <!--<sensor library_path="GraspFTDAQ" config_path="GraspFTDAQ"/>-->
 
     <recording label="recorder">
-      <!--<sensor id="OpenNI+OpenNISPAM"/>-->
-      <sensor id="PointGrey+PointGreySPAM"/>
-      <sensor id="OpenGL+OpenGLSPAM"/>
+      <!--<sensor id="OpenNI+OpenNIDemoR2G"/>-->
+      <sensor id="PointGrey+PointGreyDemoR2G"/>
+      <sensor id="OpenGL+OpenGLDemoR2G"/>
     </recording>
   </recorder>
 
@@ -468,12 +468,12 @@
     <handler library_path="GraspDataContactQuery" config_path="GraspDataContactQuery"/>
     <handler library_path="GraspDataCompositions3D" config_path="GraspDataCompositions3D"/>
 
-    <handler library_path="GraspDataImage" config_path="GraspDataImageSPAM"/>
-    <handler library_path="GraspDataPointsCurv" config_path="GraspDataPointsCurvSPAM"/>
-    <handler library_path="GraspDataVideo" config_path="GraspDataVideoSPAM"/>
-    <handler library_path="GraspDataTrajectory" config_path="GraspDataTrajectorySPAM"/>
-    <handler library_path="GraspDataContactModel" config_path="GraspDataContactModelSPAM"/>
-    <handler library_path="GraspDataContactQuery" config_path="GraspDataContactQuerySPAM"/>
+    <handler library_path="GraspDataImage" config_path="GraspDataImageDemoR2G"/>
+    <handler library_path="GraspDataPointsCurv" config_path="GraspDataPointsCurvDemoR2G"/>
+    <handler library_path="GraspDataVideo" config_path="GraspDataVideoDemoR2G"/>
+    <handler library_path="GraspDataTrajectory" config_path="GraspDataTrajectoryDemoR2G"/>
+    <handler library_path="GraspDataContactModel" config_path="GraspDataContactModelDemoR2G"/>
+    <handler library_path="GraspDataContactQuery" config_path="GraspDataContactQueryDemoR2G"/>
 
     <data path="./data/boris/jug/spam.xml"></data>
     <!--<data path="./data/boris/models.xml"></data>-->
