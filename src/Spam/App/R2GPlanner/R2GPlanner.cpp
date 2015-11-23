@@ -930,7 +930,7 @@ bool R2GPlanner::create(const Desc& desc) {
 					}
 
 					if (contactOccured && grasp::to<Data>(dataCurrentPtr)->stratType != Strategy::ELEMENTARY) {
-						//grasp::to<Data>(cdata->second )->replanning = false;
+						//grasp::to<Data>(cdata->second\A0)->replanning = false;
 						contactOccured = false;
 						updateAndResample(dataCurrentPtr);
 						enableForceReading = false;
@@ -2224,7 +2224,7 @@ bool R2GPlanner::execute(data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq
 
 		// open hand and release the object
 		// pre-grasp pose w.r.t. query frame
-		::Sleep(1000);
+		std::Sleep(1000);
 		Controller::State openfingers = lookupState();
 		Controller::State cnow = lookupState();
 		for (auto i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i) {
@@ -2490,12 +2490,12 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	recordingWaitToStart();
 	printf("Recording started\n");
 
-	::Sleep(1000);
+	std::Sleep(1000);
 	pBelief->createUpdate(collisionPtr, w, triggeredGuards, trialPtr != trialDataMap.end() ? grasp::to<TrialData>(trialPtr)->queryPointsTrn : grasp::RBCoord());
 
 	// render the mismatch between estimate and ground truth before resampling
 	to<Data>(dataCurrentPtr)->createRender();
-	::Sleep(5000);
+	std::Sleep(5000);
 
 
 	context.debug("resample (wheel algorithm)...\n");

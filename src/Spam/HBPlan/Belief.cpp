@@ -238,7 +238,8 @@ void Belief::setHypotheses(const grasp::RBPose::Sample::Seq &hypothesisSeq) {
 	}
 
 	// mean and covariance
-	if (!sampleProperties.create<golem::Ref1, grasp::RBPose::Sample::Ref>(grasp::RBCoord::N, desc.covariance, getHypothesesToSample()))
+	grasp::RBPose::Sample::Seq seq = getHypothesesToSample();
+	if (!sampleProperties.create<golem::Ref1, grasp::RBPose::Sample::Ref>(grasp::RBCoord::N, desc.covariance, seq))
 		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createQuery(): Unable to create mean and covariance for the high dimensional representation");
 
 	// compute a volumetric region of the uncertainty (min 10 cms in each direction)
@@ -319,7 +320,8 @@ grasp::RBPose::Sample Belief::createHypotheses(const grasp::Cloud::PointSeq& mod
 	}
 	
 	// mean and covariance
-	if (!sampleProperties.create<golem::Ref1, grasp::RBPose::Sample::Ref>(grasp::RBCoord::N, desc.covariance, getHypothesesToSample()))
+	grasp::RBPose::Sample::Seq seq = getHypothesesToSample();
+	if (!sampleProperties.create<golem::Ref1, grasp::RBPose::Sample::Ref>(grasp::RBCoord::N, desc.covariance, seq))
 		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createHypotheses(): Unable to create mean and covariance for the high dimensional representation");
 		
 	context.write("Sub-sampled covariance = {(%f, %f, %f), (%f, %f, %f, %f)}\n", sampleProperties.covariance[0], sampleProperties.covariance[1], sampleProperties.covariance[2], sampleProperties.covariance[3], sampleProperties.covariance[4], sampleProperties.covariance[5], sampleProperties.covariance[6]);

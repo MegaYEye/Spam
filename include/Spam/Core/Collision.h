@@ -314,7 +314,7 @@ public:
 		/** Collision likelihood model. Evaluate also the likelihood of collision for point outside the bounds. */
 		template <typename _Ptr> inline _RealEval evaluate(_Ptr begin, _Ptr end, _RealEval depthStdDev, _RealEval distanceStdDev, bool observation, const golem::Mat34 &pose, const golem::Real &force, size_t& collisions) const {
 			_RealEval eval = golem::numeric_const<_RealEval>::EPS, c = golem::numeric_const<_RealEval>::ZERO;
-			Real norm = golem::numeric_const<Real>::ONE / (depthStdDev*Math::sqrt(2 * golem::numeric_const<Real>::PI));
+			Real norm = golem::numeric_const<Real>::ONE / (depthStdDev*golem::Math::sqrt(2 * golem::numeric_const<Real>::PI));
 			for (_Ptr i = begin; i < end; ++i) {
 				const Real depth = getDepth(*i, true); // penetration depth (positive values) or distance from the closest surfaces (negative values)
 				const bool direction = match(pose, *i, force);
@@ -325,7 +325,7 @@ public:
 				}
 				// compute likelihood only for bounds were a contact occurred
 				if (observation) {
-					const _RealEval pointEval = norm*golem::Math::exp(-.5*Math::sqr(Real(depth)/Real(depthStdDev))); // gaussian 
+					const _RealEval pointEval = norm*golem::Math::exp(-.5*golem::Math::sqr(Real(depth)/Real(depthStdDev))); // gaussian 
 					golem::kahanSum(eval, c, pointEval);
 					// penalise concats not on the bound's surface
 					if (depth >= 0.0008 || !direction) {
@@ -352,7 +352,7 @@ public:
 			golem::Mat34 inverse; inverse.setInverse(pose); // compute the inverse of the joint frame
 			golem::Vec3 v; inverse.multiply(v, point); v.normalise(); // compute the point in the joint's reference frame
 
-			return v.z < REAL_ZERO ? pose.p.distance(point) : maxDist; // compute the distance only for point in front of the finger tip
+			return v.z < golem::REAL_ZERO ? pose.p.distance(point) : maxDist; // compute the distance only for point in front of the finger tip
 		}
 
 		/** Penetration depth of a given point, zero if none */

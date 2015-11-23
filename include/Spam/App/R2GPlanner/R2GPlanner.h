@@ -214,15 +214,15 @@ protected:
 	grasp::RealSeq mask;
 	// computes gaussian
 	template <typename _Real> inline _Real N(const _Real x, const _Real stdev) {
-		const _Real norm = golem::numeric_const<_Real>::ONE / (stdev*Math::sqrt(2 * golem::numeric_const<_Real>::PI));
-		return norm*golem::Math::exp(-.5*Math::sqr(_Real(x) / _Real(stdev))); // gaussian
+		const _Real norm = golem::numeric_const<_Real>::ONE / (stdev*golem::Math::sqrt(2 * golem::numeric_const<_Real>::PI));
+		return norm*golem::Math::exp(-.5*golem::Math::sqr(_Real(x) / _Real(stdev))); // gaussian
 	}
 	// computes guassian on a vector
 	template <typename _Ptr, typename _Real> inline std::vector<_Real> N(_Ptr begin, _Ptr end, const size_t dim, const _Real stdev) {
 		std::vector<_Real> output;
 		output.assign(dim, golem::numeric_const<_Real>::ZERO);
 		size_t idx = 0;
-		for (Ptr i = begin; i != end; ++i) {
+		for (_Ptr i = begin; i != end; ++i) {
 			output[idx++] = N(*i, stdev);
 		}
 		return output;

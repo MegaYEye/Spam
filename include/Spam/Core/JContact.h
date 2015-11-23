@@ -125,7 +125,7 @@ public:
 	}
 
 	/** Sets the chain and joint iterators */
-	void create(golem::Configspace::Index& joint);
+	void create(const golem::Configspace::Index& joint);
 };
 /** Reads/writes guards from/to a given XML context */
 void XMLData(FTGuard &val, golem::XMLContext* xmlcontext, bool create = false);

@@ -56,7 +56,7 @@ std::string FTGuard::str() const {
 	return ss;
 }
 
-void FTGuard::create(golem::Configspace::Index& i) {
+void FTGuard::create(const golem::Configspace::Index& i) {
 	jointIdx = i;
 	const size_t handIdx = i - armIdx;
 	threshold = 0.2;
