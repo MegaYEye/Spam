@@ -2224,7 +2224,7 @@ bool R2GPlanner::execute(data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq
 
 		// open hand and release the object
 		// pre-grasp pose w.r.t. query frame
-		::sleep(1000);
+		//::sleep(1000);
 		Controller::State openfingers = lookupState();
 		Controller::State cnow = lookupState();
 		for (auto i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i) {
@@ -2490,12 +2490,12 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	recordingWaitToStart();
 	printf("Recording started\n");
 
-	::sleep(1000);
+	//::sleep(1000);
 	pBelief->createUpdate(collisionPtr, w, triggeredGuards, trialPtr != trialDataMap.end() ? grasp::to<TrialData>(trialPtr)->queryPointsTrn : grasp::RBCoord());
 
 	// render the mismatch between estimate and ground truth before resampling
 	to<Data>(dataCurrentPtr)->createRender();
-	::sleep(5000);
+	//::sleep(5000);
 
 
 	context.debug("resample (wheel algorithm)...\n");

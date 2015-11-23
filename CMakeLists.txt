@@ -687,19 +687,19 @@ IF(BUILD_SPAM_DEMO_R2G)
 	)
 	SET(DEMO_R2G_FILES
 		${PROJECT_ROOT}/resources/Spam/Demo/SpamDemoR2G_RobotBoris.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraDepthSimDemoRag.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraKinectDemoRag.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraOpenCVDemoRag.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraOpenGLDemoRag.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraOpenNIDemoRag.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraPointGreyDemoRag.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraRobotDepthDemoRag.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataContactModelDemoRag.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataContactQueryDemoRag.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataImageDemoRag.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataPointsCurvDemoRag.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataTrajectoryDemoRag.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataVideoDemoRag.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraDepthSimDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraKinectDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraOpenCVDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraOpenGLDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraOpenNIDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraPointGreyDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraRobotDepthDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataContactModelDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataContactQueryDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataImageDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataPointsCurvDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataTrajectoryDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataVideoDemoR2G.xml
 	)
 	
 	ADD_EXECUTABLE(SpamDemoR2G ${DEMO_R2G_SOURCES} ${DEMO_R2G_HEADERS} ${DEMO_R2G_FILES})
