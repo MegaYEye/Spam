@@ -216,7 +216,7 @@ protected:
 	template <typename _Real> inline _Real N(const _Real x, const _Real stdev) {
 		const _Real norm = golem::numeric_const<_Real>::ONE / (stdev*golem::Math::sqrt(2 * golem::numeric_const<_Real>::PI));
 		return norm*golem::Math::exp(-.5*golem::Math::sqr(_Real(x) / _Real(stdev))); // gaussian
-	}
+    };
 	// computes guassian on a vector
 	template <typename _Ptr, typename _Real> inline std::vector<_Real> N(_Ptr begin, _Ptr end, const size_t dim, const _Real stdev) {
 		std::vector<_Real> output;
@@ -226,7 +226,7 @@ protected:
 			output[idx++] = N(*i, stdev);
 		}
 		return output;
-	}
+    };
 
 	/** Input force at sensor, sequence */
 	std::vector<grasp::RealSeq> forceInpSensorSeq;
@@ -280,15 +280,15 @@ protected:
 	/** Select index */
 	template <typename _Seq, typename _Index> void selectIndex(const _Seq& seq, _Index& index, const std::string& name) {
 		if (seq.empty())
-			throw Cancel("Empty!");
+            throw grasp::Cancel("Empty!");
 		// select index within the range
 		std::stringstream str;
 		golem::Math::clamp(index, (_Index)1, (_Index)seq.size());
 		str << "Enter " << name << " index <1.." << seq.size() << ">: ";
 		readNumber(str.str().c_str(), index);
 		if (size_t(index) < 1 || size_t(index) > seq.size())
-			throw Cancel("Invalid index");
-	}
+			throw grasp::Cancel("Invalid index");
+    };
 
 
 	bool printing;
@@ -324,16 +324,17 @@ protected:
 	size_t iterations;
 
 	/** Checks the validity of a sample */
-	template <typename _PTR> bool isValidSample(const grasp::RBPose::Sample &sample, _PTR begin, _PTR end, golem::Real eps = golem::REAL_EPS) const {
+//	template <typename _PTR> bool isValidSample(const grasp::RBPose::Sample &sample, _PTR begin, _PTR end, golem::Real eps = golem::REAL_EPS) const {
 //		std::printf("particle frame<%.4f,%.4f,%.4f> w=%.5f\n", sample.p.x, sample.p.y, sample.p.z, sample.weight);
 		//if (sample.weight < theta)
 		//	return false;
-		for (_PTR i = begin; i != end; ++i) {
-			if (pRBPose->distance(sample, *i) < eps)
-				return false;
-		}
-		return true;
-	}
+//		for (_PTR i = begin; i != end; ++i) {
+			//if (pRBPose->distance(sample, *i) < eps)
+//            if (grasp::RBPose::Sample::distance(sample, *i) < eps)
+//				return false;
+//		}
+//		return true;
+//	};
 
 	/** Get current points transformed */
 //	grasp::Cloud::PointSeqMap::iterator getTrnPoints(Data::Map::iterator dataPtr, const golem::Mat34 &trn);

@@ -596,14 +596,14 @@ bool R2GPlanner::create(const Desc& desc) {
 			// grasp
 			enableForceReading = false;
 			//grasp::to<Data>(dataPtr)->actionType = action::GRASP;
-			context.write("execute trajectory (%s)\n", actionToString(grasp::to<Data>(dataCurrentPtr)->actionType));
+			context.write("execute trajectory (%s)\n", actionToString(grasp::to<Data>(dataCurrentPtr)->actionType).c_str());
 			if (!execute(dataCurrentPtr, inp))
 				return;
 					
 			// lifting
 			enableForceReading = false;
 			//grasp::to<Data>(dataPtr)->actionType = action::IG_PLAN_LIFT;
-			context.write("execute trajectory (%s)\n", actionToString(grasp::to<Data>(dataCurrentPtr)->actionType));
+			context.write("execute trajectory (%s)\n", actionToString(grasp::to<Data>(dataCurrentPtr)->actionType).c_str());
 			if (execute(dataCurrentPtr, inp))
 				return;
 		
@@ -784,7 +784,7 @@ bool R2GPlanner::create(const Desc& desc) {
 					break;
 
 				results = grasp::makeString("%u\t%u\t%u", modelViews, queryViews, trial + 1);
-				context.write("execute %s trajectory (%s)\n", strategy(grasp::to<Data>(dataCurrentPtr)->stratType).c_str(), actionToString(grasp::to<Data>(dataCurrentPtr)->actionType));
+				context.write("execute %s trajectory (%s)\n", strategy(grasp::to<Data>(dataCurrentPtr)->stratType).c_str(), actionToString(grasp::to<Data>(dataCurrentPtr)->actionType).c_str());
 				logFile << grasp::makeString("Strategy: %s\n", strategy(grasp::to<Data>(dataCurrentPtr)->stratType).c_str());
 				// Setup trial data
 				TrialData::Ptr tdata = createTrialData();
@@ -2224,7 +2224,7 @@ bool R2GPlanner::execute(data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq
 
 		// open hand and release the object
 		// pre-grasp pose w.r.t. query frame
-		std::Sleep(1000);
+		::sleep(1000);
 		Controller::State openfingers = lookupState();
 		Controller::State cnow = lookupState();
 		for (auto i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i) {
@@ -2490,12 +2490,12 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	recordingWaitToStart();
 	printf("Recording started\n");
 
-	std::Sleep(1000);
+	::sleep(1000);
 	pBelief->createUpdate(collisionPtr, w, triggeredGuards, trialPtr != trialDataMap.end() ? grasp::to<TrialData>(trialPtr)->queryPointsTrn : grasp::RBCoord());
 
 	// render the mismatch between estimate and ground truth before resampling
 	to<Data>(dataCurrentPtr)->createRender();
-	std::Sleep(5000);
+	::sleep(5000);
 
 
 	context.debug("resample (wheel algorithm)...\n");
