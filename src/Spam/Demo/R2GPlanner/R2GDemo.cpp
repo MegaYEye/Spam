@@ -19,7 +19,10 @@ using namespace spam;
 void R2GDemo::Desc::load(golem::Context& context, const golem::XMLContext* xmlcontext) {
 	R2GPlanner::Desc::load(context, xmlcontext);
 
-	xmlcontext = xmlcontext->getContextFirst("demo");
+	try {
+		xmlcontext = xmlcontext->getContextFirst("demo");
+	}
+	catch (const golem::MsgXMLParser& msg) { context.write("%s\n", msg.str().c_str()); }
 }
 
 //------------------------------------------------------------------------------
