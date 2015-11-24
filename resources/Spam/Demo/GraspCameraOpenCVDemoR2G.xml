@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <grasp>
-  <sensor config_joint="0" calibration_file="GraspCameraOpenCV.cal" index="0" buffer_len="60" thread_timeout="20000">
+  <sensor config_joint="0" calibration_file="GraspCameraOpenCVDemoR2G.cal" index="0" buffer_len="60" thread_timeout="20000">
     <property width="0" height="0" fps="0" mode="0" format=""/>
     <colour R="255" G="0" B="0" A="255"/>
 
-    <handler snapshot="Image+ImageSPAM" sequence="Video+VideoSPAM"/>
+    <handler snapshot="Image+ImageDemoR2G" sequence="Video+VideoDemoR2G"/>
     
-    <calibration file="GraspCameraOpenCV.cal" use_deformation_map="1">
+    <calibration file="GraspCameraOpenCVDemoR2G.cal" use_deformation_map="1">
       <optimisation minimum="1" population_size="100" generations_num="10000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest">
         <distance_weights lin="10.0" ang="1.0"/>
         <sample_magnitude lin="0.5" ang="1.0"/>

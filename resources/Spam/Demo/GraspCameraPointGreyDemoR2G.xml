@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <grasp>
-  <sensor config_joint="0" calibration_file="GraspCameraPointGrey.cal" index="0" buffer_len="90" thread_timeout="10000">
+  <sensor config_joint="0" calibration_file="GraspCameraPointGreyDemoR2G.cal" index="0" buffer_len="90" thread_timeout="10000">
     <!-- FlyCapture2::PixelFormat: MONO8=0x80000000, 411YUV8=0x40000000, 422YUV8=0x20000000, RGB8=0x08000000, ... -->
     <!-- Fly2 Firewire: format=0x40000000 (536870912) -->
     <!-- Chameleon USB2.0: format=0x00400000 (4194304) -->
     <property width="0" height="0" fps="0" mode="0" format="536870912"/>
 
-    <handler snapshot="Image+ImageSPAM" sequence="Video+VideoSPAM"/>
+    <handler snapshot="Image+ImageDemoR2G" sequence="Video+VideoDemoR2G"/>
 
-    <calibration file="GraspCameraPointGrey.cal" use_deformation_map="1">
+    <calibration file="GraspCameraPointGreyDemoR2G.cal" use_deformation_map="1">
       <optimisation minimum="1" population_size="100" generations_num="10000000" de_diff_fac="0.5" de_cross_prob="0.2" test_generations="1000" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest">
         <distance_weights lin="10.0" ang="1.0"/>
         <sample_magnitude lin="0.5" ang="1.0"/>
