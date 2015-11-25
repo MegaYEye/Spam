@@ -257,6 +257,7 @@ bool R2GPlanner::create(const Desc& desc) {
 	};
 
 	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws		
+		return;
 		// associate random noise [-0.1, 0.1]
 		static int indexjj = 0;
 		if (enableSimContact)

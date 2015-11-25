@@ -394,6 +394,10 @@
     <controller id="DLRHitHandIISim+DLRHitHandIIBorisR"/>
 
     <!--<sensor id="FTClient+FTClient"/>-->
+    <sensor id="FTDAQ+FTDAQWrist"/>
+    <sensor id="FTDAQ+FTDAQThumb"/>
+    <sensor id="FTDAQ+FTDAQIndex"/>
+    <sensor id="FTDAQ+FTDAQMiddle"/>
 
     <activectrl library_path="GraspJointCtrl" config_path="GraspJointCtrl"/>
     <activectrl library_path="GraspArmHandForce" config_path="GraspArmHandForce"/>
@@ -449,6 +453,10 @@
     <sensor library_path="GraspCameraPointGrey" config_path="GraspCameraPointGreyDemoR2G"/>
     <!--<sensor library_path="GraspFTClient" config_path="GraspFTClient"/>-->
     <!--<sensor library_path="GraspFTDAQ" config_path="GraspFTDAQ"/>-->
+    <sensor library_path="GraspFTDAQ" config_path="GraspFTDAQWrist"/>
+    <sensor library_path="GraspFTDAQ" config_path="GraspFTDAQThumb"/>
+    <sensor library_path="GraspFTDAQ" config_path="GraspFTDAQIndex"/>
+    <sensor library_path="GraspFTDAQ" config_path="GraspFTDAQMiddle"/>
 
     <recording label="recorder">
       <sensor id="OpenNI+OpenNIDemoR2G"/>
@@ -475,7 +483,7 @@
     <handler library_path="GraspDataContactModel" config_path="GraspDataContactModelDemoR2G"/>
     <handler library_path="GraspDataContactQuery" config_path="GraspDataContactQueryDemoR2G"/>
 
-    <data path="./data/boris/jug/spam.xml"></data>
+    <!--<data path="./data/boris/jug/spam.xml"></data>-->
     <!--<data path="./data/boris/models.xml"></data>-->
   </manager>
 

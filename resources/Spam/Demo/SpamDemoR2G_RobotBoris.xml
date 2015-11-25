@@ -194,11 +194,11 @@
       </frame_adjustment>
     </object>
 
-    <grasp sensor="FTClient+FTClient" event_time_wait="2.0" close_duration="2.0">
+    <!--<grasp sensor="FTClient+FTClient" event_time_wait="2.0" close_duration="2.0">
       <threshold v1="0.5" v2="0.5" v3="0.5" w1="0.1" w2="0.1" w3="0.1"/>
       <pose_open dim="61" c1="2.5" c2="0.0262055" c3="2.67101" c4="-1.23526" c5="1.51494" c6="-1.84566" c7="-2.95382" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <pose_closed dim="61" c1="2.5" c2="0.0262055" c3="2.67101" c4="-1.23526" c5="1.51494" c6="-1.84566" c7="-2.95382" c8="0.22" c9="0.6" c10="0.1" c11="0.1" c12="0.05" c13="0.8" c14="0.2" c15="0.2" c16="0.05" c17="0.8" c18="0.2" c19="0.2" c20="0" c21="0.8" c22="0.2" c23="0.2" c24="0" c25="0.8" c26="0.2" c27="0.2" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
-    </grasp>
+    </grasp>-->
 
     <manipulator item_trj="TrajectoryManip">
       <config_map i1="0" i2="0" i3="0" i4="0" i5="0" i6="0" i7="0" i8="0" i9="0" i10="0" i11="10" i12="0" i13="0" i14="0" i15="14" i16="0" i17="0" i18="0" i19="18" i20="0" i21="0" i22="0" i23="22" i24="0" i25="0" i26="0" i27="26"/>
@@ -391,10 +391,14 @@
     </planner>
 
     <controller id="KukaLWR+KukaLWRBorisR"/>
-    <controller id="DLRHitHandIISim+DLRHitHandIIBorisR"/>
+    <controller id="DLRHitHandII+DLRHitHandIIBorisR"/>
 
-    <sensor id="FTClient+FTClient"/>
-
+    <!--<sensor id="FTClient+FTClient"/>-->
+    <sensor id="FTDAQ+FTDAQWrist"/>
+    <sensor id="FTDAQ+FTDAQThumb"/>
+    <sensor id="FTDAQ+FTDAQIndex"/>
+    <sensor id="FTDAQ+FTDAQMiddle"/>
+    
     <activectrl library_path="GraspJointCtrl" config_path="GraspJointCtrl"/>
     <activectrl library_path="GraspArmHandForce" config_path="GraspArmHandForce"/>
     <activectrl library_path="GraspWorkspaceCtrl" config_path="GraspWorkspaceCtrl"/>
@@ -449,7 +453,11 @@
     <sensor library_path="GraspCameraPointGrey" config_path="GraspCameraPointGreyDemoR2G"/>
     <!--<sensor library_path="GraspFTClient" config_path="GraspFTClient"/>-->
     <!--<sensor library_path="GraspFTDAQ" config_path="GraspFTDAQ"/>-->
-
+    <sensor library_path="GraspFTDAQ" config_path="GraspFTDAQWrist"/>
+    <sensor library_path="GraspFTDAQ" config_path="GraspFTDAQThumb"/>
+    <sensor library_path="GraspFTDAQ" config_path="GraspFTDAQIndex"/>
+    <sensor library_path="GraspFTDAQ" config_path="GraspFTDAQMiddle"/>
+    
     <recording label="recorder">
       <sensor id="OpenNI+OpenNIDemoR2G"/>
       <sensor id="PointGrey+PointGreyDemoR2G"/>

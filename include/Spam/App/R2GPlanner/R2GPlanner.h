@@ -235,7 +235,7 @@ protected:
 	/** force reader access cs */
 	golem::CriticalSection csHandForce;
 	// Return hand DOFs */
-	inline golem::I32 dimensions() { return (golem::I32)handInfo.getJoints().size(); }
+	inline size_t dimensions() const { return 18; }// (size_t)handInfo.getJoints().size();
 
 	/** Checks for reions with high likelihood of contacts */
 	inline bool expectedCollisions(const golem::Controller::State& state) const {
