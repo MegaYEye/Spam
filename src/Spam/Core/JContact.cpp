@@ -47,6 +47,7 @@ FTGuard::FTGuard(const grasp::Manipulator& manipulator) {
 	armIdx = manipulator.getArmInfo().getJoints().end()-1;
 	handChains = (U32)manipulator.getHandInfo().getChains().size();
 	fingerJoints = U32(manipulator.getHandInfo().getJoints().size() / handChains);
+	wrenchThr.resize(6);
 //	manipulator.getContext().write("FTGuard armJoints=%u, handChains=%u\n", armIdx, handChains);
 }
 
@@ -62,7 +63,13 @@ void FTGuard::create(const golem::Configspace::Index& i) {
 	threshold = 0.2;
 	force = REAL_ZERO;
 	type = FTGUARD_ABS;
-//	printf("FTGuard(armJoints=%u, handChains=%u, fingerJoints=%u) chain=%u, chain joint=%u, joint=%u\n", armIdx, handChains, fingerJoints, (handIdx / fingerJoints) + 1, handIdx % fingerJoints, i);
+	wrenchThr[0] = Real(0.01);
+	wrenchThr[1] = Real(0.01);
+	wrenchThr[2] = Real(0.01);
+	wrenchThr[3] = Real(0.01);
+	wrenchThr[4] = Real(0.01);
+	wrenchThr[5] = Real(0.01);
+	//	printf("FTGuard(armJoints=%u, handChains=%u, fingerJoints=%u) chain=%u, chain joint=%u, joint=%u\n", armIdx, handChains, fingerJoints, (handIdx / fingerJoints) + 1, handIdx % fingerJoints, i);
 }
 
 void XMLData(FTGuard &val, XMLContext* xmlcontext, bool create) {

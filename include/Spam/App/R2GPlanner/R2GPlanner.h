@@ -194,7 +194,7 @@ public:
 	}
 
 	/** Force reader */
-	GuardsReader guardsReader;
+	GuardsReader guardsReader, guardsFTReader;
 	/** Collect history of FT readings for statistics */
 	grasp::ActiveCtrlForce::ForceReader collectFTInp;
 	/** FT 2-oreder high-pass filter */

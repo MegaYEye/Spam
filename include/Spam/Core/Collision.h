@@ -583,6 +583,9 @@ public:
 	/** Collision likelihood estimation at a given waypoint for belief update */
 	virtual golem::Real evaluate(const FlannDesc& desc, const grasp::Manipulator::Config& config, FTGuard::Seq& triggeredGuards, bool debug = false) const;
 
+	/** Collision likelihood estimation at a given waypoint for belief update */
+	virtual golem::Real evaluateFT(const FlannDesc& desc, const grasp::Manipulator::Config& config, FTGuard::Seq& triggeredGuards, bool debug = false) const;
+
 	/** Collision likelihood estimation at a given waypoint */
 	virtual golem::Real evaluate(const FlannDesc& desc, const grasp::Manipulator::Config& config, bool debug = false) const;
 
@@ -641,8 +644,12 @@ protected:
 	/** Description */
 	const Desc desc;
 
+	/** Joints with FTs */
+	std::vector<golem::Configspace::Index> ftJoints;
 	/** Joints */
 	Bounds::Coord jointBounds;
+	/** FTs */
+	Bounds::Coord ftBounds;
 	/** Base */
 	Bounds baseBounds;
 	/** Points */

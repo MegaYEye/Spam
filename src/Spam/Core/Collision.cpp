@@ -87,6 +87,13 @@ Collision::Collision(const grasp::Manipulator& manipulator, const Desc& desc) : 
 	for (golem::Configspace::Index i = manipulator.getHandInfo().getJoints().begin(); i < manipulator.getHandInfo().getJoints().end(); ++i)
 		jointBounds[i].create(manipulator.getJointBounds(i));
 
+	// ft only
+	for (golem::Chainspace::Index i = manipulator.getHandInfo().getChains().begin(); i != manipulator.getHandInfo().getChains().begin(); ++i) {
+		const golem::Configspace::Index j = manipulator.getHandInfo().getJoints(i).end() - 1;
+		ftBounds[j].create(manipulator.getJointBounds(j));
+		ftJoints.push_back(j);
+	}
+
 	// base
 	baseBounds.create(manipulator.getBaseBounds());
 	// bounds
@@ -832,6 +839,60 @@ golem::Real Collision::evaluate(const FlannDesc& desc, const grasp::Manipulator:
 	tperfEvalPoints += t_end /*tperfEvalPoints < t_end ? t_end : tperfEvalPoints*/;
 	//if (debug /*&& eval < REAL_ONE*/)
 //	if (debugjj++ % 100 == 0)	manipulator.getContext().write("Collision::evaluate(): points=%u, checks=%u, collisions=%u, likelihhod=%f, eval=%f\n", indices.size(), checks, collisions, likelihood, eval / collisions);
+#endif
+
+	return likelihood;
+}
+
+golem::Real Collision::evaluateFT(const FlannDesc& desc, const grasp::Manipulator::Config& config, FTGuard::Seq &triggeredGuards, bool debug) const {
+	if (!this->desc.kdtree) {
+		manipulator.getContext().info("Collision::Check(): No KD-Tree\n");
+		// todo: check this is a valid value to return in case of faliure
+		return REAL_ZERO;
+	}
+#ifdef _COLLISION_PERFMON
+	PerfTimer t;
+	++perfEvalPoints;
+#endif
+	const golem::Mat34 base(config.frame.toMat34());
+	golem::WorkspaceJointCoord poses;
+	manipulator.getJointFrames(config.config, base, poses);
+
+	grasp::NNSearch::IndexSeq indices;
+	grasp::NNSearch::DistanceF64Seq distances;
+
+	golem::Real eval = REAL_ZERO;
+	size_t collisions = 0, checks = 0;
+
+	for (auto i = ftJoints.begin(); i < ftJoints.end(); ++i) {
+		if (*i != triggeredGuards[0].jointIdx)
+			continue;
+
+		Bounds bounds = jointBounds[*i];
+		if (bounds.empty())
+			continue;
+
+		bounds.setPose(Bounds::Mat34(poses[*i]));
+
+		Feature query(poses[*i].p);
+		nnSearch->knnSearch(query, desc.neighbours, indices, distances);
+
+		Feature::Seq seq;
+		seq.reserve(indices.size());
+		for (size_t j = 0; j < indices.size(); ++j)
+			seq.push_back(points[indices[j]]);
+
+		eval += bounds.evaluate(seq.data(), seq.data() + seq.size(), (Bounds::RealEval)desc.depthStdDev, collisions);
+		checks += indices.size();
+	}
+
+	const Real likelihood = desc.likelihood*((eval + (checks - collisions)) / checks - REAL_ONE);
+
+#ifdef _COLLISION_PERFMON
+	SecTmReal t_end = t.elapsed();
+	tperfEvalPoints += t_end /*tperfEvalPoints < t_end ? t_end : tperfEvalPoints*/;
+	if (debug /*&& eval < REAL_ONE*/)
+		manipulator.getContext().debug("Collision::evaluate(): points=%u, checks=%u, collisions=%u, likelihhod=%f\n", indices.size(), checks, collisions, likelihood);
 #endif
 
 	return likelihood;

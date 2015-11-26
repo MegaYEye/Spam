@@ -106,7 +106,7 @@
     </heuristic>
 
     <!--<model camera="DepthSim+DepthSimDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="jug-curv-5_views" item_obj="modelObj" item_grasp="grasp-bowl-pinchsupp" handler_grasp="ContactModel+ContactModelDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_model_trj_trial">-->
-    <model camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="model-curv-6_views" item_obj="modelObj" item_grasp="grasp-bowl-pinchsupp" handler_grasp="ContactModel+ContactModelDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_model_trj_trial">
+    <model camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="model-curv-6_views" item_obj="modelObj" item_grasp="grasp-bowl-rim" handler_grasp="ContactModel+ContactModelDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_model_trj_trial">
       <scan_pose dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <scan_pose dim="61" c1="1.98703" c2="-1.82022" c3="2.68371" c4="-0.993679" c5="-0.472118" c6="0.701058" c7="-0.601755" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <scan_pose dim="61" c1="1.60132" c2="-1.8583" c3="1.77602" c4="-0.0109462" c5="0.450068" c6="1.04633" c7="-0.639206" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
@@ -137,7 +137,7 @@
     </model>
 
     <!--<query camera="DepthSim+DepthSimDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="jug-curv-3_views" item_obj="queryObj" item_grasp="grasp-jug-5_views-pinchsupp" handler_grasp="ContactQuery+ContactQueryDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_query_trj_trial">-->
-    <query camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="query-curv-3_views" item_obj="queryObj" item_grasp="grasp-model-5_views-pinchsupp" handler_grasp="ContactQuery+ContactQueryDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_query_trj_trial">
+    <query camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="query-curv-3_views" item_obj="queryObj" item_grasp="grasp-model-6_views-RIM" handler_grasp="ContactQuery+ContactQueryDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_query_trj_trial">
       <scan_pose dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <!--<scan_pose dim="61" c1="1.98703" c2="-1.82022" c3="2.68371" c4="-0.993679" c5="-0.472118" c6="0.701058" c7="-0.601755" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>-->
       <scan_pose dim="61" c1="1.60132" c2="-1.8583" c3="1.77602" c4="-0.0109462" c5="0.450068" c6="1.04633" c7="-0.639206" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
@@ -330,7 +330,7 @@
     <!-- DLR Justin robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotJustin" -->
     <!-- DLR Justin robot (controller, planner): library_path="GolemDeviceRobotJustin" config_path="GolemDeviceRobotJustin" -->
 
-    <controller library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBoris">
+    <controller library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBorisTactile">
       <renderer>
         <joint_appearance line_width="1.0">
           <solid_colour R="192" G="192" B="0" A="100"></solid_colour>
@@ -350,7 +350,7 @@
         </state_renderer>
       </renderer>
     </controller>
-    <planner library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBoris">
+    <planner library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBorisTactile">
       <renderer show_duration="600.0">
         <goal_renderer show="1" vertex_position_show="0" vertex_frame_show="1" edge_show="0">
           <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
@@ -391,7 +391,7 @@
     </planner>
 
     <controller id="KukaLWR+KukaLWRBorisR"/>
-    <controller id="DLRHitHandII+DLRHitHandIIBorisR"/>
+    <controller id="DLRHitHandII+DLRHitHandIITactile"/>
 
     <!--<sensor id="FTClient+FTClient"/>-->
     <sensor id="FTDAQ+FTDAQWrist"/>
@@ -483,8 +483,8 @@
     <handler library_path="GraspDataContactModel" config_path="GraspDataContactModelDemoR2G"/>
     <handler library_path="GraspDataContactQuery" config_path="GraspDataContactQueryDemoR2G"/>
 
-    <!--<data path="./data/boris/jug/spam.xml"></data>-->
-    <data path="./data/boris/models.xml"></data>
+    <data path="./data/boris/jug/spam.xml"></data>
+    <!--<data path="./data/boris/models.xml"></data>-->
   </manager>
 
   <pose name="zero" dim="70" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0" c27="0.0" c28="0.0" c29="0.0" c30="0.0" c31="0.0" c32="0.0" c33="0.0" c34="0.0" c35="0.0" c36="0.0" c37="0.0" c38="0.0" c39="0.0" c40="0.0" c41="0.0" c42="0.0" c43="0.0" c44="0.0" c45="0.0" c46="0.0" c47="0.0" c48="0.0" c49="0.0" c50="0.0" c51="0.0" c52="0.0" c53="0.0" c54="0.0" c55="0.0" c56="0.0" c57="0.0" c58="0.0" c59="0.0" c60="0.0" c61="0.0" c62="0.0" c63="0.0" c64="0.0" c65="0.0" c66="0.0" c67="0.0" c68="0.0" c69="0.0" c70="0.0"/>

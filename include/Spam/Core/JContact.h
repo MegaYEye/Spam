@@ -88,6 +88,11 @@ public:
 	/** Force/torque measured */
 	golem::Real force;
 
+	/** Wrench treshold */
+	grasp::RealSeq wrenchThr;
+	/** FT sensor wrench */
+	golem::Twist wrench;
+
 	/** Last arm's joint index */
 	golem::Configspace::Index armIdx;
 	/** Joint index */

@@ -157,15 +157,15 @@ bool R2GPlanner::create(const Desc& desc) {
 			"cring_0" << "\t" << "cring_1" << "\t" << "cring_2" << "\t" << "cring_3" << "\t" <<
 			"cpinky_0" << "\t" << "cpinky_1" << "\t" << "cpinky_2" << "\t" << "cpinky_3" << "\t";*/
 	};
-	//const std::string dataFTRawPath = makeString("%s_raw.txt", prefix.str().c_str());
-	//dataFTRaw.open(dataFTRawPath);
-	//strTorquesDesc(dataFTRaw);
-	//dataFTRaw << std::endl;
+	const std::string dataFTRawPath = makeString("%s_raw.txt", prefix.str().c_str());
+	dataFTRaw.open(dataFTRawPath);
+	strTorquesDesc(dataFTRaw);
+	dataFTRaw << std::endl;
 
-	//const std::string dataFTFilteredPath = makeString("%s_filtered.txt", prefix.str().c_str());
-	//dataFTFiltered.open(dataFTFilteredPath);
-	//strTorquesDesc(dataFTFiltered);
-	//dataFTFiltered << std::endl;
+	const std::string dataFTFilteredPath = makeString("%s_filtered.txt", prefix.str().c_str());
+	dataFTFiltered.open(dataFTFilteredPath);
+	strTorquesDesc(dataFTFiltered);
+	dataFTFiltered << std::endl;
 
 	//const std::string dataSimContactPath = makeString("%s_contact.txt", prefix.str().c_str());
 	//dataSimContact.open(dataSimContactPath);
@@ -234,7 +234,7 @@ bool R2GPlanner::create(const Desc& desc) {
 		filteredforce = conv();
 	};
 
-	/*ArmHandForce **/armHandForce = dynamic_cast<ArmHandForce*>(&*activectrlMap.find("ArmHandForce+ArmHandForce")->second);
+	armHandForce = dynamic_cast<ArmHandForce*>(&*activectrlMap.find("ArmHandForce+ArmHandForce")->second);
 	if (!armHandForce)
 		throw Message(Message::LEVEL_ERROR, "R2GPlanner::create(): armHandForce is invalid");
 	armMode = armHandForce->getArmCtrl()->getMode();
@@ -256,8 +256,28 @@ bool R2GPlanner::create(const Desc& desc) {
 		//		throw Message(Message::LEVEL_NOTICE, "Robot::handForceReaderDflt(): F[%u/%u] = (%3.3lf)", i, size, force[i]);
 	};
 
+	guardsFTReader = [=](const Controller::State &state, grasp::RealSeq& force, std::vector<golem::Configspace::Index> &joints) {
+		joints.clear();
+		joints.reserve(handInfo.getJoints().size());
+		size_t idx = 0;
+		// the loop skips the last joint because it's coupled with the 3rd joint.
+		for (Chainspace::Index i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i){
+			const Configspace::Index j = handInfo.getJoints(i).end() - 1;
+			for (size_t k = idx + 0; k < idx + 6; ++k) {
+				if (k > 17) return;
+				if (Math::abs(handFilteredForce[k]) > fLimit[k]) {
+					joints.push_back(j);
+					idx += 6;
+					break;
+				}
+			}
+		}
+		//for (size_t i = 0; i < size; ++i)
+		//	if (Math::abs(force[i]) > fLimit[i])
+		//		throw Message(Message::LEVEL_NOTICE, "Robot::handForceReaderDflt(): F[%u/%u] = (%3.3lf)", i, size, force[i]);
+	};
+
 	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws		
-		return;
 		// associate random noise [-0.1, 0.1]
 		static int indexjj = 0;
 		if (enableSimContact)
@@ -298,7 +318,7 @@ bool R2GPlanner::create(const Desc& desc) {
 		
 		triggeredGuards.clear();
 		std::vector<Configspace::Index> joints;
-		guardsReader(state, force, joints);
+		guardsFTReader(state, force, joints);
 		for (U32 i = 0; i != joints.size(); ++i) {
 			FTGuard guard(*manipulator);
 			guard.create(joints[i]);
@@ -1696,7 +1716,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 	// send trajectory
 	sendTrajectory(trajectory);
 
-	record = brecord ? true : false;
+	bool record2 = brecord ? true : false;
 	Controller::State::Seq robotPoses; robotPoses.clear();
 	TwistSeq ftSeq; ftSeq.clear();
 	std::vector<grasp::RealSeq> forceInpSensorSeq;
@@ -1717,14 +1737,16 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 			robotPoses.push_back(s);
 			Twist wrench; if (graspSensorForce) graspSensorForce->readSensor(wrench, s.t);
 			ftSeq.push_back(wrench);
-			if (!isGrasping && i > 150)
+			if (!isGrasping && i > 150) {
 				enableForceReading = expectedCollisions(s);
+				record = true;
+			}
 			//if (!isGrasping && !enableForceReading && i > 150 && expectedCollisions(s))
 			//	enableForceReading = true;
 		}
 	}
 	enableForceReading = false;
-	if (record) {
+	if (record2) {
 		std::stringstream prefix;
 		prefix << std::fixed << std::setprecision(3) << "./data/boris/experiments/" << trialPtr->second->object.c_str() << "/" << trialPtr->second->name <<  "/obs_model_data/" << item << "-" << context.getTimer().elapsed();
 
