@@ -282,6 +282,7 @@ bool R2GPlanner::create(const Desc& desc) {
 				}
 			}
 		}
+		//new ft reader
 	};
 
 	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws		
