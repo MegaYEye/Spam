@@ -442,6 +442,7 @@ bool Collision::check(const Collision::Waypoint& waypoint, const grasp::Manipula
 }
 
 bool Collision::check(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, bool debug) const {
+	printf("check #1\n");
 	if (!this->desc.kdtree) {
 		manipulator.getContext().info("Collision::Check(): No KD-Tree\n");
 		return false;
@@ -450,6 +451,7 @@ bool Collision::check(const FlannDesc& desc, const golem::Rand& rand, const gras
 	PerfTimer t;
 	++perfCheckNN;
 #endif
+	printf("check #2\n");
 	const golem::Mat34 base(config.frame.toMat34());
 	golem::WorkspaceJointCoord poses;
 	manipulator.getJointFrames(config.config, base, poses);
@@ -460,6 +462,7 @@ bool Collision::check(const FlannDesc& desc, const golem::Rand& rand, const gras
 //	const Real radius = -0.005; //REAL_ZERO; // -Real(0.0001);
 ////	manipulator.getContext().write("radius %f\n", radius);
 
+	printf("check #3\n");
 	const size_t size = /*desc.points < desc.neighbours ? desc.points : */desc.neighbours;
 	Real maxDepth = -golem::numeric_const<Real>::MAX, maxDistance = -golem::numeric_const<Real>::MAX;
 	for (Configspace::Index i = manipulator.getHandInfo().getJoints().begin(); i < manipulator.getHandInfo().getJoints().end(); ++i) {
@@ -467,6 +470,7 @@ bool Collision::check(const FlannDesc& desc, const golem::Rand& rand, const gras
 		if (bounds.empty())
 			continue;
 
+		printf("check #4\n");
 		bounds.setPose(Bounds::Mat34(poses[i]));
 				
 		Feature query(poses[i].p);
@@ -495,6 +499,7 @@ bool Collision::check(const FlannDesc& desc, const golem::Rand& rand, const gras
 			}
 		}
 	}
+	printf("check #5\n");
 
 #ifdef _COLLISION_PERFMON
 	SecTmReal t_end = t.elapsed();
@@ -503,6 +508,7 @@ bool Collision::check(const FlannDesc& desc, const golem::Rand& rand, const gras
 		manipulator.getContext().write("Collision::evaluate(): depth=%.7f, distance=%f, neighbours=%u, points=%u, collision=no\n", maxDepth, maxDistance, desc.neighbours, desc.points);
 #endif
 
+	printf("check #6\n");
 	return false;
 }
 
@@ -864,17 +870,18 @@ golem::Real Collision::evaluateFT(const FlannDesc& desc, const grasp::Manipulato
 	golem::Real eval = REAL_ZERO;
 	size_t collisions = 0, checks = 0;
 
-	for (auto i = ftJoints.begin(); i < ftJoints.end(); ++i) {
-		if (*i != triggeredGuards[0].jointIdx)
+	for (auto guard = triggeredGuards.begin(); guard != triggeredGuards.end(); ++guard) {
+		if (!guard->isInContact())
 			continue;
 
-		Bounds bounds = jointBounds[*i];
+		const Configspace::Index i = guard->jointIdx;
+		Bounds bounds = jointBounds[i];
 		if (bounds.empty())
 			continue;
 
-		bounds.setPose(Bounds::Mat34(poses[*i]));
+		bounds.setPose(Bounds::Mat34(poses[i]));
 
-		Feature query(poses[*i].p);
+		Feature query(poses[i].p);
 		nnSearch->knnSearch(query, desc.neighbours, indices, distances);
 
 		Feature::Seq seq;

@@ -227,6 +227,7 @@ public:
 	};
 	/** Collision detection at a given waypoint */
 	inline bool check(const Collision::FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, bool debug = false) const {
+		printf("hypothesis::check()\n");
 		return collisionPtr->check(desc, rand, config, debug);
 	}
 

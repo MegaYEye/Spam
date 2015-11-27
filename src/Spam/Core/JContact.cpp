@@ -48,14 +48,27 @@ FTGuard::FTGuard(const grasp::Manipulator& manipulator) {
 	handChains = (U32)manipulator.getHandInfo().getChains().size();
 	fingerJoints = U32(manipulator.getHandInfo().getJoints().size() / handChains);
 	wrenchThr.resize(6);
+	mode = Mode::ENABLE;
 //	manipulator.getContext().write("FTGuard armJoints=%u, handChains=%u\n", armIdx, handChains);
 }
 
 std::string FTGuard::str() const {
-	std::string ss = getGuardName(getHandChain()) + " joint=" + boost::lexical_cast<std::string>(getHandJoint()) + " measured_force=" + boost::lexical_cast<std::string>(force) + (type == FTGUARD_ABS ? " |> " : type == FTGUARD_LESSTHAN ? " < " : " > ") + boost::lexical_cast<std::string>(threshold);
+//	std::string ss = getGuardName(getHandChain()) + " joint=" + boost::lexical_cast<std::string>(getHandJoint()) + " measured_force=" + boost::lexical_cast<std::string>(force) + (type == FTGUARD_ABS ? " |> " : type == FTGUARD_LESSTHAN ? " < " : " > ") + boost::lexical_cast<std::string>(threshold);
+	std::string ss = getGuardName(getHandChain()) + " joint=" + boost::lexical_cast<std::string>(getHandJoint()) + " measured_force=" + strForces();
 	printf("%s\n", ss.c_str());
 	return ss;
 }
+
+std::string FTGuard::strForces() const {
+	//	std::string ss = getGuardName(getHandChain()) + " joint=" + boost::lexical_cast<std::string>(getHandJoint()) + " measured_force=" + boost::lexical_cast<std::string>(force) + (type == FTGUARD_ABS ? " |> " : type == FTGUARD_LESSTHAN ? " < " : " > ") + boost::lexical_cast<std::string>(threshold);
+	std::string ss = "<" + boost::lexical_cast<std::string>(wrench.getV().x) + " " + boost::lexical_cast<std::string>(wrench.getV().y) + " " + boost::lexical_cast<std::string>(wrench.getV().y) + " " +
+		boost::lexical_cast<std::string>(wrench.getW().x) + " " + boost::lexical_cast<std::string>(wrench.getW().y) + " " + boost::lexical_cast<std::string>(wrench.getW().z) + ">" + (type == FTGUARD_ABS ? " |> " : type == FTGUARD_LESSTHAN ? " < " : " > ") + "[" +
+		boost::lexical_cast<std::string>(wrenchThr[0]) + " " + boost::lexical_cast<std::string>(wrenchThr[1]) + " " + boost::lexical_cast<std::string>(wrenchThr[2]) + " " + boost::lexical_cast<std::string>(wrenchThr[3]) + " " + 
+		boost::lexical_cast<std::string>(wrenchThr[4]) + " " + boost::lexical_cast<std::string>(wrenchThr[5]) + "]";
+	printf("%s\n", ss.c_str());
+	return ss;
+}
+
 
 void FTGuard::create(const golem::Configspace::Index& i) {
 	jointIdx = i;

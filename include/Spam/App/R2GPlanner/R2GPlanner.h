@@ -318,7 +318,9 @@ protected:
 	/** Combined action waypoints */
 	golem::Controller::State::Seq robotStates;
 	/** Contains the index of the triggered guards */
-	FTGuard::Seq triggeredGuards;
+//	FTGuard::Seq triggeredGuards;
+	/** Structure for FT sensors */
+	FTGuard::Seq ftGuards;
 
 	/** Iterations counter */
 	size_t iterations;

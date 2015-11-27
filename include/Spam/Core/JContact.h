@@ -74,6 +74,13 @@ enum HandChains {
 	PINKY,
 };
 
+/** Mode */
+enum Mode {
+	DISABLE = 0,
+	ENABLE,
+	INCONTACT,
+};
+
 /** Force/torque guards for Justin and BHAM robots */
 class FTGuard {
 public:
@@ -102,6 +109,24 @@ public:
 	/** Number of joints per fingers */
 	golem::U32 fingerJoints;
 
+	/** Mode of the ft guard */
+	Mode mode;
+	/** Check for contact */
+	inline bool isDisable() const { return this->mode == Mode::DISABLE; }
+	/** Check for contact */
+	inline bool isEnable() const { return this->mode == Mode::ENABLE; }
+	/** Check for contact */
+	inline bool isInContact() const { return this->mode == Mode::INCONTACT; }
+
+	/** Check if any contact */
+	static inline bool trigguered(const FTGuard::Seq& seq) {
+		for_each(seq.begin(), seq.end(), [&](const FTGuard& ft) {
+			if (ft.isInContact())
+				return true;
+		});
+		return false;
+	}
+
 	/** C'ctor */
 	FTGuard(const grasp::Manipulator &manipulator);
 
@@ -111,6 +136,8 @@ public:
 	/** Prints the guard in the format for Justin.
 	Example: {right,left}_{tcp,thumb,tip,middle,ring} {0,1,2,[3,4]} {|>,<,>} value **/
 	std::string str() const;
+
+	std::string strForces() const;
 
 	/** Returns the chain index to the finger [1, 5] */
 	inline golem::U32 getHandChain() {

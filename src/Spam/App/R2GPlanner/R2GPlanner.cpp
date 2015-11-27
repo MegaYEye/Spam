@@ -145,27 +145,27 @@ bool R2GPlanner::create(const Desc& desc) {
 	brecord = false;
 	sepField = "\t";
 	// writing data into a text file, open file
-	auto strTorquesDesc = [=](std::ostream& ostr) {
-		ostr << "idx" << "\t" <<  "timestamp" << "\t" << "contact" << "\t" << "thumb_0" << "\t" << "thumb_1" << "\t" << "thumb_2" << "\t" << "thumb_3" << "\t" <<
-			"index_0" << "\t" << "index_1" << "\t" << "index_2" << "\t" << "index_3" << "\t" <<
-			"middle_0" << "\t" << "middle_1" << "\t" << "middle_2" << "\t" << "middle_3" << "\t" <<
-			"ring_0" << "\t" << "ring_1" << "\t" << "ring_2" << "\t" << "ring_3" << "\t" <<
-			"pinky_0" << "\t" << "pinky_1" << "\t" << "pinky_2" << "\t" << "pinky_3" << "\t";/* <<
-			"cthumb_0" << "\t" << "cthumb_1" << "\t" << "cthumb_2" << "\t" << "cthumb_3" << "\t" <<
-			"cindex_0" << "\t" << "cindex_1" << "\t" << "cindex_2" << "\t" << "cindex_3" << "\t" <<
-			"cmiddle_0" << "\t" << "cmiddle_1" << "\t" << "cmiddle_2" << "\t" << "cmiddle_3" << "\t" <<
-			"cring_0" << "\t" << "cring_1" << "\t" << "cring_2" << "\t" << "cring_3" << "\t" <<
-			"cpinky_0" << "\t" << "cpinky_1" << "\t" << "cpinky_2" << "\t" << "cpinky_3" << "\t";*/
-	};
-	const std::string dataFTRawPath = makeString("%s_raw.txt", prefix.str().c_str());
-	dataFTRaw.open(dataFTRawPath);
-	strTorquesDesc(dataFTRaw);
-	dataFTRaw << std::endl;
+	//auto strTorquesDesc = [=](std::ostream& ostr) {
+	//	ostr << "idx" << "\t" <<  "timestamp" << "\t" << "contact" << "\t" << "thumb_0" << "\t" << "thumb_1" << "\t" << "thumb_2" << "\t" << "thumb_3" << "\t" <<
+	//		"index_0" << "\t" << "index_1" << "\t" << "index_2" << "\t" << "index_3" << "\t" <<
+	//		"middle_0" << "\t" << "middle_1" << "\t" << "middle_2" << "\t" << "middle_3" << "\t" <<
+	//		"ring_0" << "\t" << "ring_1" << "\t" << "ring_2" << "\t" << "ring_3" << "\t" <<
+	//		"pinky_0" << "\t" << "pinky_1" << "\t" << "pinky_2" << "\t" << "pinky_3" << "\t";/* <<
+	//		"cthumb_0" << "\t" << "cthumb_1" << "\t" << "cthumb_2" << "\t" << "cthumb_3" << "\t" <<
+	//		"cindex_0" << "\t" << "cindex_1" << "\t" << "cindex_2" << "\t" << "cindex_3" << "\t" <<
+	//		"cmiddle_0" << "\t" << "cmiddle_1" << "\t" << "cmiddle_2" << "\t" << "cmiddle_3" << "\t" <<
+	//		"cring_0" << "\t" << "cring_1" << "\t" << "cring_2" << "\t" << "cring_3" << "\t" <<
+	//		"cpinky_0" << "\t" << "cpinky_1" << "\t" << "cpinky_2" << "\t" << "cpinky_3" << "\t";*/
+	//};
+	//const std::string dataFTRawPath = makeString("%s_raw.txt", prefix.str().c_str());
+	//dataFTRaw.open(dataFTRawPath);
+	//strTorquesDesc(dataFTRaw);
+	//dataFTRaw << std::endl;
 
-	const std::string dataFTFilteredPath = makeString("%s_filtered.txt", prefix.str().c_str());
-	dataFTFiltered.open(dataFTFilteredPath);
-	strTorquesDesc(dataFTFiltered);
-	dataFTFiltered << std::endl;
+	//const std::string dataFTFilteredPath = makeString("%s_filtered.txt", prefix.str().c_str());
+	//dataFTFiltered.open(dataFTFilteredPath);
+	//strTorquesDesc(dataFTFiltered);
+	//dataFTFiltered << std::endl;
 
 	//const std::string dataSimContactPath = makeString("%s_contact.txt", prefix.str().c_str());
 	//dataSimContact.open(dataSimContactPath);
@@ -183,6 +183,12 @@ bool R2GPlanner::create(const Desc& desc) {
 		v[j] = N(i, REAL_ONE);
 		i += delta;
 	}
+
+	// Set the FT guards
+	ftGuards.assign(3, FTGuard(*manipulator));
+	size_t ftIdx = 0;
+	for (Configspace::Index i = handInfo.getJoints().begin(); i != handInfo.getJoints().begin() + 3; ++i)
+		ftGuards[ftIdx].create(i);
 
 	// compute the derivative mask=diff(v)
 	mask.assign(windowSize, REAL_ZERO);
@@ -257,24 +263,25 @@ bool R2GPlanner::create(const Desc& desc) {
 	};
 
 	guardsFTReader = [=](const Controller::State &state, grasp::RealSeq& force, std::vector<golem::Configspace::Index> &joints) {
-		joints.clear();
-		joints.reserve(handInfo.getJoints().size());
-		size_t idx = 0;
-		// the loop skips the last joint because it's coupled with the 3rd joint.
-		for (Chainspace::Index i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i){
-			const Configspace::Index j = handInfo.getJoints(i).end() - 1;
-			for (size_t k = idx + 0; k < idx + 6; ++k) {
-				if (k > 17) return;
+		// find index of the 6 dimension force
+		auto getWrench = [&](const U32 idx, const grasp::RealSeq& force) -> grasp::RealSeq {
+			RealSeq seq; seq.assign(6, REAL_ZERO);
+			for (size_t i = 0; i < 6; ++i)
+				seq[i] = force[idx * 6 + i];
+			return seq;
+		};
+
+		for (size_t i = 0; i < ftGuards.size(); ++i) {
+			RealSeq seq = getWrench(i, force);
+			for (size_t j = 0; j < seq.size(); ++j) {
+				const size_t k = i * 6 + j;
 				if (Math::abs(handFilteredForce[k]) > fLimit[k]) {
-					joints.push_back(j);
-					idx += 6;
-					break;
+					ftGuards[i].wrench = *reinterpret_cast<const Twist*>(getWrench(i, handFilteredForce).data());
+					ftGuards[i].wrenchThr = getWrench(i, fLimit);
+					ftGuards[i].mode = Mode::INCONTACT;
 				}
 			}
 		}
-		//for (size_t i = 0; i < size; ++i)
-		//	if (Math::abs(force[i]) > fLimit[i])
-		//		throw Message(Message::LEVEL_NOTICE, "Robot::handForceReaderDflt(): F[%u/%u] = (%3.3lf)", i, size, force[i]);
 	};
 
 	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws		
@@ -316,21 +323,22 @@ bool R2GPlanner::create(const Desc& desc) {
 		if (!enableForceReading)
 			return;
 		
-		triggeredGuards.clear();
+		FTGuard::Seq triggeredGuards;
 		std::vector<Configspace::Index> joints;
 		guardsFTReader(state, force, joints);
-		for (U32 i = 0; i != joints.size(); ++i) {
-			FTGuard guard(*manipulator);
-			guard.create(joints[i]);
-			const size_t k = joints[i] - handInfo.getJoints().begin();
-			guard.force = filteredForces[k]; //force[k];
-			guard.threshold = fLimit[k];
-			triggeredGuards.push_back(guard);
-		}
-		if (!triggeredGuards.empty()) {
+		//for (U32 i = 0; i != joints.size(); ++i) {
+		//	FTGuard guard(*manipulator);
+		//	guard.create(joints[i]);
+		//	const size_t k = joints[i] - handInfo.getJoints().begin();
+		//	guard.force = filteredForces[k]; //force[k];
+		//	guard.threshold = fLimit[k];
+		//	triggeredGuards.push_back(guard);
+		//}
+		if (FTGuard::trigguered(ftGuards)) {//(!triggeredGuards.empty()) {
 //			std::stringstream str;
-			for (FTGuard::Seq::const_iterator g = triggeredGuards.begin(); g != triggeredGuards.end(); ++g)
+			for (FTGuard::Seq::const_iterator g = ftGuards.begin(); g != ftGuards.end(); ++g)
 				g->str();
+
 			if (force.size() >= 20) {
 				context.write("Forces: Thumb: [%3.3lf %3.3lf %3.3lf %3.3lf] Index [%3.3lf %3.3lf %3.3lf %3.3lf] Middle [%3.3lf %3.3lf %3.3lf %3.3lf] Ring [%3.3lf %3.3lf %3.3lf %3.3lf] Pinky [%3.3lf %3.3lf %3.3lf %3.3lf]\n",
 					force[0], force[1], force[2], force[3],
@@ -526,7 +534,7 @@ bool R2GPlanner::create(const Desc& desc) {
 	withdrawToHomePose = desc.withdrawToHomePose;
 	posterior = true;
 
-	triggeredGuards.clear();
+//	triggeredGuards.clear();
 
 	ragDesc = desc;
 
@@ -981,7 +989,7 @@ bool R2GPlanner::create(const Desc& desc) {
 					else
 						to<TrialData>(trialPtr)->grasped = false;
 
-					for (auto i = triggeredGuards.begin(); i != triggeredGuards.end(); ++i) {
+					for (auto i = ftGuards.begin(); i != ftGuards.end(); ++i) {
 						context.write("%s\n", (*i).str().c_str());
 						logFile << grasp::makeString("%s\n", (*i).str().c_str());
 					}
@@ -1023,7 +1031,7 @@ bool R2GPlanner::create(const Desc& desc) {
 				//readPath("Enter data path to save: ", dataPath, dataExt.c_str());
 				//if (getExt(dataPath).empty())
 				//	dataPath += dataExt;
-				to<Manager::Data>(dataCurrentPtr)->save(dataPath);
+//				to<Manager::Data>(dataCurrentPtr)->save(dataPath);
 				//executeCmd(dataSaveCmd);
 				context.write("------------------END TRIAL----------------------------------------\n");
 				logFile << "------------------END TRIAL----------------------------------------\n";
@@ -1739,7 +1747,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 			ftSeq.push_back(wrench);
 			if (!isGrasping && i > 150) {
 				enableForceReading = expectedCollisions(s);
-				record = true;
+				//record = true;
 			}
 			//if (!isGrasping && !enableForceReading && i > 150 && expectedCollisions(s))
 			//	enableForceReading = true;
@@ -2495,12 +2503,12 @@ Real R2GPlanner::simContacts(const golem::Bounds::Seq::const_iterator &begin, co
 void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	if (!pBelief.get() || grasp::to<Data>(dataPtr)->queryPoints.empty())
 		return;
-	context.debug("R2GPlanner::updateAndResample(): %d triggered guards:\n", /*grasp::to<Data>(dataPtr)->*/triggeredGuards.size());
+	context.debug("R2GPlanner::updateAndResample(): %d triggered guards:\n", /*grasp::to<Data>(dataPtr)->*/ftGuards.size());
 	
 	// update samples' weights
 	golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO;
 	golem::Waypoint w(*controller, lookupState().cpos/*grasp::to<Data>(dataPtr)->triggeredStates.begin()->cpos*/);
-	context.write("update weights, triggered guards = %u\n", triggeredGuards.size());
+	context.write("update weights, triggered guards = %u\n", ftGuards.size());
 
 	// render uncertainty before belief update
 	resetDataPointers();
@@ -2514,7 +2522,7 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	printf("Recording started\n");
 
 	//::sleep(1000);
-	pBelief->createUpdate(collisionPtr, w, triggeredGuards, trialPtr != trialDataMap.end() ? grasp::to<TrialData>(trialPtr)->queryPointsTrn : grasp::RBCoord());
+	pBelief->createUpdate(collisionPtr, w, ftGuards, trialPtr != trialDataMap.end() ? grasp::to<TrialData>(trialPtr)->queryPointsTrn : grasp::RBCoord());
 
 	// render the mismatch between estimate and ground truth before resampling
 	to<Data>(dataCurrentPtr)->createRender();

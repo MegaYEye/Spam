@@ -688,7 +688,7 @@ void Belief::createUpdate(const Collision::Ptr collision, const golem::Waypoint 
 		grasp::Cloud::PointSeq points;
 		grasp::Cloud::transform(sampledPose->toMat34(), modelPoints, points);
 		cloud->create(rand, points);
-		sampledPose->weight = cloud->evaluate(waypointDesc, manipulator->getConfig(state), triggeredGuards, false);
+		sampledPose->weight = cloud->evaluateFT(waypointDesc, manipulator->getConfig(state), triggeredGuards, false);
 		grasp::RBDist error;
 		error.lin = rbPose.p.distance(sampledPose->p);
 		error.ang = rbPose.q.distance(sampledPose->q);
