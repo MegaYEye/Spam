@@ -577,7 +577,7 @@ const std::string PosePlanner::Data::ModeName[MODE_QUERY + 1] = {
 spam::PosePlanner::PosePlanner(Scene &scene) : grasp::Player(scene), rand(context.getRandSeed()), pHeuristic(nullptr) {
 }
 
-spam::PosePlanner::~PosePlanner() {}
+//spam::PosePlanner::~PosePlanner() {}
 	
 bool spam::PosePlanner::create(const Desc& desc) {
 	grasp::Player::create(desc); // throws

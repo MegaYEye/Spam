@@ -93,10 +93,10 @@ void R2GPlanner::Desc::load(golem::Context& context, const golem::XMLContext* xm
 R2GPlanner::R2GPlanner(Scene &scene) : PosePlanner(scene) {
 }
 
-R2GPlanner::~R2GPlanner() {
-	if (dataFTRaw.is_open()) dataFTRaw.close();
-	if (dataFTRaw.is_open()) dataFTFiltered.close();
-}
+//R2GPlanner::~R2GPlanner() {
+//	if (dataFTRaw.is_open()) dataFTRaw.close();
+//	if (dataFTRaw.is_open()) dataFTFiltered.close();
+//}
 
 bool R2GPlanner::create(const Desc& desc) {
 	PosePlanner::create(desc); // throws

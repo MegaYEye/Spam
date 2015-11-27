@@ -287,7 +287,7 @@ public:
 	/** Prints out debug info for cluster analysis */
 	std::string clusterToStr() { return clusterStr; }
 
-	~Belief();
+//	~Belief();
 
 protected:
 	/** Context object */

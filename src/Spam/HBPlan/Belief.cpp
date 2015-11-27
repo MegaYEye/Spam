@@ -85,8 +85,8 @@ Belief::Belief(golem::Context& context) : context(context), rand(context.getRand
 //	pRBPose.reset((grasp::RBPose*)this);
 }
 
-Belief::~Belief() {
-}
+//Belief::~Belief() {
+//}
 
 
 bool Belief::create(const Desc& desc) {

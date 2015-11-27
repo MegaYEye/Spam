@@ -1044,7 +1044,7 @@ protected:
 
 	bool create(const Desc& desc);
 	PosePlanner(golem::Scene &scene);
-	~PosePlanner();
+	//~PosePlanner();
 };
 
 /** Reads/writes object from/to a given XML context */

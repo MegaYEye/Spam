@@ -398,7 +398,7 @@ protected:
 	void renderHand(const golem::Controller::State &state, const golem::Bounds::Seq &bounds, bool clear = true);
 
 	R2GPlanner(golem::Scene &scene);
-	~R2GPlanner();
+	//~R2GPlanner();
 	bool create(const Desc& desc);
 };
 
