@@ -195,25 +195,6 @@ public:
 	/** Create */
 	virtual void create(const golem::U32 idx, const golem::Mat34 &trn, const grasp::RBPose::Sample &s, golem::Rand& rand, const grasp::Cloud::PointSeq& points);
 
-	/** Complete constructor */
-	//Hypothesis(const golem::U32 idx, const golem::Mat34 &trn, const grasp::RBPose::Sample &s, grasp::Cloud::PointSeq &p) {
-	//	index = idx;
-	//	modelFrame = trn;
-	//	sample = s;
-	//	for (grasp::Cloud::PointSeq::const_iterator i = p.begin(); i != p.end(); ++i)
-	//		points.push_back(*i);
-	//	appearance.setToDefault();
-	//	boundsDesc.setToDefault();
-	//	build();
-	//	//buildMesh();
-	//}
-	///** Destrutor */
-	//~Hypothesis() {
-	//	pTree.release();
-	//	pTriangles.release();
-	//}
-
-
 	/** Returns this sample in model frame **/
 	inline grasp::RBPose::Sample toRBPoseSample() const { return sample; };
 	/** Returns this sample in global frame (default: robot frame) **/
@@ -227,7 +208,6 @@ public:
 	};
 	/** Collision detection at a given waypoint */
 	inline bool check(const Collision::FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, bool debug = false) const {
-		printf("hypothesis::check()\n");
 		return collisionPtr->check(desc, rand, config, debug);
 	}
 
@@ -288,7 +268,7 @@ protected:
 	const Desc desc;
 
 	/** Collision detection pointer */
-	Collision::Ptr collisionPtr;
+	spam::Collision::Ptr collisionPtr;
 
 	/** Create */
 	Hypothesis(const grasp::Manipulator& manipulator, const Desc& desc);

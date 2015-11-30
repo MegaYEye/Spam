@@ -65,7 +65,7 @@ enum FTGuardTypes {
 	FTGUARD_GREATERTHAN,
 };
 /** HandChains */
-enum HandChains {
+enum HandChain {
 	UNKNOWN = 0,
 	THUMB,
 	INDEX,
@@ -73,7 +73,6 @@ enum HandChains {
 	RING,
 	PINKY,
 };
-
 /** Mode */
 enum Mode {
 	DISABLE = 0,
@@ -81,86 +80,127 @@ enum Mode {
 	INCONTACT,
 };
 
-/** Force/torque guards for Justin and BHAM robots */
-class FTGuard {
+//------------------------------------------------------------------------------
+// base interface for guards
+class Guard {
 public:
-	typedef std::vector<FTGuard> Seq;
-	 
-	/** Name of the guard {right,left}_{tcp,thumb,tip,middle,ring} */
-	std::string name;
-	/** Type of guard {|>,<,>} */
-	FTGuardTypes type;
+	typedef std::vector<Guard> Seq;
+
 	/** Force/torque threshold for the guard */
 	golem::Real threshold;
 	/** Force/torque measured */
 	golem::Real force;
 
-	/** Wrench treshold */
-	grasp::RealSeq wrenchThr;
-	/** FT sensor wrench */
-	golem::Twist wrench;
+	class Desc {
+	public:
+		std::string name;
+		
+	};
+};
 
-	/** Last arm's joint index */
-	golem::Configspace::Index armIdx;
-	/** Joint index */
-	golem::Configspace::Index jointIdx;
-	/** Number of chains in the hand */
-	golem::U32 handChains;
-	/** Number of joints per fingers */
-	golem::U32 fingerJoints;
+/** Force/torque guards for Justin and BHAM robots */
+class FTGuard {
+public:
+	typedef std::vector<FTGuard> Seq;
+
+	/** FT sensors in 6 dimensions */
+	static const size_t DIM = 6;
+	/** Arm joints */
+	static const size_t ARM = 7;
+	/** Joint per finger */
+	static const size_t JOINTSPERFINGER = 4;
+
+	class Desc {
+	public:
+		/** Type of guard {|>,<,>} */
+		FTGuardTypes type;
+		/** Force/torque threshold for the guard */
+		grasp::RealSeq limits;
+		/** Hand chain */
+		HandChain chain;
+		/** Initial mode */
+		Mode mode;
+
+		/** Joint index at which the sensor is attached */
+		golem::Configspace::Index jointIdx;
+
+		Desc() {
+			setToDefault();
+		}
+
+		void setToDefault() {
+			type = FTGuardTypes::FTGUARD_ABS;
+			limits.assign(DIM, golem::Real(0.1));
+			chain = HandChain::UNKNOWN;
+			jointIdx = golem::Configspace::Index(0);
+		}
+
+		/** Assert that the description is valid. */
+		void assertValid(const grasp::Assert::Context& ac) const {
+			grasp::Assert::valid(limits.size() != DIM, ac, "limits dimention does not agree");
+			for (auto i = limits.begin(); i != limits.end(); ++i)
+				grasp::Assert::valid(std::isfinite(*i), ac, "elements in limit is not finite");
+		}
+		/** Creates the object from the description. */
+		virtual FTGuard* create() const;
+	};
 
 	/** Mode of the ft guard */
 	Mode mode;
-	/** Check for contact */
+	/** Wrench treshold */
+	grasp::RealSeq limits;
+	/** Current FT sensor wrench */
+	golem::Twist wrench;
+	/** Joint index at which the sensor is attached */
+	golem::Configspace::Index jointIdx;
+
+	/** Check for disable mode */
 	inline bool isDisable() const { return this->mode == Mode::DISABLE; }
-	/** Check for contact */
+	/** Check for enable mode */
 	inline bool isEnable() const { return this->mode == Mode::ENABLE; }
-	/** Check for contact */
+	/** Check for contact mode */
 	inline bool isInContact() const { return this->mode == Mode::INCONTACT; }
 
-	/** Check if any contact */
-	static inline bool trigguered(const FTGuard::Seq& seq) {
-		for_each(seq.begin(), seq.end(), [&](const FTGuard& ft) {
-			if (ft.isInContact())
-				return true;
-		});
-		return false;
+	/** Chain name */
+	static const std::string ChainName[];
+	/** Mode name */
+	static const char* ModeName[];
+
+	/** Set mode */
+	inline void setMode(const Mode& mode) {
+		this->mode = mode;
 	}
 
-	/** C'ctor */
-	FTGuard(const grasp::Manipulator &manipulator);
-
-	/** D'ctor */
-	virtual ~FTGuard() {};
-
-	/** Prints the guard in the format for Justin.
-	Example: {right,left}_{tcp,thumb,tip,middle,ring} {0,1,2,[3,4]} {|>,<,>} value **/
+	/** Guard in string */
 	std::string str() const;
 
 	std::string strForces() const;
 
-	/** Returns the chain index to the finger [1, 5] */
-	inline golem::U32 getHandChain() {
-		return ((golem::U32)(jointIdx - armIdx) / fingerJoints) + 1;
-	}
-	/** Returns the chain index to the finger [1, 5] */
-	inline const golem::U32 getHandChain() const {
-		return ((golem::U32)(jointIdx - armIdx) / fingerJoints) + 1;
-	}
-	/** Returns the index of the joint per finger [0,3] */
-	inline golem::U32 getHandJoint() {
-		return (golem::U32)(jointIdx - armIdx) % fingerJoints;
-	}
-	/** Returns the index of the joint per finger [0,3] */
-	inline const golem::U32 getHandJoint() const {
-		return (golem::U32)(jointIdx - armIdx) % fingerJoints;
+
+	/** Check a list of sensors for contacts */
+	static inline golem::U32 trigguered(const FTGuard::Seq& seq) {
+		golem::U32 contacts = golem::U32(0);
+		for (auto i = seq.begin(); i != seq.end(); ++i)
+			if (i->isInContact())
+				++contacts;
+		return contacts;
 	}
 
-	/** Sets the chain and joint iterators */
-	void create(const golem::Configspace::Index& joint);
+protected:
+	/** Type of guard {|>,<,>} */
+	FTGuardTypes type;
+
+	/** Finger on which the FT sensor is attached */
+	HandChain chain;
+
+	/** Creates from a description file */
+	void create(const Desc& desc);
+
+	/** C'ctor */
+	FTGuard();
 };
 /** Reads/writes guards from/to a given XML context */
-void XMLData(FTGuard &val, golem::XMLContext* xmlcontext, bool create = false);
+//void XMLData(FTGuard::Desc& val, golem::XMLContext* xmlcontext, bool create = false);
 
 //------------------------------------------------------------------------------
 

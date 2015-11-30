@@ -70,6 +70,10 @@ class R2GPlanner : public PosePlanner, protected golem::Profile::CallbackDist {
 public:
 	/** Force reader. Overwrite the ActiveCtrl reader. this retrieves the triggered joints */
 	typedef std::function<void(const golem::Controller::State&, grasp::RealSeq&, std::vector<golem::Configspace::Index>&)> GuardsReader;
+	/** Force reader. Overwrite the ActiveCtrl reader. this retrieves the triggered joints */
+	typedef std::function<std::vector<size_t>(const golem::Controller::State&, grasp::RealSeq&)> GuardFTReader;
+	/** FT Sequence */
+	typedef std::vector<grasp::FT*> FTSensorSeq;
 
 	/** Data */
 	class Data : public PosePlanner::Data {
@@ -194,7 +198,8 @@ public:
 	}
 
 	/** Force reader */
-	GuardsReader guardsReader, guardsFTReader;
+	GuardsReader guardsReader;
+	GuardFTReader guardsFTReader;
 	/** Collect history of FT readings for statistics */
 	grasp::ActiveCtrlForce::ForceReader collectFTInp;
 	/** FT 2-oreder high-pass filter */
@@ -203,6 +208,8 @@ public:
 protected:
 	/** Mode of Active Ctrl */
 	grasp::ActiveCtrlForce::Mode armMode, handMode;
+	/** Sequence of FT sensors */
+	FTSensorSeq ftSensorSeq;
 	/** Pointer to the hand active controller */
 	grasp::ArmHandForce *armHandForce;
 	/** Guards to retrieve a contact */
@@ -248,7 +255,7 @@ protected:
 	/** ground truth renderer */
 	golem::DebugRenderer gtRenderer;
 	/** Debug renderer */
-	golem::DebugRenderer debugRenderer;
+//	golem::DebugRenderer debugRenderer;
 
 	/** Object pose data */
 	Data::Map::iterator poseDataPtr;
@@ -292,7 +299,7 @@ protected:
 
 
 	bool printing;
-	golem::Bounds::Seq handBounds, waypointBounds;
+//	golem::Bounds::Seq handBounds, waypointBounds;
 
 	/** Item to remove from data after a trial is saved */
 	std::vector<std::string> itemPerformedTrj;

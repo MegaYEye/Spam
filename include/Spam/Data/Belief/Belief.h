@@ -46,16 +46,130 @@
 
 //------------------------------------------------------------------------------
 
-//#include <Spam/App/PosePlanner/PosePlanner.h>
+#include <Spam/HBPlan/Belief.h>
+#include <Golem/Tools/Library.h>
+#include <Golem/UI/Renderer.h>
+#include <Grasp/Core/Data.h>
+#include <Grasp/Core/UI.h>
+#include <Spam/App/PosePlanner/Data.h>
+
+//------------------------------------------------------------------------------
+
+extern "C" {
+	GOLEM_LIBRARY_DECLDIR void* graspDescLoader(void);
+};
 
 //------------------------------------------------------------------------------
 
 namespace spam {
+namespace data {
 
 //------------------------------------------------------------------------------
 
+class ItemBelief;
+class HandlerBelief;
+
+/** Data item representing grasp training data.
+*/
+class GOLEM_LIBRARY_DECLDIR ItemBelief : public grasp::data::Item, public spam::data::BeliefState {
+public:
+	friend class HandlerBelief;
+
+	/** Query file */
+	mutable grasp::data::File dataFile;
+
+	/** Transformation samples */
+	grasp::RBPose::Sample::Seq poses;
+	/** Transformation sub-samples */
+	grasp::RBPose::Sample::Seq hypotheses;
+
+	Belief::Desc::Ptr getBeliefDesc() const;
+	void set(const grasp::RBPose::Sample::Seq& poses, const grasp::RBPose::Sample::Seq& hypotheses);
+
+	/** Clones item. */
+	virtual Item::Ptr clone() const;
+
+	/** Creates render buffer, the buffer can be shared and allocated on Handler */
+	virtual void createRender();
+
+protected:
+	/** Data handler */
+	HandlerBelief& handler;
+
+	/** Load item from xml context, accessible only by Data. */
+	virtual void load(const std::string& prefix, const golem::XMLContext* xmlcontext);
+	/** Save item to xml context, accessible only by Data. */
+	virtual void save(const std::string& prefix, golem::XMLContext* xmlcontext) const;
+
+	/** Initialise data item */
+	ItemBelief(HandlerBelief& handler);
+};
+
+/** Data handler is associated with a particular item type, it knows how to create items, it can hold shared buffer.
+*/
+class GOLEM_LIBRARY_DECLDIR HandlerBelief : public grasp::data::Handler {
+public:
+	friend class ItemBelief;
+
+	/** Data handler description */
+	class GOLEM_LIBRARY_DECLDIR Desc : public grasp::data::Handler::Desc {
+	public:
+		typedef golem::shared_ptr<Desc> Ptr;
+		typedef std::map<std::string, Ptr> Map;
+
+		/** Pointer to belief desc file */
+		Belief::Desc::Ptr pBeliefDescPtr;
+
+		/** Belief suffix */
+		std::string beliefSuffix;
+
+		/** Constructs description. */
+		Desc() {
+			setToDefault();
+		}
+		/** Sets the parameters to the default values. */
+		void setToDefault() {
+			pBeliefDescPtr.reset(new Belief::Desc());
+			beliefSuffix = getFileExtBelief();
+		}
+		/** Assert that the object is valid. */
+		void assertValid(const grasp::Assert::Context& ac) const {
+			grasp::Assert::valid(pBeliefDescPtr != nullptr, ac, "Belief desc: null pointer.");	
+			grasp::Assert::valid(beliefSuffix.length() > 0, ac, "beliefSuffix: empty");
+		}
+
+		/** Load descritpion from xml context. */
+		virtual void load(golem::Context& context, const golem::XMLContext* xmlcontext);
+
+		/** Creates the object from the description. */
+		virtual grasp::data::Handler::Ptr create(golem::Context &context) const;
+	};
+
+	/** File extension: hypothesis-based state (.hbs) */
+	static std::string getFileExtBelief();
+
+protected:
+	/** Belief suffix */
+	std::string beliefSuffix;
+
+	/** Pointer to the descriptor file */
+	HandlerBelief::Desc desc;
+
+	/** Creates render buffer */
+	void createRender(const ItemBelief& item);
+
+	/** Construct empty item, accessible only by Data. */
+	virtual grasp::data::Item::Ptr create() const;
+
+	/** Initialise handler */
+	void create(const Desc& desc);
+	/** Initialise handler */
+	HandlerBelief(golem::Context &context);
+};
+
 //------------------------------------------------------------------------------
 
+};	// namespace
 };	// namespace
 
 #endif /*_SPAM_DATA_BELIEF_H_*/

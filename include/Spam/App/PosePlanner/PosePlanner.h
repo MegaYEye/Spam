@@ -627,6 +627,11 @@ public:
 		/** Pose estimation for simulated object */
 		grasp::RBPose::Desc::Ptr simRBPoseDesc;
 
+		/** Belief data handler */
+		std::string beliefHandler;
+		/** Belief data item */
+		std::string beliefItem;
+
 		/** Model descriptions */
 		grasp::Model::Desc::Map modelDescMap;
 		/** Contact appearance */
@@ -729,6 +734,9 @@ public:
 			objectScanPoseSeq.clear();
 			objectFrameAdjustment.setToDefault();
 			simRBPoseDesc.reset(new grasp::RBPose::Desc);
+
+			beliefHandler.clear();
+			beliefItem.clear();
 
 			modelDescMap.clear();
 			contactAppearance.setToDefault();
@@ -914,6 +922,11 @@ protected:
 	/** Reference frames */
 	golem::Mat34 simModelFrame, simQueryFrame;
 
+	/** Belief data handler */
+	grasp::data::Handler* beliefHandler;
+	/** Belief data item */
+	std::string beliefItem;
+
 	/** Models */
 	grasp::Model::Map modelMap;
 	/** Contact appearance */
@@ -978,6 +991,9 @@ protected:
 	bool showQueryDistribPointClouds;
 	/** Query renderer */
 	golem::DebugRenderer beliefRenderer;
+
+	golem::Bounds::Seq handBounds;
+	golem::DebugRenderer debugRenderer;
 
 
 	/** Appereance for point clouds: ground truth point clouds */

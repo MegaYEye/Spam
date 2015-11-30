@@ -287,13 +287,13 @@ size_t Collision::simulate(const FlannDesc& desc, const golem::Rand& rand, const
 			//	indices[j], distances[j], bounds.getDepth(points[j]), bounds.getDepth(f) > REAL_ZERO ? "YES" : "NO");
 		}
 		if (collisions > 0) {
-			const size_t k = i - manipulator.getHandInfo().getJoints().begin();
-			FTGuard guard(manipulator);
-			guard.create(Configspace::Index(i));
-			force /= collisions;
-			frame /= collisions;
-			guard.force = Math::sign(REAL_ONE, -frame.z) * (this->desc.ftContact.ftMedian[k] + (2 * rand.nextUniform<Real>()*this->desc.ftContact.ftStd[k] - this->desc.ftContact.ftStd[k]));//* force * 0.1/* * 1000*/;
-			joints.push_back(guard);
+			//const size_t k = i - manipulator.getHandInfo().getJoints().begin();
+			//FTGuard guard(manipulator);
+			//guard.create(Configspace::Index(i));
+			//force /= collisions;
+			//frame /= collisions;
+			//guard.force = Math::sign(REAL_ONE, -frame.z) * (this->desc.ftContact.ftMedian[k] + (2 * rand.nextUniform<Real>()*this->desc.ftContact.ftStd[k] - this->desc.ftContact.ftStd[k]));//* force * 0.1/* * 1000*/;
+			//joints.push_back(guard);
 //			forces.push_back(Math::sign(REAL_ONE, -frame.z)*force * 1000);
 		}
 	}
@@ -442,7 +442,6 @@ bool Collision::check(const Collision::Waypoint& waypoint, const grasp::Manipula
 }
 
 bool Collision::check(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, bool debug) const {
-	printf("check #1\n");
 	if (!this->desc.kdtree) {
 		manipulator.getContext().info("Collision::Check(): No KD-Tree\n");
 		return false;
@@ -451,7 +450,6 @@ bool Collision::check(const FlannDesc& desc, const golem::Rand& rand, const gras
 	PerfTimer t;
 	++perfCheckNN;
 #endif
-	printf("check #2\n");
 	const golem::Mat34 base(config.frame.toMat34());
 	golem::WorkspaceJointCoord poses;
 	manipulator.getJointFrames(config.config, base, poses);
@@ -462,7 +460,6 @@ bool Collision::check(const FlannDesc& desc, const golem::Rand& rand, const gras
 //	const Real radius = -0.005; //REAL_ZERO; // -Real(0.0001);
 ////	manipulator.getContext().write("radius %f\n", radius);
 
-	printf("check #3\n");
 	const size_t size = /*desc.points < desc.neighbours ? desc.points : */desc.neighbours;
 	Real maxDepth = -golem::numeric_const<Real>::MAX, maxDistance = -golem::numeric_const<Real>::MAX;
 	for (Configspace::Index i = manipulator.getHandInfo().getJoints().begin(); i < manipulator.getHandInfo().getJoints().end(); ++i) {
@@ -470,7 +467,6 @@ bool Collision::check(const FlannDesc& desc, const golem::Rand& rand, const gras
 		if (bounds.empty())
 			continue;
 
-		printf("check #4\n");
 		bounds.setPose(Bounds::Mat34(poses[i]));
 				
 		Feature query(poses[i].p);
@@ -499,7 +495,6 @@ bool Collision::check(const FlannDesc& desc, const golem::Rand& rand, const gras
 			}
 		}
 	}
-	printf("check #5\n");
 
 #ifdef _COLLISION_PERFMON
 	SecTmReal t_end = t.elapsed();
@@ -508,7 +503,6 @@ bool Collision::check(const FlannDesc& desc, const golem::Rand& rand, const gras
 		manipulator.getContext().write("Collision::evaluate(): depth=%.7f, distance=%f, neighbours=%u, points=%u, collision=no\n", maxDepth, maxDistance, desc.neighbours, desc.points);
 #endif
 
-	printf("check #6\n");
 	return false;
 }
 
@@ -603,28 +597,28 @@ golem::Real Collision::evaluate(const Waypoint& waypoint, const grasp::Manipulat
 	golem::Real eval = REAL_ZERO;
 	size_t collisions = 0, checks = 0;
 //	manipulator.getContext().write("Collision::evaluate():\n");
-	for (Configspace::Index i = manipulator.getHandInfo().getJoints().begin(); i < manipulator.getHandInfo().getJoints().end(); ++i) {
-		Bounds bounds = jointBounds[i];
-		if (bounds.empty())
-			continue;
-
-		bounds.setPose(Bounds::Mat34(poses[i]));
-
-		Real force = REAL_ZERO;
-		const bool triggered = [&]() -> const bool {
-			for (auto guard = triggeredGuards.begin(); guard != triggeredGuards.end(); ++guard) {
-				if (i == guard->jointIdx) {
-					force = guard->force;
-					return true;
-				}
-			}
-			return false;
-		}();
-		const Real val = bounds.evaluate(points.data(), points.data() + size, (Bounds::RealEval)waypoint.depthStdDev, (Bounds::RealEval)waypoint.depthStdDev, triggered, poses[i], force, collisions);
-//		manipulator.getContext().write("hand link %u, triggered = %u, eval = %f\n", i, triggered, val);
-		eval += val;
-		checks += size;
-	}
+//	for (Configspace::Index i = manipulator.getHandInfo().getJoints().begin(); i < manipulator.getHandInfo().getJoints().end(); ++i) {
+//		Bounds bounds = jointBounds[i];
+//		if (bounds.empty())
+//			continue;
+//
+//		bounds.setPose(Bounds::Mat34(poses[i]));
+//
+//		Real force = REAL_ZERO;
+//		const bool triggered = [&]() -> const bool {
+//			for (auto guard = triggeredGuards.begin(); guard != triggeredGuards.end(); ++guard) {
+//				if (i == guard->jointIdx) {
+//					force = guard->force;
+//					return true;
+//				}
+//			}
+//			return false;
+//		}();
+//		const Real val = bounds.evaluate(points.data(), points.data() + size, (Bounds::RealEval)waypoint.depthStdDev, (Bounds::RealEval)waypoint.depthStdDev, triggered, poses[i], force, collisions);
+////		manipulator.getContext().write("hand link %u, triggered = %u, eval = %f\n", i, triggered, val);
+//		eval += val;
+//		checks += size;
+//	}
 
 	const Real likelihood = waypoint.likelihood*eval/*((eval + (checks - collisions)) / checks - REAL_ONE)*/;
 
@@ -739,9 +733,9 @@ golem::Real Collision::evaluate(const FlannDesc& desc, const grasp::Manipulator:
 	typedef std::map<U32, grasp::RealSeq> GuardMap; GuardMap guardMap;
 	// retrive trigguered guards
 	for (FTGuard::Seq::iterator guard = triggeredGuards.begin(); guard != triggeredGuards.end(); ++guard) {
-		triggeredFingers[guard->getHandChain() - 1] = true;
+//		triggeredFingers[guard->getHandChain() - 1] = true;
 		const U32 k = U32(0 - guard->jointIdx);
-		fingerGuardSeq[guard->getHandChain() - 1][guard->getHandJoint()] = guard->force;
+//		fingerGuardSeq[guard->getHandChain() - 1][guard->getHandJoint()] = guard->force;
 		//manipulator.getContext().write("guard map key %d\n", -k);
 //		guardMap.insert(guardMap.begin(), GuardMap::value_type(-k, *guard));
 	}
@@ -867,8 +861,8 @@ golem::Real Collision::evaluateFT(const FlannDesc& desc, const grasp::Manipulato
 	grasp::NNSearch::IndexSeq indices;
 	grasp::NNSearch::DistanceF64Seq distances;
 
-	golem::Real eval = REAL_ZERO;
-	size_t collisions = 0, checks = 0;
+	Real eval = golem::numeric_const<Real>::ZERO;
+	U32 collisions = 0, checks = 0;
 
 	for (auto guard = triggeredGuards.begin(); guard != triggeredGuards.end(); ++guard) {
 		if (!guard->isInContact())
@@ -889,7 +883,10 @@ golem::Real Collision::evaluateFT(const FlannDesc& desc, const grasp::Manipulato
 		for (size_t j = 0; j < indices.size(); ++j)
 			seq.push_back(points[indices[j]]);
 
-		eval += bounds.evaluate(seq.data(), seq.data() + seq.size(), (Bounds::RealEval)desc.depthStdDev, collisions);
+		Vec3 median;
+		median.setZero();
+		eval += bounds.distance(seq.data(), seq.data() + seq.size(), median, collisions);
+		//eval += bounds.evaluate(seq.data(), seq.data() + seq.size(), (Bounds::RealEval)desc.depthStdDev, collisions);
 		checks += indices.size();
 	}
 
@@ -1151,27 +1148,27 @@ void Collision::draw(golem::DebugRenderer& renderer, const Waypoint& waypoint, c
 	golem::Real eval = REAL_ZERO;
 	size_t collisions = 0, checks = 0;
 
-	for (Configspace::Index i = manipulator.getHandInfo().getJoints().begin(); i < manipulator.getHandInfo().getJoints().end(); ++i) {
-		Bounds bounds = jointBounds[i];
-		if (bounds.empty())
-			continue;
+	//for (Configspace::Index i = manipulator.getHandInfo().getJoints().begin(); i < manipulator.getHandInfo().getJoints().end(); ++i) {
+	//	Bounds bounds = jointBounds[i];
+	//	if (bounds.empty())
+	//		continue;
 
-		bounds.setPose(Bounds::Mat34(poses[i]));
-		renderer.addAxes(poses[i], Vec3(.05, .05, .05));
+	//	bounds.setPose(Bounds::Mat34(poses[i]));
+	//	renderer.addAxes(poses[i], Vec3(.05, .05, .05));
 
-		Real force = REAL_ZERO;
-		const bool triggered = [&]() -> const bool {
-			for (auto guard = triggeredGuards.begin(); guard != triggeredGuards.end(); ++guard)
-				if (i == (0 - guard->jointIdx)) {
-					force = guard->force;
-					return true;
-				}
-			return false;
-		}();
-		const Real val = bounds.evaluate(points.data(), points.data() + size, (Bounds::RealEval)waypoint.depthStdDev, (Bounds::RealEval)waypoint.depthStdDev, triggered, poses[i], force, collisions);
-		eval += val;
-		checks += size;
-	}
+	//	Real force = REAL_ZERO;
+	//	const bool triggered = [&]() -> const bool {
+	//		for (auto guard = triggeredGuards.begin(); guard != triggeredGuards.end(); ++guard)
+	//			if (i == (0 - guard->jointIdx)) {
+	//				force = guard->force;
+	//				return true;
+	//			}
+	//		return false;
+	//	}();
+	//	const Real val = bounds.evaluate(points.data(), points.data() + size, (Bounds::RealEval)waypoint.depthStdDev, (Bounds::RealEval)waypoint.depthStdDev, triggered, poses[i], force, collisions);
+	//	eval += val;
+	//	checks += size;
+	//}
 
 	const Real likelihood = waypoint.likelihood*((eval + (checks - collisions)) / checks - REAL_ONE);
 

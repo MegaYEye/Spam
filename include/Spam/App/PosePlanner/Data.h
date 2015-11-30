@@ -52,27 +52,15 @@
 
 //------------------------------------------------------------------------------
 
-namespace grasp {
+namespace spam {
 namespace data {
 
 //------------------------------------------------------------------------------
 
-/** Initialises handler.
-*	(Optionally) Implemented by Handler.
-*/
-class HandlerBelief {
+class BeliefState {
 public:
-	/** Sets planner and controllers. */
-	virtual void set() = 0;
-};
-
-/** Trajectory collection and tools.
-*	(Optionally) Implemented by Item.
-*/
-class Belief {
-public:
-	/** Returns command trajectory with velocity profile. */
-	virtual void createBelief() = 0;
+	virtual Belief::Desc::Ptr getBeliefDesc() const = 0;
+	virtual void set(const grasp::RBPose::Sample::Seq& poses, const grasp::RBPose::Sample::Seq& hypotheses) = 0;
 };
 
 //------------------------------------------------------------------------------

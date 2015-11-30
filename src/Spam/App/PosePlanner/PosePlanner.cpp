@@ -266,6 +266,10 @@ void spam::PosePlanner::Data::createRender() {
 		owner->hypothesisRenderer.reset();
 		owner->groundTruthRenderer.reset();
 		owner->queryRenderer.reset();
+		owner->debugRenderer.reset();
+		owner->debugRenderer.setColour(RGBA::BLACK);
+		owner->debugRenderer.setLineWidth(Real(2.0));
+		owner->debugRenderer.addWire(owner->handBounds.begin(), owner->handBounds.end());
 
 		// model/query
 		const grasp::Vec3Seq& vertices = mode == MODE_MODEL ? modelVertices : queryVertices;
@@ -473,7 +477,13 @@ void PosePlanner::Desc::load(golem::Context& context, const golem::XMLContext* x
 	//Belief::Desc* pBeliefDesc(new Belief::Desc);
 	//(grasp::RBPose::Desc&)*pBeliefDesc = *pRBPoseDesc;
 	//pRBPoseDesc.reset(pBeliefDesc);
-	spam::XMLData((Belief::Desc&)*pBeliefDesc, xmlcontext->getContextFirst("belief")/*const_cast<golem::XMLContext*>(xmlcontext)*/);
+	try {
+		spam::XMLData((Belief::Desc&)*pBeliefDesc, xmlcontext->getContextFirst("belief")/*const_cast<golem::XMLContext*>(xmlcontext)*/);
+	}
+	catch (const golem::MsgXMLParser& msg) { 
+		pBeliefDesc.reset();
+		context.write("%s\n", msg.str().c_str()); 
+	}
 
 	try {
 		XMLData(modelTrn, xmlcontext->getContextFirst("model_trn_frame"));
@@ -554,6 +564,9 @@ void PosePlanner::Desc::load(golem::Context& context, const golem::XMLContext* x
 	}
 	catch (const golem::MsgXMLParser& msg) { context.write("%s\n", msg.str().c_str()); }
 
+	golem::XMLData("handler", beliefHandler, xmlcontext->getContextFirst("belief_state"));
+	golem::XMLData("item", beliefItem, xmlcontext->getContextFirst("belief_state"));
+
 	modelDescMap.clear();
 	golem::XMLData(modelDescMap, modelDescMap.max_size(), xmlcontext->getContextFirst("model"), "model", false);
 	contactAppearance.load(xmlcontext->getContextFirst("model appearance"));
@@ -589,7 +602,24 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	trialPtr = trialDataMap.end();
 
 	//pRBPose = desc.pRBPoseDesc->create(context); // throws
-	pBelief = desc.pBeliefDesc->create(context); //static_cast<Belief*>(pRBPose.get());
+	grasp::data::Handler::Map::const_iterator beliefHandlerPtr = handlerMap.find(desc.beliefHandler);
+	beliefHandler = beliefHandlerPtr != handlerMap.end() ? beliefHandlerPtr->second.get() : nullptr;
+	if (!beliefHandler) {
+		context.write("spam::PosePlanner::create(): unknown belief data handler: %s\n", desc.beliefHandler.c_str());
+		pBelief = desc.pBeliefDesc->create(context); //static_cast<Belief*>(pRBPose.get());
+		if (!pBelief.get())
+			throw Message(Message::LEVEL_CRIT, "spam::PosePlanner::create(): unknown belief desc");
+	}
+	else {	
+		//beliefItem = desc.beliefItem;
+		//grasp::data::Item::Map::iterator beliefPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(beliefItem, beliefHandler->create()));
+		//spam::data::BeliefState* beliefState = is<spam::data::BeliefState>(beliefPtr->second.get());
+		//beliefState = beliefPtr != to<Data>(dataCurrentPtr)->itemMap.end() ? beliefState : nullptr;
+		//if (!beliefState)
+		//	throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): beliefState handler does not implement data::beliefState");
+		//pBelief = beliefState->getBeliefDesc()->create(context);
+		pBelief = dynamic_cast<spam::data::BeliefState*>(beliefHandler->create().get())->getBeliefDesc()->create(context);
+	}
 
 	// manipulator
 	manipulator = desc.manipulatorDesc->create(*planner, desc.controllerIDSeq);
@@ -965,6 +995,27 @@ grasp::data::Item::Map::iterator spam::PosePlanner::estimatePose(Data::Mode mode
 		showQueryDistribFrames = true;
 		showHypothesesPointClouds = true;
 		showMeanHypothesisPointClouds = false;
+		showHypothesisBounds = true;
+		
+		// save belief
+		std::string trjItemName("belief");
+		RenderBlock renderBlock(*this);
+		{
+			golem::CriticalSectionWrapper cswData(getCS());
+			grasp::data::Item::Map::iterator beliefPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(beliefItem, beliefHandler->create()));
+			//to<Data>(dataCurrentPtr)->itemMap.find(beliefItem); 
+			//to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(trjItemName, beliefHandler->create()));
+			spam::data::BeliefState* beliefState = is<spam::data::BeliefState>(beliefPtr->second.get());
+			beliefState = beliefPtr != to<Data>(dataCurrentPtr)->itemMap.end() ? beliefState : nullptr;
+			if (!beliefState)
+				throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): beliefState handler does not implement data::beliefState");
+			// add current states
+			beliefState->set(pBelief->getSamples(), pBelief->getHypothesesToSample());
+			Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, beliefPtr, to<Data>(dataCurrentPtr)->getView());
+			context.write("Transform: handler %s, inputs %s, %s...\n", beliefHandler->getID().c_str(), beliefPtr->first.c_str(), beliefItem.c_str());
+		}
+
+
 	}
 	// render point cloud
 	to<Data>(dataCurrentPtr)->createRender();

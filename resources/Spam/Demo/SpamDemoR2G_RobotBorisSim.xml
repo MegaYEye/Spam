@@ -3,7 +3,7 @@
 <golem>
   <rand seed="0"></rand>
   <parallels threads="8"></parallels>
-  <messages level="debug"/><!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
+  <messages level="error"/><!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
 
   <universe name="Spam">
     <!--<window x="0" y="0" width="640" height="480"></window>-->
@@ -105,7 +105,7 @@
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.001" c4="0.0001" c5="0.0001" c6="0.0001" c7="0.0001"/>
     </heuristic>
 
-    <model camera="DepthSim+DepthSimDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="jug-curv-5_views" item_obj="modelObj" item_grasp="grasp-bowl-pinchsupp" handler_grasp="ContactModel+ContactModelDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_model_trj_trial">
+    <model camera="DepthSim+DepthSimDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="model-curv-6_views" item_obj="modelObj" item_grasp="grasp-bowl-rim" handler_grasp="ContactModel+ContactModelDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_model_trj_trial">
     <!--<model camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="model-curv-6_views" item_obj="modelObj" item_grasp="grasp-bowl-rim" handler_grasp="ContactModel+ContactModelDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_model_trj_trial">-->
       <scan_pose dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <scan_pose dim="61" c1="1.98703" c2="-1.82022" c3="2.68371" c4="-0.993679" c5="-0.472118" c6="0.701058" c7="-0.601755" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
@@ -136,7 +136,7 @@
       </appearance>
     </model>
 
-    <query camera="DepthSim+DepthSimDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="jug-curv-3_views" item_obj="queryObj" item_grasp="grasp-jug-5_views-pinchsupp" handler_grasp="ContactQuery+ContactQueryDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_query_trj_trial">
+    <query camera="DepthSim+DepthSimDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="query-curv-3_views" item_obj="queryObj" item_grasp="grasp-jug-5_views-rim" handler_grasp="ContactQuery+ContactQueryDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_query_trj_trial">
     <!--<query camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="query-curv-3_views" item_obj="queryObj" item_grasp="grasp-model-6_views-RIM" handler_grasp="ContactQuery+ContactQueryDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_query_trj_trial">-->
       <scan_pose dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <!--<scan_pose dim="61" c1="1.98703" c2="-1.82022" c3="2.68371" c4="-0.993679" c5="-0.472118" c6="0.701058" c7="-0.601755" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>-->
@@ -259,7 +259,8 @@
       <colour override="1" R="0" G="0" B="0" A="255"/>
     </groundtruth_appearance>
 
-    <belief points="1" features="1" attempts="10" kernels="10" neighbours="5" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7" cluster="1">
+    <belief_state item="beliefState" handler="SpamDataBelief+SpamDataBeliefDemoR2G"></belief_state>
+    <!--<belief points="1" features="1" attempts="10" kernels="10" neighbours="5" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7" cluster="1">
       <nn_search neighbours="0" search_checks="32" search_kdtrees="4" search_leaf_max_size="10"/>
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.001" c4="0.001" c5="0.0001" c6="0.0001" c7="0.0001"/>
       <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
@@ -282,13 +283,13 @@
         </collision>
       </hypothesis>
       <tactile_model num_hypotheses="5" max_surface_points="10000000">
-        <!--<covariance dim="7" c1="1.0" c2="1.0" c3="1.0" c4="1.0" c5="1.0" c6="1.0" c7="1.0"/>-->
-        <!--<covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>-->
+        --><!--<covariance dim="7" c1="1.0" c2="1.0" c3="1.0" c4="1.0" c5="1.0" c6="1.0" c7="1.0"/>--><!--
+        --><!--<covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>--><!--
       </tactile_model>
       <pose_estimation points="5000" features="5000" attempts="10" kernels="5000" neighbours="2000" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7" search_checks="32" search_kdtrees="4">
         <nn_search neighbours="0" search_checks="32" search_kdtrees="4" search_leaf_max_size="10"/>
         <covariance dim="7" c1="0.01" c2="0.01" c3="0.001" c4="0.001" c5="0.001" c6="0.001" c7="0.001"/>
-        <!--<covariance dim="7" c1="10" c2="10" c3="1" c4="1" c5="1" c6="1" c7="1"/>-->
+        --><!--<covariance dim="7" c1="10" c2="10" c3="1" c4="1" c5="1" c6="1" c7="1"/>--><!--
         <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
         <pose_stddev lin="0.001" ang="500.0"/>
         <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
@@ -302,7 +303,7 @@
           </colour>
         </align>
       </pose_estimation>
-    </belief>
+    </belief>-->
     <trial_data enable="1" silent="0" name="default" path="./data/boris/experiments/" ext_trial=".xml" ext_trj=".trj">
       <meta_query_transformation lin="0.1" ang="0.01"/>
       <meta_obj_pose_transformation lin="0.005" ang="0.01"/>
@@ -474,8 +475,9 @@
     <handler library_path="GraspDataTrajectory" config_path="GraspDataTrajectoryDemoR2G"/>
     <handler library_path="GraspDataContactModel" config_path="GraspDataContactModelDemoR2G"/>
     <handler library_path="GraspDataContactQuery" config_path="GraspDataContactQueryDemoR2G"/>
+    <handler library_path="SpamDataBelief" config_path="SpamDataBeliefDemoR2G"/>
 
-    <!--<data path="./data/boris/jug/spam.xml"></data>-->
+    <data path="./data/boris/jug/spam.xml"></data>
     <!--<data path="./data/boris/models.xml"></data>-->
   </manager>
 

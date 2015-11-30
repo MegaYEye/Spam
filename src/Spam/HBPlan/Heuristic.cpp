@@ -538,7 +538,7 @@ Real FTDrivenHeuristic::evaluate(const Hypothesis::Seq::const_iterator &hypothes
 	manipulator->getController().lookupState(golem::SEC_TM_REAL_MAX, state);
 	// position control
 	state.cpos = w.cpos;
-	grasp::Manipulator::Config config(w.cpos);
+	grasp::Manipulator::Config config(w.cpos, manipulator->getBaseFrame(w.cpos));
 	if (intersect(manipulator->getBounds(config.config, config.frame.toMat34()), (*hypothesis)->bounds(), false))
 		eval = (*hypothesis)->evaluate(ftDrivenDesc.evaluationDesc, config.config);
 	else {
@@ -570,18 +570,16 @@ bool FTDrivenHeuristic::collides(const golem::Waypoint &w, ThreadData* data) con
 	++perfCollisionWaypoint;
 #endif
 	// check for collisions with the object to grasp. only the hand
-	grasp::Manipulator::Config config(w.cpos);
 	if (pointCloudCollision && !pBelief->getHypotheses().empty()) {
 		Hypothesis::Seq::const_iterator maxLhdPose = pBelief->getHypotheses().begin();
+		grasp::Manipulator::Config config(w.cpos, manipulator->getBaseFrame(w.cpos));
 		if (intersect(manipulator->getBounds(config.config, config.frame.toMat34()), (*maxLhdPose)->bounds(), false)) {
 #ifdef _HEURISTIC_PERFMON
 			++perfCollisionPointCloud;
 #endif
-			//if ((*maxLhdPose)->check(waypoint, manipulator->getPose(w.cpos)))
-			if ((*maxLhdPose)->check(ftDrivenDesc.checkDesc, rand, config.config, true))
+			if ((*maxLhdPose)->check(ftDrivenDesc.checkDesc, rand, config.config))
 				return true;
 		}
-//		}
 	}
 
 	return Heuristic::collides(w, data);

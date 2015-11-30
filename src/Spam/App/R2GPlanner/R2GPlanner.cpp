@@ -52,7 +52,16 @@ void spam::R2GPlanner::Data::create(const Desc& desc) {
 }
 
 void spam::R2GPlanner::Data::createRender() {
+	context.write("R2G::createRender():\n");
 	PosePlanner::Data::createRender();
+	{
+		golem::CriticalSectionWrapper csw(owner->getCS());
+		owner->debugRenderer.reset();
+		owner->debugRenderer.setColour(RGBA::BLACK);
+		owner->debugRenderer.setLineWidth(Real(2.0));
+		context.write("createRender(): Hand bounds size = %d\n", owner->handBounds.size());
+		owner->debugRenderer.addWire(owner->handBounds.begin(), owner->handBounds.end());
+	}
 }
 
 void spam::R2GPlanner::Data::load(const std::string& prefix, const golem::XMLContext* xmlcontext, const grasp::data::Handler::Map& handlerMap) {
@@ -172,9 +181,47 @@ bool R2GPlanner::create(const Desc& desc) {
 	//strTorquesDesc(dataSimContact);
 	//dataSimContact << std::endl;
 
+	// ACTIVE CONTROLLER
+	armHandForce = dynamic_cast<ArmHandForce*>(&*activectrlMap.find("ArmHandForce+ArmHandForce")->second);
+	if (!armHandForce)
+		throw Message(Message::LEVEL_ERROR, "R2GPlanner::create(): armHandForce is invalid");
+	armMode = armHandForce->getArmCtrl()->getMode();
+	handMode = armHandForce->getHandCtrl()->getMode();
+	context.write("Active control mode [arm/hand]: %s/%s\n", ActiveCtrlForce::ModeName[armMode], ActiveCtrlForce::ModeName[handMode]);
+
+	// SET FT SENSORS AND GUARDS
+	fLimit = desc.fLimit;
+	Sensor::Seq sensorSeq = armHandForce->getSensorSeq();
+	// NOTE: skips the sensor at the wrist
+	for (auto i = sensorSeq.begin(); i != sensorSeq.end(); ++i) {
+		if (i == sensorSeq.begin()) continue;
+		FT* sensor = grasp::is<FT>(*i);
+		if (!sensor)
+			ftSensorSeq.push_back(sensor);
+	}
+	// set FT guard for the thumb
+	Chainspace::Index chain = handInfo.getChains().begin();
+	FTGuard::Desc thumbFTDesc = FTGuard::Desc();
+	thumbFTDesc.chain = HandChain::THUMB;
+	thumbFTDesc.jointIdx = handInfo.getJoints(chain++).end() - 1;
+	thumbFTDesc.limits = fLimit;
+	ftGuards.push_back(*thumbFTDesc.create());
+	// set FT guard for the index
+	FTGuard::Desc indexFTDesc = FTGuard::Desc();
+	indexFTDesc.chain = HandChain::INDEX;
+	indexFTDesc.jointIdx = handInfo.getJoints(chain++).end() - 1;
+	indexFTDesc.limits = fLimit;
+	ftGuards.push_back(*indexFTDesc.create());
+	// set FT guard for the thumb
+	FTGuard::Desc middleFTDesc = FTGuard::Desc();
+	middleFTDesc.chain = HandChain::MIDDLE;
+	middleFTDesc.jointIdx = handInfo.getJoints(chain++).end() - 1;
+	middleFTDesc.limits = fLimit;
+	ftGuards.push_back(*middleFTDesc.create());
+
+	// FT FILTER
 	steps = 0;
 	windowSize = 40;
-
 	grasp::RealSeq v;
 	v.assign(windowSize + 1, REAL_ZERO);
 	const Real delta(.1);
@@ -183,12 +230,6 @@ bool R2GPlanner::create(const Desc& desc) {
 		v[j] = N(i, REAL_ONE);
 		i += delta;
 	}
-
-	// Set the FT guards
-	ftGuards.assign(3, FTGuard(*manipulator));
-	size_t ftIdx = 0;
-	for (Configspace::Index i = handInfo.getJoints().begin(); i != handInfo.getJoints().begin() + 3; ++i)
-		ftGuards[ftIdx].create(i);
 
 	// compute the derivative mask=diff(v)
 	mask.assign(windowSize, REAL_ZERO);
@@ -240,14 +281,6 @@ bool R2GPlanner::create(const Desc& desc) {
 		filteredforce = conv();
 	};
 
-	armHandForce = dynamic_cast<ArmHandForce*>(&*activectrlMap.find("ArmHandForce+ArmHandForce")->second);
-	if (!armHandForce)
-		throw Message(Message::LEVEL_ERROR, "R2GPlanner::create(): armHandForce is invalid");
-	armMode = armHandForce->getArmCtrl()->getMode();
-	handMode = armHandForce->getHandCtrl()->getMode();
-	context.write("Active control mode [arm/hand]: %s/%s\n", ActiveCtrlForce::ModeName[armMode], ActiveCtrlForce::ModeName[handMode]);
-	// set guards for the hand
-	fLimit = desc.fLimit;
 	guardsReader = [=](const Controller::State &state, grasp::RealSeq& force, std::vector<golem::Configspace::Index> &joints) {
 		joints.clear();
 		joints.reserve(handInfo.getJoints().size());
@@ -262,7 +295,7 @@ bool R2GPlanner::create(const Desc& desc) {
 		//		throw Message(Message::LEVEL_NOTICE, "Robot::handForceReaderDflt(): F[%u/%u] = (%3.3lf)", i, size, force[i]);
 	};
 
-	guardsFTReader = [=](const Controller::State &state, grasp::RealSeq& force, std::vector<golem::Configspace::Index> &joints) {
+	guardsFTReader = [&](const Controller::State &, grasp::RealSeq& force) -> std::vector<size_t> {
 		// find index of the 6 dimension force
 		auto getWrench = [&](const U32 idx, const grasp::RealSeq& force) -> grasp::RealSeq {
 			RealSeq seq; seq.assign(6, REAL_ZERO);
@@ -271,94 +304,132 @@ bool R2GPlanner::create(const Desc& desc) {
 			return seq;
 		};
 
+		std::vector<size_t> indeces;
 		for (size_t i = 0; i < ftGuards.size(); ++i) {
 			RealSeq seq = getWrench(i, force);
 			for (size_t j = 0; j < seq.size(); ++j) {
 				const size_t k = i * 6 + j;
 				if (Math::abs(handFilteredForce[k]) > fLimit[k]) {
 					ftGuards[i].wrench = *reinterpret_cast<const Twist*>(getWrench(i, handFilteredForce).data());
-					ftGuards[i].wrenchThr = getWrench(i, fLimit);
 					ftGuards[i].mode = Mode::INCONTACT;
+					indeces.push_back(i);
 				}
 			}
 		}
-		//new ft reader
+		return indeces;
 	};
 
-	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws		
+	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq&) { // throws
+		grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
+
 		// associate random noise [-0.1, 0.1]
 		static int indexjj = 0;
 		if (enableSimContact)
 			for (auto i = 0; i < force.size(); ++i)
 				force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
-		
-		RealSeq links; links.assign(dimensions(), REAL_ZERO);
-		size_t jointInCollision = enableSimContact && !objectPointCloudPtr->empty() ? collisionPtr->simulate(desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), /*links*/force, true) : 0;
-		RealSeq filteredForces; filteredForces.assign(dimensions(), REAL_ZERO);
-		auto strTorques = [=](std::ostream& ostr, const Controller::State& state, const grasp::RealSeq& forces, const RealSeq& guardSeq/*const bool contact*/) {
-			ostr << state.t << "\t";
-			std::string c = jointInCollision > 0 ? "y" : "n"; //contact ? "y" : "n";
-			ostr << c.c_str() << "\t";
-			//grasp::RealSeq torques;
-			//torques.assign((size_t)robot->getStateHandInfo().getJoints().size(), REAL_ZERO);
-			//robot->readFT(state, torques);
-			for (auto i = 0; i < forces.size(); ++i)
-				ostr << forces[i] << "\t";
-			//for (auto i = 0; i < guardSeq.size(); ++i)
-			//	ostr << guardSeq[i] << "\t";
-		};
-		if (++indexjj % 10 == 0) 	{
-			collectFTInp(state, force);
-			filteredForces = getFilterForce();
-			if (record) {
-				//breakPoint();
-				dataFTRaw << indexjj << "\t";
-				strTorques(dataFTRaw, state, force, links/*contact*/);
-				dataFTRaw << std::endl;
-				dataFTFiltered << indexjj << "\t";
-				strTorques(dataFTFiltered, state, filteredForces, links/*contact*/);
-				dataFTFiltered << std::endl;
+		else {
+			size_t k = 0;
+			for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
+				FT::Data data;
+				(*i)->read(data);
+				const Vec3 v = data.wrench.getV();
+				const Vec3 w = data.wrench.getW();
+				for (size_t j = 0; j < 3; ++j) force[k++] = v[j];
+				for (size_t j = 0; j < 3; ++j) force[k++] = w[j];
 			}
 		}
+
+
+		size_t jointInCollision = enableSimContact && !objectPointCloudPtr->empty() ? collisionPtr->simulate(desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), force, true) : 0;
+		if (++indexjj % 10 == 0)
+			collectFTInp(state, force);
 
 		if (!enableForceReading)
 			return;
-		
-		FTGuard::Seq triggeredGuards;
-		std::vector<Configspace::Index> joints;
-		guardsFTReader(state, force, joints);
-		//for (U32 i = 0; i != joints.size(); ++i) {
-		//	FTGuard guard(*manipulator);
-		//	guard.create(joints[i]);
-		//	const size_t k = joints[i] - handInfo.getJoints().begin();
-		//	guard.force = filteredForces[k]; //force[k];
-		//	guard.threshold = fLimit[k];
-		//	triggeredGuards.push_back(guard);
-		//}
-		if (FTGuard::trigguered(ftGuards)) {//(!triggeredGuards.empty()) {
-//			std::stringstream str;
-			for (FTGuard::Seq::const_iterator g = ftGuards.begin(); g != ftGuards.end(); ++g)
-				g->str();
 
-			if (force.size() >= 20) {
-				context.write("Forces: Thumb: [%3.3lf %3.3lf %3.3lf %3.3lf] Index [%3.3lf %3.3lf %3.3lf %3.3lf] Middle [%3.3lf %3.3lf %3.3lf %3.3lf] Ring [%3.3lf %3.3lf %3.3lf %3.3lf] Pinky [%3.3lf %3.3lf %3.3lf %3.3lf]\n",
-					force[0], force[1], force[2], force[3],
-					force[4], force[5], force[6], force[7], 
-					force[8], force[9], force[10], force[11], 
-					force[12], force[13], force[14], force[15],
-					force[16], force[17], force[18], force[19]);
-				grasp::RealSeq f = getFilterForce();
-				context.write("filter: Thumb: [%3.3lf %3.3lf %3.3lf %3.3lf] Index [%3.3lf %3.3lf %3.3lf %3.3lf] Middle [%3.3lf %3.3lf %3.3lf %3.3lf] Ring [%3.3lf %3.3lf %3.3lf %3.3lf] Pinky [%3.3lf %3.3lf %3.3lf %3.3lf]\n",
-					f[0], f[1], f[2], f[3],
-					f[4], f[5], f[6], f[7],
-					f[8], f[9], f[10], f[11],
-					f[12], f[13], f[14], f[15],
-					f[16], f[17], f[18], f[19]);
-			}
-		
-			throw Message(Message::LEVEL_NOTICE, "spam::Robot::handForceReader(): Triggered %d guard(s).\n", triggeredGuards.size());
+		std::vector<size_t> indeces = guardsFTReader(state, force);
+		if (!indeces.empty()) {
+			for (auto i = indeces.begin(); i != indeces.end(); ++i)
+				context.write("%s\n", ftGuards[*i].str().c_str());
+			throw Message(Message::LEVEL_NOTICE, "spam::Robot::handForceReader(): Triggered guard(s).\n");
 		}
 	}); // end robot->setHandForceReader
+
+
+//	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws		
+//		// associate random noise [-0.1, 0.1]
+//		static int indexjj = 0;
+//		if (enableSimContact)
+//			for (auto i = 0; i < force.size(); ++i)
+//				force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
+//		
+//		RealSeq links; links.assign(dimensions(), REAL_ZERO);
+//		size_t jointInCollision = enableSimContact && !objectPointCloudPtr->empty() ? collisionPtr->simulate(desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), /*links*/force, true) : 0;
+//		RealSeq filteredForces; filteredForces.assign(dimensions(), REAL_ZERO);
+//		auto strTorques = [=](std::ostream& ostr, const Controller::State& state, const grasp::RealSeq& forces, const RealSeq& guardSeq/*const bool contact*/) {
+//			ostr << state.t << "\t";
+//			std::string c = jointInCollision > 0 ? "y" : "n"; //contact ? "y" : "n";
+//			ostr << c.c_str() << "\t";
+//			//grasp::RealSeq torques;
+//			//torques.assign((size_t)robot->getStateHandInfo().getJoints().size(), REAL_ZERO);
+//			//robot->readFT(state, torques);
+//			for (auto i = 0; i < forces.size(); ++i)
+//				ostr << forces[i] << "\t";
+//			//for (auto i = 0; i < guardSeq.size(); ++i)
+//			//	ostr << guardSeq[i] << "\t";
+//		};
+//		if (++indexjj % 10 == 0) 	{
+//			collectFTInp(state, force);
+//			filteredForces = getFilterForce();
+//			if (record) {
+//				//breakPoint();
+//				dataFTRaw << indexjj << "\t";
+//				strTorques(dataFTRaw, state, force, links/*contact*/);
+//				dataFTRaw << std::endl;
+//				dataFTFiltered << indexjj << "\t";
+//				strTorques(dataFTFiltered, state, filteredForces, links/*contact*/);
+//				dataFTFiltered << std::endl;
+//			}
+//		}
+//
+//		if (!enableForceReading)
+//			return;
+//		
+//		FTGuard::Seq triggeredGuards;
+//		std::vector<Configspace::Index> joints;
+//		guardsFTReader(state, force, joints);
+//		//for (U32 i = 0; i != joints.size(); ++i) {
+//		//	FTGuard guard(*manipulator);
+//		//	guard.create(joints[i]);
+//		//	const size_t k = joints[i] - handInfo.getJoints().begin();
+//		//	guard.force = filteredForces[k]; //force[k];
+//		//	guard.threshold = fLimit[k];
+//		//	triggeredGuards.push_back(guard);
+//		//}
+//		if (FTGuard::trigguered(ftGuards)) {//(!triggeredGuards.empty()) {
+////			std::stringstream str;
+//			for (FTGuard::Seq::const_iterator g = ftGuards.begin(); g != ftGuards.end(); ++g)
+//				g->str();
+//
+//			if (force.size() >= 20) {
+//				context.write("Forces: Thumb: [%3.3lf %3.3lf %3.3lf %3.3lf] Index [%3.3lf %3.3lf %3.3lf %3.3lf] Middle [%3.3lf %3.3lf %3.3lf %3.3lf] Ring [%3.3lf %3.3lf %3.3lf %3.3lf] Pinky [%3.3lf %3.3lf %3.3lf %3.3lf]\n",
+//					force[0], force[1], force[2], force[3],
+//					force[4], force[5], force[6], force[7], 
+//					force[8], force[9], force[10], force[11], 
+//					force[12], force[13], force[14], force[15],
+//					force[16], force[17], force[18], force[19]);
+//				grasp::RealSeq f = getFilterForce();
+//				context.write("filter: Thumb: [%3.3lf %3.3lf %3.3lf %3.3lf] Index [%3.3lf %3.3lf %3.3lf %3.3lf] Middle [%3.3lf %3.3lf %3.3lf %3.3lf] Ring [%3.3lf %3.3lf %3.3lf %3.3lf] Pinky [%3.3lf %3.3lf %3.3lf %3.3lf]\n",
+//					f[0], f[1], f[2], f[3],
+//					f[4], f[5], f[6], f[7],
+//					f[8], f[9], f[10], f[11],
+//					f[12], f[13], f[14], f[15],
+//					f[16], f[17], f[18], f[19]);
+//			}
+//		
+//			throw Message(Message::LEVEL_NOTICE, "spam::Robot::handForceReader(): Triggered %d guard(s).\n", triggeredGuards.size());
+//		}
+//	}); // end robot->setHandForceReader
 
 	armHandForce->setEmergencyModeHandler([=]() {
 		enableForceReading = false;
@@ -698,7 +769,7 @@ bool R2GPlanner::create(const Desc& desc) {
 			//	strat = Strategy::ELEMENTARY;
 			//	break;
 			//case ELEMENTARY:
-				strat = Strategy::MYCROFT;
+				strat = Strategy::IR3NE;
 				break;
 			case MYCROFT:
 				strat = Strategy::IR3NE;
@@ -737,10 +808,10 @@ bool R2GPlanner::create(const Desc& desc) {
 			to<Data>(dataPtr)->hypotheses.clear();
 			to<Data>(dataPtr)->simulateObjectPose.clear();
 			};
-		std::ofstream logFile("F:/data/boris/experiments/output.log");
-		std::ofstream elementaryLog("F:/data/boris/experiments/elementary.log");
-		std::ofstream mycroftLog("F:/data/boris/experiments/mycroft.log");
-		std::ofstream ireneLog("F:/data/boris/experiments/irene.log");
+		std::ofstream logFile("./data/boris/experiments/output.log");
+		std::ofstream elementaryLog("./data/boris/experiments/elementary.log");
+		std::ofstream mycroftLog("./data/boris/experiments/mycroft.log");
+		std::ofstream ireneLog("./data/boris/experiments/irene.log");
 
 		grasp::to<Data>(dataCurrentPtr)->stratType = Strategy::NONE_STRATEGY;
 		grasp::to<Data>(dataCurrentPtr)->actionType = action::NONE_ACTION;
@@ -885,7 +956,7 @@ bool R2GPlanner::create(const Desc& desc) {
 				{
 					golem::CriticalSectionWrapper cswData(getCS());
 					to<Data>(dataCurrentPtr)->itemMap.erase(queryGraspItem);
-					queryGraspPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), data::Item::Map::value_type(queryGraspItem, queryGraspItemPtr));
+					queryGraspPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(queryGraspItem, queryGraspItemPtr));
 					Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, queryGraspPtr, to<Data>(dataCurrentPtr)->getView());
 				}
 				context.write("Transform: handler %s, inputs %s, %s...\n", queryGraspHandler->getID().c_str(), queryGraspPtr->first.c_str(), modelItem.c_str());
@@ -915,7 +986,7 @@ bool R2GPlanner::create(const Desc& desc) {
 				context.write("done.\n");
 
 				context.write("Transform: handler %s, input %s...\n", queryHandlerTrj->getID().c_str(), queryGraspTrjPtr->first.c_str());
-				data::Trajectory* trajectory = is<data::Trajectory>(queryGraspTrjPtr);
+				grasp::data::Trajectory* trajectory = is<grasp::data::Trajectory>(queryGraspTrjPtr);
 				if (!trajectory)
 					throw Message(Message::LEVEL_ERROR, "Handler %s does not support Trajectory interface", queryHandlerTrj->getID().c_str());
 				grasp::Waypoint::Seq inp = trajectory->getWaypoints();
@@ -1029,10 +1100,10 @@ bool R2GPlanner::create(const Desc& desc) {
 				}
 				//grasp::to<TrialData>(trialPtr)->save();
 				std::string dataPath = to<TrialData>(trialPtr)->dirPath + "data.xml";
-				//readPath("Enter data path to save: ", dataPath, dataExt.c_str());
-				//if (getExt(dataPath).empty())
-				//	dataPath += dataExt;
-//				to<Manager::Data>(dataCurrentPtr)->save(dataPath);
+				readPath("Enter data path to save: ", dataPath, dataExt.c_str());
+				if (getExt(dataPath).empty())
+					dataPath += dataExt;
+				to<Manager::Data>(dataCurrentPtr)->save(dataPath);
 				//executeCmd(dataSaveCmd);
 				context.write("------------------END TRIAL----------------------------------------\n");
 				logFile << "------------------END TRIAL----------------------------------------\n";
@@ -1111,8 +1182,8 @@ bool R2GPlanner::create(const Desc& desc) {
 		}
 
 		// load trajectory
-		data::Item::Map::const_iterator item = to<Data>(dataCurrentPtr)->getItem<data::Item::Map::const_iterator>(true);
-		data::Trajectory* trajectory = is<data::Trajectory>(item->second.get());
+		grasp::data::Item::Map::const_iterator item = to<Data>(dataCurrentPtr)->getItem<grasp::data::Item::Map::const_iterator>(true);
+		grasp::data::Trajectory* trajectory = is<grasp::data::Trajectory>(item->second.get());
 		// play
 		grasp::Waypoint::Seq inp = trajectory->getWaypoints();
 		if (inp.size() < 3)
@@ -1155,8 +1226,8 @@ bool R2GPlanner::create(const Desc& desc) {
 
 	menuCmdMap.insert(std::make_pair("N", [=]() {
 		context.write("Test collision detection\n");
-		data::Item::Map::const_iterator item = to<Data>(dataCurrentPtr)->getItem<data::Item::Map::const_iterator>(true);
-		data::Trajectory* trajectory = is<data::Trajectory>(item->second.get());
+		grasp::data::Item::Map::const_iterator item = to<Data>(dataCurrentPtr)->getItem<grasp::data::Item::Map::const_iterator>(true);
+		grasp::data::Trajectory* trajectory = is<grasp::data::Trajectory>(item->second.get());
 		if (!trajectory)
 			throw Cancel("Error: no trajectory selected.");
 		// play
@@ -1197,7 +1268,7 @@ bool R2GPlanner::create(const Desc& desc) {
 
 					// skip reference pose computation
 					w.setup(*controller, false, true);
-					const grasp::Manipulator::Config config(w.cpos);
+					const grasp::Manipulator::Config config(w.cpos, manipulator->getBaseFrame(w.cpos));
 					Bounds::Seq bounds = manipulator->getBounds(config.config, config.frame.toMat34());
 					renderHand(*j, bounds, true);
 					const bool res = (*pBelief->getHypotheses().begin())->check(pHeuristic->ftDrivenDesc.checkDesc, rand, config.config, true);
@@ -1356,17 +1427,16 @@ void R2GPlanner::render() const {
 }
 
 void R2GPlanner::renderHand(const golem::Controller::State &state, const Bounds::Seq &bounds, bool clear) {
-	return;
 	{
 		golem::CriticalSectionWrapper csw(getCS());
-		debugRenderer.reset();
-		if (clear)
-			handBounds.clear();
-		if (!bounds.empty())
+		//debugRenderer.reset();
+		//if (clear)
+		//	handBounds.clear();
+		//if (!bounds.empty())
 			handBounds.insert(handBounds.end(), bounds.begin(), bounds.end());
-		debugRenderer.setColour(RGBA::BLACK);
-		debugRenderer.setLineWidth(Real(2.0));
-		debugRenderer.addWire(handBounds.begin(), handBounds.end());
+		//debugRenderer.setColour(RGBA::BLACK);
+		//debugRenderer.setLineWidth(Real(2.0));
+		//debugRenderer.addWire(handBounds.begin(), handBounds.end());
 	}
 }
 
@@ -1670,15 +1740,15 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 	//completeTrajectory.insert(completeTrajectory.end(), trajectory.begin(), trajectory.end());
 
 	// create trajectory item
-	data::Item::Ptr itemTrajectory;
-	data::Handler::Map::const_iterator handlerPtr = handlerMap.find(trajectoryHandler);
+	grasp::data::Item::Ptr itemTrajectory;
+	grasp::data::Handler::Map::const_iterator handlerPtr = handlerMap.find(trajectoryHandler);
 	if (handlerPtr == handlerMap.end())
 		throw Message(Message::LEVEL_ERROR, "Player::perform(): unknown default trajectory handler %s", trajectoryHandler.c_str());
-	data::Handler* handler = is<data::Handler>(handlerPtr);
+	grasp::data::Handler* handler = is<grasp::data::Handler>(handlerPtr);
 	if (!handler)
 		throw Message(Message::LEVEL_ERROR, "Player::perform(): invalid default trajectory handler %s", trajectoryHandler.c_str());
 	itemTrajectory = handler->create();
-	data::Trajectory* trajectoryIf = is<data::Trajectory>(itemTrajectory.get());
+	grasp::data::Trajectory* trajectoryIf = is<grasp::data::Trajectory>(itemTrajectory.get());
 	if (!trajectoryIf)
 		throw Message(Message::LEVEL_ERROR, "Player::perform(): unable to create trajectory using handler %s", trajectoryHandler.c_str());
 	trajectoryIf->setWaypoints(/*completeTrajectory*/grasp::Waypoint::make(trajectory, trajectory));
@@ -1700,7 +1770,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 		});
 		{
 			golem::CriticalSectionWrapper csw(getCS());
-			const data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), data::Item::Map::value_type(itemLabelTmp, itemTrajectory));
+			const grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(itemLabelTmp, itemTrajectory));
 			Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, ptr, to<Data>(dataCurrentPtr)->getView());
 		}
 		// enable GUI interaction and refresh
@@ -1717,10 +1787,8 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 	//controller->waitForEnd();
 
 	// start recording
-	printf("Start recording (blocking call)\n");
 	recordingStart(data, item, true);
 	recordingWaitToStart();
-	printf("Recording started\n");
 
 	// send trajectory
 	sendTrajectory(trajectory);
@@ -1868,7 +1936,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 	// insert trajectory
 	{
 		golem::CriticalSectionWrapper csw(getCS());
-		data::Data::Map::iterator data = dataMap.find(recorderData);
+		grasp::data::Data::Map::iterator data = dataMap.find(recorderData);
 		if (data == dataMap.end())
 			throw Message(Message::LEVEL_ERROR, "Player::perform(): unable to find Data %s", recorderData.c_str());
 		data->second->itemMap.insert(std::make_pair(recorderItem + makeString("%s%.3f", dataDesc->sepName.c_str(), recorderStart), itemTrajectory));
@@ -1878,7 +1946,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 
 //------------------------------------------------------------------------------
 
-bool R2GPlanner::execute(data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq& trajectory) {
+bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq& trajectory) {
 	const golem::Chainspace::Index armChain = armInfo.getChains().begin();
 	bool silent = to<Data>(dataPtr)->actionType != action::NONE_ACTION;
 //	context.debug("execute(): silen=%s, actionType=%s\n", silent ? "TRUE" : "FALSE", actionToString(grasp::to<Data>(dataPtr)->actionType));
@@ -1946,8 +2014,8 @@ bool R2GPlanner::execute(data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq
 		//		cend.cpos[j] = vv[k];
 		//	}
 		//}
-
-		Bounds::Seq bounds = manipulator->getBounds(manipulator->getConfig(cend).config, manipulator->getConfig(cend).frame.toMat34());
+		grasp::Manipulator::Config config(cend.cpos, manipulator->getBaseFrame(cend.cpos));
+		Bounds::Seq bounds = manipulator->getBounds(config.config, config.frame.toMat34());
 		renderHand(cend, bounds, true);
 
 		Controller::State::Seq approach;
@@ -1969,8 +2037,8 @@ bool R2GPlanner::execute(data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq
 			RenderBlock renderBlock(*this);
 			golem::CriticalSectionWrapper cswData(getCS());
 			to<Data>(dataPtr)->itemMap.erase(trjItemName);
-			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), data::Item::Map::value_type(trjItemName, modelHandlerTrj->create()));
-			data::Trajectory* trajectory = is<data::Trajectory>(ptr);
+			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), grasp::data::Item::Map::value_type(trjItemName, modelHandlerTrj->create()));
+			grasp::data::Trajectory* trajectory = is<grasp::data::Trajectory>(ptr);
 			if (!trajectory)
 				throw Message(Message::LEVEL_ERROR, "Demo::selectTrajectory(): Trajectory handler does not implement data::Trajectory");
 			// add current states
@@ -1978,8 +2046,8 @@ bool R2GPlanner::execute(data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq
 			Data::View::setItem(to<Data>(dataPtr)->itemMap, ptr, to<Data>(dataPtr)->getView());
 		}
 
-		handBounds.clear();
-		debugRenderer.reset();
+		//handBounds.clear();
+		//debugRenderer.reset();
 		//brecord = true;
 		// perform
 		try {
@@ -2014,8 +2082,8 @@ bool R2GPlanner::execute(data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq
 			RenderBlock renderBlock(*this);
 			golem::CriticalSectionWrapper cswData(getCS());
 			to<Data>(dataPtr)->itemMap.erase(trjItemName);
-			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), data::Item::Map::value_type(trjItemName, queryHandlerTrj->create()));
-			data::Trajectory* trajectory = is<data::Trajectory>(ptr);
+			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), grasp::data::Item::Map::value_type(trjItemName, queryHandlerTrj->create()));
+			grasp::data::Trajectory* trajectory = is<grasp::data::Trajectory>(ptr);
 			if (!trajectory)
 				throw Message(Message::LEVEL_ERROR, "Demo::selectTrajectory(): Trajectory handler does not implement data::Trajectory");
 			// add current state
@@ -2073,8 +2141,8 @@ bool R2GPlanner::execute(data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq
 			RenderBlock renderBlock(*this);
 			golem::CriticalSectionWrapper cswData(getCS());
 			to<Data>(dataPtr)->itemMap.erase(trjItemName);
-			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), data::Item::Map::value_type(trjItemName, modelHandlerTrj->create()));
-			data::Trajectory* trajectory = is<data::Trajectory>(ptr);
+			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), grasp::data::Item::Map::value_type(trjItemName, modelHandlerTrj->create()));
+			grasp::data::Trajectory* trajectory = is<grasp::data::Trajectory>(ptr);
 			if (!trajectory)
 				throw Message(Message::LEVEL_ERROR, "Demo::selectTrajectory(): Trajectory handler does not implement data::Trajectory");
 			// add current state
@@ -2138,8 +2206,8 @@ bool R2GPlanner::execute(data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq
 			RenderBlock renderBlock(*this);
 			golem::CriticalSectionWrapper cswData(getCS());
 			to<Data>(dataPtr)->itemMap.erase(trjItemName);
-			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), data::Item::Map::value_type(trjItemName, queryHandlerTrj->create()));
-			data::Trajectory* trajectory = is<data::Trajectory>(ptr);
+			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), grasp::data::Item::Map::value_type(trjItemName, queryHandlerTrj->create()));
+			grasp::data::Trajectory* trajectory = is<grasp::data::Trajectory>(ptr);
 			if (!trajectory)
 				throw Message(Message::LEVEL_ERROR, "Demo::selectTrajectory(): Trajectory handler does not implement data::Trajectory");
 			// add current state
@@ -2230,8 +2298,8 @@ bool R2GPlanner::execute(data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq
 			RenderBlock renderBlock(*this);
 			golem::CriticalSectionWrapper cswData(getCS());
 			to<Data>(dataPtr)->itemMap.erase(trjItemName);
-			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), data::Item::Map::value_type(trjItemName, modelHandlerTrj->create()));
-			data::Trajectory* trajectory = is<data::Trajectory>(ptr);
+			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), grasp::data::Item::Map::value_type(trjItemName, modelHandlerTrj->create()));
+			grasp::data::Trajectory* trajectory = is<grasp::data::Trajectory>(ptr);
 			if (!trajectory)
 				throw Message(Message::LEVEL_ERROR, "Demo::selectTrajectory(): Trajectory handler does not implement data::Trajectory");
 			// add current state
@@ -2284,8 +2352,8 @@ bool R2GPlanner::execute(data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq
 			RenderBlock renderBlock(*this);
 			golem::CriticalSectionWrapper cswData(getCS());
 			to<Data>(dataPtr)->itemMap.erase(releaseTrjName);
-			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), data::Item::Map::value_type(releaseTrjName, modelHandlerTrj->create()));
-			data::Trajectory* trajectory = is<data::Trajectory>(ptr);
+			ptr = to<Data>(dataPtr)->itemMap.insert(to<Data>(dataPtr)->itemMap.end(), grasp::data::Item::Map::value_type(releaseTrjName, modelHandlerTrj->create()));
+			grasp::data::Trajectory* trajectory = is<grasp::data::Trajectory>(ptr);
 			if (!trajectory)
 				throw Message(Message::LEVEL_ERROR, "Demo::selectTrajectory(): Trajectory handler does not implement data::Trajectory");
 			// add current state
