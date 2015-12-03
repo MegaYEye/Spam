@@ -3,7 +3,7 @@
 <golem>
   <rand seed="0"></rand>
   <parallels threads="8"></parallels>
-  <messages level="error"/><!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
+  <messages level="debug"/><!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
 
   <universe name="Spam">
     <!--<window x="0" y="0" width="640" height="480"></window>-->
@@ -81,7 +81,7 @@
     <collision>
       <!-- collision with the ground truth -->
       <waypoint path_dist="0.0" points="100000" depth_stddev="1000.0" likelihood="1000.0"/>
-      <kdtree neighbours="1" points="1000" depth_stddev="1000.0" likelihood="1000.0"/>
+      <kdtree neighbours="100" points="1000" depth_stddev="1000.0" likelihood="1000.0"/>
       <ft_base>
         <ft_median dim="20" c1="-0.069" c2="-0.0126" c3="-0.0221" c4="-0.0221" c5="0.0285" c6="-0.009" c7="0.0391" c8="0.0391" c9="0.0705" c10="0" c11="0.0017" c12="0.0017" c13="0.0195" c14="-0.0108" c15="-0.0085" c16="-0.0085" c17="0.0165" c18="0.027" c19="-0.0153" c20="-0.0153"/>
         <ft_std dim="20" c1="0.003811178" c2="0.011151169" c3="0.000619817" c4="0.000619817" c5="0.006098929" c6="0.009658709" c7="0.002112924" c8="0.002112924" c9="0.005659508" c10="0.010557872" c11="0.001047325" c12="0.001047325" c13="0.005527137" c14="0.010945394" c15="0.000901849" c16="0.000901849" c17="0.006291048" c18="0.008031151" c19="0.000963786" c20="0.000963786"/>

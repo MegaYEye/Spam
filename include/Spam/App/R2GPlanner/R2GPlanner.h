@@ -327,7 +327,7 @@ protected:
 	/** Contains the index of the triggered guards */
 //	FTGuard::Seq triggeredGuards;
 	/** Structure for FT sensors */
-	FTGuard::Seq ftGuards;
+	FTGuard::SeqPtr ftGuards;
 
 	/** Iterations counter */
 	size_t iterations;

@@ -668,8 +668,7 @@ golem::Real Belief::density(const grasp::RBCoord &c) const {
 	return sum;// up to scaling factor
 }
 
-void Belief::createUpdate(const Collision::Ptr collision, const golem::Waypoint &w, FTGuard::Seq &triggeredGuards, const grasp::RBCoord &rbPose) {
-//	context.debug("Belief::createUpdate(collision)...\n");
+void Belief::createUpdate(grasp::Cloud::Appearance debugAppearance, golem::DebugRenderer& renderer, const Collision::Ptr collision, const golem::Waypoint &w, FTGuard::SeqPtr& triggeredGuards, const grasp::RBCoord &rbPose, golem::UIKeyboardMouseCallback* callback) {
 	Collision::FlannDesc waypointDesc;
 	Collision::Desc::Ptr cloudDesc;
 	cloudDesc.reset(new Collision::Desc());
@@ -677,24 +676,22 @@ void Belief::createUpdate(const Collision::Ptr collision, const golem::Waypoint 
 	waypointDesc.depthStdDev = 0.0035/*0.0005*/; waypointDesc.likelihood = 1000.0; waypointDesc.points = 10000; waypointDesc.neighbours = 100;
 	waypointDesc.radius = REAL_ZERO;
 	
-	golem::Controller::State state = manipulator->getController().createState();
-
-	manipulator->getController().lookupState(golem::SEC_TM_REAL_MAX, state);
-
-	// position control
-	state.cpos = w.cpos;
-
+	grasp::Manipulator::Config config(w.cpos, manipulator->getBaseFrame(w.cpos));
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
 		grasp::Cloud::PointSeq points;
 		grasp::Cloud::transform(sampledPose->toMat34(), modelPoints, points);
+		renderer.reset();
+		debugAppearance.draw(points, renderer);
 		cloud->create(rand, points);
-		sampledPose->weight = cloud->evaluateFT(waypointDesc, manipulator->getConfig(state), triggeredGuards, false);
+		sampledPose->weight = cloud->evaluateFT(renderer, waypointDesc, config, triggeredGuards, false);
 		grasp::RBDist error;
 		error.lin = rbPose.p.distance(sampledPose->p);
 		error.ang = rbPose.q.distance(sampledPose->q);
 		//context.write("sample.weight = %f, Error {lin, ang} = {%f, %f}\n", sampledPose->weight, error.lin, error.ang);
 		//Mat34 p; p.multiply(sampledPose->toMat34(), modelFrame);
 //		context.write("%.2f\t%.2f\t%.2f\t%.2f\n", p.p.x, p.p.y, p.p.z, sampledPose->weight);
+		printf("waitKey\n");
+		const int key = callback->waitKey();
 	}
 
 	// normalise weights

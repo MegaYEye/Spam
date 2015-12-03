@@ -110,7 +110,6 @@ public:
 			template <typename _Iter1, typename _Iter2> golem::Real operator() (_Iter1 a, _Iter2 b, size_t size = Feature::N, golem::Real worst_dist = -golem::numeric_const<golem::Real>::ONE) const {
 				//printf("a=<%f>, b=<%f>, d=%f\n", a[0], b[0], golem::Math::sqrt(golem::Math::sqr(a[0] - b[0])));
 				//return golem::Math::sqrt(golem::Math::sqr(a[0] - b[0]));
-//				printf("a=<%f, %f, %f>, b=<%f, %f, %f>, d=%f\n", a[0], a[1], a[2], b[0], b[1], b[2], golem::Math::sqrt(golem::Math::sqr(a[0] - b[0]) + golem::Math::sqr(a[1] - b[1]) + golem::Math::sqr(a[2] - b[2])));
 				return golem::Math::sqrt(golem::Math::sqr(a[0] - b[0]) + golem::Math::sqr(a[1] - b[1]) + golem::Math::sqr(a[2] - b[2]));
 			}
 			inline golem::Real accum_dist(const golem::Real& a, const golem::Real& b, int) const {
@@ -558,9 +557,9 @@ public:
 	virtual void create(golem::Rand& rand, const grasp::Cloud::PointSeq& points);
 
 	/** Collision detection at a given waypoint */
-	virtual bool check(const Waypoint& waypoint, const grasp::Manipulator::Config& config, bool debug = false) const;
+//	virtual bool check(const Waypoint& waypoint, const grasp::Manipulator::Config& config, bool debug = false) const;
 	/** Collision detection using kdtree */
-	virtual bool check(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, bool debug = false) const;
+	virtual bool checkNN(const FlannDesc& desc, const grasp::Manipulator::Config& config, bool debug = false) const;
 
 	/** Collision detection for the observational model durin hypopthesis-based planning */
 	virtual golem::Real estimate(const FlannDesc& desc, const grasp::Manipulator::Config& config, golem::Real maxDist = golem::REAL_MAX, bool debug = false) const;
@@ -573,6 +572,8 @@ public:
 	virtual size_t simulate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, FTGuard::Seq& joints, bool debug = false) const;
 	/** Collision detection to simulate contact at execution time */
 	virtual size_t simulate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, grasp::RealSeq& forces, bool debug = false) const;
+	/** Collision detection to simulate contact at execution time */
+	virtual size_t simulateFT(golem::DebugRenderer& renderer, const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, grasp::RealSeq& forces, bool debug = false) const;
 
 	/** Collision likelihood estimation at a given waypoint */
 	virtual golem::Real evaluate(const Waypoint& waypoint, const grasp::Manipulator::Config& config, bool debug = false) const;
@@ -584,7 +585,7 @@ public:
 	virtual golem::Real evaluate(const FlannDesc& desc, const grasp::Manipulator::Config& config, FTGuard::Seq& triggeredGuards, bool debug = false) const;
 
 	/** Collision likelihood estimation at a given waypoint for belief update */
-	virtual golem::Real evaluateFT(const FlannDesc& desc, const grasp::Manipulator::Config& config, FTGuard::Seq& triggeredGuards, bool debug = false) const;
+	virtual golem::Real evaluateFT(golem::DebugRenderer& renderer, const FlannDesc& desc, const grasp::Manipulator::Config& config, FTGuard::SeqPtr& triggeredGuards, bool debug = false) const;
 
 	/** Collision likelihood estimation at a given waypoint */
 	virtual golem::Real evaluate(const FlannDesc& desc, const grasp::Manipulator::Config& config, bool debug = false) const;

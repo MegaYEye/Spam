@@ -577,7 +577,8 @@ bool FTDrivenHeuristic::collides(const golem::Waypoint &w, ThreadData* data) con
 #ifdef _HEURISTIC_PERFMON
 			++perfCollisionPointCloud;
 #endif
-			if ((*maxLhdPose)->check(ftDrivenDesc.checkDesc, rand, config.config))
+//			context.write("Collision checking\n");
+			if ((*maxLhdPose)->checkNN(ftDrivenDesc.checkDesc, config))
 				return true;
 		}
 	}

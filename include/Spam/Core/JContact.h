@@ -102,6 +102,7 @@ public:
 class FTGuard {
 public:
 	typedef std::vector<FTGuard> Seq;
+	typedef std::vector<FTGuard*> SeqPtr;
 
 	/** FT sensors in 6 dimensions */
 	static const size_t DIM = 6;
@@ -133,6 +134,7 @@ public:
 			limits.assign(DIM, golem::Real(0.1));
 			chain = HandChain::UNKNOWN;
 			jointIdx = golem::Configspace::Index(0);
+			mode = Mode::ENABLE;
 		}
 
 		/** Assert that the description is valid. */
@@ -159,7 +161,7 @@ public:
 	/** Check for enable mode */
 	inline bool isEnable() const { return this->mode == Mode::ENABLE; }
 	/** Check for contact mode */
-	inline bool isInContact() const { return this->mode == Mode::INCONTACT; }
+	bool isInContact();
 
 	/** Chain name */
 	static const std::string ChainName[];
@@ -171,17 +173,23 @@ public:
 		this->mode = mode;
 	}
 
+	inline golem::U32 getHandJoint() const {
+		return 3;
+	}
+	// Get chain from [0,..,2]
+	inline golem::U32 getHandChain() const { return chain - 1; }
+
 	/** Guard in string */
-	std::string str() const;
+	void str(golem::Context& context) const;
 
 	std::string strForces() const;
 
 
 	/** Check a list of sensors for contacts */
-	static inline golem::U32 trigguered(const FTGuard::Seq& seq) {
+	static inline golem::U32 triggered(FTGuard::SeqPtr& seq) {
 		golem::U32 contacts = golem::U32(0);
 		for (auto i = seq.begin(); i != seq.end(); ++i)
-			if (i->isInContact())
+			if ((*i)->isInContact())
 				++contacts;
 		return contacts;
 	}

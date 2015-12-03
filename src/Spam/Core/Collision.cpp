@@ -88,12 +88,11 @@ Collision::Collision(const grasp::Manipulator& manipulator, const Desc& desc) : 
 		jointBounds[i].create(manipulator.getJointBounds(i));
 
 	// ft only
-	for (golem::Chainspace::Index i = manipulator.getHandInfo().getChains().begin(); i != manipulator.getHandInfo().getChains().begin(); ++i) {
+	for (golem::Chainspace::Index i = manipulator.getHandInfo().getChains().begin(); i != manipulator.getHandInfo().getChains().end(); ++i) {
 		const golem::Configspace::Index j = manipulator.getHandInfo().getJoints(i).end() - 1;
 		ftBounds[j].create(manipulator.getJointBounds(j));
 		ftJoints.push_back(j);
 	}
-
 	// base
 	baseBounds.create(manipulator.getBaseBounds());
 	// bounds
@@ -120,7 +119,7 @@ void Collision::create(golem::Rand& rand, const grasp::Cloud::PointSeq& points) 
 		
 	typedef grasp::KDTree<golem::Real, Feature::FlannDist, flann::SearchParams> KDTree;
 	nnSearch.reset(new KDTree(search, index, this->points, Feature::N, Feature::FlannDist()));
-	
+
 	//if (desc.kdtree) {
 	//	flann::SearchParams search;
 	//	flann::KDTreeSingleIndexParams index;
@@ -394,54 +393,154 @@ size_t Collision::simulate(const FlannDesc& desc, const golem::Rand& rand, const
 	return collided;// joints.size();
 }
 
-//------------------------------------------------------------------------------
-
-bool Collision::check(const Collision::Waypoint& waypoint, const grasp::Manipulator::Config& config, bool debug) const {
+size_t Collision::simulateFT(golem::DebugRenderer& renderer, const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, grasp::RealSeq &forces, bool debug) const {
+	if (!this->desc.kdtree) {
+		manipulator.getContext().info("Collision::Check(): No KD-Tree\n");
+		return REAL_ZERO;
+	}
 #ifdef _COLLISION_PERFMON
 	PerfTimer t;
-//	++perfCheckPoints;
+	++perfSimulate;
 #endif
+
 	const golem::Mat34 base(config.frame.toMat34());
 	golem::WorkspaceJointCoord poses;
 	manipulator.getJointFrames(config.config, base, poses);
 
-	const size_t size = points.size() < waypoint.points ? points.size() : waypoint.points;
+	grasp::NNSearch::IndexSeq indices;
+	grasp::NNSearch::DistanceF64Seq distances;
 
-	for (Configspace::Index i = manipulator.getHandInfo().getJoints().begin(); i < manipulator.getHandInfo().getJoints().end(); ++i) {
-		Bounds bounds = jointBounds[i];
-		if (bounds.empty())
-			continue;
+	const size_t size = desc.points < desc.neighbours ? desc.points : desc.neighbours;
 
-		bounds.setPose(Bounds::Mat34(poses[i]));
+	Real maxDepth = REAL_ZERO;
+	size_t collided = 0;
+	static size_t idx = 0;
+	for (Chainspace::Index i = manipulator.getHandInfo().getChains().begin(); i != manipulator.getHandInfo().getChains().end(); ++i) {
+		const size_t k = i - manipulator.getHandInfo().getChains().begin();
+		if (k > 2)
+			break;
+		for (Configspace::Index j = manipulator.getHandInfo().getJoints(i).begin(); j < manipulator.getHandInfo().getJoints(i).end(); ++j) {
+			Bounds bounds = ftBounds[j];
+			if (bounds.empty())
+				continue;
 
-		for (size_t j = 0; j < size; ++j) {
-			const Real depth = bounds.getDepth(points[j]/*.getPoint()*/);
-			if (depth > REAL_ZERO) {
-#ifdef _COLLISION_PERFMON
-				SecTmReal t_end = t.elapsed();
-//				tperfCheckPoints += t_end /*tperfEvalPoints < t_end ? t_end : tperfEvalPoints*/;
-				if (debug /*&& eval < REAL_ONE*/)
-					manipulator.getContext().debug(
-					"Collision::check(Waypoint): time_elapsed = %f [sec], points=%u, collision=yes\n",
-					t_end, size
-					);
-#endif
-				return true;
+			bounds.setPose(Bounds::Mat34(poses[j]));
+			if (debug && idx % 100 == 0) {
+				renderer.reset();
+				renderer.addAxes(poses[j], Vec3(.05, .05, .05));
+			}
+
+			Feature query(poses[j].p);
+			//nnSearch->knnSearch(/*(const Real*)&*/poses[i].p/*.x*//*.v*/, neighbours, indices, distances);
+			nnSearch->knnSearch(query, desc.neighbours, indices, distances);
+
+			//Real force = REAL_ZERO;
+			//Vec3 frame(.0, .0, .0);
+			golem::U32 collisions = 0;
+
+			Feature::Seq seq;
+			seq.reserve(indices.size());
+			for (size_t l = 0; l < indices.size(); ++l)
+				seq.push_back(points[indices[l]]);
+
+			//golem::Mat34 inverse; inverse.setInverse(Bounds::Mat34(i < manipulator.getJoints() ? poses[i] : pose)); // compute the inverse of the joint frame
+			Vec3 median;
+			median.setZero();
+			const Real depth = bounds.distance(seq.data(), seq.data() + seq.size(), median, collisions);
+			if (debug && idx++ % 100 == 0) {
+				manipulator.getContext().write("Simulated depth = %.4f, seq size = %d\n", depth, seq.size());
+				for (size_t l = 0; l < seq.size(); ++l) {
+					Mat34 m(Mat33::identity(), seq[l].getPoint());
+					renderer.addAxes(m, Vec3(0.002, 0.002, 0.002));
+					//manipulator.getContext().write("Frame [%.3f %.3f %.3f]\n", median.x, median.y, median.z);
+					//renderer.addPoint(seq[l].getPoint(), RGBA::BLACK);
+				}
+				Mat34 m(Mat33::identity(), median);
+				renderer.addAxes(m, Vec3(1, 1, 1));
+			}
+			//if (depth > REAL_ZERO) {
+			//	force += depth;
+			//	frame.add(frame, getRelativeFrame(poses[j], median));
+			//}
+			if (collisions > 0) {
+				Vec3 frameInv = getRelativeFrame(poses[j], median); Vec3 normalised(frameInv);
+				if (debug) manipulator.getContext().write("Normalised [%.3f %.3f %.3f]\n", frameInv.x, frameInv.y, frameInv.z);
+				normalised.normalise();
+				if (debug) {
+					manipulator.getContext().write("Median [%.3f %.3f %.3f] Normalised [%.3f %.3f %.3f]\n", median.x, median.y, median.z, normalised.x, normalised.y, normalised.z);
+					manipulator.getContext().write("force[%d] = %.2f * (%.3f * %.3f * c) = %.3f\n", k * 6, Math::sign(REAL_ONE, -normalised.x), normalised.x, depth, Math::sign(REAL_ONE, -normalised.x) * (normalised.x * depth * 100000));
+					manipulator.getContext().write("force[%d] = %.2f * (%.3f * %.3f * c) = %.3f\n", k * 6 + 1, Math::sign(REAL_ONE, -normalised.y), normalised.y, depth, Math::sign(REAL_ONE, -normalised.y) * (normalised.y * depth * 100000));
+					manipulator.getContext().write("force[%d] = %.2f * (%.3f * %.3f * c) = %.3f\n", k * 6 + 2, Math::sign(REAL_ONE, -normalised.z), normalised.z, depth, Math::sign(REAL_ONE, -normalised.z) * (normalised.z * depth * 100000));
+				}
+				//force /= collisions;
+				forces[k * 6] = Math::sign(REAL_ONE, frameInv.x) * (Math::abs(normalised.x) * depth * 100000);
+				forces[k * 6 + 1] = Math::sign(REAL_ONE, frameInv.y) * (Math::abs(normalised.y) * depth * 100000);
+				forces[k * 6 + 2] = Math::sign(REAL_ONE, frameInv.z) * (Math::abs(normalised.z) * depth * 100000);
+				++collided;
 			}
 		}
 	}
 
 #ifdef _COLLISION_PERFMON
 	SecTmReal t_end = t.elapsed();
-//	tperfCheckPoints += t_end /*tperfEvalPoints < t_end ? t_end : tperfEvalPoints*/;
-	if (debug /*&& eval < REAL_ONE*/)
-		manipulator.getContext().debug("Collision::evaluate(): points=%u, collision=no\n", size);
+	tperfSimulate += t_end /*tperfEvalPoints < t_end ? t_end : tperfEvalPoints*/;
+	if (debug)
+		manipulator.getContext().write("Collision::simulate(kd-tree): neighbours=%u, , points=%u, collision=no\nforces=[%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f ]\n", 
+		desc.neighbours, desc.points, forces[0], forces[1], forces[2], forces[3], forces[4], forces[5], forces[6], forces[7], forces[8], forces[9], 
+		forces[10], forces[11], forces[12], forces[13], forces[14], forces[15], forces[16], forces[17]);
 #endif
-
-	return false;
+	//	if (maxDepth > REAL_ZERO) manipulator.getContext().write("Simulate contact max depth = %f\n", maxDepth);
+	return collided;// joints.size();
 }
 
-bool Collision::check(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, bool debug) const {
+//------------------------------------------------------------------------------
+
+//bool Collision::check(const Collision::Waypoint& waypoint, const grasp::Manipulator::Config& config, bool debug) const {
+//#ifdef _COLLISION_PERFMON
+//	PerfTimer t;
+////	++perfCheckPoints;
+//#endif
+//	const golem::Mat34 base(config.frame.toMat34());
+//	golem::WorkspaceJointCoord poses;
+//	manipulator.getJointFrames(config.config, base, poses);
+//
+//	const size_t size = points.size() < waypoint.points ? points.size() : waypoint.points;
+//
+//	for (Configspace::Index i = manipulator.getHandInfo().getJoints().begin(); i < manipulator.getHandInfo().getJoints().end(); ++i) {
+//		Bounds bounds = jointBounds[i];
+//		if (bounds.empty())
+//			continue;
+//
+//		bounds.setPose(Bounds::Mat34(poses[i]));
+//
+//		for (size_t j = 0; j < size; ++j) {
+//			const Real depth = bounds.getDepth(points[j]/*.getPoint()*/);
+//			if (depth > REAL_ZERO) {
+//#ifdef _COLLISION_PERFMON
+//				SecTmReal t_end = t.elapsed();
+////				tperfCheckPoints += t_end /*tperfEvalPoints < t_end ? t_end : tperfEvalPoints*/;
+//				if (debug /*&& eval < REAL_ONE*/)
+//					manipulator.getContext().debug(
+//					"Collision::check(Waypoint): time_elapsed = %f [sec], points=%u, collision=yes\n",
+//					t_end, size
+//					);
+//#endif
+//				return true;
+//			}
+//		}
+//	}
+//
+//#ifdef _COLLISION_PERFMON
+//	SecTmReal t_end = t.elapsed();
+////	tperfCheckPoints += t_end /*tperfEvalPoints < t_end ? t_end : tperfEvalPoints*/;
+//	if (debug /*&& eval < REAL_ONE*/)
+//		manipulator.getContext().debug("Collision::evaluate(): points=%u, collision=no\n", size);
+//#endif
+//
+//	return false;
+//}
+
+bool Collision::checkNN(const FlannDesc& desc, const grasp::Manipulator::Config& config, bool debug) const {
 	if (!this->desc.kdtree) {
 		manipulator.getContext().info("Collision::Check(): No KD-Tree\n");
 		return false;
@@ -456,39 +555,40 @@ bool Collision::check(const FlannDesc& desc, const golem::Rand& rand, const gras
 
 	grasp::NNSearch::IndexSeq indices;
 	grasp::NNSearch::DistanceF64Seq distances;
-	// Collision consider a point as a sphere
-//	const Real radius = -0.005; //REAL_ZERO; // -Real(0.0001);
-////	manipulator.getContext().write("radius %f\n", radius);
 
-	const size_t size = /*desc.points < desc.neighbours ? desc.points : */desc.neighbours;
-	Real maxDepth = -golem::numeric_const<Real>::MAX, maxDistance = -golem::numeric_const<Real>::MAX;
-	for (Configspace::Index i = manipulator.getHandInfo().getJoints().begin(); i < manipulator.getHandInfo().getJoints().end(); ++i) {
-		Bounds bounds = jointBounds[i];
-		if (bounds.empty())
-			continue;
+	static size_t count = 0;
+	Real maxDist = -numeric_const<Real>::MAX;
+	const size_t size = desc.points < desc.neighbours ? desc.points : desc.neighbours;
+	for (Chainspace::Index i = manipulator.getHandInfo().getChains().begin(); i != manipulator.getHandInfo().getChains().end(); ++i) {
+		for (Configspace::Index j = manipulator.getHandInfo().getJoints(i).begin(); j < manipulator.getHandInfo().getJoints(i).end(); ++j) {
+			Bounds bounds = jointBounds[j];
+			if (bounds.empty())
+				continue;
 
-		bounds.setPose(Bounds::Mat34(poses[i]));
-				
-		Feature query(poses[i].p);
-		//nnSearch->knnSearch(/*(const Real*)&*/poses[i].p/*.x*//*.v*/, neighbours, indices, distances);
-		nnSearch->knnSearch(query, desc.neighbours, indices, distances);
-		
-		for (size_t j = 0; j < size; ++j) {
-			const Feature f = /*desc.points < desc.neighbours ? points[indices[size_t(rand.next()) % indices.size()]] : */points[indices[j]];
-			//if (j % 10 == 0) manipulator.getContext().write("point=%d <%f, %f, %f> index=%d distance=%f depth=%f collision=%s\n", j, f.getPoint().x, f.getPoint().y, f.getPoint().z,
-			//	indices[j], distances[j], bounds.getDepth(points[j]), bounds.getDepth(f) > REAL_ZERO ? "YES" : "NO");
-			const Real depth = REAL_ZERO; // bounds.getDepth(f, true);
-			const Real distance = bounds.getSurfaceDistance(f);//bounds.getDepth(f, true);
-//			if (debug && maxDepth < depth) maxDepth = depth;
-			if (debug && maxDistance < distance) maxDistance = distance;
-			if (distance > -desc.radius) {
+			bounds.setPose(Bounds::Mat34(poses[j]));
+
+			Feature query(poses[j].p);
+			nnSearch->knnSearch(query, desc.neighbours, indices, distances);
+
+			golem::U32 collisions = 0;
+
+			Feature::Seq seq;
+			seq.reserve(indices.size());
+			for (size_t l = 0; l < indices.size(); ++l)
+				seq.push_back(points[indices[l]]);
+
+			Vec3 median;
+			median.setZero();
+			const Real depth = bounds.distance(seq.data(), seq.data() + seq.size(), median, collisions);
+			if (depth > maxDist) maxDist = depth;
+			if (depth > -desc.radius) {
 #ifdef _COLLISION_PERFMON
 				SecTmReal t_end = t.elapsed();
 				tperfCheckNN += t_end /*tperfEvalPoints < t_end ? t_end : tperfEvalPoints*/;
 				if (debug /*&& eval < REAL_ONE*/)
 					manipulator.getContext().write(
-					"Collision::check(kd-tree): time_elapsed = %f [sec], collision=yes, depth=%.7f, distance=%.7f, neighbours=%u, points=%u\n",
-					t_end, depth, distance, desc.neighbours, desc.points
+					"Collision::check(kd-tree): time_elapsed = %f [sec], collision=yes, depth=%.7f, neighbours=%u, points=%u\n",
+					t_end, depth, desc.neighbours, desc.points
 					);
 #endif
 				return true;
@@ -499,8 +599,8 @@ bool Collision::check(const FlannDesc& desc, const golem::Rand& rand, const gras
 #ifdef _COLLISION_PERFMON
 	SecTmReal t_end = t.elapsed();
 	tperfCheckNN += t_end /*tperfEvalPoints < t_end ? t_end : tperfEvalPoints*/;
-	if (debug /*&& eval < REAL_ONE*/)
-		manipulator.getContext().write("Collision::evaluate(): depth=%.7f, distance=%f, neighbours=%u, points=%u, collision=no\n", maxDepth, maxDistance, desc.neighbours, desc.points);
+	if (debug && count++ % 100 == 0)
+		manipulator.getContext().write("Collision::evaluate(): elapse_time=%.2f, neighbours=%u, dist=%.3f, collision=no\n", t_end, desc.neighbours, maxDist);
 #endif
 
 	return false;
@@ -844,7 +944,7 @@ golem::Real Collision::evaluate(const FlannDesc& desc, const grasp::Manipulator:
 	return likelihood;
 }
 
-golem::Real Collision::evaluateFT(const FlannDesc& desc, const grasp::Manipulator::Config& config, FTGuard::Seq &triggeredGuards, bool debug) const {
+golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDesc& desc, const grasp::Manipulator::Config& config, FTGuard::SeqPtr& triggeredGuards, bool debug) const {
 	if (!this->desc.kdtree) {
 		manipulator.getContext().info("Collision::Check(): No KD-Tree\n");
 		// todo: check this is a valid value to return in case of faliure
@@ -861,42 +961,109 @@ golem::Real Collision::evaluateFT(const FlannDesc& desc, const grasp::Manipulato
 	grasp::NNSearch::IndexSeq indices;
 	grasp::NNSearch::DistanceF64Seq distances;
 
-	Real eval = golem::numeric_const<Real>::ZERO;
+	golem::Real eval = REAL_ZERO, c = REAL_ZERO;
+	const Real norm = golem::numeric_const<Real>::ONE / ((desc.depthStdDev * 100) * Math::sqrt(2 * golem::numeric_const<Real>::PI));
 	U32 collisions = 0, checks = 0;
 
-	for (auto guard = triggeredGuards.begin(); guard != triggeredGuards.end(); ++guard) {
-		if (!guard->isInContact())
-			continue;
-
-		const Configspace::Index i = guard->jointIdx;
-		Bounds bounds = jointBounds[i];
-		if (bounds.empty())
-			continue;
-
-		bounds.setPose(Bounds::Mat34(poses[i]));
-
-		Feature query(poses[i].p);
-		nnSearch->knnSearch(query, desc.neighbours, indices, distances);
-
-		Feature::Seq seq;
-		seq.reserve(indices.size());
-		for (size_t j = 0; j < indices.size(); ++j)
-			seq.push_back(points[indices[j]]);
-
-		Vec3 median;
-		median.setZero();
-		eval += bounds.distance(seq.data(), seq.data() + seq.size(), median, collisions);
-		//eval += bounds.evaluate(seq.data(), seq.data() + seq.size(), (Bounds::RealEval)desc.depthStdDev, collisions);
-		checks += indices.size();
+	const U32 jointPerFinger = 1;// manipulator.getController().getChains()[manipulator.getHandInfo().getChains().begin()]->getJoints().size();
+	const U32 fingers = manipulator.getHandInfo().getChains().size();
+	enum Direction {
+		x = 0,
+		y,
+		z
+	};
+	// Utilities
+	std::vector<bool> triggeredFingers; triggeredFingers.assign(fingers, false);
+	std::vector<Vec3> fingerGuardSeq;
+	fingerGuardSeq.assign(fingers, Vec3::zero());
+	// retrive trigguered guards
+	for (FTGuard::SeqPtr::iterator guard = triggeredGuards.begin(); guard != triggeredGuards.end(); ++guard) {
+		triggeredFingers[(*guard)->getHandChain()] = (*guard)->isInContact();
+		const U32 k = U32(0 - (*guard)->jointIdx);
+		fingerGuardSeq[(*guard)->getHandChain()][Direction::x] = Math::abs((*guard)->wrench.getV().x) > (*guard)->limits[Direction::x] ? (*guard)->wrench.getV().x : REAL_ZERO;
+		fingerGuardSeq[(*guard)->getHandChain()][Direction::y] = Math::abs((*guard)->wrench.getV().y) > (*guard)->limits[Direction::y] ? (*guard)->wrench.getV().y : REAL_ZERO;
+		fingerGuardSeq[(*guard)->getHandChain()][Direction::z] = Math::abs((*guard)->wrench.getV().z) > (*guard)->limits[Direction::z] ? (*guard)->wrench.getV().z : REAL_ZERO;
 	}
 
-	const Real likelihood = desc.likelihood*((eval + (checks - collisions)) / checks - REAL_ONE);
+	// loops over fingers: thumb = 0,..., pinky = 4
+	for (Chainspace::Index i = manipulator.getHandInfo().getChains().begin(); i < manipulator.getHandInfo().getChains().end(); ++i) {
+		const U32 finger = i - manipulator.getHandInfo().getChains().begin();
+		if (finger > 2)
+			break;
+		if (debug && triggeredFingers[finger]) manipulator.getContext().write("evaluateFT(): finger=%d\n", finger);
+		// thumb: begin=7, end=10
+		const Configspace::Index begin = manipulator.getInfo().getJoints(i).end() - 1, end = manipulator.getInfo().getJoints(i).end();
+		// finger frame
+		Mat34 fingerFrameInv; fingerFrameInv.setInverse(poses[end - 1]);
+
+		for (Configspace::Index j = begin; j < end; ++j) {
+			Bounds bounds = ftBounds[j];
+			if (bounds.empty()) {
+				if (debug) manipulator.getContext().write("evaluateFT(): joint %d -> empty bounds\n", U32(j - manipulator.getInfo().getJoints().begin()));
+				continue;
+			}
+			if (debug && triggeredFingers[finger]) manipulator.getContext().write("evaluateFT(): joint %d\n", U32(j - manipulator.getInfo().getJoints().begin()));
+
+			bounds.setPose(Bounds::Mat34(poses[j]));
+			if (debug && triggeredFingers[finger]) {
+				renderer.addAxes(poses[j], Vec3(.05, .05, .05));
+			}
+			// extract the closest point to the joint's bounds as feature
+			Feature query(poses[j].p);
+			nnSearch->knnSearch(query, desc.neighbours, indices, distances);
+
+			Feature::Seq seq;
+			seq.reserve(indices.size());
+			for (size_t l = 0; l < indices.size(); ++l)
+				seq.push_back(points[indices[l]]);
+
+			Vec3 median;
+			median.setZero();
+			const Real depth = bounds.distance(seq.data(), seq.data() + seq.size(), median, collisions);
+			if (debug && triggeredFingers[finger]) {
+				manipulator.getContext().write("Simulated depth = %.4f\n", depth, seq.size());
+				for (size_t l = 0; l < seq.size(); ++l) {
+					Mat34 m(Mat33::identity(), seq[l].getPoint());
+					renderer.addAxes(m, Vec3(0.002, 0.002, 0.002));
+				}
+				Mat34 m(Mat33::identity(), median);
+				renderer.addAxes(m, Vec3(0.01, 0.01, 0.01));
+			}
+
+			if (!triggeredFingers[finger] && depth > REAL_ZERO) // the hypothesis intersects a finger that has no contact retrieved
+				return REAL_ZERO;
+			// if no contact is retrieve and there is no intersection, don't change eval
+
+			// if contact is retrieved
+			Real pointEval = REAL_ZERO;
+			if (triggeredFingers[finger]) {
+				//median /= seq.size();
+				Vec3 patchPose; fingerFrameInv.multiply(patchPose, median);
+				if (debug) manipulator.getContext().write("patchPose [%.3f %.3f %.3f]\n", patchPose.x, patchPose.y, patchPose.z);
+				// abd direction is true if:
+				//   1. patchpose is the y-axis side to produce the observed direction of force. (e.g. y>0 && force<0)
+				//   2. there is no observed direction (so the patch could be anywhere)
+				const bool ftX = !((patchPose.x > REAL_ZERO && fingerGuardSeq[finger][Direction::x] < REAL_ZERO) || (patchPose.x < REAL_ZERO && fingerGuardSeq[finger][Direction::x] > REAL_ZERO));
+				const bool ftY = !((patchPose.y > REAL_ZERO && fingerGuardSeq[finger][Direction::y] < REAL_ZERO) || (patchPose.y < REAL_ZERO && fingerGuardSeq[finger][Direction::y] > REAL_ZERO));
+				const bool ftZ = !((patchPose.z > REAL_ZERO && fingerGuardSeq[finger][Direction::z] < REAL_ZERO) || (patchPose.z < REAL_ZERO && fingerGuardSeq[finger][Direction::z] > REAL_ZERO));
+				const Real scalingFac = ftX && ftY && ftZ ? 1 : 0.01;
+
+				pointEval = Math::abs(depth) > desc.depthStdDev * 3 ? REAL_ZERO : scalingFac*norm*golem::Math::exp(-.5*Math::sqr(Real(depth) / Real(desc.depthStdDev/* * 100*/))); // gaussian 
+				//if (debugjj++ % 100 == 0) manipulator.getContext().write("PointEval %f adbDirection %s, flexDirection %s, direction %f\n", pointEval, adbDirection ? "T" : "F", flexDirection ? "T" : "F", direction);
+				golem::kahanSum(eval, c, pointEval);
+				if (debug) manipulator.getContext().write("eval = %.3f * %.3f * e^[-.5*(%.3f / %.3f)^2] = %f\n", scalingFac, norm, Real(depth), Real(desc.depthStdDev),
+					scalingFac*norm*golem::Math::exp(-.5*Math::sqr(Real(depth) / Real(desc.depthStdDev))));
+			}
+		}
+	}
+
+	const Real likelihood = desc.likelihood*eval;// / collisions/*((eval + (checks - collisions)) / checks - REAL_ONE)*/;
 
 #ifdef _COLLISION_PERFMON
 	SecTmReal t_end = t.elapsed();
 	tperfEvalPoints += t_end /*tperfEvalPoints < t_end ? t_end : tperfEvalPoints*/;
-	if (debug /*&& eval < REAL_ONE*/)
-		manipulator.getContext().debug("Collision::evaluate(): points=%u, checks=%u, collisions=%u, likelihhod=%f\n", indices.size(), checks, collisions, likelihood);
+	if (debug)
+		manipulator.getContext().write("Collision::evaluateFT(): points=%u, checks=%u, collisions=%u, likelihhod=%f\n", indices.size(), checks, collisions, likelihood);
 #endif
 
 	return likelihood;

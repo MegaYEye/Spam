@@ -203,12 +203,13 @@ public:
 	inline grasp::Cloud::PointSeq getCloud() const { return points; };
 
 	/** Collision detection at a given waypoint */
-	inline bool check(const Collision::Waypoint& waypoint, const grasp::Manipulator::Config& config, bool debug = false) const {
-		return collisionPtr->check(waypoint, config, debug);
-	};
+	//inline bool check(const Collision::Waypoint& waypoint, const grasp::Manipulator::Config& config, bool debug = false) const {
+	//	return collisionPtr->check(waypoint, config, debug);
+	//};
 	/** Collision detection at a given waypoint */
-	inline bool check(const Collision::FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, bool debug = false) const {
-		return collisionPtr->check(desc, rand, config, debug);
+	inline bool checkNN(const Collision::FlannDesc& desc, const grasp::Manipulator::Config& config, bool debug = false) const {
+//		manipulator.getContext().write("Hypothesis::checkNN()\n");
+		return collisionPtr->checkNN(desc, config, debug);
 	}
 
 	/** Collision detection at a given waypoint */
@@ -268,7 +269,7 @@ protected:
 	const Desc desc;
 
 	/** Collision detection pointer */
-	spam::Collision::Ptr collisionPtr;
+	Collision::Ptr collisionPtr;
 
 	/** Create */
 	Hypothesis(const grasp::Manipulator& manipulator, const Desc& desc);

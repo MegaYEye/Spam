@@ -266,10 +266,10 @@ void spam::PosePlanner::Data::createRender() {
 		owner->hypothesisRenderer.reset();
 		owner->groundTruthRenderer.reset();
 		owner->queryRenderer.reset();
-		owner->debugRenderer.reset();
+		//owner->debugRenderer.reset();
 		owner->debugRenderer.setColour(RGBA::BLACK);
 		owner->debugRenderer.setLineWidth(Real(2.0));
-		owner->debugRenderer.addWire(owner->handBounds.begin(), owner->handBounds.end());
+//		owner->debugRenderer.addWire(owner->handBounds.begin(), owner->handBounds.end());
 
 		// model/query
 		const grasp::Vec3Seq& vertices = mode == MODE_MODEL ? modelVertices : queryVertices;
