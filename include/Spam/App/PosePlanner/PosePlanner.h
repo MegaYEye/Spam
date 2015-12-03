@@ -984,7 +984,7 @@ protected:
 	golem::DebugRenderer hypothesisRenderer;
 
 	/** Appereance for point clouds: debug point clouds */
-	grasp::Cloud::Appearance debugAppearance;
+	grasp::Cloud::Appearance debugAppearance, resampleAppeareance;
 	/** Show query distribution (as frames) */
 	bool showQueryDistribFrames;
 	/** Show pose distribution **/

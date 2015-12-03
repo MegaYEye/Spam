@@ -276,6 +276,11 @@ public:
 			return getSurfaceDistance((Bounds::Vec3)data.getPoint());
 		}
 
+		/** Computes the contribution of each point to calculare the median frame */
+		inline Real frameWeight(const Real distance) const {
+			return golem::Math::exp(-distance);
+		}
+
 		/** Compute minimal distance or avarage penetration */
 		template <typename _Ptr> inline _RealEval distance(_Ptr begin, _Ptr end, golem::Vec3& frame, golem::U32& collisions) const {
 			golem::Vec3 inFrame, outFrame; inFrame.setZero(); outFrame.setZero();
@@ -284,7 +289,7 @@ public:
 				const Real distance = getSurfaceDistance(*i);
 				if (distance > golem::numeric_const<Real>::ZERO) {
 					golem::kahanSum(eval, c, distance);
-					inFrame += (*i).getPoint();
+					inFrame += (*i).getPoint()*frameWeight(distance);
 					++collisions;
 				}
 				else if (minDist < distance) {
@@ -292,7 +297,7 @@ public:
 					outFrame = (*i).getPoint();
 				}
 			}
-			frame = collisions > 0 ? inFrame / collisions : outFrame;
+			frame = collisions > 0 ? inFrame : outFrame;
 			return collisions > 0 ? eval/collisions : minDist;
 		}
 

@@ -54,10 +54,12 @@ namespace spam {
 
 //------------------------------------------------------------------------------
 
+class R2GPlanner;
 /** Pose distribution and estimation with tactile and visual feedback */
 class Belief/* : public grasp::RBPose*/ {
 public:
 	friend class FTDrivenHeuristic;
+	friend class R2GPlanner;
 	typedef golem::shared_ptr<Belief> Ptr;
 	typedef grasp::RBHeuristic<grasp::RBCoord, 1> Heuristic;
 	typedef golem::DEOptimisation<Heuristic> Optimisation;

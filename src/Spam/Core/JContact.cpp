@@ -78,8 +78,8 @@ bool FTGuard::isInContact() {
 	if (mode == Mode::DISABLE)
 		return false;
 
-	for (size_t i = 0; i < limits.size(); ++i) {
-		if (Math::abs(wrench.data()[i]) > limits[i]) {
+	for (size_t i = 0; i < 3; ++i) {
+		if ((Math::abs(wrench.getV()[i]) > limits[i]) || (Math::abs(wrench.getW()[i]) > limits[i+3])) {
 			mode = Mode::INCONTACT;
 			return true;
 		}

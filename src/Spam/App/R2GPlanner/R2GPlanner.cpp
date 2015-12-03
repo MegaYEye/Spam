@@ -363,33 +363,32 @@ bool R2GPlanner::create(const Desc& desc) {
 
 //		debugRenderer.reset();
 //		size_t jointInCollision = enableSimContact && !objectPointCloudPtr->empty() ? collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), force, false) : 0;
-		if (++indexjj % 10 == 0)
-			collectFTInp(state, force);
+		//if (++indexjj % 10 == 0)
+		//	collectFTInp(state, force);
 
 		if (!enableForceReading)
 			return;
 
-		context.write("Thumb [%.3f %.3f %.3f %.3f %.3f %.3f]\n", 
-			force[0], force[1], force[2], force[3], force[4], force[5]);
-		context.write("Index [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
-			force[6], force[7], force[8], force[9], force[10], force[11]);
-		context.write("Middle [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
-			force[12], force[13], force[14], force[15], force[16], force[17]);
+		//context.write("Thumb [%.3f %.3f %.3f %.3f %.3f %.3f]\n", 
+		//	force[0], force[1], force[2], force[3], force[4], force[5]);
+		//context.write("Index [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
+		//	force[6], force[7], force[8], force[9], force[10], force[11]);
+		//context.write("Middle [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
+		//	force[12], force[13], force[14], force[15], force[16], force[17]);
 		//		std::vector<size_t> indeces = guardsFTReader(state, force);
 //		context.write("Indeces %d\n", indeces.size());
-		size_t k = 0;
-		for (auto i = ftGuards.begin(); i < ftGuards.end(); ++i) {
-			for (size_t j = 0; j < 6; ++j)
-				(*i)->wrench.data()[j] = handFilteredForce[k++];
+		//size_t k = 0;
+		//for (auto i = ftGuards.begin(); i < ftGuards.end(); ++i) {
+		//	for (size_t j = 0; j < 6; ++j)
+		//		(*i)->wrench.data()[j] = force[k++];
+		//}
+		U32 contacts = golem::numeric_const<U32>::ZERO;
+		for (size_t i = 0; i != ftGuards.size(); ++i) {
+			contacts += ftGuards[i]->isInContact();
+			ftGuards[i]->str(context);
 		}
-		U32 contacts;
-		{
-			golem::CriticalSectionWrapper csw(getCS());
-			contacts = FTGuard::triggered(ftGuards);
-		}
+
 		if (contacts > 0) {
-			for (size_t i = 0; i != ftGuards.size(); ++i)
-				ftGuards[i]->str(context);
 				//context.write("%s\n", ftGuards[i].str().c_str());
 			throw Message(Message::LEVEL_NOTICE, "spam::Robot::handForceReader(): Triggered guard(s) %d.\n", contacts);
 		}
@@ -2615,10 +2614,12 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	context.debug("R2GPlanner::updateAndResample(): %d triggered guards:\n", /*grasp::to<Data>(dataPtr)->*/ftGuards.size());
 	
 	// update samples' weights
-	golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO;
+//	golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO;
 	golem::Waypoint w(*controller, lookupState().cpos/*grasp::to<Data>(dataPtr)->triggeredStates.begin()->cpos*/);
 	context.write("update weights, triggered guards size = %u\n", ftGuards.size());
 
+	for (auto g = ftGuards.begin(); g != ftGuards.end(); ++g)
+		(*g)->str(context);
 	// render uncertainty before belief update
 	resetDataPointers();
 	showQueryDistribPointClouds = false;
@@ -2634,9 +2635,11 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	Collision::Desc::Ptr cloudDesc;
 	cloudDesc.reset(new Collision::Desc());
 	Collision::Ptr cloud = cloudDesc->create(*manipulator);
-	waypointDesc.depthStdDev = 0.0035/*0.0005*/; waypointDesc.likelihood = 1000.0; waypointDesc.points = 10000; waypointDesc.neighbours = 100;
+	waypointDesc.depthStdDev = 0.01/*0.0005*/; waypointDesc.likelihood = 1000.0; waypointDesc.points = 10000; waypointDesc.neighbours = 100;
 	waypointDesc.radius = REAL_ZERO;
 
+	golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO, cdf = golem::REAL_ZERO;
+	pBelief->normaliseFac = REAL_ZERO;
 	grasp::Manipulator::Config config(w.cpos, manipulator->getBaseFrame(w.cpos));
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = pBelief->getSamples().begin(); sampledPose != pBelief->getSamples().end();) {
 		grasp::Cloud::PointSeq points;
@@ -2645,11 +2648,17 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 		debugAppearance.draw(points, debugRenderer);
 		cloud->create(rand, points);
 		sampledPose->weight = cloud->evaluateFT(debugRenderer, waypointDesc, config, ftGuards, true);
-		grasp::RBDist error;
+		golem::kahanSum(pBelief->normaliseFac, c, sampledPose->weight);
 		context.write("sample.weight = %f,\n", sampledPose->weight);
 		if (option("YN", "Next? (Y/N)") == 'Y')
 			++sampledPose;
 	}
+	c = golem::REAL_ZERO;
+	for (grasp::RBPose::Sample::Seq::iterator sampledPose = pBelief->getSamples().begin(); sampledPose != pBelief->getSamples().end(); ++sampledPose) {
+		golem::kahanSum(cdf, c, sampledPose->weight);
+		sampledPose->cdf = cdf;
+	}
+
 
 //	pBelief->createUpdate(debugAppearance, debugRenderer, collisionPtr, w, ftGuards, trialPtr != trialDataMap.end() ? grasp::to<TrialData>(trialPtr)->queryPointsTrn : grasp::RBCoord(), this);
 	
@@ -2660,7 +2669,54 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 
 	context.write("resample (wheel algorithm)...\n");
 	// resampling (wheel algorithm)
-	pBelief->createResample(/*manipulator->getConfig(getStateFrom(w))*/);
+//	pBelief->createResample(/*manipulator->getConfig(getStateFrom(w))*/);
+	size_t N = pBelief->getSamples().size(), index = rand.nextUniform<size_t>(0, N);
+	Real beta = golem::REAL_ZERO;
+	grasp::RBPose::Sample::Seq newPoses;
+	newPoses.reserve(N);
+	for (size_t i = 0; i < N; ++i) {
+		beta += rand.nextUniform<golem::Real>() * 2 * pBelief->maxWeight();
+		//		context.write("spam::RBPose::createResampling(): beta=%4.6f\n", beta);
+		while (beta > pBelief->getSamples()[index].weight) {
+			beta -= pBelief->getSamples()[index].weight;
+			index = (index + 1) % N;
+		}
+		context.write("Resample[%d] = Sample[%d].weight=%f\n", i, index, pBelief->getSamples()[index].weight);
+		newPoses.push_back(pBelief->getSamples().at(index));
+	}
+
+	// add noise to the resampled elements and overwrite poses
+	pBelief->getSamples().clear();
+	pBelief->getSamples().reserve(N);
+
+	// generate new (noisy) samples out of selected subset of poses 
+	for (size_t i = 0; i < N;) {
+		//mfsePoses.push_back(Sample(newPoses[i], REAL_ONE, i*REAL_ONE));
+		//continue;
+		grasp::RBCoord c = newPoses[i];
+		rand.nextGaussianArray<golem::Real>(&c[0], &c[0] + grasp::RBCoord::N, &(newPoses[i])[0], &pBelief->pose.covarianceSqrt[0]); // normalised multivariate Gaussian
+		grasp::Cloud::PointSeq points;
+		grasp::Cloud::transform(newPoses[i].toMat34(), modelPoints, points);
+		debugRenderer.reset();
+		debugAppearance.draw(points, debugRenderer);
+		grasp::Cloud::PointSeq resample;
+		grasp::Cloud::transform(c.toMat34(), modelPoints, resample);
+		resampleAppeareance.draw(resample, debugRenderer);
+
+		pBelief->getSamples().push_back(grasp::RBPose::Sample(c, REAL_ONE, i*REAL_ONE));
+		if (option("YN", "Resample Next? (Y/N)") == 'Y')
+			++i;
+	}
+	pBelief->normaliseFac = REAL_ZERO;
+
+	// compute mean and covariance
+	if (!pBelief->pose.create<golem::Ref1, grasp::RBPose::Sample::Ref>(grasp::RBCoord::N, pBelief->desc.covariance, pBelief->getSamples()))
+		throw Message(Message::LEVEL_ERROR, "spam::RBPose::createResample(): Unable to create mean and covariance for the high dimensional representation");
+
+	context.write("spam::Belief::createResample(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", 
+		pBelief->pose.covariance[0], pBelief->pose.covariance[1], pBelief->pose.covariance[2], 
+		pBelief->pose.covariance[3], pBelief->pose.covariance[4], pBelief->pose.covariance[5], pBelief->pose.covariance[6]);
+
 
 	// update the query frame
 	context.debug("create hypotheses and update query frame...\n");

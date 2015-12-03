@@ -1043,16 +1043,17 @@ golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDes
 				// abd direction is true if:
 				//   1. patchpose is the y-axis side to produce the observed direction of force. (e.g. y>0 && force<0)
 				//   2. there is no observed direction (so the patch could be anywhere)
-				const bool ftX = !((patchPose.x > REAL_ZERO && fingerGuardSeq[finger][Direction::x] < REAL_ZERO) || (patchPose.x < REAL_ZERO && fingerGuardSeq[finger][Direction::x] > REAL_ZERO));
-				const bool ftY = !((patchPose.y > REAL_ZERO && fingerGuardSeq[finger][Direction::y] < REAL_ZERO) || (patchPose.y < REAL_ZERO && fingerGuardSeq[finger][Direction::y] > REAL_ZERO));
-				const bool ftZ = !((patchPose.z > REAL_ZERO && fingerGuardSeq[finger][Direction::z] < REAL_ZERO) || (patchPose.z < REAL_ZERO && fingerGuardSeq[finger][Direction::z] > REAL_ZERO));
-				const Real scalingFac = ftX && ftY && ftZ ? 1 : 0.01;
-
-				pointEval = Math::abs(depth) > desc.depthStdDev * 3 ? REAL_ZERO : scalingFac*norm*golem::Math::exp(-.5*Math::sqr(Real(depth) / Real(desc.depthStdDev/* * 100*/))); // gaussian 
+				//const bool ftX = !((patchPose.x > REAL_ZERO && fingerGuardSeq[finger][Direction::x] < REAL_ZERO) || (patchPose.x < REAL_ZERO && fingerGuardSeq[finger][Direction::x] > REAL_ZERO));
+				//const bool ftY = !((patchPose.y > REAL_ZERO && fingerGuardSeq[finger][Direction::y] < REAL_ZERO) || (patchPose.y < REAL_ZERO && fingerGuardSeq[finger][Direction::y] > REAL_ZERO));
+				//const bool ftZ = !((patchPose.z > REAL_ZERO && fingerGuardSeq[finger][Direction::z] < REAL_ZERO) || (patchPose.z < REAL_ZERO && fingerGuardSeq[finger][Direction::z] > REAL_ZERO));
+				const Real scalingFac = 1.0; // ftX && ftY && ftZ ? 1 : 0.01;
+				const Real d = golem::Math::abs(depth);
+				pointEval = golem::Math::exp(-.5*Math::sqr(Real(d) / Real(desc.depthStdDev)));
+				//pointEval = Math::abs(depth) > desc.depthStdDev * 3 ? REAL_ZERO : scalingFac*norm*golem::Math::exp(-.5*Math::sqr(Real(depth) / Real(desc.depthStdDev/* * 100*/))); // gaussian 
 				//if (debugjj++ % 100 == 0) manipulator.getContext().write("PointEval %f adbDirection %s, flexDirection %s, direction %f\n", pointEval, adbDirection ? "T" : "F", flexDirection ? "T" : "F", direction);
 				golem::kahanSum(eval, c, pointEval);
 				if (debug) manipulator.getContext().write("eval = %.3f * %.3f * e^[-.5*(%.3f / %.3f)^2] = %f\n", scalingFac, norm, Real(depth), Real(desc.depthStdDev),
-					scalingFac*norm*golem::Math::exp(-.5*Math::sqr(Real(depth) / Real(desc.depthStdDev))));
+					pointEval);
 			}
 		}
 	}

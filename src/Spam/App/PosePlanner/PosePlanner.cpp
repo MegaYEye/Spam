@@ -734,6 +734,7 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	hypothesisAppearance = desc.hypothesisAppearance;
 	debugAppearance = desc.debugAppearance;
 	groundTruthAppearance = desc.groundTruthAppearance;
+	resampleAppeareance = desc.queryAppearance;
 	sampleAppearance.setToDefault();
 //
 //	featureFrameSize = desc.featureFrameSize;

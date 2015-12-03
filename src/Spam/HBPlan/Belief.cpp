@@ -676,7 +676,9 @@ void Belief::createUpdate(grasp::Cloud::Appearance debugAppearance, golem::Debug
 	waypointDesc.depthStdDev = 0.0035/*0.0005*/; waypointDesc.likelihood = 1000.0; waypointDesc.points = 10000; waypointDesc.neighbours = 100;
 	waypointDesc.radius = REAL_ZERO;
 	
+	golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO, cdf = golem::REAL_ZERO;
 	grasp::Manipulator::Config config(w.cpos, manipulator->getBaseFrame(w.cpos));
+	normaliseFac = REAL_ZERO;
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
 		grasp::Cloud::PointSeq points;
 		grasp::Cloud::transform(sampledPose->toMat34(), modelPoints, points);
@@ -690,15 +692,12 @@ void Belief::createUpdate(grasp::Cloud::Appearance debugAppearance, golem::Debug
 		//context.write("sample.weight = %f, Error {lin, ang} = {%f, %f}\n", sampledPose->weight, error.lin, error.ang);
 		//Mat34 p; p.multiply(sampledPose->toMat34(), modelFrame);
 //		context.write("%.2f\t%.2f\t%.2f\t%.2f\n", p.p.x, p.p.y, p.p.z, sampledPose->weight);
-		printf("waitKey\n");
-		const int key = callback->waitKey();
+
+		// sum weights
+		golem::kahanSum(normaliseFac/*norm*/, c, sampledPose->weight/*sampledPose->weight > 0 ? sampledPose->weight : Math::log10(REAL_EPS)*/);
 	}
 
 	// normalise weights
-	golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO, cdf = golem::REAL_ZERO;
-	normaliseFac = REAL_ZERO;
-	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose)
-		golem::kahanSum(normaliseFac/*norm*/, c, sampledPose->weight/*sampledPose->weight > 0 ? sampledPose->weight : Math::log10(REAL_EPS)*/);
 	c = golem::REAL_ZERO;
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
 //		sampledPose->weight /= norm;

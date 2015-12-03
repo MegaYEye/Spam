@@ -4,7 +4,7 @@
   <data delete_if_moved="1" delete_if_unlinked="1" delete_if_temporary="1" ext_suffix="hbs">
     <belief points="1" features="1" attempts="10" kernels="10" neighbours="5" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7" cluster="1">
       <nn_search neighbours="0" search_checks="32" search_kdtrees="4" search_leaf_max_size="10"/>
-      <covariance dim="7" c1="0.01" c2="0.01" c3="0.001" c4="0.001" c5="0.0001" c6="0.0001" c7="0.0001"/>
+      <covariance dim="7" c1="0.001" c2="0.001" c3="0.001" c4="0.001" c5="0.0001" c6="0.0001" c7="0.0001"/>
       <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
       <pose_stddev lin="0.001" ang="500.0"/>
       <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
@@ -28,9 +28,9 @@
         <!--<covariance dim="7" c1="1.0" c2="1.0" c3="1.0" c4="1.0" c5="1.0" c6="1.0" c7="1.0"/>-->
         <!--<covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>-->
       </tactile_model>
-      <pose_estimation points="5000" features="5000" attempts="10" kernels="5000" neighbours="2000" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7" search_checks="32" search_kdtrees="4">
+      <pose_estimation points="10000" features="10000" attempts="10" kernels="10000" neighbours="2000" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7" search_checks="32" search_kdtrees="4">
         <nn_search neighbours="0" search_checks="32" search_kdtrees="4" search_leaf_max_size="10"/>
-        <covariance dim="7" c1="0.01" c2="0.01" c3="0.001" c4="0.001" c5="0.001" c6="0.001" c7="0.001"/>
+        <covariance dim="7" c1="0.001" c2="0.001" c3="0.001" c4="0.001" c5="0.001" c6="0.001" c7="0.001"/>
         <!--<covariance dim="7" c1="10" c2="10" c3="1" c4="1" c5="1" c6="1" c7="1"/>-->
         <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
         <pose_stddev lin="0.001" ang="500.0"/>
