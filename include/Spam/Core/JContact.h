@@ -194,6 +194,11 @@ public:
 		return contacts;
 	}
 
+	inline void set(const golem::Vec3& v, const golem::Vec3& w) {
+		wrench.setV(v);
+		wrench.setW(w);
+	}
+
 protected:
 	/** Type of guard {|>,<,>} */
 	FTGuardTypes type;

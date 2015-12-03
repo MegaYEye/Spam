@@ -135,7 +135,7 @@ bool R2GPlanner::create(const Desc& desc) {
 
 	//	robot->startActiveController();
 	// point cloud associated with the true pose of the object (used only for sim tests)
-	enableSimContact = true;
+	enableSimContact = false;
 	enableForceReading = false;
 	forcereadersilent = true;
 	objectPointCloudPtr.reset(new grasp::Cloud::PointSeq());
@@ -191,13 +191,21 @@ bool R2GPlanner::create(const Desc& desc) {
 
 	// SET FT SENSORS AND GUARDS
 	fLimit = desc.fLimit;
+	context.write("Thumb limits [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
+		fLimit[0], fLimit[1], fLimit[2], fLimit[3], fLimit[4], fLimit[5]);
+	context.write("Index limits [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
+		fLimit[6], fLimit[7], fLimit[8], fLimit[9], fLimit[10], fLimit[11]);
+	context.write("Middle limits [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
+		fLimit[12], fLimit[13], fLimit[14], fLimit[15], fLimit[16], fLimit[17]);
 	Sensor::Seq sensorSeq = armHandForce->getSensorSeq();
 	// NOTE: skips the sensor at the wrist
 	for (auto i = sensorSeq.begin(); i != sensorSeq.end(); ++i) {
 		if (i == sensorSeq.begin()) continue;
 		FT* sensor = grasp::is<FT>(*i);
-		if (!sensor)
+		if (sensor)
 			ftSensorSeq.push_back(sensor);
+		else
+			context.write("FT sensor is not available\n");
 	}
 	// set FT guard for the thumb
 	Chainspace::Index chain = handInfo.getChains().begin();
@@ -343,6 +351,7 @@ bool R2GPlanner::create(const Desc& desc) {
 
 		// associate random noise [-0.1, 0.1]
 		static int indexjj = 0;
+		static int indexkk = 0;
 		if (enableSimContact) {
 			//for (auto i = 0; i < force.size(); ++i)
 			//	force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
@@ -356,40 +365,50 @@ bool R2GPlanner::create(const Desc& desc) {
 				(*i)->read(data);
 				const Vec3 v = data.wrench.getV();
 				const Vec3 w = data.wrench.getW();
-				for (size_t j = 0; j < 3; ++j) force[k++] = v[j];
-				for (size_t j = 0; j < 3; ++j) force[k++] = w[j];
+				for (size_t j = 0; j < 3; ++j, ++k) {
+					force[k] = v[j];
+					force[k+3] = w[j];
+				}
 			}
 		}
 
 //		debugRenderer.reset();
 //		size_t jointInCollision = enableSimContact && !objectPointCloudPtr->empty() ? collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), force, false) : 0;
-		//if (++indexjj % 10 == 0)
-		//	collectFTInp(state, force);
+		if (indexjj++ % 10 == 0) 
+			collectFTInp(state, force);
+
 
 		if (!enableForceReading)
 			return;
 
-		//context.write("Thumb [%.3f %.3f %.3f %.3f %.3f %.3f]\n", 
-		//	force[0], force[1], force[2], force[3], force[4], force[5]);
-		//context.write("Index [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
-		//	force[6], force[7], force[8], force[9], force[10], force[11]);
-		//context.write("Middle [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
-		//	force[12], force[13], force[14], force[15], force[16], force[17]);
-		//		std::vector<size_t> indeces = guardsFTReader(state, force);
-//		context.write("Indeces %d\n", indeces.size());
-		//size_t k = 0;
-		//for (auto i = ftGuards.begin(); i < ftGuards.end(); ++i) {
-		//	for (size_t j = 0; j < 6; ++j)
-		//		(*i)->wrench.data()[j] = force[k++];
+		//context.write("Thumb [%.3f %.3f %.3f %.3f %.3f %.3f]\r",
+		//	handFilteredForce[0], handFilteredForce[1], handFilteredForce[2], handFilteredForce[3], handFilteredForce[4], handFilteredForce[5]);
+
+		//if (indexkk++ % 10 == 0) {
+		//	context.write("Thumb [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
+		//		handFilteredForce[0], handFilteredForce[1], handFilteredForce[2], handFilteredForce[3], handFilteredForce[4], handFilteredForce[5]);
+		//	context.write("Index [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
+		//		handFilteredForce[6], handFilteredForce[7], handFilteredForce[8], handFilteredForce[9], handFilteredForce[10], handFilteredForce[11]);
+		//	context.write("Middle [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
+		//		handFilteredForce[12], handFilteredForce[13], handFilteredForce[14], handFilteredForce[15], handFilteredForce[16], handFilteredForce[17]);
 		//}
+		size_t k = 0;
 		U32 contacts = golem::numeric_const<U32>::ZERO;
-		for (size_t i = 0; i != ftGuards.size(); ++i) {
-			contacts += ftGuards[i]->isInContact();
-			ftGuards[i]->str(context);
+		for (auto i = ftGuards.begin(); i < ftGuards.end(); ++i) {
+			Vec3 v, w;
+			for (size_t j = 0; j < 3; ++j, ++k) {
+				v[j] = handFilteredForce[k];
+				w[j] = handFilteredForce[k + 3];
+			}
+			(*i)->set(v, w);
+			contacts += (*i)->isInContact();
+//			(*i)->str(context);
 		}
 
 		if (contacts > 0) {
-				//context.write("%s\n", ftGuards[i].str().c_str());
+			for (auto i = ftGuards.begin(); i < ftGuards.end(); ++i)
+				(*i)->str(context);
+			//context.write("%s\n", ftGuards[i].str().c_str());
 			throw Message(Message::LEVEL_NOTICE, "spam::Robot::handForceReader(): Triggered guard(s) %d.\n", contacts);
 		}
 	}); // end robot->setHandForceReader
@@ -1355,100 +1374,6 @@ bool R2GPlanner::create(const Desc& desc) {
 		return;
 	}));
 
-	//		auto select = [&](Strategy &strat) {
-	//			switch (waitKey("NEMI", "Press a key to select (N)one/(E)lementary/(M)ycroft/(I)r3ne...")) {
-	//			case 'N':
-	//			{
-	//				strat = Strategy::NONE_STRATEGY;
-	//				return;
-	//			}
-	//			case 'E':
-	//			{
-	//				strat = Strategy::ELEMENTARY;
-	//				return;
-	//			}
-	//			case 'M':
-	//			{
-	//				strat = Strategy::MYCROFT;
-	//				return;
-	//			}
-	//			case 'I':
-	//			{
-	//				strat = Strategy::IR3NE;
-	//				return;
-	//			}
-	//			}
-	//			//switch (strat) {
-	//			//case NONE_STRATEGY:
-	//			//	strat = Strategy::ELEMENTARY;
-	//			//	break;
-	//			//case ELEMENTARY:
-	//			//	strat = Strategy::MYCROFT;
-	//			//	break;
-	//			//case MYCROFT:
-	//			//	strat = Strategy::IR3NE;
-	//			//	break;
-	//			//case IR3NE:
-	//			//	strat = Strategy::NONE_STRATEGY;
-	//			//	break;
-	//			//default:
-	//			//	strat = Strategy::NONE_STRATEGY;
-	//			//	break;
-	//			//}
-	//		};
-	//
-	//		// set the simulated object
-	//		if (!grasp::to<Data>(dataPtr)->simulateObjectPose.empty()) {
-	//			collisionPtr->create(rand, grasp::to<Data>(dataPtr)->simulateObjectPose);
-	//			objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataPtr)->simulateObjectPose));
-	//		}
-	//
-	//		grasp::RobotState::Map::iterator trajectory = selectTrajectory(grasp::to<Data>(dataPtr)->trajectory.begin(), grasp::to<Data>(dataPtr)->trajectory.end(), "Select trajectory:\n");
-	//		if (trajectory->second.size() < 3)
-	//			context.write("Error: the selected trajectory have not at least 3 waypoints.");
-	//
-	//		// select strategy in order: ELEMENTARY, MYCROFT, IR3NE, NONE. 
-	//		select(grasp::to<Data>(dataPtr)->stratType);
-	//		grasp::to<Data>(dataPtr)->actionType = action::NONE_ACTION;
-	//		grasp::to<Data>(dataPtr)->replanning = false;
-	//		Controller::State::Seq inp = grasp::RobotState::makeCommand(trajectory->second);
-	//		// open the fingers for the pregrasp
-	//		for (auto i = robot->getStateHandInfo().getChains().begin(); i != robot->getStateHandInfo().getChains().end(); ++i) { //	for (auto i = robot->getStateHandInfo().getJoints().begin(); i != robot->getStateHandInfo().getJoints().end(); ++i)
-	//			auto j = robot->getStateHandInfo().getJoints(robot->getStateHandInfo().getChains().begin()).begin() + 1;
-	//			inp[1].cpos[j] = 0.0;
-	//		}
-	//		for (;;) {
-	//			context.write("execute trajectory (%s)\n", actionToString(grasp::to<Data>(dataPtr)->actionType));
-	//			if (!execute(dataPtr, inp))
-	//				return;
-	//			if (contactOccured) {
-	//				//grasp::to<Data>(cdata->second)->replanning = false;
-	//				contactOccured = false;
-	//				updateAndResample(dataPtr);
-	//				enableForceReading = false;
-	//				continue;
-	//			}
-	//			// grasp
-	//			enableForceReading = false;
-	//			//grasp::to<Data>(dataPtr)->actionType = action::GRASP;
-	//			context.write("execute trajectory (%s)\n", actionToString(grasp::to<Data>(dataPtr)->actionType));
-	//			if (!execute(dataPtr, inp))
-	//				return;
-	//			
-	//			// lifting
-	//			enableForceReading = false;
-	//			//grasp::to<Data>(dataPtr)->actionType = action::IG_PLAN_LIFT;
-	//			context.write("execute trajectory (%s)\n", actionToString(grasp::to<Data>(dataPtr)->actionType));
-	//			if (execute(dataPtr, inp))
-	//				return;
-	//
-	//			break;
-	//		}
-	//		context.write("Finish Experiment\n");
-	//		//context.write("%s\n", grasp::to<TrialData>(trialPtr)->toString(*robot->getController()).c_str());
-	//		return;
-	//	}
-
 	ragDesc = desc;
 
 	return true;
@@ -1845,7 +1770,9 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 
 		// print every 10th robot state
 		if (i % 10 == 0) {
-			context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
+			context.write("Thumb [%.3f %.3f %.3f %.3f %.3f %.3f]\r",
+				handFilteredForce[0], handFilteredForce[1], handFilteredForce[2], handFilteredForce[3], handFilteredForce[4], handFilteredForce[5]);
+//			context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
 			Controller::State s = lookupState();
 			RealSeq handTorques; handTorques.assign(dimensions(), REAL_ZERO);
 			if (armHandForce) armHandForce->getHandForce(handTorques);
@@ -2028,7 +1955,7 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 		std::string trjItemName("modelR2GTrj");
 		resetPlanning();
 		pHeuristic->enableUnc = grasp::to<Data>(dataPtr)->stratType == Strategy::IR3NE ? true : false;
-		pHeuristic->setPointCloudCollision(false);
+		pHeuristic->setPointCloudCollision(true);
 		isGrasping = false;
 
 		Controller::State cend = lookupState();

@@ -432,7 +432,7 @@ bool RagGraphPlanner::findTarget(const golem::GenConfigspaceState &begin, const 
 	if (heuristic)
 		heuristic->enableUnc = enableUnc;
 
-	enableHandPlanning();
+	//enableHandPlanning();
 
 //	context.write("RagGraphPlanner::findTarget(): done.\n");
 	return true;
@@ -596,7 +596,6 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 #endif
 
 	getCallbackDataSync()->syncFindTrajectory(trajectory.begin(), trajectory.end(), wend);
-	enableHandPlanning();
 
 	return true;
 }
@@ -611,11 +610,14 @@ bool RagGraphPlanner::findLocalTrajectory(const Controller::State &cbegin, GenWo
 	Collision::resetLog();
 #endif
 #endif
+	spam::FTDrivenHeuristic *heuristic = getFTDrivenHeuristic();
+	if (heuristic && heuristic->enableUnc)
+		enableHandPlanning();
+
 	context.debug("findLocalTrajectory(): %s\n", plannerDebug(*this).c_str());
 	//context.write("RagGraphPlanner::findLocalTrajectory: %s\n", grasp::plannerConfigspaceDebug(*this).c_str());
 	//context.write("RagGraphPlanner::findLocalTrajectory: %s\n", grasp::plannerWorkspaceDebug(*this).c_str());
 
-	spam::FTDrivenHeuristic *heuristic = getFTDrivenHeuristic();
 	// trajectory size
 	const size_t size = 1 + (size_t)(wend - wbegin);
 	// check initial size
