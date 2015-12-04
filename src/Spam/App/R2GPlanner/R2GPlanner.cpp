@@ -135,7 +135,7 @@ bool R2GPlanner::create(const Desc& desc) {
 
 	//	robot->startActiveController();
 	// point cloud associated with the true pose of the object (used only for sim tests)
-	enableSimContact = false;
+	enableSimContact = true;
 	enableForceReading = false;
 	forcereadersilent = true;
 	objectPointCloudPtr.reset(new grasp::Cloud::PointSeq());
@@ -226,6 +226,7 @@ bool R2GPlanner::create(const Desc& desc) {
 	middleFTDesc.jointIdx = handInfo.getJoints(chain++).end() - 1;
 	middleFTDesc.limits = fLimit;
 	ftGuards.push_back(middleFTDesc.create());
+	handForces.assign(handInfo.getChains().size(), Vec3::zero());
 
 	// FT FILTER
 	steps = 0;
@@ -249,15 +250,18 @@ bool R2GPlanner::create(const Desc& desc) {
 	for (std::vector<RealSeq>::iterator i = forceInpSensorSeq.begin(); i != forceInpSensorSeq.end(); ++i)
 		i->assign(windowSize, REAL_ZERO);
 	// Forcereader utilities
-	collectFTInp = [=](const Controller::State& state, grasp::RealSeq& force) {
+	collectFTInp = [&](const Controller::State& state, grasp::RealSeq& force) {
 //		golem::CriticalSectionWrapper csw(csHandForce);
-		for (I32 i = 0; i < dimensions(); ++i)
+		for (I32 i = 0; i < dimensions(); ++i) {
+			if (!std::isfinite(force[i]))
+				context.write("Error: force[%d] is not finite\n", i);
 			forceInpSensorSeq[i][steps] = force[i];
+		}
 		steps = (I32)(++steps % windowSize);
 		ftFilter(state, handFilteredForce);
 	};
 
-	ftFilter = [=](const Controller::State&, grasp::RealSeq& filteredforce) {
+	ftFilter = [&](const Controller::State&, grasp::RealSeq& filteredforce) {
 		// find index as for circular buffer
 		auto findIndex = [&](const I32 idx) -> I32 {
 			return (I32)((steps + idx) % windowSize);
@@ -351,12 +355,11 @@ bool R2GPlanner::create(const Desc& desc) {
 
 		// associate random noise [-0.1, 0.1]
 		static int indexjj = 0;
-		static int indexkk = 0;
 		if (enableSimContact) {
 			//for (auto i = 0; i < force.size(); ++i)
 			//	force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
 			if (!objectPointCloudPtr->empty()) 
-				collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), force, false);
+				collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), force, enableForceReading);
 		}
 		else {
 			size_t k = 0;
@@ -490,6 +493,7 @@ bool R2GPlanner::create(const Desc& desc) {
 //	}); // end robot->setHandForceReader
 
 	armHandForce->setEmergencyModeHandler([=]() {
+		handForces = getHandForceVec();
 		enableForceReading = false;
 		contactOccured = true;
 		armHandForce->getArmCtrl()->setMode(armMode);
@@ -1770,8 +1774,9 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 
 		// print every 10th robot state
 		if (i % 10 == 0) {
-			context.write("Thumb [%.3f %.3f %.3f %.3f %.3f %.3f]\r",
-				handFilteredForce[0], handFilteredForce[1], handFilteredForce[2], handFilteredForce[3], handFilteredForce[4], handFilteredForce[5]);
+			context.write("Thumb [%.3f %.3f %.3f %.3f %.3f %.3f] State #%d (%s)\r",
+				handFilteredForce[0], handFilteredForce[1], handFilteredForce[2], handFilteredForce[3], handFilteredForce[4], handFilteredForce[5],
+				i, enableForceReading ? "Y" : "N");
 //			context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
 			Controller::State s = lookupState();
 			RealSeq handTorques; handTorques.assign(dimensions(), REAL_ZERO);
@@ -1955,7 +1960,7 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 		std::string trjItemName("modelR2GTrj");
 		resetPlanning();
 		pHeuristic->enableUnc = grasp::to<Data>(dataPtr)->stratType == Strategy::IR3NE ? true : false;
-		pHeuristic->setPointCloudCollision(true);
+		pHeuristic->setPointCloudCollision(false);
 		isGrasping = false;
 
 		Controller::State cend = lookupState();
@@ -2409,6 +2414,20 @@ Real R2GPlanner::simContacts(const golem::Bounds::Seq::const_iterator &begin, co
 	return REAL_ZERO;
 }
 
+grasp::Vec3Seq R2GPlanner::getHandForceVec(golem::SecTmReal time, golem::SecTmReal delta) const {
+	golem::Controller::State next = lookupState(time);
+	golem::Controller::State prev = lookupState(time - delta);
+
+	golem::Waypoint w1(*controller, next.cpos), w0(*controller, prev.cpos);
+
+	grasp::Vec3Seq force;
+	force.assign(handInfo.getChains().size(), Vec3::zero());
+	for (Chainspace::Index i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i) {
+		const U32 k = (U32)(i - handInfo.getChains().begin());
+		force[k] = w1.wpos[i].p - w0.wpos[i].p;
+	}
+	return force;
+}
 //------------------------------------------------------------------------------
 
 //void R2GPlanner::renderData(Data::Map::const_iterator dataPtr) {

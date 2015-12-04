@@ -235,6 +235,9 @@ protected:
 		return output;
     };
 
+	grasp::Vec3Seq handForces;
+	grasp::Vec3Seq getHandForceVec(golem::SecTmReal time = golem::SEC_TM_REAL_MAX, golem::SecTmReal delta = golem::SEC_TM_REAL_ONE) const;
+
 	/** Input force at sensor, sequence */
 	std::vector<grasp::RealSeq> forceInpSensorSeq;
 	/** Filtered forces for the hand */

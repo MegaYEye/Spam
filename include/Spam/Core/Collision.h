@@ -94,6 +94,45 @@ public:
 		/** As real vector: two surface normals, distance between points, rgb colour */
 		static const size_t N = 3;
 
+		/** Appearance */
+		class Appearance {
+		public:
+			/** Line colour */
+			golem::RGBA lineColour;
+
+			/** Show normals */
+			bool normalShow;
+			/** Points' normals size */
+			golem::Real normalSize;
+			/** Normal colour */
+			golem::RGBA normalColour;
+
+			/** Show frame */
+			bool frameShow;
+			/** Frame axes size */
+			golem::Vec3 frameSize;
+
+			/** Constructs description. */
+			Appearance() {
+				setToDefault();
+			}
+			/** Sets the parameters to the default values. */
+			void setToDefault() {
+				lineColour = golem::RGBA::YELLOW;
+				normalShow = true;
+				normalSize = golem::Real(0.02);
+				normalColour = golem::RGBA::CYAN;
+				frameShow = false;
+				frameSize.set(golem::Real(0.01));
+			}
+			/** Checks if the description is valid. */
+			bool isValid() const {
+				if (normalSize <= golem::REAL_ZERO || !frameSize.isPositive())
+					return false;
+				return true;
+			}
+		};
+
 		/** Feature distance metric */
 		class FlannDist {
 		public:
@@ -118,13 +157,17 @@ public:
 		};
 		/** Feature normals: points' normals in a local frame  */
 		golem::Vec3 point;
+		golem::Vec3 normal;
+		golem::Mat34 frame;
 
 		/** No member init by default */
 		//Feature() {}
 
 		/** Constructor */
-		Feature(const golem::Vec3 &data) {
-			this->point.set(data);
+		Feature(const golem::Vec3 &point, const golem::Vec3 &normal = golem::Vec3::zero()) {
+			this->point.set(point);
+			frame.set(golem::Mat33::identity(), point);
+			this->normal.set(normal);
 		}
 		/** Access to data as a single vector */
 		inline golem::Real* data() {
@@ -143,6 +186,18 @@ public:
 		inline const golem::Vec3 getPoint() const {
 			return (const golem::Vec3)point;
 		}
+
+		/** Access to data as a 3D point */
+		inline golem::Vec3 getNormal() {
+			return normal;
+		}
+		/** Access to data as a 3D point */
+		inline const golem::Vec3 getNormal() const {
+			return (const golem::Vec3)normal;
+		}
+		/** Draw feature */
+		void draw(const Appearance& appearance, golem::DebugRenderer& renderer) const;
+
 	};
 
 	/** Bounds */
@@ -240,7 +295,7 @@ public:
 		}
 
 		/** Get surface distance */
-		static inline Real getSurfaceDistance(const typename Triangle::Seq& triangles, const Vec3& point) {
+		static inline Real getSurfaceDistance(const typename Triangle::Seq& triangles, const Vec3& point, const Vec3& normal) {
 			Real distance = golem::numeric_const<Real>::MAX;
 			Real penetration = golem::numeric_const<Real>::ONE;
 			for (typename Triangle::Seq::const_iterator i = triangles.begin(); i != triangles.end(); ++i) {
@@ -257,13 +312,13 @@ public:
 			return penetration*distance;
 		}
 		/** Get surface distance */
-		inline Real getSurfaceDistance(const Vec3& point) const {
+		inline Real getSurfaceDistance(const Vec3& point, const Vec3& normal = (Vec3)golem::Vec3(golem::numeric_const<Real>::ONE, golem::numeric_const<Real>::ONE, golem::numeric_const<Real>::ONE)) const {
 			// penetration value is positive if there is a penetration
 //			const Real penetration = getDepth(point) > REAL_ZERO ? REAL_ONE : -REAL_ONE;
 			// distance to the closest surface of this bound
 			Real distance = -golem::numeric_const<Real>::MAX;
 			for (typename Triangle::SeqSeq::const_iterator i = triangles.begin(); i != triangles.end(); ++i) {
-				const Real d = getSurfaceDistance(*i, point);
+				const Real d = getSurfaceDistance(*i, point, normal);
 				if (distance < d) // search for minimum distance
 					distance = d;
 			}
@@ -273,7 +328,7 @@ public:
 		
 		/** Get surface distance: negative is outside the bounds */
 		inline Real getSurfaceDistance(const Feature &data) const {
-			return getSurfaceDistance((Bounds::Vec3)data.getPoint());
+			return getSurfaceDistance((Bounds::Vec3)data.getPoint(), (Bounds::Vec3)data.getNormal());
 		}
 
 		/** Computes the contribution of each point to calculare the median frame */
@@ -523,6 +578,9 @@ public:
 		/** KDTree decription*/
 		grasp::KDTreeDesc nnSearchDesc;
 
+		/** Feature appearence */
+		Feature::Appearance featureAppearence;
+
 		/** Constructs description object */
 		Desc() {
 			Desc::setToDefault();
@@ -542,6 +600,7 @@ public:
 			flannDesc.setToDefault();
 			ftBase.setToDefault();
 			ftContact.setToDefault();
+			featureAppearence.setToDefault();
 		}
 		/** Checks if the description is valid. */
 		virtual bool isValid() const {
@@ -590,7 +649,7 @@ public:
 	virtual golem::Real evaluate(const FlannDesc& desc, const grasp::Manipulator::Config& config, FTGuard::Seq& triggeredGuards, bool debug = false) const;
 
 	/** Collision likelihood estimation at a given waypoint for belief update */
-	virtual golem::Real evaluateFT(golem::DebugRenderer& renderer, const FlannDesc& desc, const grasp::Manipulator::Config& config, FTGuard::SeqPtr& triggeredGuards, bool debug = false) const;
+	virtual golem::Real evaluateFT(golem::DebugRenderer& renderer, const FlannDesc& desc, const grasp::Manipulator::Config& config, FTGuard::SeqPtr& triggeredGuards, /*grasp::Vec3Seq& handForcesVec,*/ bool debug = false) const;
 
 	/** Collision likelihood estimation at a given waypoint */
 	virtual golem::Real evaluate(const FlannDesc& desc, const grasp::Manipulator::Config& config, bool debug = false) const;
@@ -625,6 +684,9 @@ public:
 	void draw(golem::DebugRenderer& renderer, const grasp::Manipulator::Config& config, std::vector<golem::Configspace::Index> &joints, grasp::RealSeq &forces, const Collision::FlannDesc& desc) const;
 	/** Collision likelihood estimation at a given waypoint for belief update */
 	void draw(golem::DebugRenderer& renderer, const Waypoint& waypoint, const grasp::Manipulator::Config& config, const FTGuard::Seq &triggeredGuards, bool debug = false) const;
+
+	/** Draw sequence of Feature */
+	void draw(Feature::Seq::const_iterator begin, Feature::Seq::const_iterator end, const Feature::Appearance appearence, golem::DebugRenderer& renderer) const;
 
 	/** Returns ft_sensor desc in free space */
 	FTSensorDesc getFTBaseSensor() {

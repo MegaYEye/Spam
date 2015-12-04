@@ -77,6 +77,22 @@ static Vec3 getRelativeFrame(const golem::Mat34 &reference, const golem::Vec3 &p
 
 //------------------------------------------------------------------------------
 
+void Collision::Feature::draw(const Appearance& appearance, golem::DebugRenderer& renderer) const {
+	if (appearance.frameShow)
+		renderer.addAxes(frame, appearance.frameSize);
+
+	if (appearance.normalShow) {
+		Vec3 n;
+		n.multiply(appearance.normalSize, normal[0]);
+		frame.R.multiply(n, n);
+		n.add(point, n);
+		renderer.addLine(point, n, appearance.normalColour);
+	}
+}
+
+
+//------------------------------------------------------------------------------
+
 Collision::Collision(const grasp::Manipulator& manipulator, const Desc& desc) : manipulator(manipulator), desc(desc) {
 	if (!desc.isValid())
 		throw Message(Message::LEVEL_CRIT, "Collision(): invalid description");
@@ -107,7 +123,7 @@ void Collision::create(golem::Rand& rand, const grasp::Cloud::PointSeq& points) 
 	this->points.reserve(points.size());
 
 	for (grasp::Cloud::PointSeq::const_iterator i = points.begin(); i != points.end(); ++i)
-		this->points.push_back(Feature(grasp::Cloud::getPoint<Real>(*i)));
+		this->points.push_back(Feature(grasp::Cloud::getPoint<Real>(*i), grasp::Cloud::getNormal<Real>(*i)));
 
 	std::random_shuffle(this->points.begin(), this->points.end(), rand);
 
@@ -449,12 +465,7 @@ size_t Collision::simulateFT(golem::DebugRenderer& renderer, const FlannDesc& de
 			const Real depth = bounds.distance(seq.data(), seq.data() + seq.size(), median, collisions);
 			if (debug && idx++ % 100 == 0) {
 				manipulator.getContext().write("Simulated depth = %.4f, seq size = %d\n", depth, seq.size());
-				for (size_t l = 0; l < seq.size(); ++l) {
-					Mat34 m(Mat33::identity(), seq[l].getPoint());
-					renderer.addAxes(m, Vec3(0.002, 0.002, 0.002));
-					//manipulator.getContext().write("Frame [%.3f %.3f %.3f]\n", median.x, median.y, median.z);
-					//renderer.addPoint(seq[l].getPoint(), RGBA::BLACK);
-				}
+				draw(seq.begin(), seq.end(), this->desc.featureAppearence, renderer);
 				Mat34 m(Mat33::identity(), median);
 				renderer.addAxes(m, Vec3(1, 1, 1));
 			}
@@ -464,9 +475,9 @@ size_t Collision::simulateFT(golem::DebugRenderer& renderer, const FlannDesc& de
 			//}
 			if (collisions > 0) {
 				Vec3 frameInv = getRelativeFrame(poses[j], median); Vec3 normalised(frameInv);
-				if (debug) manipulator.getContext().write("Normalised [%.3f %.3f %.3f]\n", frameInv.x, frameInv.y, frameInv.z);
+				if (debug && false) manipulator.getContext().write("Normalised [%.3f %.3f %.3f]\n", frameInv.x, frameInv.y, frameInv.z);
 				normalised.normalise();
-				if (debug) {
+				if (debug && false) {
 					manipulator.getContext().write("Median [%.3f %.3f %.3f] Normalised [%.3f %.3f %.3f]\n", median.x, median.y, median.z, normalised.x, normalised.y, normalised.z);
 					manipulator.getContext().write("force[%d] = %.2f * (%.3f * %.3f * c) = %.3f\n", k * 6, Math::sign(REAL_ONE, -normalised.x), normalised.x, depth, Math::sign(REAL_ONE, -normalised.x) * (normalised.x * depth * 100000));
 					manipulator.getContext().write("force[%d] = %.2f * (%.3f * %.3f * c) = %.3f\n", k * 6 + 1, Math::sign(REAL_ONE, -normalised.y), normalised.y, depth, Math::sign(REAL_ONE, -normalised.y) * (normalised.y * depth * 100000));
@@ -484,7 +495,7 @@ size_t Collision::simulateFT(golem::DebugRenderer& renderer, const FlannDesc& de
 #ifdef _COLLISION_PERFMON
 	SecTmReal t_end = t.elapsed();
 	tperfSimulate += t_end /*tperfEvalPoints < t_end ? t_end : tperfEvalPoints*/;
-	if (debug)
+	if (debug && false)
 		manipulator.getContext().write("Collision::simulate(kd-tree): neighbours=%u, , points=%u, collision=no\nforces=[%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f ]\n", 
 		desc.neighbours, desc.points, forces[0], forces[1], forces[2], forces[3], forces[4], forces[5], forces[6], forces[7], forces[8], forces[9], 
 		forces[10], forces[11], forces[12], forces[13], forces[14], forces[15], forces[16], forces[17]);
@@ -944,7 +955,7 @@ golem::Real Collision::evaluate(const FlannDesc& desc, const grasp::Manipulator:
 	return likelihood;
 }
 
-golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDesc& desc, const grasp::Manipulator::Config& config, FTGuard::SeqPtr& triggeredGuards, bool debug) const {
+golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDesc& desc, const grasp::Manipulator::Config& config, FTGuard::SeqPtr& triggeredGuards, /*grasp::Vec3Seq& handForcesVec,*/ bool debug) const {
 	if (!this->desc.kdtree) {
 		manipulator.getContext().info("Collision::Check(): No KD-Tree\n");
 		// todo: check this is a valid value to return in case of faliure
@@ -1022,10 +1033,11 @@ golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDes
 			const Real depth = bounds.distance(seq.data(), seq.data() + seq.size(), median, collisions);
 			if (debug && triggeredFingers[finger]) {
 				manipulator.getContext().write("Simulated depth = %.4f\n", depth, seq.size());
-				for (size_t l = 0; l < seq.size(); ++l) {
-					Mat34 m(Mat33::identity(), seq[l].getPoint());
-					renderer.addAxes(m, Vec3(0.002, 0.002, 0.002));
-				}
+				draw(seq.begin(), seq.end(), this->desc.featureAppearence, renderer);
+				//for (size_t l = 0; l < seq.size(); ++l) {
+				//	Mat34 m(Mat33::identity(), seq[l].getPoint());
+				//	renderer.addAxes(m, Vec3(0.002, 0.002, 0.002));
+				//}
 				Mat34 m(Mat33::identity(), median);
 				renderer.addAxes(m, Vec3(0.01, 0.01, 0.01));
 			}
@@ -1040,6 +1052,7 @@ golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDes
 				//median /= seq.size();
 				Vec3 patchPose; fingerFrameInv.multiply(patchPose, median);
 				if (debug) manipulator.getContext().write("patchPose [%.3f %.3f %.3f]\n", patchPose.x, patchPose.y, patchPose.z);
+
 				// abd direction is true if:
 				//   1. patchpose is the y-axis side to produce the observed direction of force. (e.g. y>0 && force<0)
 				//   2. there is no observed direction (so the patch could be anywhere)
@@ -1344,6 +1357,12 @@ void Collision::draw(golem::DebugRenderer& renderer, const Waypoint& waypoint, c
 		manipulator.getContext().debug("Collision::evaluate(): points=%u, checks=%u, collisions=%u, likelihhod=%f\n", size, checks, collisions, likelihood);
 
 }
+
+void Collision::draw(Feature::Seq::const_iterator begin, Feature::Seq::const_iterator end, const Feature::Appearance appearence, golem::DebugRenderer& renderer) const {
+	for (Feature::Seq::const_iterator p = begin; p != end; ++p)
+		p->draw(appearence, renderer);
+}
+
 
 //------------------------------------------------------------------------------
 
