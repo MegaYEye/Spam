@@ -199,6 +199,24 @@ public:
 		wrench.setW(w);
 	}
 
+	inline void getColumn6(golem::Real* v) const {
+		v[0] = wrench.getV().x;
+		v[1] = wrench.getV().y;
+		v[2] = wrench.getV().z;
+		v[3] = wrench.getW().x;
+		v[4] = wrench.getW().y;
+		v[5] = wrench.getW().z;
+	}
+
+	/** Writes 3 consecutive values from the ptr passed
+	*	@param	v	Array to read elements from.
+	*/
+	inline void setColumn6(const golem::Real* v) {
+		wrench.setV(v[0], v[1], v[2]);
+		wrench.setW(v[3], v[4], v[5]);
+	}
+
+
 protected:
 	/** Type of guard {|>,<,>} */
 	FTGuardTypes type;

@@ -135,7 +135,7 @@ bool R2GPlanner::create(const Desc& desc) {
 
 	//	robot->startActiveController();
 	// point cloud associated with the true pose of the object (used only for sim tests)
-	enableSimContact = true;
+	enableSimContact = false;
 	enableForceReading = false;
 	forcereadersilent = true;
 	objectPointCloudPtr.reset(new grasp::Cloud::PointSeq());
@@ -182,7 +182,10 @@ bool R2GPlanner::create(const Desc& desc) {
 	//dataSimContact << std::endl;
 
 	// ACTIVE CONTROLLER
-	armHandForce = dynamic_cast<ArmHandForce*>(&*activectrlMap.find("ArmHandForce+ArmHandForce")->second);
+	const grasp::ActiveCtrl::Map::const_iterator armHandCtrlPtr = activectrlMap.find("ArmHandForce+ArmHandForce");
+	if (armHandCtrlPtr == activectrlMap.end())
+		throw Message(Message::LEVEL_ERROR, "R2GPlanner::create(): armHandForce not found");
+	armHandForce = dynamic_cast<ArmHandForce*>(&*armHandCtrlPtr->second);
 	if (!armHandForce)
 		throw Message(Message::LEVEL_ERROR, "R2GPlanner::create(): armHandForce is invalid");
 	armMode = armHandForce->getArmCtrl()->getMode();
@@ -252,11 +255,8 @@ bool R2GPlanner::create(const Desc& desc) {
 	// Forcereader utilities
 	collectFTInp = [&](const Controller::State& state, grasp::RealSeq& force) {
 //		golem::CriticalSectionWrapper csw(csHandForce);
-		for (I32 i = 0; i < dimensions(); ++i) {
-			if (!std::isfinite(force[i]))
-				context.write("Error: force[%d] is not finite\n", i);
+		for (I32 i = 0; i < dimensions(); ++i)
 			forceInpSensorSeq[i][steps] = force[i];
-		}
 		steps = (I32)(++steps % windowSize);
 		ftFilter(state, handFilteredForce);
 	};
@@ -359,27 +359,38 @@ bool R2GPlanner::create(const Desc& desc) {
 			//for (auto i = 0; i < force.size(); ++i)
 			//	force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
 			if (!objectPointCloudPtr->empty()) 
-				collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), force, enableForceReading);
+				collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), force, false);
 		}
 		else {
 			size_t k = 0;
 			for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
-				FT::Data data;
-				(*i)->read(data);
-				const Vec3 v = data.wrench.getV();
-				const Vec3 w = data.wrench.getW();
-				for (size_t j = 0; j < 3; ++j, ++k) {
-					force[k] = v[j];
-					force[k+3] = w[j];
-				}
+				//FT::Data data;
+				//(*i)->read(data);
+				Twist wrench; 
+				SecTmReal t;
+				(*i)->readSensor(wrench, t);
+				//if (!data.wrench.isFinite())
+				//	throw Message(Message::LEVEL_ERROR, "handForceReader(): FT sensor %s is not finite.\ndata.wrench [% 8.4f, % 8.4f, % 8.4f % 8.4f, % 8.4f, % 8.4f]\nwrench [% 8.4f, % 8.4f, % 8.4f % 8.4f, % 8.4f, % 8.4f]", 
+				//		(*i)->getID().c_str(),
+				//		data.wrench.v.x, data.wrench.v.y, data.wrench.v.z, data.wrench.w.x, data.wrench.w.y, data.wrench.w.z,
+				//		wrench.v.x, wrench.v.y, wrench.v.z, wrench.w.x, wrench.w.y, wrench.w.z);
+
+				wrench.v.getColumn3(&force[k]);
+				wrench.w.getColumn3(&force[k+3]);
+				k += 6;
 			}
 		}
 
 //		debugRenderer.reset();
 //		size_t jointInCollision = enableSimContact && !objectPointCloudPtr->empty() ? collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), force, false) : 0;
-		if (indexjj++ % 10 == 0) 
+		if (indexjj++ % 10 == 0) {
 			collectFTInp(state, force);
 
+			//context.write("1 [%.3f %.3f %.3f %.3f %.3f %.3f] 2 [%.3f %.3f %.3f %.3f %.3f %.3f] 3 [%.3f %.3f %.3f %.3f %.3f %.3f]\r",
+			//	force[0], force[1], force[2], force[3], force[4], force[5],
+			//	force[6], force[7], force[8], force[9], force[10], force[11],
+			//	force[12], force[13], force[14], force[15], force[16], force[17]);
+		}
 
 		if (!enableForceReading)
 			return;
@@ -398,21 +409,28 @@ bool R2GPlanner::create(const Desc& desc) {
 		size_t k = 0;
 		U32 contacts = golem::numeric_const<U32>::ZERO;
 		for (auto i = ftGuards.begin(); i < ftGuards.end(); ++i) {
-			Vec3 v, w;
-			for (size_t j = 0; j < 3; ++j, ++k) {
-				v[j] = handFilteredForce[k];
-				w[j] = handFilteredForce[k + 3];
-			}
-			(*i)->set(v, w);
+			(*i)->setColumn6(&handFilteredForce[k]);
 			contacts += (*i)->isInContact();
 //			(*i)->str(context);
+			k += 6;
 		}
 
 		if (contacts > 0) {
 			for (auto i = ftGuards.begin(); i < ftGuards.end(); ++i)
 				(*i)->str(context);
+			std::stringstream ss;
+			for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
+				FT::Data data;
+				(*i)->read(data);
+				Twist wrench;
+				SecTmReal t;
+				(*i)->readSensor(wrench, t);
+				
+				ss << "FT sensor " << (*i)->getID().c_str() << "data.wrench [" << data.wrench.v.x << " " << data.wrench.v.y << " " << data.wrench.v.z << " " << data.wrench.w.x << " " << data.wrench.w.y << " " << data.wrench.w.z <<
+					"]\nRaw wrench [" << wrench.v.x << " " << wrench.v.y << " " << wrench.v.z << " " << wrench.w.x << " " << wrench.w.y << " " << wrench.w.z << "]\n";
+			}
 			//context.write("%s\n", ftGuards[i].str().c_str());
-			throw Message(Message::LEVEL_NOTICE, "spam::Robot::handForceReader(): Triggered guard(s) %d.\n", contacts);
+			throw Message(Message::LEVEL_NOTICE, "handForceReader(): Triggered guard(s) %d.\n%s", contacts, ss.str().c_str());
 		}
 	}); // end robot->setHandForceReader
 
@@ -1774,10 +1792,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 
 		// print every 10th robot state
 		if (i % 10 == 0) {
-			context.write("Thumb [%.3f %.3f %.3f %.3f %.3f %.3f] State #%d (%s)\r",
-				handFilteredForce[0], handFilteredForce[1], handFilteredForce[2], handFilteredForce[3], handFilteredForce[4], handFilteredForce[5],
-				i, enableForceReading ? "Y" : "N");
-//			context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
+			context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
 			Controller::State s = lookupState();
 			RealSeq handTorques; handTorques.assign(dimensions(), REAL_ZERO);
 			if (armHandForce) armHandForce->getHandForce(handTorques);
@@ -1960,7 +1975,7 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 		std::string trjItemName("modelR2GTrj");
 		resetPlanning();
 		pHeuristic->enableUnc = grasp::to<Data>(dataPtr)->stratType == Strategy::IR3NE ? true : false;
-		pHeuristic->setPointCloudCollision(false);
+		pHeuristic->setPointCloudCollision(true);
 		isGrasping = false;
 
 		Controller::State cend = lookupState();
