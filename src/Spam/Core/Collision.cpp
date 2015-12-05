@@ -444,6 +444,15 @@ size_t Collision::simulateFT(golem::DebugRenderer& renderer, const FlannDesc& de
 			if (debug && idx % 100 == 0) {
 				renderer.reset();
 				renderer.addAxes(poses[j], Vec3(.05, .05, .05));
+				//size_t tt = 0;
+				//manipulator.getContext().write("Triangles %d\n", bounds.getTriangles().size());
+				//for (auto t = bounds.getTriangles().begin(); t != bounds.getTriangles().end(); ++t) {
+				//	manipulator.getContext().write("T%d size %d\n", tt++, t->size());
+				//	for (auto t1 = t->begin(); t1 != t->end(); ++t1) {
+				//		Mat34 m(Mat33::identity(), (golem::Vec3)t1->point);
+				//		renderer.addAxes(m, Vec3(.005, .005, .005));
+				//	}
+				//}
 			}
 
 			Feature query(poses[j].p);
@@ -1017,16 +1026,22 @@ golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDes
 
 			bounds.setPose(Bounds::Mat34(poses[j]));
 			if (debug && triggeredFingers[finger]) {
+//				renderer.reset();
 				renderer.addAxes(poses[j], Vec3(.05, .05, .05));
 			}
 			// extract the closest point to the joint's bounds as feature
-			Feature query(poses[j].p);
-			nnSearch->knnSearch(query, desc.neighbours, indices, distances);
-
 			Feature::Seq seq;
-			seq.reserve(indices.size());
-			for (size_t l = 0; l < indices.size(); ++l)
-				seq.push_back(points[indices[l]]);
+			seq.reserve(bounds.getTriangles().size() * indices.size());
+			for (auto t = bounds.getTriangles().begin(); t != bounds.getTriangles().end(); ++t) {
+				for (auto t1 = t->begin(); t1 != t->end(); ++t1) {
+
+					Feature query(t1->point);
+					nnSearch->knnSearch(query, desc.neighbours, indices, distances);
+
+					for (size_t l = 0; l < indices.size(); ++l)
+						seq.push_back(points[indices[l]]);
+				}
+			}
 
 			Vec3 median;
 			median.setZero();
@@ -1034,10 +1049,6 @@ golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDes
 			if (debug && triggeredFingers[finger]) {
 				manipulator.getContext().write("Simulated depth = %.4f\n", depth, seq.size());
 				draw(seq.begin(), seq.end(), this->desc.featureAppearence, renderer);
-				//for (size_t l = 0; l < seq.size(); ++l) {
-				//	Mat34 m(Mat33::identity(), seq[l].getPoint());
-				//	renderer.addAxes(m, Vec3(0.002, 0.002, 0.002));
-				//}
 				Mat34 m(Mat33::identity(), median);
 				renderer.addAxes(m, Vec3(0.01, 0.01, 0.01));
 			}
