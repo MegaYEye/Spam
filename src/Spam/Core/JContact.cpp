@@ -31,6 +31,17 @@ const char* spam::FTGuard::ModeName[] = {
 	"Contact",
 };
 
+const char* spam::FTGuard::FaceName[] = {
+	"UNKNOWN",
+	"FRONT",
+	"RIGHT",
+	"LEFT",
+	"BACK",
+	"TIP",
+	"TOP",
+};
+
+
 //------------------------------------------------------------------------------
 
 FTGuard* FTGuard::Desc::create() const {
@@ -45,8 +56,8 @@ FTGuard::FTGuard() {
 }
 
 void FTGuard::str(golem::Context& context) const {
-	context.write("FTGuard[%s]: mode=%s, wrench=[%.3f %3.f %.3f %3.f %.3f %3.f]\n", 
-		ChainName[this->chain], ModeName[this->mode],
+	context.write("FTGuard[%s]: mode=%s, face=%s, wrench=[%.3f %3.f %.3f %3.f %.3f %3.f]\n", 
+		ChainName[this->chain], ModeName[this->mode], this->faces.empty() ? FaceName[0] : FaceName[this->faces[0]],
 		wrench.getV().x, wrench.getV().y, wrench.getV().z, wrench.getW().x, wrench.getW().y, wrench.getW().z);
 //	std::string ss;
 ////	ss = "FTGuard[" + ChainName[this->chain] + "]: mode = " + ModeName[mode];// << " measured_force = " << strForces().c_str();
@@ -71,16 +82,21 @@ void FTGuard::create(const FTGuard::Desc& desc) {
 	type = desc.type;
 	mode = desc.mode;
 	limits = desc.limits;
+	faces.clear();
 	//	printf("FTGuard(armJoints=%u, handChains=%u, fingerJoints=%u) chain=%u, chain joint=%u, joint=%u\n", armIdx, handChains, fingerJoints, (handIdx / fingerJoints) + 1, handIdx % fingerJoints, i);
 }
 
-bool FTGuard::isInContact() {
+bool FTGuard::checkContacts() {
 	if (mode == Mode::DISABLE)
 		return false;
 
+	faces.clear();
 	for (size_t i = 0; i < 3; ++i) {
 		if ((Math::abs(wrench.getV()[i]) > limits[i]) || (Math::abs(wrench.getW()[i]) > limits[i+3])) {
 			mode = Mode::INCONTACT;
+			faces.push_back(i == 0 ? Face::TIP : (i == 1 && (wrench.getV()[i] < REAL_ZERO || Math::abs(wrench.getW()[i]) > limits[i + 3])) ? Face::LEFT :
+				(i == 1 && (wrench.getV()[i] > REAL_ZERO || Math::abs(wrench.getW()[i]) > limits[i + 3])) ? Face::RIGHT : 
+				(i == 2 && (wrench.getV()[i] < REAL_ZERO || Math::abs(wrench.getW()[i]) > limits[i + 3])) ? Face::FRONT : Face::BACK);
 			return true;
 		}
 	}

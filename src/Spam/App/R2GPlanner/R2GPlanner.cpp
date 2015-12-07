@@ -12,6 +12,8 @@
 //#include <Golem/Phys/PhysScene.h>
 #include <Spam/App/R2GPlanner/R2GPlanner.h>
 #include <algorithm>
+#include <Grasp/Data/Image/Image.h>
+#include <Grasp/Data/PointsCurv/PointsCurv.h>
 
 #ifdef WIN32
 	#pragma warning (push)
@@ -135,7 +137,7 @@ bool R2GPlanner::create(const Desc& desc) {
 
 	//	robot->startActiveController();
 	// point cloud associated with the true pose of the object (used only for sim tests)
-	enableSimContact = false;
+	enableSimContact = true;
 	enableForceReading = false;
 	forcereadersilent = true;
 	objectPointCloudPtr.reset(new grasp::Cloud::PointSeq());
@@ -359,7 +361,7 @@ bool R2GPlanner::create(const Desc& desc) {
 			//for (auto i = 0; i < force.size(); ++i)
 			//	force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
 			if (!objectPointCloudPtr->empty()) 
-				collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), force, false);
+				collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), force, enableForceReading);
 		}
 		else {
 			size_t k = 0;
@@ -410,7 +412,8 @@ bool R2GPlanner::create(const Desc& desc) {
 		U32 contacts = golem::numeric_const<U32>::ZERO;
 		for (auto i = ftGuards.begin(); i < ftGuards.end(); ++i) {
 			(*i)->setColumn6(&handFilteredForce[k]);
-			contacts += (*i)->isInContact();
+			if ((*i)->checkContacts())
+				++contacts;
 //			(*i)->str(context);
 			k += 6;
 		}
@@ -1319,7 +1322,58 @@ bool R2GPlanner::create(const Desc& desc) {
 
 		Controller::State cend = lookupState();
 		// transform w.r.t. query frame
-		findTarget(grasp::to<Data>(dataCurrentPtr)->queryTransform, grasp::to<Data>(dataCurrentPtr)->modelFrame, inp[1].state, cend);
+		findTarget(grasp::to<Data>(dataCurrentPtr)->queryTransform, grasp::to<Data>(dataCurrentPtr)->modelFrame, inp[2].state, cend);
+
+
+		grasp::data::Handler* handler = modelHandler;
+
+		// item name
+		//	readString("Enter item name: ", itemName);
+		grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(modelItem);
+		if (ptr == to<Data>(dataCurrentPtr)->itemMap.end())
+			throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): Does not find %s.", modelItem.c_str());
+
+		// retrive point cloud with curvature
+		grasp::data::ItemPointsCurv *pointsCurv = is<grasp::data::ItemPointsCurv>(ptr->second.get());
+		if (!pointsCurv)
+			throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): Does not support PointdCurv interface.");
+		grasp::Cloud::PointCurvSeq curvPoints = *pointsCurv->cloud;
+
+		// copy as a vector of points in 3D
+		Vec3Seq mPoints;
+		mPoints.resize(curvPoints.size());
+		I32 idx = 0;
+		std::for_each(curvPoints.begin(), curvPoints.end(), [&](const Cloud::PointCurv& i){
+			mPoints[idx++] = Cloud::getPoint<Real>(i);
+		});
+
+		// copy as a generic point+normal point cloud (Cloud::pointSeq)
+		Cloud::PointSeq points;
+		points.resize(curvPoints.size());
+		Cloud::copy(curvPoints, points);
+
+		collisionPtr->create(rand, points);
+		objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(points));
+
+		Collision::FlannDesc waypointDesc;
+		Collision::Desc::Ptr cloudDesc;
+		cloudDesc.reset(new Collision::Desc());
+		Collision::Ptr cloud = cloudDesc->create(*manipulator);
+		waypointDesc.depthStdDev = 0.01/*0.0005*/; waypointDesc.likelihood = 1000.0; waypointDesc.points = 10000; waypointDesc.neighbours = 100;
+		waypointDesc.radius = REAL_ZERO;
+
+		grasp::Manipulator::Config config(inp[2].state.cpos, manipulator->getBaseFrame(inp[2].state.cpos));
+		debugRenderer.reset();
+//		debugAppearance.draw(points, debugRenderer);
+		RealSeq ff = {0., 0., -0.1, 0., 0., 0.};
+		ftGuards[1]->setColumn6(&ff[0]);
+		ftGuards[1]->checkContacts();
+		cloud->create(rand, points);
+		(void)cloud->evaluateFT(debugRenderer, waypointDesc, config, ftGuards, true);
+
+		if (option("YN", "Resample Next? (Y/N)") == 'Y')
+			return;
+
 
 		Controller::State::Seq approach;
 		(void)findTrajectory(lookupState(), &cend, nullptr, 0, approach);

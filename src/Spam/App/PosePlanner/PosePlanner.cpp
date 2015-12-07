@@ -258,7 +258,7 @@ void spam::PosePlanner::Data::setOwner(grasp::Manager* owner) {
 }
 
 void spam::PosePlanner::Data::createRender() {
-	Player::Data::createRender();
+//	Player::Data::createRender();
 	{
 		golem::CriticalSectionWrapper csw(owner->getCS());
 		owner->modelRenderer.reset();

@@ -75,6 +75,16 @@ static Vec3 getRelativeFrame(const golem::Mat34 &reference, const golem::Vec3 &p
 	return v;// .normalise();
 }
 
+const char* spam::Collision::FaceName[] = {
+	"UNKNOWN",
+	"FRONT",
+	"RIGHT",
+	"LEFT",
+	"BACK",
+	"TIP",
+	"TOP",
+};
+
 //------------------------------------------------------------------------------
 
 void Collision::Feature::draw(const Appearance& appearance, golem::DebugRenderer& renderer) const {
@@ -83,7 +93,7 @@ void Collision::Feature::draw(const Appearance& appearance, golem::DebugRenderer
 
 	if (appearance.normalShow) {
 		Vec3 n;
-		n.multiply(appearance.normalSize, normal[0]);
+		n.multiply(appearance.normalSize, normal);
 		frame.R.multiply(n, n);
 		n.add(point, n);
 		renderer.addLine(point, n, appearance.normalColour);
@@ -104,13 +114,25 @@ Collision::Collision(const grasp::Manipulator& manipulator, const Desc& desc) : 
 		jointBounds[i].create(manipulator.getJointBounds(i));
 
 	// ft only
+	faces = { Face::FRONT, Face::FRONT, Face::TOP, Face::TOP, Face::RIGHT, Face::RIGHT, Face::LEFT, Face::LEFT, Face::TIP, Face::TIP, Face::BACK, Face::BACK };
 	for (golem::Chainspace::Index i = manipulator.getHandInfo().getChains().begin(); i != manipulator.getHandInfo().getChains().end(); ++i) {
 		const golem::Configspace::Index j = manipulator.getHandInfo().getJoints(i).end() - 1;
 		ftBounds[j].create(manipulator.getJointBounds(j));
+		size_t k = 0;
+		for (Bounds::Triangle::SeqSeq::iterator t0 = ftBounds[j].getTriangles().begin(); t0 != ftBounds[j].getTriangles().end(); ++t0)
+			for (auto t1 = t0->begin(); t1 != t0->end(); ++t1)
+				t1->face = faces[k++];
 		ftJoints.push_back(j);
 	}
 	// base
 	baseBounds.create(manipulator.getBaseBounds());
+
+
+	manipulatorAppearance.setToDefault();
+	manipulatorAppearance.showSolid = false;
+	manipulatorAppearance.showWire = true;
+	manipulatorAppearance.wireWidth = 0.01;
+	manipulatorAppearance.wireColour = RGBA::BLACK;
 	// bounds
 	/*bounds.resize(grasp::Manipulator::JOINTS + 1);
 	for (U32 i = manipulator.getArmJoints(); i < manipulator.getJoints() + 1; ++i)
@@ -441,7 +463,7 @@ size_t Collision::simulateFT(golem::DebugRenderer& renderer, const FlannDesc& de
 				continue;
 
 			bounds.setPose(Bounds::Mat34(poses[j]));
-			if (debug && idx % 100 == 0) {
+			if (debug) {
 				renderer.reset();
 				renderer.addAxes(poses[j], Vec3(.05, .05, .05));
 				//size_t tt = 0;
@@ -455,49 +477,76 @@ size_t Collision::simulateFT(golem::DebugRenderer& renderer, const FlannDesc& de
 				//}
 			}
 
-			Feature query(poses[j].p);
-			//nnSearch->knnSearch(/*(const Real*)&*/poses[i].p/*.x*//*.v*/, neighbours, indices, distances);
-			nnSearch->knnSearch(query, desc.neighbours, indices, distances);
-
-			//Real force = REAL_ZERO;
-			//Vec3 frame(.0, .0, .0);
 			golem::U32 collisions = 0;
 
-			Feature::Seq seq;
-			seq.reserve(indices.size());
-			for (size_t l = 0; l < indices.size(); ++l)
-				seq.push_back(points[indices[l]]);
-
-			//golem::Mat34 inverse; inverse.setInverse(Bounds::Mat34(i < manipulator.getJoints() ? poses[i] : pose)); // compute the inverse of the joint frame
+			Real depth = REAL_ZERO;
 			Vec3 median;
-			median.setZero();
-			const Real depth = bounds.distance(seq.data(), seq.data() + seq.size(), median, collisions);
-			if (debug && idx++ % 100 == 0) {
-				manipulator.getContext().write("Simulated depth = %.4f, seq size = %d\n", depth, seq.size());
-				draw(seq.begin(), seq.end(), this->desc.featureAppearence, renderer);
-				Mat34 m(Mat33::identity(), median);
-				renderer.addAxes(m, Vec3(1, 1, 1));
-			}
-			//if (depth > REAL_ZERO) {
-			//	force += depth;
-			//	frame.add(frame, getRelativeFrame(poses[j], median));
-			//}
-			if (collisions > 0) {
-				Vec3 frameInv = getRelativeFrame(poses[j], median); Vec3 normalised(frameInv);
-				if (debug && false) manipulator.getContext().write("Normalised [%.3f %.3f %.3f]\n", frameInv.x, frameInv.y, frameInv.z);
-				normalised.normalise();
-				if (debug && false) {
-					manipulator.getContext().write("Median [%.3f %.3f %.3f] Normalised [%.3f %.3f %.3f]\n", median.x, median.y, median.z, normalised.x, normalised.y, normalised.z);
-					manipulator.getContext().write("force[%d] = %.2f * (%.3f * %.3f * c) = %.3f\n", k * 6, Math::sign(REAL_ONE, -normalised.x), normalised.x, depth, Math::sign(REAL_ONE, -normalised.x) * (normalised.x * depth * 100000));
-					manipulator.getContext().write("force[%d] = %.2f * (%.3f * %.3f * c) = %.3f\n", k * 6 + 1, Math::sign(REAL_ONE, -normalised.y), normalised.y, depth, Math::sign(REAL_ONE, -normalised.y) * (normalised.y * depth * 100000));
-					manipulator.getContext().write("force[%d] = %.2f * (%.3f * %.3f * c) = %.3f\n", k * 6 + 2, Math::sign(REAL_ONE, -normalised.z), normalised.z, depth, Math::sign(REAL_ONE, -normalised.z) * (normalised.z * depth * 100000));
+			for (auto t = bounds.getTriangles().begin(); t != bounds.getTriangles().end(); ++t) {
+				for (auto t1 = t->begin(); t1 != t->end(); ++t1) {
+					Feature query(t1->point);
+					Feature::Seq seq;
+					seq.reserve(indices.size());
+
+					nnSearch->knnSearch(query, desc.neighbours, indices, distances);
+					for (size_t l = 0; l < indices.size(); ++l)
+						seq.push_back(points[indices[l]]);
+
+					//golem::Mat34 inverse; inverse.setInverse(Bounds::Mat34(i < manipulator.getJoints() ? poses[i] : pose)); // compute the inverse of the joint frame
+					golem::U32 boundsCollisions = 0;
+					median.setZero();
+					depth = bounds.distance(seq.data(), seq.data() + seq.size(), median, boundsCollisions);
+					
+					if (debug) {
+						//manipulator.getContext().write("Simulate depth=%f seq=%d\n", depth, seq.size());
+						draw(seq.begin(), seq.end(), this->desc.featureAppearence, renderer);
+						Mat34 m(Mat33::identity(), median);
+						renderer.addAxes(m, Vec3(0.005, 0.005, 0.005));
+					}
+
+					if (boundsCollisions > 0) {
+						if (t1->face == Face::TIP)
+							forces[k * 6] = -depth * 100000;
+						else if (t1->face == Face::FRONT)
+							forces[k * 6 + 1] = -depth * 100000;
+						else if (t1->face == Face::BACK)
+							forces[k * 6 + 1] = depth * 100000;
+						else if (t1->face == Face::LEFT)
+							forces[k * 6 + 2] = -depth * 100000;
+						else if (t1->face == Face::RIGHT)
+							forces[k * 6 + 2] = depth * 100000;
+						collisions += boundsCollisions;
+						collided++;
+						break;
+					}
 				}
-				//force /= collisions;
-				forces[k * 6] = Math::sign(REAL_ONE, frameInv.x) * (Math::abs(normalised.x) * depth * 100000);
-				forces[k * 6 + 1] = Math::sign(REAL_ONE, frameInv.y) * (Math::abs(normalised.y) * depth * 100000);
-				forces[k * 6 + 2] = Math::sign(REAL_ONE, frameInv.z) * (Math::abs(normalised.z) * depth * 100000);
-				++collided;
 			}
+
+			//if (debug && idx++ % 100 == 0) {
+			//	manipulator.getContext().write("Simulated depth = %.4f, seq size = %d\n", depth, seq.size());
+			//	draw(seq.begin(), seq.end(), this->desc.featureAppearence, renderer);
+			//	Mat34 m(Mat33::identity(), median);
+			//	renderer.addAxes(m, Vec3(1, 1, 1));
+			//}
+			////if (depth > REAL_ZERO) {
+			////	force += depth;
+			////	frame.add(frame, getRelativeFrame(poses[j], median));
+			////}
+			//if (collisions > 0) {
+			//	Vec3 frameInv = getRelativeFrame(poses[j], median); Vec3 normalised(frameInv);
+			//	if (debug && false) manipulator.getContext().write("Normalised [%.3f %.3f %.3f]\n", frameInv.x, frameInv.y, frameInv.z);
+			//	normalised.normalise();
+			//	if (debug && false) {
+			//		manipulator.getContext().write("Median [%.3f %.3f %.3f] Normalised [%.3f %.3f %.3f]\n", median.x, median.y, median.z, normalised.x, normalised.y, normalised.z);
+			//		manipulator.getContext().write("force[%d] = %.2f * (%.3f * %.3f * c) = %.3f\n", k * 6, Math::sign(REAL_ONE, -normalised.x), normalised.x, depth, Math::sign(REAL_ONE, -normalised.x) * (normalised.x * depth * 100000));
+			//		manipulator.getContext().write("force[%d] = %.2f * (%.3f * %.3f * c) = %.3f\n", k * 6 + 1, Math::sign(REAL_ONE, -normalised.y), normalised.y, depth, Math::sign(REAL_ONE, -normalised.y) * (normalised.y * depth * 100000));
+			//		manipulator.getContext().write("force[%d] = %.2f * (%.3f * %.3f * c) = %.3f\n", k * 6 + 2, Math::sign(REAL_ONE, -normalised.z), normalised.z, depth, Math::sign(REAL_ONE, -normalised.z) * (normalised.z * depth * 100000));
+			//	}
+			//	//force /= collisions;
+			//	forces[k * 6] = Math::sign(REAL_ONE, frameInv.x) * (Math::abs(normalised.x) * depth * 100000);
+			//	forces[k * 6 + 1] = Math::sign(REAL_ONE, frameInv.y) * (Math::abs(normalised.y) * depth * 100000);
+			//	forces[k * 6 + 2] = Math::sign(REAL_ONE, frameInv.z) * (Math::abs(normalised.z) * depth * 100000);
+			//	++collided;
+			//}
 		}
 	}
 
@@ -996,6 +1045,8 @@ golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDes
 	std::vector<bool> triggeredFingers; triggeredFingers.assign(fingers, false);
 	std::vector<Vec3> fingerGuardSeq;
 	fingerGuardSeq.assign(fingers, Vec3::zero());
+	std::vector<Face> facesInCollision;
+	facesInCollision.assign(fingers, Face::UNKNOWN);
 	// retrive trigguered guards
 	for (FTGuard::SeqPtr::iterator guard = triggeredGuards.begin(); guard != triggeredGuards.end(); ++guard) {
 		triggeredFingers[(*guard)->getHandChain()] = (*guard)->isInContact();
@@ -1003,6 +1054,9 @@ golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDes
 		fingerGuardSeq[(*guard)->getHandChain()][Direction::x] = Math::abs((*guard)->wrench.getV().x) > (*guard)->limits[Direction::x] ? (*guard)->wrench.getV().x : REAL_ZERO;
 		fingerGuardSeq[(*guard)->getHandChain()][Direction::y] = Math::abs((*guard)->wrench.getV().y) > (*guard)->limits[Direction::y] ? (*guard)->wrench.getV().y : REAL_ZERO;
 		fingerGuardSeq[(*guard)->getHandChain()][Direction::z] = Math::abs((*guard)->wrench.getV().z) > (*guard)->limits[Direction::z] ? (*guard)->wrench.getV().z : REAL_ZERO;
+		facesInCollision[(*guard)->getHandChain()] = (*guard)->faces.empty() ? Face::UNKNOWN : (*guard)->faces[0];
+
+		manipulator.getContext().write("Guard[%d] = %s\n", (*guard)->getHandChain(), triggeredFingers[(*guard)->getHandChain()] ? "TRUE" : "FALSE");
 	}
 
 	// loops over fingers: thumb = 0,..., pinky = 4
@@ -1010,7 +1064,7 @@ golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDes
 		const U32 finger = i - manipulator.getHandInfo().getChains().begin();
 		if (finger > 2)
 			break;
-		if (debug && triggeredFingers[finger]) manipulator.getContext().write("evaluateFT(): finger=%d\n", finger);
+		if (debug/* && triggeredFingers[finger]*/) manipulator.getContext().write("evaluateFT(): finger=%d bounds face=%s\n", finger, FaceName[facesInCollision[finger]]);
 		// thumb: begin=7, end=10
 		const Configspace::Index begin = manipulator.getInfo().getJoints(i).end() - 1, end = manipulator.getInfo().getJoints(i).end();
 		// finger frame
@@ -1022,19 +1076,92 @@ golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDes
 				if (debug) manipulator.getContext().write("evaluateFT(): joint %d -> empty bounds\n", U32(j - manipulator.getInfo().getJoints().begin()));
 				continue;
 			}
-			if (debug && triggeredFingers[finger]) manipulator.getContext().write("evaluateFT(): joint %d\n", U32(j - manipulator.getInfo().getJoints().begin()));
+			if (debug/* && triggeredFingers[finger]*/) manipulator.getContext().write("evaluateFT(): joint %d\n", U32(j - manipulator.getInfo().getJoints().begin()));
 
 			bounds.setPose(Bounds::Mat34(poses[j]));
 			if (debug && triggeredFingers[finger]) {
-//				renderer.reset();
-				renderer.addAxes(poses[j], Vec3(.05, .05, .05));
+//				draw(renderer, this->desc.boundsAppearence, poses[j], bounds);
+				draw(renderer, this->desc.boundsAppearence, poses[j], bounds, facesInCollision[finger]);
+//				renderer.addAxes(poses[j], Vec3(.05, .05, .05));
+//				Real normalSize = Real(0.01);
+//				Vec3 normalx(1, 0, 0), normaly(0, 1, 0), normalz(0, 0, 1);
+//				Vec3 nx, ny, nz;
+//				nx.multiply(normalSize, normalx);
+//				ny.multiply(normalSize, normaly);
+//				nz.multiply(normalSize, normalz);
+//				Real vx1 = poses[j].R.m11 * nx.v1 + poses[j].R.m12 * nx.v2 + poses[j].R.m13 * nx.v3;
+//				Real vx2 = poses[j].R.m21 * nx.v1 + poses[j].R.m22 * nx.v2 + poses[j].R.m23 * nx.v3;
+//				Real vx3 = poses[j].R.m31 * nx.v1 + poses[j].R.m32 * nx.v2 + poses[j].R.m33 * nx.v3;
+//				Real vy1 = poses[j].R.m11 * ny.v1 + poses[j].R.m12 * ny.v2 + poses[j].R.m13 * ny.v3;
+//				Real vy2 = poses[j].R.m21 * ny.v1 + poses[j].R.m22 * ny.v2 + poses[j].R.m23 * ny.v3;
+//				Real vy3 = poses[j].R.m31 * ny.v1 + poses[j].R.m32 * ny.v2 + poses[j].R.m33 * ny.v3;
+//				Real vz1 = poses[j].R.m11 * nz.v1 + poses[j].R.m12 * nz.v2 + poses[j].R.m13 * nz.v3;
+//				Real vz2 = poses[j].R.m21 * nz.v1 + poses[j].R.m22 * nz.v2 + poses[j].R.m23 * nz.v3;
+//				Real vz3 = poses[j].R.m31 * nz.v1 + poses[j].R.m32 * nz.v2 + poses[j].R.m33 * nz.v3;
+//				nx.v1 = vx1;
+//				nx.v2 = vx2;
+//				nx.v3 = vx3;
+////				nx.add(poses[j].p, nx);
+//				ny.v1 = vy1;
+//				ny.v2 = vy2;
+//				ny.v3 = vy3;
+////				ny.add(poses[j].p, ny);
+//				nz.v1 = vz1;
+//				nz.v2 = vz2;
+//				nz.v3 = vz3;
+////				nz.add(poses[j].p, nz);
+//				Mat34 origin; origin.setId();
+//				renderer.addLine(origin.p/*poses[j].p*/, nx, RGBA::RED);
+//				renderer.addLine(origin.p/*poses[j].p*/, ny, RGBA::GREEN);
+//				renderer.addLine(origin.p/*poses[j].p*/, nz, RGBA::BLUE);
+//				/*Mat34 poseInv; poseInv.setInverse(poses[j]);
+//				poseInv.multiply(nx, nx);*/
+//				//nx.subtract(nx, poses[j].p);
+//				//ny.subtract(ny, poses[j].p);
+//				//nz.subtract(nz, poses[j].p);
+//				for (auto t = bounds.getTriangles().begin(); t != bounds.getTriangles().end(); ++t) {
+//					for (auto t1 = t->begin(); t1 != t->end(); ++t1) {
+//						Mat34 m(Mat33::identity(), (golem::Vec3)t1->point);
+//						golem::Vec3 n;
+//						n.multiply(normalSize, t1->normal);
+//						//m.R.multiply(n, n);
+//						//Real v1 = poses[j].R.m11 * n.v1 + poses[j].R.m12 * n.v2 + poses[j].R.m13 * n.v3;
+//						//Real v2 = poses[j].R.m21 * n.v1 + poses[j].R.m22 * n.v2 + poses[j].R.m23 * n.v3;
+//						//Real v3 = poses[j].R.m31 * n.v1 + poses[j].R.m32 * n.v2 + poses[j].R.m33 * n.v3;
+//						Real v1 = m.R.m11 * n.v1 + m.R.m12 * n.v2 + m.R.m13 * n.v3;
+//						Real v2 = m.R.m21 * n.v1 + m.R.m22 * n.v2 + m.R.m23 * n.v3;
+//						Real v3 = m.R.m31 * n.v1 + m.R.m32 * n.v2 + m.R.m33 * n.v3;
+//						n.v1 = v1;
+//						n.v2 = v2;
+//						n.v3 = v3;
+//						//n.add(t1->point, n);
+//						Vec3 nn;
+//						nn.add(t1->point, n);
+//						//manipulator.getContext().write("nx [%f %f %f] nn [%f %f %f] normal [%f %f %f]\nnn.dot(nx) = %f nn.dot(nz) = %f normal.dot(nx) = %f normal.dot(nz) = %f\n", nx.x, nx.y, nx.z, n.x, n.y, n.z, t1->normal.x, t1->normal.y, t1->normal.z, 
+//						//	n.dot(nx), n.dot(ny), n.dot(nz));
+//						manipulator.getContext().write("T=%s nn.dot(nx) = %f nn.dot(ny) = %f nn.dot(nz) = %f\n", FaceName[t1->face], n.dot(nx), n.dot(ny), n.dot(nz));
+//						//if (n.dot(ny) < numeric_const<Real>::EPS/*t1->normal.dot(nx) > numeric_const<Real>::EPS && t1->normal.dot(nz) > numeric_const<Real>::EPS*/) {
+//						//	manipulator.getContext().write("draw %s!\n", FaceName[t1->face]);
+//						//	renderer.addLine(origin.p/*poses[j].p*/, n, RGBA::CYAN);
+//						//renderer.addLine(t1->point, nn, RGBA::CYAN);
+//						//	//renderer.addAxes(m, Vec3(.005, .005, .005));
+//							renderer.addLine(t1->t1, t1->t2, RGBA::RED);
+//							renderer.addLine(t1->t2, t1->t3, RGBA::RED);
+//							renderer.addLine(t1->t3, t1->t1, RGBA::RED);
+//							::Sleep(5000);
+//							//	break;
+//						//}
+				//	}
+				//}
 			}
 			// extract the closest point to the joint's bounds as feature
 			Feature::Seq seq;
 			seq.reserve(bounds.getTriangles().size() * indices.size());
+//			size_t tringles = 0;
 			for (auto t = bounds.getTriangles().begin(); t != bounds.getTriangles().end(); ++t) {
 				for (auto t1 = t->begin(); t1 != t->end(); ++t1) {
-
+//					manipulator.getContext().write("t%d %s\n", tringles++, FaceName[t1->face]);
+					if (facesInCollision[finger] != Face::UNKNOWN && t1->face != facesInCollision[finger]) continue;
 					Feature query(t1->point);
 					nnSearch->knnSearch(query, desc.neighbours, indices, distances);
 
@@ -1045,16 +1172,18 @@ golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDes
 
 			Vec3 median;
 			median.setZero();
-			const Real depth = bounds.distance(seq.data(), seq.data() + seq.size(), median, collisions);
+			const Real depth = bounds.distance(seq.data(), seq.data() + seq.size(), median, collisions, facesInCollision[finger]/*, Face::TIP*/);
 			if (debug && triggeredFingers[finger]) {
-				manipulator.getContext().write("Simulated depth = %.4f\n", depth, seq.size());
+				manipulator.getContext().write("Finger %d: Simulated depth = %.4f seq=%d\n", finger, depth, seq.size());
 				draw(seq.begin(), seq.end(), this->desc.featureAppearence, renderer);
 				Mat34 m(Mat33::identity(), median);
-				renderer.addAxes(m, Vec3(0.01, 0.01, 0.01));
+				renderer.addAxes(m, Vec3(0.005, 0.005, 0.005));
 			}
 
-			if (!triggeredFingers[finger] && depth > REAL_ZERO) // the hypothesis intersects a finger that has no contact retrieved
+			if (!triggeredFingers[finger] && depth > REAL_ZERO) {// the hypothesis intersects a finger that has no contact retrieved
+				manipulator.getContext().write("Finger %d: Simulated depth = %.4f. Finger not in contact => return zero!\n", finger, depth);
 				return REAL_ZERO;
+			}
 			// if no contact is retrieve and there is no intersection, don't change eval
 
 			// if contact is retrieved
@@ -1372,6 +1501,45 @@ void Collision::draw(golem::DebugRenderer& renderer, const Waypoint& waypoint, c
 void Collision::draw(Feature::Seq::const_iterator begin, Feature::Seq::const_iterator end, const Feature::Appearance appearence, golem::DebugRenderer& renderer) const {
 	for (Feature::Seq::const_iterator p = begin; p != end; ++p)
 		p->draw(appearence, renderer);
+}
+
+void Collision::draw(golem::DebugRenderer& renderer, const Bounds::Appearance appearance, const golem::Mat34& pose, const Bounds& bounds, Face face) const {
+	if (appearance.frameShow)
+		renderer.addAxes(pose, appearance.frameSize);
+
+	for (auto t0 = bounds.getTriangles().begin(); t0 != bounds.getTriangles().end(); ++t0) {
+		for (auto t = t0->begin(); t != t0->end(); ++t) {
+			if (face != Face::UNKNOWN && t->face != face)
+				continue;
+			Mat34 frame(Mat33::identity(), (golem::Vec3)t->point);
+
+			if (appearance.normalShow) {
+				Vec3 n;
+				n.multiply(appearance.normalSize, t->normal);
+				//frame.R.multiply(n, n);
+				Real v1 = frame.R.m11 * n.v1 + frame.R.m12 * n.v2 + frame.R.m13 * n.v3;
+				Real v2 = frame.R.m21 * n.v1 + frame.R.m22 * n.v2 + frame.R.m23 * n.v3;
+				Real v3 = frame.R.m31 * n.v1 + frame.R.m32 * n.v2 + frame.R.m33 * n.v3;
+				n.v1 = v1;
+				n.v2 = v2;
+				n.v3 = v3;
+				n.add(t->point, n);
+				renderer.addLine(t->point, n, appearance.normalColour);
+			}
+			if (appearance.boundsShow) {
+				//if (face != Face::UNKNOWN) {
+				//	renderer.addLine(t->t1, t->t2, face != Face::UNKNOWN ? appearance.boundsColour : RGBA::BLACK);
+				//	renderer.addLine(t->t2, t->t3, face != Face::UNKNOWN ? appearance.boundsColour : RGBA::BLACK);
+				//	renderer.addLine(t->t3, t->t1, face != Face::UNKNOWN ? appearance.boundsColour : RGBA::BLACK);
+				//}
+				//renderer.addTriangle(t->t1, t->t2, t->t3);
+				renderer.addLine(t->t1, t->t2, appearance.boundsColour);
+				renderer.addLine(t->t2, t->t3, appearance.boundsColour);
+				renderer.addLine(t->t3, t->t1, appearance.boundsColour);
+
+			}
+		}
+	}
 }
 
 

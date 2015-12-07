@@ -331,7 +331,7 @@
     <!-- DLR Justin robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotJustin" -->
     <!-- DLR Justin robot (controller, planner): library_path="GolemDeviceRobotJustin" config_path="GolemDeviceRobotJustin" -->
 
-    <controller library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBorisTactileSim">
+    <controller library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBorisSim">
       <renderer>
         <joint_appearance line_width="1.0">
           <solid_colour R="192" G="192" B="0" A="100"></solid_colour>
@@ -351,7 +351,7 @@
         </state_renderer>
       </renderer>
     </controller>
-    <planner library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBorisTactileSim">
+    <planner library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBorisSim">
       <renderer show_duration="600.0">
         <goal_renderer show="1" vertex_position_show="0" vertex_frame_show="1" edge_show="0">
           <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
@@ -392,7 +392,7 @@
     </planner>
 
     <controller id="KukaLWRSim+KukaLWRBorisR"/>
-    <controller id="DLRHitHandIISim+DLRHitHandIITactile"/>
+    <controller id="DLRHitHandIISim+DLRHitHandIIBorisR"/>
 
     <!--<sensor id="FTClient+FTClient"/>-->
 

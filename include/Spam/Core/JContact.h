@@ -66,7 +66,7 @@ enum FTGuardTypes {
 };
 /** HandChains */
 enum HandChain {
-	UNKNOWN = 0,
+	HC_UNKNOWN = 0,
 	THUMB,
 	INDEX,
 	MIDDLE,
@@ -79,6 +79,17 @@ enum Mode {
 	ENABLE,
 	INCONTACT,
 };
+/** Face */
+enum Face {
+	UNKNOWN = 0,
+	FRONT, // FT sensor face
+	RIGHT, // from the nail
+	LEFT,
+	BACK,
+	TIP,
+	TOP,
+};
+
 
 //------------------------------------------------------------------------------
 // base interface for guards
@@ -97,6 +108,7 @@ public:
 		
 	};
 };
+typedef std::vector<Face> FaceSeq;
 
 /** Force/torque guards for Justin and BHAM robots */
 class FTGuard {
@@ -132,7 +144,7 @@ public:
 		void setToDefault() {
 			type = FTGuardTypes::FTGUARD_ABS;
 			limits.assign(DIM, golem::Real(0.1));
-			chain = HandChain::UNKNOWN;
+			chain = HandChain::HC_UNKNOWN;
 			jointIdx = golem::Configspace::Index(0);
 			mode = Mode::ENABLE;
 		}
@@ -155,18 +167,25 @@ public:
 	golem::Twist wrench;
 	/** Joint index at which the sensor is attached */
 	golem::Configspace::Index jointIdx;
+	/** Faces in contact */
+	FaceSeq faces;
 
 	/** Check for disable mode */
 	inline bool isDisable() const { return this->mode == Mode::DISABLE; }
 	/** Check for enable mode */
 	inline bool isEnable() const { return this->mode == Mode::ENABLE; }
 	/** Check for contact mode */
-	bool isInContact();
+	inline bool isInContact() const { return this->mode == Mode::INCONTACT; };
+	/** Check for contact mode */
+	bool checkContacts();
+
 
 	/** Chain name */
 	static const std::string ChainName[];
 	/** Mode name */
 	static const char* ModeName[];
+	/** Face name */
+	static const char* FaceName[];
 
 	/** Set mode */
 	inline void setMode(const Mode& mode) {

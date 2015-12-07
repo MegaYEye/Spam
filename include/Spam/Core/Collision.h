@@ -120,10 +120,10 @@ public:
 			void setToDefault() {
 				lineColour = golem::RGBA::YELLOW;
 				normalShow = true;
-				normalSize = golem::Real(0.02);
+				normalSize = golem::Real(0.005);
 				normalColour = golem::RGBA::CYAN;
 				frameShow = false;
-				frameSize.set(golem::Real(0.01));
+				frameSize.set(golem::Real(0.02));
 			}
 			/** Checks if the description is valid. */
 			bool isValid() const {
@@ -200,6 +200,19 @@ public:
 
 	};
 
+	/** Face */
+	//enum Face {
+	//	UNKNOWN = 0,
+	//	FRONT, // FT sensor face
+	//	RIGHT, // from the nail
+	//	LEFT,
+	//	BACK,
+	//	TIP,
+	//	TOP,
+	//};
+	/** Face name */
+	static const char* FaceName[];
+
 	/** Bounds */
 	template <typename _Real, typename _RealEval> class _Bounds {
 	public:
@@ -213,12 +226,67 @@ public:
 		//typedef std::vector<_Bounds> Seq;
 		typedef golem::ScalarCoord<_Bounds, golem::Configspace> Coord;
 
+		/** Appearance */
+		class Appearance {
+		public:
+			/** Line colour */
+			golem::RGBA lineColour;
+
+			/** Show normals */
+			bool normalShow;
+			/** Points' normals size */
+			golem::Real normalSize;
+			/** Normal colour */
+			golem::RGBA normalColour;
+
+			/** Show frame */
+			bool frameShow;
+			/** Frame axes size */
+			golem::Vec3 frameSize;
+
+			/** Show bounds */
+			bool boundsShow;
+			/** Bounds line size */
+			golem::Vec3 boundsLineSize;
+			/** Bounds colour */
+			golem::RGBA boundsColour;
+
+
+			/** Constructs description. */
+			Appearance() {
+				setToDefault();
+			}
+			/** Sets the parameters to the default values. */
+			void setToDefault() {
+				lineColour = golem::RGBA::YELLOW;
+				normalShow = true;
+				normalSize = golem::Real(0.005);
+				normalColour = golem::RGBA::CYAN;
+				frameShow = true;
+				frameSize.set(golem::Real(0.05));
+				boundsShow = true;
+				boundsLineSize = golem::Real(0.01);
+				boundsColour = golem::RGBA::RED;
+
+			}
+			/** Checks if the description is valid. */
+			bool isValid() const {
+				if (normalSize <= golem::REAL_ZERO || !frameSize.isPositive())
+					return false;
+				return true;
+			}
+		};
+
 		/** Surface */
 		struct Surface {
 			typedef std::vector<Surface> Seq;
 			typedef std::vector<Seq> SeqSeq;
 			Vec3 point;
+			Vec3 t1;
+			Vec3 t2;
+			Vec3 t3;
 			Vec3 normal;
+			Face face;
 		};
 		/** Triangle */
 		struct Triangle : public Surface {
@@ -238,9 +306,12 @@ public:
 					triangles.back().resize(mesh->getTriangles().size());
 					for (size_t j = 0; j < mesh->getTriangles().size(); ++j) {
 						triangles.back()[j].normal = surfaces.back()[j].normal = Vec3(mesh->getNormals()[j]);
-						surfaces.back()[j].point = Vec3(mesh->getVertices()[mesh->getTriangles()[j].t1]); // e.g. first triangle
-						//surfaces.back()[j].point = (mesh->getVertices()[mesh->getTriangles()[j].t1] + mesh->getVertices()[mesh->getTriangles()[j].t2] + mesh->getVertices()[mesh->getTriangles()[j].t3])/Real(3.0); // centroid
+						surfaces.back()[j].t1 = Vec3(mesh->getVertices()[mesh->getTriangles()[j].t1]); // e.g. first triangle
+						surfaces.back()[j].t2 = Vec3(mesh->getVertices()[mesh->getTriangles()[j].t2]); // e.g. first triangle
+						surfaces.back()[j].t3 = Vec3(mesh->getVertices()[mesh->getTriangles()[j].t3]); // e.g. first triangle
+						surfaces.back()[j].point = (mesh->getVertices()[mesh->getTriangles()[j].t1] + mesh->getVertices()[mesh->getTriangles()[j].t2] + mesh->getVertices()[mesh->getTriangles()[j].t3]) / Real(3.0); // centroid
 						triangles.back()[j].distance = Real(mesh->getDistances()[j]);
+						surfaces.back()[j].face = Face::UNKNOWN;
 					}
 				}
 			}
@@ -249,14 +320,52 @@ public:
 		/** Pose */
 		static inline void setPose(const Mat34& pose, const Surface& surface, Triangle& triangle) {
 			pose.multiply(triangle.point, surface.point);
+			pose.multiply(triangle.t1, surface.t1);
+			pose.multiply(triangle.t2, surface.t2);
+			pose.multiply(triangle.t3, surface.t3);
 			pose.R.multiply(triangle.normal, surface.normal);
 			triangle.distance = triangle.normal.dot(triangle.point);
 		}
 		/** Pose */
 		static inline void setPose(const Mat34& pose, const typename Surface::Seq& surfaces, typename Triangle::Seq& triangles) {
+			//Real normalSize(0.01);
+			//Vec3 normalx(1, 0, 0), normaly(0, 1, 0), normalz(0, 0, 1);
+			//Vec3 nx, ny, nz;
+			//nx.multiply(normalSize, normalx);
+			//ny.multiply(normalSize, normaly);
+			//nz.multiply(normalSize, normalz);
+			//pose.R.multiply(nx, nx);
+			//pose.R.multiply(ny, ny);
+			//pose.R.multiply(nz, nz);
 			triangles.resize(surfaces.size());
-			for (size_t i = 0; i < triangles.size(); ++i)
+			for (size_t i = 0; i < triangles.size(); ++i) {
 				setPose(pose, surfaces[i], triangles[i]);
+				//Mat34 m; m.setId(); m.p = triangles[i].point;
+				//Vec3 n;
+				//n.multiply(normalSize, triangles[i].normal);
+				////m.R.multiply((Vec3&)n, (Vec3&)n);
+				//Real v1 = m.R.m11 * n.v1 + m.R.m12 * n.v2 + m.R.m13 * n.v3;
+				//Real v2 = m.R.m21 * n.v1 + m.R.m22 * n.v2 + m.R.m23 * n.v3;
+				//Real v3 = m.R.m31 * n.v1 + m.R.m32 * n.v2 + m.R.m33 * n.v3;
+				//n.v1 = v1;
+				//n.v2 = v2;
+				//n.v3 = v3;
+				//const Real tnx = n.dot(nx);
+				//const Real tny = n.dot(ny);
+				//const Real tnz = n.dot(nz);
+				//if (tnx < numeric_const<Real>::EPS)
+				//	triangles[i].face = Face::RIGHT;
+				//else if (tnx > numeric_const<Real>::EPS)
+				//	triangles[i].face = Face::LEFT;
+				//else if (tnz > numeric_const<Real>::EPS)
+				//	triangles[i].face = Face::BACK;
+				//else if (tnz < numeric_const<Real>::EPS)
+				//	triangles[i].face = Face::FRONT;
+				//else if (tny > numeric_const<Real>::EPS)
+				//	triangles[i].face = Face::TOP;
+				//else if (tny < numeric_const<Real>::EPS)
+				//	triangles[i].face = Face::TIP;
+			}
 		}
 		/** Pose */
 		inline void setPose(const Mat34& pose) {
@@ -295,10 +404,12 @@ public:
 		}
 
 		/** Get surface distance */
-		static inline Real getSurfaceDistance(const typename Triangle::Seq& triangles, const Vec3& point, const Vec3& normal) {
+		static inline Real getSurfaceDistance(const typename Triangle::Seq& triangles, const Vec3& point, const Face face) {
 			Real distance = golem::numeric_const<Real>::MAX;
 			Real penetration = golem::numeric_const<Real>::ONE;
 			for (typename Triangle::Seq::const_iterator i = triangles.begin(); i != triangles.end(); ++i) {
+				if (face != Face::UNKNOWN && i->face != face)
+					continue;
 				const Real d2 = i->point.distance(point);
 				if (distance > d2) // search for minimum distance
 					distance = d2;
@@ -312,13 +423,13 @@ public:
 			return penetration*distance;
 		}
 		/** Get surface distance */
-		inline Real getSurfaceDistance(const Vec3& point, const Vec3& normal = (Vec3)golem::Vec3(golem::numeric_const<Real>::ONE, golem::numeric_const<Real>::ONE, golem::numeric_const<Real>::ONE)) const {
+		inline Real getSurfaceDistance(const Vec3& point, const Face face) const {
 			// penetration value is positive if there is a penetration
 //			const Real penetration = getDepth(point) > REAL_ZERO ? REAL_ONE : -REAL_ONE;
 			// distance to the closest surface of this bound
 			Real distance = -golem::numeric_const<Real>::MAX;
 			for (typename Triangle::SeqSeq::const_iterator i = triangles.begin(); i != triangles.end(); ++i) {
-				const Real d = getSurfaceDistance(*i, point, normal);
+				const Real d = getSurfaceDistance(*i, point, face);
 				if (distance < d) // search for minimum distance
 					distance = d;
 			}
@@ -327,8 +438,8 @@ public:
 		}
 		
 		/** Get surface distance: negative is outside the bounds */
-		inline Real getSurfaceDistance(const Feature &data) const {
-			return getSurfaceDistance((Bounds::Vec3)data.getPoint(), (Bounds::Vec3)data.getNormal());
+		inline Real getSurfaceDistance(const Feature &data, const Face face) const {
+			return getSurfaceDistance((Bounds::Vec3)data.getPoint(), face);
 		}
 
 		/** Computes the contribution of each point to calculare the median frame */
@@ -337,11 +448,11 @@ public:
 		}
 
 		/** Compute minimal distance or avarage penetration */
-		template <typename _Ptr> inline _RealEval distance(_Ptr begin, _Ptr end, golem::Vec3& frame, golem::U32& collisions) const {
+		template <typename _Ptr> inline _RealEval distance(_Ptr begin, _Ptr end, golem::Vec3& frame, golem::U32& collisions, const Face face = Face::UNKNOWN) const {
 			golem::Vec3 inFrame, outFrame; inFrame.setZero(); outFrame.setZero();
 			_RealEval eval = golem::numeric_const<_RealEval>::ZERO, c = golem::numeric_const<_RealEval>::ZERO, minDist = -golem::numeric_const<Real>::MAX;
 			for (_Ptr i = begin; i < end; ++i) {
-				const Real distance = getSurfaceDistance(*i);
+				const Real distance = getSurfaceDistance(*i, face);
 				if (distance > golem::numeric_const<Real>::ZERO) {
 					golem::kahanSum(eval, c, distance);
 					inFrame += (*i).getPoint()*frameWeight(distance);
@@ -398,7 +509,7 @@ public:
 			return eval;
 		}
 
-		inline bool match(const golem::Mat34& pose, const Feature& point, const golem::Real &force) const {
+		inline bool match(const Mat34& pose, const Feature& point, const Real &force) const {
 			golem::Mat34 inverse; inverse.setInverse(pose); // compute the inverse of the joint frame
 			golem::Vec3 v; inverse.multiply(v, point.getPoint()); //v.normalise(); // compute the point in the joint's reference frame
 
@@ -407,7 +518,7 @@ public:
 
 
 		/** Penetration depth of a given point, zero if none */
-		inline Real getDistance(const golem::Mat34& pose, const Vec3& point, const Real maxDist) const {
+		inline Real getDistance(const Mat34& pose, const Vec3& point, const Real maxDist) const {
 			golem::Mat34 inverse; inverse.setInverse(pose); // compute the inverse of the joint frame
 			golem::Vec3 v; inverse.multiply(v, point); v.normalise(); // compute the point in the joint's reference frame
 
@@ -415,12 +526,12 @@ public:
 		}
 
 		/** Penetration depth of a given point, zero if none */
-		inline Real getDistance(const golem::Mat34& pose, const Feature& feature, const Real maxDist) const {
+		inline Real getDistance(const Mat34& pose, const Feature& feature, const Real maxDist) const {
 			return getDistance(pose, (Bounds::Vec3)feature.getPoint(), maxDist);
 		}
 
 		/** Expected collision likelihood model */
-		template <typename _Ptr> inline _RealEval estimate(golem::Mat34& pose, _Ptr begin, _Ptr end, _RealEval depthStdDev, size_t& collisions, const _RealEval maxDist = golem::numeric_const<_RealEval>::MAX) const {
+		template <typename _Ptr> inline _RealEval estimate(Mat34& pose, _Ptr begin, _Ptr end, _RealEval depthStdDev, size_t& collisions, const _RealEval maxDist = golem::numeric_const<_RealEval>::MAX) const {
 			_RealEval eval = golem::numeric_const<_RealEval>::ZERO, c = golem::numeric_const<_RealEval>::ZERO;
 			for (_Ptr i = begin; i < end; ++i) {
 				const Real distance = getDistance(pose, *i, maxDist);
@@ -443,8 +554,16 @@ public:
 		inline const typename Triangle::SeqSeq& getTriangles() const {
 			return triangles;
 		}
+		/** Triangles */
+		inline typename Triangle::SeqSeq& getTriangles() {
+			return triangles;
+		}
 		/** Surfaces */
 		inline const typename Surface::SeqSeq& getSurfaces() const {
+			return surfaces;
+		}
+		/** Surfaces */
+		inline typename Surface::SeqSeq& getSurfaces() {
 			return surfaces;
 		}
 
@@ -489,7 +608,7 @@ public:
 	};
 
 	/** Bounds */
-	typedef _Bounds<golem::F32, golem::F32> Bounds;
+	typedef _Bounds<golem::F64, golem::F64> Bounds;
 
 	/** Flann description */
 	class FlannDesc {
@@ -580,6 +699,8 @@ public:
 
 		/** Feature appearence */
 		Feature::Appearance featureAppearence;
+		/** Bounds appearence */
+		Bounds::Appearance boundsAppearence;
 
 		/** Constructs description object */
 		Desc() {
@@ -601,6 +722,7 @@ public:
 			ftBase.setToDefault();
 			ftContact.setToDefault();
 			featureAppearence.setToDefault();
+			boundsAppearence.setToDefault();
 		}
 		/** Checks if the description is valid. */
 		virtual bool isValid() const {
@@ -687,6 +809,8 @@ public:
 
 	/** Draw sequence of Feature */
 	void draw(Feature::Seq::const_iterator begin, Feature::Seq::const_iterator end, const Feature::Appearance appearence, golem::DebugRenderer& renderer) const;
+	/** Draw FT bounds */
+	void draw(golem::DebugRenderer& renderer, const Bounds::Appearance appearance, const golem::Mat34& pose, const Bounds& bounds, Face face = Face::UNKNOWN) const;
 
 	/** Returns ft_sensor desc in free space */
 	FTSensorDesc getFTBaseSensor() {
@@ -709,6 +833,7 @@ public:
 protected:
 	/** Manipulator */
 	const grasp::Manipulator& manipulator;
+	grasp::Manipulator::BoundsAppearance manipulatorAppearance;
 	/** Description */
 	const Desc desc;
 
@@ -723,6 +848,9 @@ protected:
 	/** Points */
 	Feature::Seq points;
 	//	Bounds::Vec3Seq points;
+
+	/** Trinagles order */
+	std::vector<Face> faces;
 
 	/** KD tree pointer */
 	grasp::NNSearch::Ptr nnSearch;
