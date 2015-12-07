@@ -114,7 +114,9 @@ Collision::Collision(const grasp::Manipulator& manipulator, const Desc& desc) : 
 		jointBounds[i].create(manipulator.getJointBounds(i));
 
 	// ft only
-	faces = { Face::FRONT, Face::FRONT, Face::TOP, Face::TOP, Face::RIGHT, Face::RIGHT, Face::LEFT, Face::LEFT, Face::TIP, Face::TIP, Face::BACK, Face::BACK };
+//	faces = { Face::FRONT, Face::FRONT, Face::TOP, Face::TOP, Face::RIGHT, Face::RIGHT, Face::LEFT, Face::LEFT, Face::TIP, Face::TIP, Face::BACK, Face::BACK };
+	faces = { Face::RIGHT, Face::RIGHT, Face::RIGHT, Face::RIGHT, Face::RIGHT, Face::LEFT, Face::LEFT, Face::LEFT, Face::LEFT, Face::LEFT, Face::TOP, Face::TOP, Face::BACK, Face::BACK,
+		Face::TIP, Face::TIP, Face::TIP, Face::TIP, Face::TIP, Face::FRONT, Face::FRONT, Face::FRONT, Face::FRONT};
 	for (golem::Chainspace::Index i = manipulator.getHandInfo().getChains().begin(); i != manipulator.getHandInfo().getChains().end(); ++i) {
 		const golem::Configspace::Index j = manipulator.getHandInfo().getJoints(i).end() - 1;
 		ftBounds[j].create(manipulator.getJointBounds(j));
@@ -1079,7 +1081,7 @@ golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDes
 			if (debug/* && triggeredFingers[finger]*/) manipulator.getContext().write("evaluateFT(): joint %d\n", U32(j - manipulator.getInfo().getJoints().begin()));
 
 			bounds.setPose(Bounds::Mat34(poses[j]));
-			if (debug && triggeredFingers[finger]) {
+			if (debug/* && triggeredFingers[finger]*/) {
 //				draw(renderer, this->desc.boundsAppearence, poses[j], bounds);
 				draw(renderer, this->desc.boundsAppearence, poses[j], bounds, facesInCollision[finger]);
 //				renderer.addAxes(poses[j], Vec3(.05, .05, .05));
@@ -1151,8 +1153,8 @@ golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDes
 //							::Sleep(5000);
 //							//	break;
 //						//}
-				//	}
-				//}
+//					}
+//				}
 			}
 			// extract the closest point to the joint's bounds as feature
 			Feature::Seq seq;

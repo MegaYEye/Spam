@@ -1365,9 +1365,9 @@ bool R2GPlanner::create(const Desc& desc) {
 		grasp::Manipulator::Config config(inp[2].state.cpos, manipulator->getBaseFrame(inp[2].state.cpos));
 		debugRenderer.reset();
 //		debugAppearance.draw(points, debugRenderer);
-		RealSeq ff = {0., 0., -0.1, 0., 0., 0.};
-		ftGuards[1]->setColumn6(&ff[0]);
-		ftGuards[1]->checkContacts();
+		//RealSeq ff = {0., 0., -0.1, 0., 0., 0.};
+		//ftGuards[1]->setColumn6(&ff[0]);
+		//ftGuards[1]->checkContacts();
 		cloud->create(rand, points);
 		(void)cloud->evaluateFT(debugRenderer, waypointDesc, config, ftGuards, true);
 
