@@ -62,7 +62,6 @@ void spam::R2GPlanner::Data::setOwner(grasp::Manager* owner) {
 
 
 void spam::R2GPlanner::Data::createRender() {
-	context.write("R2G::createRender():\n");
 	PosePlanner::Data::createRender();
 	{
 		golem::CriticalSectionWrapper csw(owner->getCS());
@@ -364,46 +363,49 @@ bool R2GPlanner::create(const Desc& desc) {
 	};
 
 	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq&) { // throws
-		grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
-
-		// associate random noise [-0.1, 0.1]
-		static int indexjj = 0;
-		if (enableSimContact) {
-			//for (auto i = 0; i < force.size(); ++i)
-			//	force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
-			if (!objectPointCloudPtr->empty()) 
-				collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), force, enableForceReading);
-		}
-		else {
-			size_t k = 0;
-			for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
-				//FT::Data data;
-				//(*i)->read(data);
-				Twist wrench; 
-				SecTmReal t;
-				(*i)->readSensor(wrench, t);
-				//if (!data.wrench.isFinite())
-				//	throw Message(Message::LEVEL_ERROR, "handForceReader(): FT sensor %s is not finite.\ndata.wrench [% 8.4f, % 8.4f, % 8.4f % 8.4f, % 8.4f, % 8.4f]\nwrench [% 8.4f, % 8.4f, % 8.4f % 8.4f, % 8.4f, % 8.4f]", 
-				//		(*i)->getID().c_str(),
-				//		data.wrench.v.x, data.wrench.v.y, data.wrench.v.z, data.wrench.w.x, data.wrench.w.y, data.wrench.w.z,
-				//		wrench.v.x, wrench.v.y, wrench.v.z, wrench.w.x, wrench.w.y, wrench.w.z);
-
-				wrench.v.getColumn3(&force[k]);
-				wrench.w.getColumn3(&force[k+3]);
-				k += 6;
-			}
-		}
-
-//		debugRenderer.reset();
-//		size_t jointInCollision = enableSimContact && !objectPointCloudPtr->empty() ? collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), force, false) : 0;
-		if (indexjj++ % 10 == 0) {
-			collectFTInp(state, force);
-
-			//context.write("1 [%.3f %.3f %.3f %.3f %.3f %.3f] 2 [%.3f %.3f %.3f %.3f %.3f %.3f] 3 [%.3f %.3f %.3f %.3f %.3f %.3f]\r",
-			//	force[0], force[1], force[2], force[3], force[4], force[5],
-			//	force[6], force[7], force[8], force[9], force[10], force[11],
-			//	force[12], force[13], force[14], force[15], force[16], force[17]);
-		}
+//		return;
+//		grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
+//
+//		// associate random noise [-0.1, 0.1]
+//		//for (auto i = 0; i < force.size(); ++i)
+//		//	force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
+//		static int indexjj = 0;
+//		if (indexjj++ % 10 == 0) {
+//			if (enableSimContact) {
+//				if (!objectPointCloudPtr->empty()) 
+//					collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), force, enableForceReading);
+//			}
+//			else {
+//				size_t k = 0;
+//				for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
+//					//FT::Data data;
+//					//(*i)->read(data);
+//					Twist wrench; 
+//					SecTmReal t;
+//					(*i)->readSensor(wrench, t);
+//					//if (!data.wrench.isFinite())
+//					//	throw Message(Message::LEVEL_ERROR, "handForceReader(): FT sensor %s is not finite.\ndata.wrench [% 8.4f, % 8.4f, % 8.4f % 8.4f, % 8.4f, % 8.4f]\nwrench [% 8.4f, % 8.4f, % 8.4f % 8.4f, % 8.4f, % 8.4f]", 
+//					//		(*i)->getID().c_str(),
+//					//		data.wrench.v.x, data.wrench.v.y, data.wrench.v.z, data.wrench.w.x, data.wrench.w.y, data.wrench.w.z,
+//					//		wrench.v.x, wrench.v.y, wrench.v.z, wrench.w.x, wrench.w.y, wrench.w.z);
+//
+//					wrench.v.getColumn3(&force[k]);
+//					wrench.w.getColumn3(&force[k+3]);
+//					k += 6;
+//				}
+//			}
+//
+////		debugRenderer.reset();
+////		size_t jointInCollision = enableSimContact && !objectPointCloudPtr->empty() ? collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), force, false) : 0;
+//
+//			//if (indexjj++ % 10 == 0) {
+//			collectFTInp(state, force);
+//
+//			//context.write("1 [%.3f %.3f %.3f %.3f %.3f %.3f] 2 [%.3f %.3f %.3f %.3f %.3f %.3f] 3 [%.3f %.3f %.3f %.3f %.3f %.3f]\r",
+//			//	force[0], force[1], force[2], force[3], force[4], force[5],
+//			//	force[6], force[7], force[8], force[9], force[10], force[11],
+//			//	force[12], force[13], force[14], force[15], force[16], force[17]);
+//		}
 
 		if (!enableForceReading)
 			return;
@@ -880,12 +882,13 @@ bool R2GPlanner::create(const Desc& desc) {
 			enableForceReading = false;
 			pHeuristic->enableUnc = false;
 			pHeuristic->setPointCloudCollision(false);
-			Controller::State::Seq seq, out;
-			findTrajectory(lookupState(), &home, nullptr, 0, seq);
-			profile(this->trjDuration, seq, out, true);
-			sendTrajectory(out);
-			controller->waitForBegin();
-			controller->waitForEnd();
+			gotoConfig(home);
+			//Controller::State::Seq seq, out;
+			//findTrajectory(lookupState(), &home, nullptr, 0, seq);
+			//profile(this->trjDuration, seq, out, true);
+			//sendTrajectory(out);
+			//controller->waitForBegin();
+			//controller->waitForEnd();
 			//// repeat every send waypoint until trajectory end
 			//for (U32 i = 0; controller->waitForBegin(); ++i) {
 			//	if (universe.interrupted())
@@ -1888,6 +1891,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 	TwistSeq thumbFT, indexFT, wristFT;
 	TwistSeq rawThumbFT, rawIndexFT, rawWristFT;
 	FT::Data thumbData, indexData, wristData;
+	grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
 	// repeat every send waypoint until trajectory end
 	for (U32 i = 0; controller->waitForBegin(); ++i) {
 		if (universe.interrupted())
@@ -1895,28 +1899,40 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 		if (controller->waitForEnd(0))
 			break;
 
-		wristFTSensor->read(wristData);
-		wristFT.push_back(wristData.wrench);
-		Twist wwrench; SecTmReal wt;
-		wristFTSensor->readSensor(wwrench, wt);
-		rawWristFT.push_back(wwrench);
-
-		ftSensorSeq[0]->read(thumbData);
-		thumbFT.push_back(thumbData.wrench);
-		Twist wthumb; SecTmReal tt;
-		ftSensorSeq[0]->readSensor(wthumb, tt);
-		rawThumbFT.push_back(wthumb);
-
-		ftSensorSeq[1]->read(indexData);
-		indexFT.push_back(indexData.wrench);
-		Twist iwrench; SecTmReal it;
-		ftSensorSeq[1]->readSensor(iwrench, it);
-		rawIndexFT.push_back(iwrench);
-
 		// print every 10th robot state
 		if (i % 10 == 0) {
 			context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
-			Controller::State s = lookupState();
+
+			wristFTSensor->read(wristData);
+			wristFT.push_back(wristData.wrench);
+			Twist wwrench; SecTmReal wt;
+			wristFTSensor->readSensor(wwrench, wt);
+			rawWristFT.push_back(wwrench);
+
+			wristData.wrench.v.getColumn3(&force[0]);
+			wristData.wrench.w.getColumn3(&force[3]);
+
+			ftSensorSeq[0]->read(thumbData);
+			thumbFT.push_back(thumbData.wrench);
+			Twist wthumb; SecTmReal tt;
+			ftSensorSeq[0]->readSensor(wthumb, tt);
+			rawThumbFT.push_back(wthumb);
+
+			thumbData.wrench.v.getColumn3(&force[6]);
+			thumbData.wrench.w.getColumn3(&force[9]);
+
+			ftSensorSeq[1]->read(indexData);
+			indexFT.push_back(indexData.wrench);
+			Twist iwrench; SecTmReal it;
+			ftSensorSeq[1]->readSensor(iwrench, it);
+			rawIndexFT.push_back(iwrench);
+
+			indexData.wrench.v.getColumn3(&force[12]);
+			indexData.wrench.w.getColumn3(&force[15]);
+
+			Controller::State state = lookupState();
+			collectFTInp(state, force);
+
 			//RealSeq handTorques; handTorques.assign(dimensions(), REAL_ZERO);
 			//if (armHandForce) armHandForce->getHandForce(handTorques);
 			//forceInpSensorSeq.push_back(handTorques);
@@ -1924,10 +1940,10 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 			//Twist wrench; if (graspSensorForce) graspSensorForce->readSensor(wrench, s.t);
 			//ftSeq.push_back(wrench);
 
-			//if (!isGrasping && i > 150) {
-			//	enableForceReading = expectedCollisions(s);
-			//	//record = true;
-			//}
+			if (!isGrasping && i > 150) {
+				enableForceReading = expectedCollisions(state);
+				//record = true;
+			}
 			//if (!isGrasping && !enableForceReading && i > 150 && expectedCollisions(s))
 			//	enableForceReading = true;
 		}
