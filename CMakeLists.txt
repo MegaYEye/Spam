@@ -43,6 +43,7 @@ endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
 
 option(BUILD_SPAM_CORE "Build Spam Core library" YES)
 option(BUILD_SPAM_HBPLAN "Build Spam hypothesis-based planning library" YES)
+option(BUILD_SPAM_MCPLAN "Build Spam monte carlo planning library" YES)
 
 ###############################################################################
 # Applications
@@ -58,6 +59,7 @@ option(BUILD_SPAM_DATA_R2GTRAJECTORY "Build Spam data R2G trajectory library" YE
 ###############################################################################
 # Demos 
 option(BUILD_SPAM_DEMO_R2G "Build Spam demo reach-to-grasp library" YES)
+option(BUILD_SPAM_DEMO_TACTILE "Build Spam demo tactile exploration library" YES)
 
 ###############################################################################
 
@@ -448,6 +450,71 @@ ENDIF (BUILD_SPAM_HBPLAN)
 
 ###############################################################################
 #
+# MCPLAN library
+#
+###############################################################################
+IF (BUILD_SPAM_MCPLAN)
+	SET(MCPLAN_HEADERS
+		${PROJECT_ROOT}/include/Spam/MCPlan/Covs.h
+		${PROJECT_ROOT}/include/Spam/MCPlan/CovLaplace.h
+		${PROJECT_ROOT}/include/Spam/MCPlan/CovThinPlate.h
+		${PROJECT_ROOT}/include/Spam/MCPlan/Defs.h
+		${PROJECT_ROOT}/include/Spam/MCPlan/GaussianProcess.h
+		${PROJECT_ROOT}/include/Spam/MCPlan/Heuristic.h
+		${PROJECT_ROOT}/include/Spam/MCPlan/Model.h
+		${PROJECT_ROOT}/include/Spam/MCPlan/Planner.h
+		${PROJECT_ROOT}/include/Spam/MCPlan/RRT.h
+		${PROJECT_ROOT}/include/Spam/MCPlan/RRTree.h
+		${PROJECT_ROOT}/include/Spam/MCPlan/SampleSet.h
+	)
+	SET(MCPLAN_SOURCES
+		${PROJECT_ROOT}/src/Spam/MCPlan/Heuristic.cpp
+		${PROJECT_ROOT}/src/Spam/MCPlan/Model.cpp
+		${PROJECT_ROOT}/src/Spam/MCPlan/Planner.cpp
+		${PROJECT_ROOT}/src/Spam/MCPlan/RRT.cpp
+		${PROJECT_ROOT}/src/Spam/MCPlan/SampleSet.cpp
+	)
+	if(BUILD_DYNAMIC_LIBS)
+		ADD_LIBRARY(SpamMCPlan SHARED ${MCPLAN_HEADERS} ${MCPLAN_SOURCES})
+		#SET_TARGET_PROPERTIES(SpamSpam PROPERTIES COMPILE_FLAGS ${CMAKE_DLL_EXPORT_FLAGS})
+	else(BUILD_DYNAMIC_LIBS)
+		ADD_LIBRARY(SpamMCPlan STATIC ${MCPLAN_HEADERS} ${MCPLAN_SOURCES})
+	endif(BUILD_DYNAMIC_LIBS)
+	if (WIN32)
+		TARGET_LINK_LIBRARIES(SpamMCPlan SpamCore
+			optimized GolemPlan${CMAKE_RELEASE_POSTFIX} debug GolemPlan${CMAKE_DEBUG_POSTFIX}
+			optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
+			optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
+            optimized GolemDeviceMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceMultiCtrl${CMAKE_DEBUG_POSTFIX}
+		)
+	elseif (UNIX)
+		TARGET_LINK_LIBRARIES(SpamMCPlan SpamCore
+			optimized GolemPlan${CMAKE_RELEASE_POSTFIX} debug GolemPlan${CMAKE_DEBUG_POSTFIX}
+			#optimized GolemUICtrl${CMAKE_RELEASE_POSTFIX} debug GolemUICtrl${CMAKE_DEBUG_POSTFIX}
+			optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
+			optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
+            optimized GolemDeviceMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceMultiCtrl${CMAKE_DEBUG_POSTFIX}
+	)
+	endif()	
+	SET_PROPERTY(TARGET SpamMCPlan PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
+	SET_PROPERTY(TARGET SpamMCPlan PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
+	SET_PROPERTY(TARGET SpamMCPlan PROPERTY PROJECT_LABEL "MCPlan")
+	SET_PROPERTY(TARGET SpamMCPlan PROPERTY FOLDER "Spam")
+	if(BUILD_DYNAMIC_LIBS)
+		if (WIN32)
+			INSTALL(TARGETS SpamMCPlan RUNTIME DESTINATION bin COMPONENT core_libs)
+		elseif (UNIX)
+			INSTALL(TARGETS SpamMCPlan LIBRARY DESTINATION bin COMPONENT core_libs)
+		endif()
+	else(BUILD_DYNAMIC_LIBS)
+		INSTALL(TARGETS SpamMCPlan ARCHIVE DESTINATION lib COMPONENT core_libs)
+	endif(BUILD_DYNAMIC_LIBS)
+	INSTALL(FILES ${HBPLAN_HEADERS} DESTINATION include/Spam/MCPlan/ COMPONENT core_headers)
+	SOURCE_GROUP("Include Files" FILES ${HBPLAN_HEADERS})
+ENDIF (BUILD_SPAM_MCPLAN)
+
+###############################################################################
+#
 # APP library
 #
 ###############################################################################
@@ -675,7 +742,7 @@ ENDIF (BUILD_SPAM_DATA_R2GTRAJECTORY)
 
 ###############################################################################
 #
-# Spam demo
+# Spam demo R2G
 #
 ###############################################################################
 IF(BUILD_SPAM_DEMO_R2G)
@@ -686,22 +753,22 @@ IF(BUILD_SPAM_DEMO_R2G)
 		${PROJECT_ROOT}/include/Spam/Demo/R2GPlanner/R2GDemo.h
 	)
 	SET(DEMO_R2G_FILES
-		${PROJECT_ROOT}/resources/Spam/Demo/SpamDemoR2G_RobotBoris.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/SpamDemoR2G_RobotBorisSim.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/SpamDataBeliefDemoR2G.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraDepthSimDemoR2G.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraKinectDemoR2G.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraOpenCVDemoR2G.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraOpenGLDemoR2G.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraOpenNIDemoR2G.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraPointGreyDemoR2G.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspCameraRobotDepthDemoR2G.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataContactModelDemoR2G.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataContactQueryDemoR2G.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataImageDemoR2G.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataPointsCurvDemoR2G.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataTrajectoryDemoR2G.xml
-		${PROJECT_ROOT}/resources/Spam/Demo/GraspDataVideoDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/SpamDemoR2G_RobotBoris.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/SpamDemoR2G_RobotBorisSim.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/SpamDataBeliefDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraDepthSimDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraKinectDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraOpenCVDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraOpenGLDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraOpenNIDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraPointGreyDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraRobotDepthDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspDataContactModelDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspDataContactQueryDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspDataImageDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspDataPointsCurvDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspDataTrajectoryDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspDataVideoDemoR2G.xml
 	)
 	
 	ADD_EXECUTABLE(SpamDemoR2G ${DEMO_R2G_SOURCES} ${DEMO_R2G_HEADERS} ${DEMO_R2G_FILES})
@@ -725,6 +792,44 @@ IF(BUILD_SPAM_DEMO_R2G)
 	SOURCE_GROUP("Include Files" FILES ${DEMO_R2G_HEADERS})
 	SOURCE_GROUP("Resource Files" FILES ${DEMO_R2G_FILES})
 ENDIF(BUILD_SPAM_DEMO_R2G)
+
+###############################################################################
+#
+# Spam demo
+#
+###############################################################################
+IF(BUILD_SPAM_DEMO_TACTILE)
+	SET(DEMO_TACTILE_SOURCES
+		${PROJECT_ROOT}/src/Spam/Demo/TactileExploration/Player.cpp
+	)
+	SET(DEMO_TACTILE_HEADERS
+		${PROJECT_ROOT}/include/Spam/Demo/TactileExploration/Player.h
+	)
+	SET(DEMO_TACTILE_FILES
+		${PROJECT_ROOT}/resources/Spam/Demo/TactileExploration/SpamDemoRRT_RobotBorisSim.xml
+	)
+	
+	ADD_EXECUTABLE(SpamDemoTactileExploration ${DEMO_TACTILE_SOURCES} ${DEMO_TACTILE_HEADERS} ${DEMO_TACTILE_FILES})
+	if (WIN32)
+		SET_TARGET_PROPERTIES(SpamDemoTactileExploration PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS}")
+	elseif (UNIX)
+		SET_TARGET_PROPERTIES(SpamDemoTactileExploration PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -Wno-invalid-offsetof")
+	endif()
+	TARGET_LINK_LIBRARIES(SpamDemoTactileExploration SpamApp SpamMCPlan)
+	COPY_FILES(SpamDemoTactileExploration ${RUNTIME_OUTPUT_DIRECTORY} ${DEMO_R2G_FILES})
+	SET_PROPERTY(TARGET SpamDemoTactileExploration PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
+	SET_PROPERTY(TARGET SpamDemoTactileExploration PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
+	
+	INSTALL(TARGETS SpamDemoTactileExploration RUNTIME DESTINATION bin COMPONENT demo_execs)
+	INSTALL(FILES ${DEMO_TACTILE_HEADERS} DESTINATION include/Spam/Demo/TactileExploration/ COMPONENT demo_headers)
+	INSTALL(FILES ${DEMO_TACTILE_SOURCES} DESTINATION src/Spam/Demo/TactileExploration/ COMPONENT demo_sources)
+	INSTALL(FILES ${DEMO_TACTILE_FILES} DESTINATION bin COMPONENT demo_configs)
+
+	SET_PROPERTY(TARGET SpamDemoTactileExploration PROPERTY PROJECT_LABEL "TactileExploration")
+	SET_PROPERTY(TARGET SpamDemoTactileExploration PROPERTY FOLDER "Spam/Demo")
+	SOURCE_GROUP("Include Files" FILES ${DEMO_TACTILE_HEADERS})
+	SOURCE_GROUP("Resource Files" FILES ${DEMO_TACTILE_FILES})
+ENDIF(BUILD_SPAM_DEMO_TACTILE)
 
 ###############################################################################
 #

@@ -475,19 +475,18 @@ public:
 
 		/** set up the trial */
 		virtual void setup(const golem::Context &context,  golem::Rand &rand) {
-			using namespace golem;
-			Mat33 rot = Mat33::identity();
-			rot.rotZ(rand.nextUniform<Real>()*queryStdDev.ang);
-			Vec3 v(REAL_ONE, REAL_ONE, REAL_ONE);
-			Vec3 vquery = v*-queryStdDev.lin;
-			queryPointsTrn.set(vquery + Vec3(rand.nextUniform<Real>(), rand.nextUniform<Real>(), rand.nextUniform<Real>())*queryStdDev.lin * 2, rot);
+			golem::Mat33 rot = golem::Mat33::identity();
+			rot.rotZ(rand.nextUniform<golem::Real>()*queryStdDev.ang);
+			golem::Vec3 v(golem::REAL_ONE, golem::REAL_ONE, golem::REAL_ONE);
+			golem::Vec3 vquery = v*-queryStdDev.lin;
+			queryPointsTrn.set(vquery + golem::Vec3(rand.nextUniform<golem::Real>(), rand.nextUniform<golem::Real>(), rand.nextUniform<golem::Real>())*queryStdDev.lin * 2, rot);
 			queryPointsTrn.p.z *= 0.01;
 			if (!silent) context.write("trialData->queryPointsTrn <%f %f %f> [%f %f %f %f] (lin=%f, ang=%f)\n", queryPointsTrn.p.x, queryPointsTrn.p.y, queryPointsTrn.p.z,
 				queryPointsTrn.q.w, queryPointsTrn.q.x, queryPointsTrn.q.y, queryPointsTrn.q.z, queryStdDev.lin, queryStdDev.ang);
-			rot = Mat33::identity();
-			rot.rotZ(rand.nextUniform<Real>()*objPoseStdDev.ang);
-			Vec3 vobj = v*-objPoseStdDev.lin;
-			objectPoseTrn.set(vobj + Vec3(rand.nextUniform<Real>(), rand.nextUniform<Real>(), rand.nextUniform<Real>())*objPoseStdDev.lin * 2, rot);
+			rot = golem::Mat33::identity();
+			rot.rotZ(rand.nextUniform<golem::Real>()*objPoseStdDev.ang);
+			golem::Vec3 vobj = v*-objPoseStdDev.lin;
+			objectPoseTrn.set(vobj + golem::Vec3(rand.nextUniform<golem::Real>(), rand.nextUniform<golem::Real>(), rand.nextUniform<golem::Real>())*objPoseStdDev.lin * 2, rot);
 			if (!silent) context.write("trialData->objectPoseTrn <%f %f %f> [%f %f %f %f] (lin=%f, ang=%f)\n", objectPoseTrn.p.x, objectPoseTrn.p.y, objectPoseTrn.p.z,
 				objectPoseTrn.q.w, objectPoseTrn.q.x, objectPoseTrn.q.y, objectPoseTrn.q.z, objPoseStdDev.lin, objPoseStdDev.ang);
 		}
@@ -755,14 +754,14 @@ public:
 			hypothesisAppearance.setToDefault();
 			debugAppearance.setToDefault();
 			groundTruthAppearance.setToDefault();
-			//featureFrameSize.set(golem::Real(0.1));
-			//distribFrameSize.set(golem::Real(0.01));
+			//featureFrameSize.set(golem::<golem::Real(0.1));
+			//distribFrameSize.set(golem::<golem::Real(0.01));
 			distribSamples = 100;
 
 			//actionManip.configspace = false;
 			//actionManip.position = actionManip.orientation = true;
 			//actionManip.w.setId();
-			//actionManip.w.p.z += -golem::Real(0.15);
+			//actionManip.w.p.z += -golem::<golem::Real(0.15);
 
 			//numPoses = 100;
 			//numHypotheses = 5;
@@ -800,6 +799,11 @@ public:
 
 	/** Process algortihm */
 //	virtual void processPoints(Data::Map::const_iterator dataPtr, const Selection& selection, const bool silent = false);
+	/** Perform trajectory */
+	virtual void perform(const std::string& data, const std::string& item, const golem::Controller::State::Seq& trajectory, bool testTrajectory = true) {
+		grasp::Player::perform(data, item, trajectory, testTrajectory);
+	}
+
 
 	/** data collection */
 	TrialData::Map& getTrialData() {

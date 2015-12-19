@@ -53,16 +53,24 @@ void spam::R2GPlanner::Data::create(const Desc& desc) {
 	release = false;
 }
 
+void spam::R2GPlanner::Data::setOwner(grasp::Manager* owner) {
+	PosePlanner::Data::setOwner(owner);
+	this->owner = grasp::is<R2GPlanner>(owner);
+	if (!this->owner)
+		throw Message(Message::LEVEL_CRIT, "pacman::Demo::Data::setOwner(): unknown data owner");
+}
+
+
 void spam::R2GPlanner::Data::createRender() {
 	context.write("R2G::createRender():\n");
 	PosePlanner::Data::createRender();
 	{
 		golem::CriticalSectionWrapper csw(owner->getCS());
 		owner->debugRenderer.reset();
-		owner->debugRenderer.setColour(RGBA::BLACK);
-		owner->debugRenderer.setLineWidth(Real(2.0));
-		context.write("createRender(): Hand bounds size = %d\n", owner->handBounds.size());
-		owner->debugRenderer.addWire(owner->handBounds.begin(), owner->handBounds.end());
+		//owner->debugRenderer.setColour(RGBA::BLACK);
+		//owner->debugRenderer.setLineWidth(Real(2.0));
+		//context.write("createRender(): Hand bounds size = %d\n", owner->handBounds.size());
+		//owner->debugRenderer.addWire(owner->handBounds.begin(), owner->handBounds.end());
 	}
 }
 
@@ -205,9 +213,12 @@ bool R2GPlanner::create(const Desc& desc) {
 	Sensor::Seq sensorSeq = armHandForce->getSensorSeq();
 	// NOTE: skips the sensor at the wrist
 	for (auto i = sensorSeq.begin(); i != sensorSeq.end(); ++i) {
-		if (i == sensorSeq.begin()) continue;
+		//		if (i == sensorSeq.begin()) continue;
 		FT* sensor = grasp::is<FT>(*i);
 		if (sensor)
+		if (i == sensorSeq.begin())
+			wristFTSensor = sensor;
+		else
 			ftSensorSeq.push_back(sensor);
 		else
 			context.write("FT sensor is not available\n");
@@ -1450,6 +1461,12 @@ bool R2GPlanner::create(const Desc& desc) {
 		return;
 	}));
 
+	menuCmdMap.insert(std::make_pair("O", [=]() {
+		record = !record;
+		context.write("record ft %s\n", record ? "ON" : "OFF");
+	}));
+
+
 	ragDesc = desc;
 
 	return true;
@@ -1779,6 +1796,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 	//golem::Controller::State::Seq completeTrajectory = initTrajectory;
 	//completeTrajectory.insert(completeTrajectory.end(), trajectory.begin(), trajectory.end());
 
+	context.write("R2GPlanner::perform()");
 	// create trajectory item
 	grasp::data::Item::Ptr itemTrajectory;
 	grasp::data::Handler::Map::const_iterator handlerPtr = handlerMap.find(trajectoryHandler);
@@ -1834,9 +1852,42 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 	sendTrajectory(trajectory);
 
 	bool record2 = brecord ? true : false;
+	//Controller::State::Seq robotPoses; robotPoses.clear();
+	//TwistSeq ftSeq; ftSeq.clear();
+	//std::vector<grasp::RealSeq> forceInpSensorSeq;
+	//// repeat every send waypoint until trajectory end
+	//for (U32 i = 0; controller->waitForBegin(); ++i) {
+	//	if (universe.interrupted())
+	//		throw Exit();
+	//	if (controller->waitForEnd(0))
+	//		break;
+
+	//	// print every 10th robot state
+	//	if (i % 10 == 0) {
+	//		context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
+	//		Controller::State s = lookupState();
+	//		RealSeq handTorques; handTorques.assign(dimensions(), REAL_ZERO);
+	//		if (armHandForce) armHandForce->getHandForce(handTorques);
+	//		forceInpSensorSeq.push_back(handTorques);
+	//		robotPoses.push_back(s);
+	//		Twist wrench; if (graspSensorForce) graspSensorForce->readSensor(wrench, s.t);
+	//		ftSeq.push_back(wrench);
+	//		if (!isGrasping && i > 150) {
+	//			enableForceReading = expectedCollisions(s);
+	//			//record = true;
+	//		}
+	//		//if (!isGrasping && !enableForceReading && i > 150 && expectedCollisions(s))
+	//		//	enableForceReading = true;
+	//	}
+	//}
+//	enableForceReading = false;
+
 	Controller::State::Seq robotPoses; robotPoses.clear();
 	TwistSeq ftSeq; ftSeq.clear();
 	std::vector<grasp::RealSeq> forceInpSensorSeq;
+	TwistSeq thumbFT, indexFT, wristFT;
+	TwistSeq rawThumbFT, rawIndexFT, rawWristFT;
+	FT::Data thumbData, indexData, wristData;
 	// repeat every send waypoint until trajectory end
 	for (U32 i = 0; controller->waitForBegin(); ++i) {
 		if (universe.interrupted())
@@ -1844,25 +1895,127 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 		if (controller->waitForEnd(0))
 			break;
 
+		wristFTSensor->read(wristData);
+		wristFT.push_back(wristData.wrench);
+		Twist wwrench; SecTmReal wt;
+		wristFTSensor->readSensor(wwrench, wt);
+		rawWristFT.push_back(wwrench);
+
+		ftSensorSeq[0]->read(thumbData);
+		thumbFT.push_back(thumbData.wrench);
+		Twist wthumb; SecTmReal tt;
+		ftSensorSeq[0]->readSensor(wthumb, tt);
+		rawThumbFT.push_back(wthumb);
+
+		ftSensorSeq[1]->read(indexData);
+		indexFT.push_back(indexData.wrench);
+		Twist iwrench; SecTmReal it;
+		ftSensorSeq[1]->readSensor(iwrench, it);
+		rawIndexFT.push_back(iwrench);
+
 		// print every 10th robot state
 		if (i % 10 == 0) {
 			context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
 			Controller::State s = lookupState();
-			RealSeq handTorques; handTorques.assign(dimensions(), REAL_ZERO);
-			if (armHandForce) armHandForce->getHandForce(handTorques);
-			forceInpSensorSeq.push_back(handTorques);
-			robotPoses.push_back(s);
-			Twist wrench; if (graspSensorForce) graspSensorForce->readSensor(wrench, s.t);
-			ftSeq.push_back(wrench);
-			if (!isGrasping && i > 150) {
-				enableForceReading = expectedCollisions(s);
-				//record = true;
-			}
+			//RealSeq handTorques; handTorques.assign(dimensions(), REAL_ZERO);
+			//if (armHandForce) armHandForce->getHandForce(handTorques);
+			//forceInpSensorSeq.push_back(handTorques);
+			//robotPoses.push_back(s);
+			//Twist wrench; if (graspSensorForce) graspSensorForce->readSensor(wrench, s.t);
+			//ftSeq.push_back(wrench);
+
+			//if (!isGrasping && i > 150) {
+			//	enableForceReading = expectedCollisions(s);
+			//	//record = true;
+			//}
 			//if (!isGrasping && !enableForceReading && i > 150 && expectedCollisions(s))
 			//	enableForceReading = true;
 		}
 	}
 	enableForceReading = false;
+
+	std::stringstream prefixWrist;
+	prefixWrist << std::fixed << std::setprecision(3) << "./data/boris/experiments/ft_readings/wrist" << "-" << context.getTimer().elapsed();
+	std::stringstream prefixThumb;
+	prefixThumb << std::fixed << std::setprecision(3) << "./data/boris/experiments/ft_readings/thumb" << "-" << context.getTimer().elapsed();
+	std::stringstream prefixIndex;
+	prefixIndex << std::fixed << std::setprecision(3) << "./data/boris/experiments/ft_readings/index" << "-" << context.getTimer().elapsed();
+
+	std::stringstream prefixRawWrist;
+	prefixRawWrist << std::fixed << std::setprecision(3) << "./data/boris/experiments/ft_readings/raw_wrist" << "-" << context.getTimer().elapsed();
+	std::stringstream prefixRawThumb;
+	prefixRawThumb << std::fixed << std::setprecision(3) << "./data/boris/experiments/ft_readings/raw_thumb" << "-" << context.getTimer().elapsed();
+	std::stringstream prefixRawIndex;
+	prefixRawIndex << std::fixed << std::setprecision(3) << "./data/boris/experiments/ft_readings/raw_index" << "-" << context.getTimer().elapsed();
+
+	auto strFT = [=](std::ostream& ostr, const Twist& twist) {
+		ostr << twist.v.x << "\t" << twist.v.y << "\t" << twist.v.z << "\t" << twist.w.x << "\t" << twist.w.y << "\t" << twist.w.z << "\t";
+	};
+	auto strFTDesc = [=](std::ostream& ostr, const std::string& prefix) {
+		ostr << prefix << "vx" << "\t" << prefix << "vy" << "\t" << prefix << "vz" << "\t" << prefix << "wx" << "\t" << prefix << "wy" << "\t" << prefix << "wz" << "\t";
+	};
+
+	// writing data into a text file, open file
+	const std::string wristPath = grasp::makeString("%s.txt", prefixWrist.str().c_str());
+	golem::mkdir(wristPath.c_str()); // make sure the directory exists
+	std::ofstream wristSS(wristPath);
+	const std::string rawWristPath = grasp::makeString("%s.txt", prefixRawWrist.str().c_str());
+	golem::mkdir(rawWristPath.c_str()); // make sure the directory exists
+	std::ofstream rawWristSS(rawWristPath);
+	const std::string thumbPath = grasp::makeString("%s.txt", prefixThumb.str().c_str());
+	golem::mkdir(thumbPath.c_str()); // make sure the directory exists
+	std::ofstream thumbSS(thumbPath);
+	const std::string rawThumbPath = grasp::makeString("%s.txt", prefixRawThumb.str().c_str());
+	golem::mkdir(rawThumbPath.c_str()); // make sure the directory exists
+	std::ofstream rawThumbSS(rawThumbPath);
+	const std::string indexPath = grasp::makeString("%s.txt", prefixIndex.str().c_str());
+	golem::mkdir(indexPath.c_str()); // make sure the directory exists
+	std::ofstream indexSS(indexPath);
+	const std::string rawIndexPath = grasp::makeString("%s.txt", prefixRawIndex.str().c_str());
+	golem::mkdir(rawIndexPath.c_str()); // make sure the directory exists
+	std::ofstream rawIndexSS(rawIndexPath);
+
+	// writing data into a text file, prepare headers
+	wristSS << "#index" << "\t";
+	rawWristSS << "#index" << "\t";
+	thumbSS << "#index" << "\t";
+	rawThumbSS << "#index" << "\t";
+	indexSS << "#index" << "\t";
+	rawIndexSS << "#index" << "\t";
+	strFTDesc(wristSS, std::string("ft_"));
+	strFTDesc(rawWristSS, std::string("ft_"));
+	strFTDesc(thumbSS, std::string("ft_"));
+	strFTDesc(rawThumbSS, std::string("ft_"));
+	strFTDesc(indexSS, std::string("ft_"));
+	strFTDesc(rawIndexSS, std::string("ft_"));
+	wristSS << std::endl;
+	rawWristSS << std::endl;
+	thumbSS << std::endl;
+	rawThumbSS << std::endl;
+	indexSS << std::endl;
+	rawIndexSS << std::endl;
+
+	for (U32 indexjj = 0; indexjj < thumbFT.size(); ++indexjj) {
+		wristSS << indexjj << "\t";
+		rawWristSS << indexjj << "\t";
+		thumbSS << indexjj << "\t";
+		rawThumbSS << indexjj << "\t";
+		indexSS << indexjj << "\t";
+		rawIndexSS << indexjj << "\t";
+		strFT(wristSS, wristFT[indexjj]);
+		strFT(rawWristSS, rawWristFT[indexjj]);
+		strFT(thumbSS, thumbFT[indexjj]);
+		strFT(rawThumbSS, rawThumbFT[indexjj]);
+		strFT(indexSS, indexFT[indexjj]);
+		strFT(rawIndexSS, rawIndexFT[indexjj]);
+		wristSS << std::endl;
+		rawWristSS << std::endl;
+		thumbSS << std::endl;
+		rawThumbSS << std::endl;
+		indexSS << std::endl;
+		rawIndexSS << std::endl;
+	}
+
 	if (record2) {
 		std::stringstream prefix;
 		prefix << std::fixed << std::setprecision(3) << "./data/boris/experiments/" << trialPtr->second->object.c_str() << "/" << trialPtr->second->name <<  "/obs_model_data/" << item << "-" << context.getTimer().elapsed();

@@ -122,8 +122,8 @@ Collision::Collision(const grasp::Manipulator& manipulator, const Desc& desc) : 
 		ftBounds[j].create(manipulator.getJointBounds(j));
 		size_t k = 0;
 		for (Bounds::Triangle::SeqSeq::iterator t0 = ftBounds[j].getTriangles().begin(); t0 != ftBounds[j].getTriangles().end(); ++t0)
-			for (auto t1 = t0->begin(); t1 != t0->end(); ++t1)
-				t1->face = faces[k++];
+			//for (auto t1 = t0->begin(); t1 != t0->end(); ++t1)
+			//	t1->face = faces[k++];
 		ftJoints.push_back(j);
 	}
 	// base

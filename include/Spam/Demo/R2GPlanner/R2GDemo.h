@@ -54,7 +54,7 @@ namespace spam {
 
 //------------------------------------------------------------------------------
 
-/** Grasp demo. */
+/** Reach-2-grasp demo. */
 class R2GDemo : public R2GPlanner {
 public:
 	/** R2G demo description */

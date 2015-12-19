@@ -95,6 +95,9 @@ public:
 		/** Enable the release of the object before withdrawing */
 		bool release;
 
+		/** Manager */
+		virtual void setOwner(grasp::Manager* owner);
+
 		/** Creates render buffer of the bundle without items */
 		virtual void createRender();
 
@@ -160,6 +163,8 @@ public:
 		virtual void setToDefault() {
 			PosePlanner::Desc::setToDefault();
 
+			dataDesc.reset(new Data::Desc);
+
 			trjDuration = golem::SecTmReal(2.0);
 			trjIdle = golem::SecTmReal(1.0);
 			trjExtrapolFac = golem::Real(1.0);
@@ -208,6 +213,7 @@ public:
 protected:
 	/** Mode of Active Ctrl */
 	grasp::ActiveCtrlForce::Mode armMode, handMode;
+	grasp::FT* wristFTSensor;
 	/** Sequence of FT sensors */
 	FTSensorSeq ftSensorSeq;
 	/** Pointer to the hand active controller */
