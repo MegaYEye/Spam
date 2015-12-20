@@ -139,12 +139,16 @@ public:
 			k(n) = cf->get(x, x);
 			kdiff(n) = cf->getDiff(x, x);
 			
-			const Eigen::VectorXd invKstar = k.inverse();
+			//context.write("K rows=%d cols=%d\n", k.rows(), k.cols());
+
+			Eigen::MatrixXd invKstar = k.transpose();
+			//context.write("K^T rows=%d cols=%d\n", invKstar.rows(), invKstar.cols());
 			Vec yy = sampleset->y();
 			yy.push_back(fx);
-			const Eigen::VectorXd invKstarY = invKstar * convertToEigen(yy);
+			const double invKstarY = invKstar.row(0).dot(convertToEigen(yy));
+			//context.write("K^TY rows=%d cols=%d\n", invKstarY.rows(), invKstarY.cols());
 			for (size_t i = 0; i < nnew; ++i)
-				normal += invKstarY(n)*kdiff(i)*(convertToEigen(sampleset->x(i) - x));
+				normal += invKstarY*kdiff(i)*(convertToEigen(sampleset->x(i) - x));
 			normal.normalize();
 			computeTangentBasis(normal, tx, ty);
 //		}

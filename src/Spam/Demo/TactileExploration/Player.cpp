@@ -208,6 +208,14 @@ void RRTPlayer::create(const Desc& desc) {
 				context.write("f(x_star) = %f -> f_star = %f v_star = %f\n", y, f_star, v_star);
 		}
 		context.write("\n");
+
+		/*****  Evaluate point and normal  *********************************************/
+		Real fx, varx; 
+		Eigen::Vector3d normal, tx, ty;
+		gp->evaluate(x_star[0], fx, varx, normal, tx, ty);
+		if (prtPreds)
+			context.write("Evaluate[0] -> f=%f var=%f normal=[%f %f %f]\n", fx, varx, normal(0), normal(1), normal(2));
+
 		/*****  Add point to the model  *********************************************/
 		gp->add_patterns(x_star, y_star);
 
