@@ -56,6 +56,178 @@ namespace spam {
 
 //------------------------------------------------------------------------------
 
+class SensorBundle : public golem::Runnable  {
+public:
+	/** Force reader. Overwrite the ActiveCtrl reader. this retrieves the triggered joints */
+	typedef std::function<std::vector<size_t>(grasp::RealSeq&)> ForceReader;
+	/** Force reader. Overwrite the ActiveCtrl reader. this retrieves the triggered joints */
+	typedef std::function<void(grasp::RealSeq&)> ForceFilter;
+	/** FT Sequence */
+	typedef std::vector<grasp::FT*> FTSensorSeq;
+
+	class Desc {
+	public:
+		/** Force reader */
+		ForceReader forceReader;
+		/** Collect history of FT readings for statistics */
+		ForceFilter collectInp;
+		/** FT 2-oreder high-pass filter */
+		ForceFilter forceFilter;
+
+		grasp::Sensor::Seq sensorSeq;
+
+		/** Dimensionality of the filter (DoFs)*/
+		golem::U32 dimensionality;
+
+		/** Number of averaging steps before stopping collecting readings */
+		golem::U32 windowSize;
+		golem::I32 steps;
+		/** Incrememnt */
+		golem::Real delta;
+		/** gaussian filter mask */
+		grasp::RealSeq mask;
+		/** Variance for the gaussian filter */
+		golem::Real sigma;
+
+		/** Working thread priority */
+		golem::Thread::Priority threadPriority;
+		/** Cycle time */
+		golem::SecTmReal tCycle;
+		/** Idle time */
+		golem::SecTmReal tIdle;
+	
+		Desc() {
+			setToDefault();
+		}
+		void setToDefault() {
+			forceReader = nullptr;
+			collectInp = nullptr;
+			forceFilter = nullptr;
+
+			sensorSeq.clear();
+
+			dimensionality = 18;
+
+			steps = 0;
+			windowSize = 40;
+			delta = .1;
+			mask.assign(windowSize, golem::REAL_ZERO);
+			sigma = golem::REAL_ONE;
+
+			threadPriority = golem::Thread::HIGHEST;
+			tCycle = golem::SecTmReal(0.02);
+			tIdle = golem::SecTmReal(0.01);
+		}
+		bool isValid() {
+			return true;
+		}
+	};
+
+	/** Force reader */
+	ForceReader forceReader;
+	/** Collect history of FT readings for statistics */
+	ForceFilter collectInp;
+	/** FT 2-oreder high-pass filter */
+	ForceFilter forceFilter;
+
+	/** Set the sequence of sensors */
+	void setSensorSeq(const grasp::Sensor::Seq& sensorSeq);
+
+	inline grasp::RealSeq getFilteredForces() {
+		return handFilteredForce;
+	}
+
+	///** Emergency mode handler */
+	//void setForceReaderHandler(ThreadTask::Function forceReaderHandler);
+
+	SensorBundle(const golem::Context& context);
+
+	void create(const Desc& desc);
+
+protected:
+	/** Context */
+	golem::Context context;
+	/** Description file */
+	Desc desc;
+
+	/** Thread terminate condition */
+	volatile bool bTerminate;
+	/** I/O thread */
+	golem::Thread thread;
+	/** I/O thread priority */
+	golem::Thread::Priority threadPriority;
+	/** Inter-thread signalling time out */
+	golem::MSecTmU32 threadTimeOut;
+
+	/** File to collect data from the ft sensor of the hand */
+	std::ofstream dataFTRaw, dataFTFiltered;
+
+	/** Sequence of FT sensors */
+	FTSensorSeq ftSensorSeq;
+
+	/** Dimensionality of the filter (DoFs)*/
+	golem::U32 dimensionality;
+
+	/** Number of averaging steps before stopping collecting readings */
+	golem::U32 windowSize;
+	golem::I32 steps;
+	golem::Real delta;
+	// gaussian filter mask
+	grasp::RealSeq mask;
+	/** Variance for the gaussian filter */
+	golem::Real sigma;
+
+	/** force reader access cs */
+	golem::CriticalSection cs;
+	/** Input force at sensor, sequence */
+	std::vector<grasp::RealSeq> forceInpSensorSeq;
+	/** Filtered forces for the hand */
+	grasp::RealSeq handFilteredForce;
+
+	// Return hand DOFs */
+	inline size_t dimensions() const { return dimensionality; }// (size_t)handInfo.getJoints().size();
+
+	///** Sersors read handler */
+	//ThreadTask::Function forceReaderHandler;
+	///** Force Reader handler thread */
+	//ThreadTask forceReaderHandlerThread;
+
+	template <typename _Real> inline _Real N(const _Real x, const _Real stdev) {
+		const _Real norm = golem::numeric_const<_Real>::ONE / (stdev*golem::Math::sqrt(2 * golem::numeric_const<_Real>::PI));
+		return norm*golem::Math::exp(-.5*golem::Math::sqr(_Real(x) / _Real(stdev))); // gaussian
+	};
+	// computes guassian on a vector
+	template <typename _Ptr, typename _Real> inline std::vector<_Real> N(_Ptr begin, _Ptr end, const size_t dim, const _Real stdev) {
+		std::vector<_Real> output;
+		output.assign(dim, golem::numeric_const<_Real>::ZERO);
+		size_t idx = 0;
+		for (_Ptr i = begin; i != end; ++i) {
+			output[idx++] = N(*i, stdev);
+		}
+		return output;
+	};
+
+	/** Communication function working in a separate thread. */
+	virtual void run();
+
+	/** Shuts down control thread and releases related resources */
+	void release();
+
+	/** User create is called just before launching I/O thread. */
+	virtual void userCreate() {}
+
+	/** I/O simulator timer */
+	golem::shared_ptr<golem::Sleep> sleep;
+	/** Time */
+	golem::SecTmReal tRead;
+	/** Cycle time */
+	golem::SecTmReal tCycle;
+	/** Idle time */
+	golem::SecTmReal tIdle;
+};
+
+//------------------------------------------------------------------------------
+
 /** 
 	RAGPlanner. 
 	Basic class for planning Reach-and-grasp trajectory.
@@ -240,6 +412,7 @@ protected:
 		}
 		return output;
     };
+	SensorBundle* sensorBundle;
 	/** I/O simulator timer */
 	golem::shared_ptr<golem::Sleep> sleep;
 	/** Time */

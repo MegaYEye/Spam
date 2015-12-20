@@ -36,6 +36,221 @@ using namespace spam;
 
 //------------------------------------------------------------------------------
 
+SensorBundle::SensorBundle(const Context& context) : context(context) {};
+
+void SensorBundle::create(const Desc& desc) {
+	for (auto i = desc.sensorSeq.begin(); i != desc.sensorSeq.end(); ++i) {
+		if (i == desc.sensorSeq.begin()) continue;
+		FT* sensor = grasp::is<FT>(*i);
+		if (sensor)
+			ftSensorSeq.push_back(sensor);
+		else
+			context.write("FT sensor is not available\n");
+	}
+
+	// write on file fts
+	auto strTorquesDesc = [=](std::ostream& ostr) {
+		ostr << "idx" << "\t" <<  "timestamp" << "\t" << "contact" << "\t" << "thumb_0" << "\t" << "thumb_1" << "\t" << "thumb_2" << "\t" << "thumb_3" << "\t" <<
+			"index_0" << "\t" << "index_1" << "\t" << "index_2" << "\t" << "index_3" << "\t" <<
+			"middle_0" << "\t" << "middle_1" << "\t" << "middle_2" << "\t" << "middle_3" << "\t" <<
+			"ring_0" << "\t" << "ring_1" << "\t" << "ring_2" << "\t" << "ring_3" << "\t" <<
+			"pinky_0" << "\t" << "pinky_1" << "\t" << "pinky_2" << "\t" << "pinky_3" << "\t";/* <<
+			"cthumb_0" << "\t" << "cthumb_1" << "\t" << "cthumb_2" << "\t" << "cthumb_3" << "\t" <<
+			"cindex_0" << "\t" << "cindex_1" << "\t" << "cindex_2" << "\t" << "cindex_3" << "\t" <<
+			"cmiddle_0" << "\t" << "cmiddle_1" << "\t" << "cmiddle_2" << "\t" << "cmiddle_3" << "\t" <<
+			"cring_0" << "\t" << "cring_1" << "\t" << "cring_2" << "\t" << "cring_3" << "\t" <<
+			"cpinky_0" << "\t" << "cpinky_1" << "\t" << "cpinky_2" << "\t" << "cpinky_3" << "\t";*/
+	};
+	std::stringstream prefix;
+	prefix << std::fixed << std::setprecision(3) << "./data/boris/experiments/ftsensors/ftsensors" << "-" << context.getTimer().elapsed();
+	//const std::string dataFTRawPath = makeString("%s_raw.txt", prefix.str().c_str());
+	//golem::mkdir(dataFTRawPath.c_str()); // make sure the directory exists
+	//dataFTRaw.open(dataFTRawPath);
+	//strTorquesDesc(dataFTRaw);
+	//dataFTRaw << std::endl;
+
+	const std::string dataFTFilteredPath = makeString("%s_filtered.txt", prefix.str().c_str());
+	golem::mkdir(dataFTFilteredPath.c_str()); // make sure the directory exists
+	dataFTFiltered.open(dataFTFilteredPath);
+	strTorquesDesc(dataFTFiltered);
+	dataFTFiltered << std::endl;
+
+	dimensionality = desc.dimensionality;
+
+	steps = desc.steps;
+	windowSize = desc.windowSize;
+	grasp::RealSeq v;
+	v.assign(windowSize + 1, REAL_ZERO);
+	delta = desc.delta;
+	sigma = desc.sigma;
+	Real i = -2;
+	for (I32 j = 0; j < windowSize + 1; j++) {
+		v[j] = N(i, REAL_ONE);
+		i += delta;
+	}
+
+	// compute the derivative mask=diff(v)
+	mask.assign(windowSize, REAL_ZERO);
+	for (I32 i = 0; i < windowSize; ++i)
+		mask[i] = v[i + 1] - v[i];
+	handFilteredForce.assign(dimensions(), REAL_ZERO);
+	// initialise table to memorise read forces size: dimensions() x windowSize
+	forceInpSensorSeq.resize(dimensions());
+	for (std::vector<RealSeq>::iterator i = forceInpSensorSeq.begin(); i != forceInpSensorSeq.end(); ++i)
+		i->assign(windowSize, REAL_ZERO);
+	// Forcereader utilities
+	collectInp = [&](grasp::RealSeq& force) {
+		//		golem::CriticalSectionWrapper csw(csHandForce);
+		for (I32 i = 0; i < dimensions(); ++i)
+			forceInpSensorSeq[i][steps] = force[i];
+		steps = (I32)(++steps % windowSize);
+		forceFilter(handFilteredForce);
+	};
+
+	forceFilter = [&](grasp::RealSeq& filteredforce) {
+		// find index as for circular buffer
+		auto findIndex = [&](const I32 idx) -> I32 {
+			return (I32)((steps + idx) % windowSize);
+		};
+		// high pass filter implementation
+		auto hpFilter = [&]() {
+			Real b = 1 / windowSize;
+
+		};
+		// gaussian filter
+		auto conv = [&]() -> grasp::RealSeq {
+			grasp::RealSeq output;
+			output.assign(dimensions(), REAL_ZERO);
+			{
+				golem::CriticalSectionWrapper csw(cs);
+				for (I32 i = 0; i < dimensions(); ++i) {
+					Real tmp = REAL_ZERO;
+					grasp::RealSeq& seq = forceInpSensorSeq[i];
+					// conv y[k] = x[k]h[0] + x[k-1]h[1] + ... + x[0]h[k]
+					for (I32 j = 0; j < windowSize; ++j) {
+						tmp += seq[findIndex(windowSize - j - 1)] * mask[j];
+					}
+					output[i] = tmp;
+				}
+			}
+			return output;
+		};
+
+		filteredforce = conv();
+	};
+
+	tRead = context.getTimer().elapsed();
+	//setForceReaderHandler([=]() {
+	//	RealSeq force;
+	//	force.assign(dimensions(), REAL_ZERO);
+	//	size_t k = 0;
+	//	for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
+	//		FT::Data data;
+	//		(*i)->read(data);
+	//	
+	//		data.wrench.v.getColumn3(&force[k]);
+	//		data.wrench.w.getColumn3(&force[k+3]);
+	//		k += 6;
+	//	}
+	//	collectInp(force);
+	//});
+
+	// user create
+	userCreate();
+
+	// launch thread
+	if (!thread.start(this))
+		throw MsgControllerThreadLaunch(Message::LEVEL_CRIT, "SensorBundle::create(): Unable to launch ft thread");
+	if (!thread.setPriority(desc.threadPriority))
+		throw MsgControllerThreadLaunch(Message::LEVEL_CRIT, "SensorBundle::create(): Unable to change SensorBundle thread priority");
+
+}
+
+//void SensorBundle::setForceReaderHandler(ThreadTask::Function forceReaderHandler) {
+//	golem::CriticalSectionWrapper csw(cs);
+//	this->forceReaderHandler = forceReaderHandler;
+//}
+
+void SensorBundle::run() {
+	auto strTorques = [=](std::ostream& ostr, const SecTmReal t, const grasp::RealSeq& forces) {
+		ostr << t << "\t";
+		for (auto i = 0; i < forces.size(); ++i)
+			ostr << forces[i] << "\t";
+	};
+
+	//if (ftSensorSeq.empty())
+	//	return;
+
+	sleep.reset(new golem::Sleep);
+
+	while (true) {
+		SecTmReal t = context.getTimer().elapsed();
+		if (t - tRead > tCycle) {
+			RealSeq force;
+			force.assign(dimensions(), REAL_ZERO);
+			size_t k = 0;
+			for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
+				FT::Data data;
+				(*i)->read(data);
+				data.wrench.v.getColumn3(&force[k]);
+				data.wrench.w.getColumn3(&force[k + 3]);
+				k += 6;
+			}
+			//		collectInp(force);
+			for (I32 i = 0; i < dimensions(); ++i)
+				forceInpSensorSeq[i][steps] = force[i];
+			steps = (I32)(++steps % windowSize);
+			auto findIndex = [&](const I32 idx) -> I32 {
+				return (I32)((steps + idx) % windowSize);
+			};
+			// high pass filter implementation
+			auto hpFilter = [&]() {
+				Real b = 1 / windowSize;
+
+			};
+			// gaussian filter
+			grasp::RealSeq output;
+			output.assign(dimensions(), REAL_ZERO);
+			for (I32 i = 0; i < dimensions(); ++i) {
+				Real tmp = REAL_ZERO;
+				grasp::RealSeq& seq = forceInpSensorSeq[i];
+				// conv y[k] = x[k]h[0] + x[k-1]h[1] + ... + x[0]h[k]
+				for (I32 j = 0; j < windowSize; ++j) {
+					tmp += seq[findIndex(windowSize - j - 1)] * mask[j];
+				}
+				output[i] = tmp;
+			}
+			{
+				golem::CriticalSectionWrapper csw(cs);
+				handFilteredForce = output;
+			}
+			strTorques(dataFTFiltered, t, handFilteredForce);
+			tRead = t;
+			context.write("SensorBundle::run(): Reading forces at time %f\n", t);
+		}
+		else
+			sleep->sleep(tIdle);
+	}
+}
+
+void SensorBundle::setSensorSeq(const Sensor::Seq& sensorSeq) {
+	for (auto i = sensorSeq.begin(); i != sensorSeq.end(); ++i) {
+		if (i == sensorSeq.begin()) continue;
+		FT* sensor = grasp::is<FT>(*i);
+		if (sensor)
+			ftSensorSeq.push_back(sensor);
+		else
+			context.write("FT sensor is not available\n");
+	}
+
+}
+
+void SensorBundle::release() {
+}
+
+
+//------------------------------------------------------------------------------
+
 grasp::data::Data::Ptr spam::R2GPlanner::Data::Desc::create(golem::Context &context) const {
 	grasp::data::Data::Ptr data(new R2GPlanner::Data(context));
 	static_cast<R2GPlanner::Data*>(data.get())->create(*this);
@@ -210,6 +425,10 @@ bool R2GPlanner::create(const Desc& desc) {
 		fLimit[6], fLimit[7], fLimit[8], fLimit[9], fLimit[10], fLimit[11]);
 	context.write("Middle limits [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
 		fLimit[12], fLimit[13], fLimit[14], fLimit[15], fLimit[16], fLimit[17]);
+	SensorBundle::Desc sensorBundleDesc;
+	sensorBundleDesc.sensorSeq = armHandForce->getSensorSeq();
+	sensorBundle = new SensorBundle(context);
+	sensorBundle->create(sensorBundleDesc);
 	Sensor::Seq sensorSeq = armHandForce->getSensorSeq();
 	// NOTE: skips the sensor at the wrist
 	for (auto i = sensorSeq.begin(); i != sensorSeq.end(); ++i) {
@@ -401,7 +620,7 @@ bool R2GPlanner::create(const Desc& desc) {
 	};
 
 	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq&) { // throws
-		if (forceReaderHandler) forceReaderHandlerThread.start(forceReaderHandler);
+		//if (forceReaderHandler) forceReaderHandlerThread.start(forceReaderHandler);
 //		return;
 //		grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
 //
@@ -462,6 +681,7 @@ bool R2GPlanner::create(const Desc& desc) {
 		//}
 		size_t k = 0;
 		U32 contacts = golem::numeric_const<U32>::ZERO;
+		handFilteredForce = sensorBundle ? sensorBundle->getFilteredForces() : handFilteredForce;
 		for (auto i = ftGuards.begin(); i < ftGuards.end(); ++i) {
 			(*i)->setColumn6(&handFilteredForce[k]);
 			if ((*i)->checkContacts())
