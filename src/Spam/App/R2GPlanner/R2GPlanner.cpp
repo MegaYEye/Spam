@@ -62,7 +62,6 @@ void spam::R2GPlanner::Data::setOwner(grasp::Manager* owner) {
 
 
 void spam::R2GPlanner::Data::createRender() {
-	context.write("R2G::createRender():\n");
 	PosePlanner::Data::createRender();
 	{
 		golem::CriticalSectionWrapper csw(owner->getCS());
@@ -1895,23 +1894,25 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 		if (controller->waitForEnd(0))
 			break;
 
-		wristFTSensor->read(wristData);
-		wristFT.push_back(wristData.wrench);
-		Twist wwrench; SecTmReal wt;
-		wristFTSensor->readSensor(wwrench, wt);
-		rawWristFT.push_back(wwrench);
+		if (wristFTSensor) {
+			wristFTSensor->read(wristData);
+			wristFT.push_back(wristData.wrench);
+			Twist wwrench; SecTmReal wt;
+			wristFTSensor->readSensor(wwrench, wt);
+			rawWristFT.push_back(wwrench);
 
-		ftSensorSeq[0]->read(thumbData);
-		thumbFT.push_back(thumbData.wrench);
-		Twist wthumb; SecTmReal tt;
-		ftSensorSeq[0]->readSensor(wthumb, tt);
-		rawThumbFT.push_back(wthumb);
+			ftSensorSeq[0]->read(thumbData);
+			thumbFT.push_back(thumbData.wrench);
+			Twist wthumb; SecTmReal tt;
+			ftSensorSeq[0]->readSensor(wthumb, tt);
+			rawThumbFT.push_back(wthumb);
 
-		ftSensorSeq[1]->read(indexData);
-		indexFT.push_back(indexData.wrench);
-		Twist iwrench; SecTmReal it;
-		ftSensorSeq[1]->readSensor(iwrench, it);
-		rawIndexFT.push_back(iwrench);
+			ftSensorSeq[1]->read(indexData);
+			indexFT.push_back(indexData.wrench);
+			Twist iwrench; SecTmReal it;
+			ftSensorSeq[1]->readSensor(iwrench, it);
+			rawIndexFT.push_back(iwrench);
+		}
 
 		// print every 10th robot state
 		if (i % 10 == 0) {
