@@ -240,6 +240,19 @@ protected:
 		}
 		return output;
     };
+	/** I/O simulator timer */
+	golem::shared_ptr<golem::Sleep> sleep;
+	/** Time */
+	golem::SecTmReal tRead;
+	/** Cycle time */
+	golem::SecTmReal tCycle;
+	/** Idle time */
+	golem::SecTmReal tIdle;
+
+	/** Sersors read handler */
+	grasp::ThreadTask::Function forceReaderHandler;
+	/** Force Reader handler thread */
+	grasp::ThreadTask forceReaderHandlerThread;
 
 	grasp::Vec3Seq handForces;
 	grasp::Vec3Seq getHandForceVec(golem::SecTmReal time = golem::SEC_TM_REAL_MAX, golem::SecTmReal delta = golem::SEC_TM_REAL_ONE) const;

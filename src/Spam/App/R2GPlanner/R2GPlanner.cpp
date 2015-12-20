@@ -163,27 +163,28 @@ bool R2GPlanner::create(const Desc& desc) {
 	brecord = false;
 	sepField = "\t";
 	// writing data into a text file, open file
-	//auto strTorquesDesc = [=](std::ostream& ostr) {
-	//	ostr << "idx" << "\t" <<  "timestamp" << "\t" << "contact" << "\t" << "thumb_0" << "\t" << "thumb_1" << "\t" << "thumb_2" << "\t" << "thumb_3" << "\t" <<
-	//		"index_0" << "\t" << "index_1" << "\t" << "index_2" << "\t" << "index_3" << "\t" <<
-	//		"middle_0" << "\t" << "middle_1" << "\t" << "middle_2" << "\t" << "middle_3" << "\t" <<
-	//		"ring_0" << "\t" << "ring_1" << "\t" << "ring_2" << "\t" << "ring_3" << "\t" <<
-	//		"pinky_0" << "\t" << "pinky_1" << "\t" << "pinky_2" << "\t" << "pinky_3" << "\t";/* <<
-	//		"cthumb_0" << "\t" << "cthumb_1" << "\t" << "cthumb_2" << "\t" << "cthumb_3" << "\t" <<
-	//		"cindex_0" << "\t" << "cindex_1" << "\t" << "cindex_2" << "\t" << "cindex_3" << "\t" <<
-	//		"cmiddle_0" << "\t" << "cmiddle_1" << "\t" << "cmiddle_2" << "\t" << "cmiddle_3" << "\t" <<
-	//		"cring_0" << "\t" << "cring_1" << "\t" << "cring_2" << "\t" << "cring_3" << "\t" <<
-	//		"cpinky_0" << "\t" << "cpinky_1" << "\t" << "cpinky_2" << "\t" << "cpinky_3" << "\t";*/
-	//};
+	auto strTorquesDesc = [=](std::ostream& ostr) {
+		ostr << "idx" << "\t" <<  "timestamp" << "\t" << "contact" << "\t" << "thumb_0" << "\t" << "thumb_1" << "\t" << "thumb_2" << "\t" << "thumb_3" << "\t" <<
+			"index_0" << "\t" << "index_1" << "\t" << "index_2" << "\t" << "index_3" << "\t" <<
+			"middle_0" << "\t" << "middle_1" << "\t" << "middle_2" << "\t" << "middle_3" << "\t" <<
+			"ring_0" << "\t" << "ring_1" << "\t" << "ring_2" << "\t" << "ring_3" << "\t" <<
+			"pinky_0" << "\t" << "pinky_1" << "\t" << "pinky_2" << "\t" << "pinky_3" << "\t";/* <<
+			"cthumb_0" << "\t" << "cthumb_1" << "\t" << "cthumb_2" << "\t" << "cthumb_3" << "\t" <<
+			"cindex_0" << "\t" << "cindex_1" << "\t" << "cindex_2" << "\t" << "cindex_3" << "\t" <<
+			"cmiddle_0" << "\t" << "cmiddle_1" << "\t" << "cmiddle_2" << "\t" << "cmiddle_3" << "\t" <<
+			"cring_0" << "\t" << "cring_1" << "\t" << "cring_2" << "\t" << "cring_3" << "\t" <<
+			"cpinky_0" << "\t" << "cpinky_1" << "\t" << "cpinky_2" << "\t" << "cpinky_3" << "\t";*/
+	};
 	//const std::string dataFTRawPath = makeString("%s_raw.txt", prefix.str().c_str());
 	//dataFTRaw.open(dataFTRawPath);
 	//strTorquesDesc(dataFTRaw);
 	//dataFTRaw << std::endl;
 
-	//const std::string dataFTFilteredPath = makeString("%s_filtered.txt", prefix.str().c_str());
-	//dataFTFiltered.open(dataFTFilteredPath);
-	//strTorquesDesc(dataFTFiltered);
-	//dataFTFiltered << std::endl;
+	const std::string dataFTFilteredPath = makeString("%s_filtered.txt", prefix.str().c_str());
+	golem::mkdir(dataFTFilteredPath.c_str()); // make sure the directory exists
+	dataFTFiltered.open(dataFTFilteredPath);
+	strTorquesDesc(dataFTFiltered);
+	dataFTFiltered << std::endl;
 
 	//const std::string dataSimContactPath = makeString("%s_contact.txt", prefix.str().c_str());
 	//dataSimContact.open(dataSimContactPath);
@@ -362,7 +363,45 @@ bool R2GPlanner::create(const Desc& desc) {
 		return indeces;
 	};
 
+	tRead = context.getTimer().elapsed();
+	forceReaderHandler = [&]() {
+		auto strTorques = [=](std::ostream& ostr, const SecTmReal t, const grasp::RealSeq& forces) {
+			ostr << t << "\t";
+			for (auto i = 0; i < forces.size(); ++i)
+				ostr << forces[i] << "\t";
+			ostr << std::endl;
+		};
+
+		//if (ftSensorSeq.empty())
+		//	return;
+
+		sleep.reset(new golem::Sleep);
+
+		SecTmReal t = context.getTimer().elapsed();
+		if (t - tRead > tCycle) {
+			RealSeq force;
+			force.assign(dimensions(), REAL_ZERO);
+			//size_t k = 0;
+			//for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
+			//	FT::Data data;
+			//	(*i)->read(data);
+
+			//	data.wrench.v.getColumn3(&force[k]);
+			//	data.wrench.w.getColumn3(&force[k + 3]);
+			//	k += 6;
+			//}
+			collectFTInp(lookupState(), force);
+			strTorques(dataFTFiltered, t, handFilteredForce);
+			tRead = t;
+			context.write("Reading forces at time %f\n", t);
+		}
+		else
+			sleep->sleep(tIdle);
+
+	};
+
 	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq&) { // throws
+		if (forceReaderHandler) forceReaderHandlerThread.start(forceReaderHandler);
 //		return;
 //		grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
 //
@@ -1903,35 +1942,35 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 		if (i % 10 == 0) {
 			context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
 
-			wristFTSensor->read(wristData);
-			wristFT.push_back(wristData.wrench);
-			Twist wwrench; SecTmReal wt;
-			wristFTSensor->readSensor(wwrench, wt);
-			rawWristFT.push_back(wwrench);
+			//wristFTSensor->read(wristData);
+			//wristFT.push_back(wristData.wrench);
+			//Twist wwrench; SecTmReal wt;
+			//wristFTSensor->readSensor(wwrench, wt);
+			//rawWristFT.push_back(wwrench);
 
-			wristData.wrench.v.getColumn3(&force[0]);
-			wristData.wrench.w.getColumn3(&force[3]);
+			//wristData.wrench.v.getColumn3(&force[0]);
+			//wristData.wrench.w.getColumn3(&force[3]);
 
-			ftSensorSeq[0]->read(thumbData);
-			thumbFT.push_back(thumbData.wrench);
-			Twist wthumb; SecTmReal tt;
-			ftSensorSeq[0]->readSensor(wthumb, tt);
-			rawThumbFT.push_back(wthumb);
+			//ftSensorSeq[0]->read(thumbData);
+			//thumbFT.push_back(thumbData.wrench);
+			//Twist wthumb; SecTmReal tt;
+			//ftSensorSeq[0]->readSensor(wthumb, tt);
+			//rawThumbFT.push_back(wthumb);
 
-			thumbData.wrench.v.getColumn3(&force[6]);
-			thumbData.wrench.w.getColumn3(&force[9]);
+			//thumbData.wrench.v.getColumn3(&force[6]);
+			//thumbData.wrench.w.getColumn3(&force[9]);
 
-			ftSensorSeq[1]->read(indexData);
-			indexFT.push_back(indexData.wrench);
-			Twist iwrench; SecTmReal it;
-			ftSensorSeq[1]->readSensor(iwrench, it);
-			rawIndexFT.push_back(iwrench);
+			//ftSensorSeq[1]->read(indexData);
+			//indexFT.push_back(indexData.wrench);
+			//Twist iwrench; SecTmReal it;
+			//ftSensorSeq[1]->readSensor(iwrench, it);
+			//rawIndexFT.push_back(iwrench);
 
-			indexData.wrench.v.getColumn3(&force[12]);
-			indexData.wrench.w.getColumn3(&force[15]);
+			//indexData.wrench.v.getColumn3(&force[12]);
+			//indexData.wrench.w.getColumn3(&force[15]);
 
 			Controller::State state = lookupState();
-			collectFTInp(state, force);
+			//collectFTInp(state, force);
 
 			//RealSeq handTorques; handTorques.assign(dimensions(), REAL_ZERO);
 			//if (armHandForce) armHandForce->getHandForce(handTorques);
