@@ -141,7 +141,6 @@ void SensorBundle::create(const Desc& desc) {
 		filteredforce = conv();
 	};
 
-	tRead = context.getTimer().elapsed();
 	//setForceReaderHandler([=]() {
 	//	RealSeq force;
 	//	force.assign(dimensions(), REAL_ZERO);
@@ -167,6 +166,9 @@ void SensorBundle::create(const Desc& desc) {
 		throw MsgControllerThreadLaunch(Message::LEVEL_CRIT, "SensorBundle::create(): Unable to change SensorBundle thread priority");
 
 	bTerminate = false;
+	tCycle = desc.tCycle;
+	tIdle = desc.tIdle;
+	tRead = context.getTimer().elapsed();
 }
 
 //void SensorBundle::setForceReaderHandler(ThreadTask::Function forceReaderHandler) {
@@ -175,12 +177,6 @@ void SensorBundle::create(const Desc& desc) {
 //}
 
 void SensorBundle::run() {
-	auto strTorques = [=](std::ostream& ostr, const SecTmReal t, const grasp::RealSeq& forces) {
-		ostr << t << "\t";
-		for (auto i = 0; i < forces.size(); ++i)
-			ostr << forces[i] << "\t";
-	};
-
 	//if (ftSensorSeq.empty())
 	//	return;
 
