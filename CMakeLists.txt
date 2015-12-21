@@ -58,8 +58,9 @@ option(BUILD_SPAM_DATA_R2GTRAJECTORY "Build Spam data R2G trajectory library" YE
 
 ###############################################################################
 # Demos 
+option(BUILD_SPAM_DEMO_FT "Build Spam demo reach-to-grasp library" NO)
 option(BUILD_SPAM_DEMO_R2G "Build Spam demo reach-to-grasp library" YES)
-option(BUILD_SPAM_DEMO_TACTILE "Build Spam demo tactile exploration library" YES)
+option(BUILD_SPAM_DEMO_TACTILE "Build Spam demo tactile exploration library" NO)
 
 ###############################################################################
 
@@ -792,6 +793,59 @@ IF(BUILD_SPAM_DEMO_R2G)
 	SOURCE_GROUP("Include Files" FILES ${DEMO_R2G_HEADERS})
 	SOURCE_GROUP("Resource Files" FILES ${DEMO_R2G_FILES})
 ENDIF(BUILD_SPAM_DEMO_R2G)
+
+###############################################################################
+#
+# Spam demo R2G
+#
+###############################################################################
+IF(BUILD_SPAM_DEMO_FT)
+	SET(DEMO_FT_SOURCES
+		${PROJECT_ROOT}/src/Spam/Demo/FT/FTDemo.cpp
+	)
+	SET(DEMO_FT_HEADERS
+		${PROJECT_ROOT}/include/Spam/Demo/FT/FTDemo.h
+	)
+	SET(DEMO_FT_FILES
+		${PROJECT_ROOT}/resources/Spam/Demo/FT/SpamDemoFT_RobotBoris.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/FT/SpamDemoFT_RobotBorisSim.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/SpamDataBeliefDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraDepthSimDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraKinectDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraOpenCVDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraOpenGLDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraOpenNIDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraPointGreyDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraRobotDepthDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspDataContactModelDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspDataContactQueryDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspDataImageDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspDataPointsCurvDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspDataTrajectoryDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspDataVideoDemoR2G.xml
+	)
+	
+	ADD_EXECUTABLE(SpamDemoFT ${DEMO_FT_SOURCES} ${DEMO_FT_HEADERS} ${DEMO_FT_FILES})
+	if (WIN32)
+		SET_TARGET_PROPERTIES(SpamDemoFT PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS}")
+	elseif (UNIX)
+		SET_TARGET_PROPERTIES(SpamDemoFT PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -Wno-invalid-offsetof")
+	endif()
+	TARGET_LINK_LIBRARIES(SpamDemoFT SpamApp)
+	COPY_FILES(SpamDemoFT ${RUNTIME_OUTPUT_DIRECTORY} ${DEMO_FT_FILES})
+	SET_PROPERTY(TARGET SpamDemoFT PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
+	SET_PROPERTY(TARGET SpamDemoFT PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
+	
+	INSTALL(TARGETS SpamDemoFT RUNTIME DESTINATION bin COMPONENT demo_execs)
+	INSTALL(FILES ${DEMO_FT_HEADERS} DESTINATION include/Spam/Demo/FTPlanner/ COMPONENT demo_headers)
+	INSTALL(FILES ${DEMO_FT_SOURCES} DESTINATION src/Spam/Demo/FTPlanner/ COMPONENT demo_sources)
+	INSTALL(FILES ${DEMO_FT_FILES} DESTINATION bin COMPONENT demo_configs)
+
+	SET_PROPERTY(TARGET SpamDemoFT PROPERTY PROJECT_LABEL "FT")
+	SET_PROPERTY(TARGET SpamDemoFT PROPERTY FOLDER "Spam/Demo")
+	SOURCE_GROUP("Include Files" FILES ${DEMO_FT_HEADERS})
+	SOURCE_GROUP("Resource Files" FILES ${DEMO_FT_FILES})
+ENDIF(BUILD_SPAM_DEMO_FT)
 
 ###############################################################################
 #

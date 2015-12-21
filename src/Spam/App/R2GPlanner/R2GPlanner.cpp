@@ -2615,7 +2615,7 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 
 		// perform
 		try {
-			perform(dataPtr->first, ptr->first, out, silent);
+			perform(dataPtr->first, ptr->first, out, !silent);
 		}
 		catch (const Message& msg) {
 			context.write("%s\n", msg.str().c_str());
