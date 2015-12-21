@@ -58,12 +58,18 @@ namespace spam {
 
 class SensorBundle : public golem::Runnable  {
 public:
+	/** Pointer */
+	typedef golem::shared_ptr<SensorBundle> Ptr;
 	/** Force reader. Overwrite the ActiveCtrl reader. this retrieves the triggered joints */
 	typedef std::function<std::vector<size_t>(grasp::RealSeq&)> ForceReader;
 	/** Force reader. Overwrite the ActiveCtrl reader. this retrieves the triggered joints */
 	typedef std::function<void(grasp::RealSeq&)> ForceFilter;
 	/** FT Sequence */
 	typedef std::vector<grasp::FT*> FTSensorSeq;
+	/** Print FT values */
+	typedef std::function<void(std::ostream&, const golem::Twist&, const golem::SecTmReal)> StrFT;
+	/** Print header */
+	typedef std::function<void(std::ostream&)> StrFTDesc;
 
 	class Desc {
 	public:
@@ -73,6 +79,12 @@ public:
 		ForceFilter collectInp;
 		/** FT 2-oreder high-pass filter */
 		ForceFilter forceFilter;
+
+		/** String function */
+		StrFT strFT;
+		StrFTDesc strFTDesc;
+		std::string path, sepField, ext;
+		bool write;
 
 		grasp::Sensor::Seq sensorSeq;
 
@@ -103,6 +115,16 @@ public:
 			forceReader = nullptr;
 			collectInp = nullptr;
 			forceFilter = nullptr;
+			strFT = [=](std::ostream& ostr, const Twist& twist, const golem::SecTmReal t) {
+				ostr << t << "\t" << twist.v.x << "\t" << twist.v.y << "\t" << twist.v.z << "\t" << twist.w.x << "\t" << twist.w.y << "\t" << twist.w.z << std::endl;
+			};
+			strFTDesc = [=](std::ostream& ostr) {
+				ostr << "t" << "vx" << "\t" << "vy" << "\t" << "vz" << "\t" << "wx" << "\t" << "wy" << "\t" << "wz" << std::endl;
+			};
+			path = "./data/boris/experiments/ftsensors/";
+			sepField = "-";
+			ext = ".txt";
+			write = true;
 
 			sensorSeq.clear();
 
@@ -121,6 +143,7 @@ public:
 		bool isValid() {
 			return true;
 		}
+		GRASP_CREATE_FROM_OBJECT_DESC1(SensorBundle, SensorBundle::Ptr, golem::Context&)
 	};
 
 	/** Force reader */
@@ -137,18 +160,23 @@ public:
 		return handFilteredForce;
 	}
 
+	inline void stop() {
+		bTerminate = true;
+		release();
+	}
+
 	///** Emergency mode handler */
 	//void setForceReaderHandler(ThreadTask::Function forceReaderHandler);
-
-	SensorBundle(const golem::Context& context);
-
-	void create(const Desc& desc);
 
 protected:
 	/** Context */
 	golem::Context context;
 	/** Description file */
 	Desc desc;
+
+	/** String function */
+	StrFT strFT;
+	StrFTDesc strFTDesc;
 
 	/** Thread terminate condition */
 	volatile bool bTerminate;
@@ -160,7 +188,7 @@ protected:
 	golem::MSecTmU32 threadTimeOut;
 
 	/** File to collect data from the ft sensor of the hand */
-	std::ofstream dataFTRaw, dataFTFiltered;
+	std::vector<std::ofstream> dataFTRawSeq, dataFTFilteredSeq, lowpassSeq;
 
 	/** Sequence of FT sensors */
 	FTSensorSeq ftSensorSeq;
@@ -224,6 +252,10 @@ protected:
 	golem::SecTmReal tCycle;
 	/** Idle time */
 	golem::SecTmReal tIdle;
+
+	SensorBundle(const golem::Context& context);
+
+	void create(const Desc& desc);
 };
 
 //------------------------------------------------------------------------------
@@ -375,12 +407,12 @@ public:
 	}
 
 	/** Force reader */
-	GuardsReader guardsReader;
-	GuardFTReader guardsFTReader;
-	/** Collect history of FT readings for statistics */
-	grasp::ActiveCtrlForce::ForceReader collectFTInp;
-	/** FT 2-oreder high-pass filter */
-	grasp::ActiveCtrlForce::ForceReader ftFilter;
+	//GuardsReader guardsReader;
+	//GuardFTReader guardsFTReader;
+	///** Collect history of FT readings for statistics */
+	//grasp::ActiveCtrlForce::ForceReader collectFTInp;
+	///** FT 2-oreder high-pass filter */
+	//grasp::ActiveCtrlForce::ForceReader ftFilter;
 
 protected:
 	/** Mode of Active Ctrl */
@@ -392,50 +424,50 @@ protected:
 	grasp::ArmHandForce *armHandForce;
 	/** Guards to retrieve a contact */
 	grasp::RealSeq fLimit;
-	/** Number of averaging steps before stopping collecting readings */
-	golem::U32 windowSize;
-	golem::I32 steps;
-	// gaussian filter mask
-	grasp::RealSeq mask;
-	// computes gaussian
-	template <typename _Real> inline _Real N(const _Real x, const _Real stdev) {
-		const _Real norm = golem::numeric_const<_Real>::ONE / (stdev*golem::Math::sqrt(2 * golem::numeric_const<_Real>::PI));
-		return norm*golem::Math::exp(-.5*golem::Math::sqr(_Real(x) / _Real(stdev))); // gaussian
-    };
-	// computes guassian on a vector
-	template <typename _Ptr, typename _Real> inline std::vector<_Real> N(_Ptr begin, _Ptr end, const size_t dim, const _Real stdev) {
-		std::vector<_Real> output;
-		output.assign(dim, golem::numeric_const<_Real>::ZERO);
-		size_t idx = 0;
-		for (_Ptr i = begin; i != end; ++i) {
-			output[idx++] = N(*i, stdev);
-		}
-		return output;
-    };
-	SensorBundle* sensorBundle;
-	/** I/O simulator timer */
-	golem::shared_ptr<golem::Sleep> sleep;
-	/** Time */
-	golem::SecTmReal tRead;
-	/** Cycle time */
-	golem::SecTmReal tCycle;
-	/** Idle time */
-	golem::SecTmReal tIdle;
+	///** Number of averaging steps before stopping collecting readings */
+	//golem::U32 windowSize;
+	//golem::I32 steps;
+	//// gaussian filter mask
+	//grasp::RealSeq mask;
+	//// computes gaussian
+	//template <typename _Real> inline _Real N(const _Real x, const _Real stdev) {
+	//	const _Real norm = golem::numeric_const<_Real>::ONE / (stdev*golem::Math::sqrt(2 * golem::numeric_const<_Real>::PI));
+	//	return norm*golem::Math::exp(-.5*golem::Math::sqr(_Real(x) / _Real(stdev))); // gaussian
+ //   };
+	//// computes guassian on a vector
+	//template <typename _Ptr, typename _Real> inline std::vector<_Real> N(_Ptr begin, _Ptr end, const size_t dim, const _Real stdev) {
+	//	std::vector<_Real> output;
+	//	output.assign(dim, golem::numeric_const<_Real>::ZERO);
+	//	size_t idx = 0;
+	//	for (_Ptr i = begin; i != end; ++i) {
+	//		output[idx++] = N(*i, stdev);
+	//	}
+	//	return output;
+ //   };
+	SensorBundle::Ptr sensorBundlePtr;
+	///** I/O simulator timer */
+	//golem::shared_ptr<golem::Sleep> sleep;
+	///** Time */
+	//golem::SecTmReal tRead;
+	///** Cycle time */
+	//golem::SecTmReal tCycle;
+	///** Idle time */
+	//golem::SecTmReal tIdle;
 
-	/** Sersors read handler */
-	grasp::ThreadTask::Function forceReaderHandler;
-	/** Force Reader handler thread */
-	grasp::ThreadTask forceReaderHandlerThread;
+	///** Sersors read handler */
+	//grasp::ThreadTask::Function forceReaderHandler;
+	///** Force Reader handler thread */
+	//grasp::ThreadTask forceReaderHandlerThread;
 
-	grasp::Vec3Seq handForces;
-	grasp::Vec3Seq getHandForceVec(golem::SecTmReal time = golem::SEC_TM_REAL_MAX, golem::SecTmReal delta = golem::SEC_TM_REAL_ONE) const;
+	//grasp::Vec3Seq handForces;
+	//grasp::Vec3Seq getHandForceVec(golem::SecTmReal time = golem::SEC_TM_REAL_MAX, golem::SecTmReal delta = golem::SEC_TM_REAL_ONE) const;
 
 	/** Input force at sensor, sequence */
-	std::vector<grasp::RealSeq> forceInpSensorSeq;
+	//std::vector<grasp::RealSeq> forceInpSensorSeq;
 	/** Filtered forces for the hand */
 	grasp::RealSeq handFilteredForce;
 	/** force reader access cs */
-	golem::CriticalSection csHandForce;
+	//golem::CriticalSection csHandForce;
 	// Return hand DOFs */
 	inline size_t dimensions() const { return 18; }// (size_t)handInfo.getJoints().size();
 
@@ -512,7 +544,7 @@ protected:
 	bool contactOccured;
 	
 	/** File to collect data from the ft sensor of the hand */
-	std::ofstream dataFTRaw, dataFTFiltered, dataSimContact;
+	//std::ofstream dataFTRaw, dataFTFiltered, dataSimContact;
 	bool record, contact, brecord;
 	/** Query transformation */
 	grasp::RBCoord queryPointsTrn;
@@ -600,7 +632,7 @@ protected:
 	void renderHand(const golem::Controller::State &state, const golem::Bounds::Seq &bounds, bool clear = true);
 
 	R2GPlanner(golem::Scene &scene);
-	//~R2GPlanner();
+	~R2GPlanner();
 	bool create(const Desc& desc);
 };
 
