@@ -67,14 +67,23 @@ void SensorBundle::create(const Desc& desc) {
 				//dataFTFilteredSeq.push_back(oDataRaw);
 
 				golem::mkdir(lowpass.back().c_str()); // make sure the directory exists
-				std::ofstream olowpass;
-				olowpass.open(lowpass.back());
-				strFTDesc(olowpass);
-				lowpassSeq.push_back(olowpass);
+				//std::ofstream olowpass;
+				//olowpass.open(lowpass.back());
+				//strFTDesc(olowpass);
+				//lowpassSeq.push_back(olowpass);
 			}
 		}
 		else
 			context.write("FT sensor is not available\n");
+	}
+	write = desc.write  && !lowpass.empty();
+	if (write) {
+		thumbSS.open(lowpass[0]);
+		strFTDesc(thumbSS);
+		indexSS.open(lowpass[1]);
+		strFTDesc(indexSS);
+		middleSS.open(lowpass[2]);
+		strFTDesc(middleSS);
 	}
 
 	dimensionality = desc.dimensionality;
@@ -156,6 +165,11 @@ void SensorBundle::create(const Desc& desc) {
 	//	collectInp(force);
 	//});
 
+	bTerminate = false;
+	tCycle = desc.tCycle;
+	tIdle = desc.tIdle;
+	tRead = context.getTimer().elapsed();
+
 	// user create
 	userCreate();
 
@@ -164,11 +178,6 @@ void SensorBundle::create(const Desc& desc) {
 		throw MsgControllerThreadLaunch(Message::LEVEL_CRIT, "SensorBundle::create(): Unable to launch ft thread");
 	if (!thread.setPriority(desc.threadPriority))
 		throw MsgControllerThreadLaunch(Message::LEVEL_CRIT, "SensorBundle::create(): Unable to change SensorBundle thread priority");
-
-	bTerminate = false;
-	tCycle = desc.tCycle;
-	tIdle = desc.tIdle;
-	tRead = context.getTimer().elapsed();
 }
 
 //void SensorBundle::setForceReaderHandler(ThreadTask::Function forceReaderHandler) {
@@ -223,16 +232,18 @@ void SensorBundle::run() {
 				golem::CriticalSectionWrapper csw(cs);
 				handFilteredForce = output;
 			}
-			Twist wrench;
-			k = 0;
-			for (size_t i = 0; i < lowpassSeq.size(); ++i) {
-				wrench.v.setColumn3(&handFilteredForce[k]);
-				wrench.w.setColumn3(&handFilteredForce[k + 3]);
-				strFT(lowpassSeq[i], wrench, t);
-				k += 6;
+			if (write) {
+				Twist wrench;
+				k = 0;
+				for (size_t i = 0; i < 3; ++i) {
+					wrench.v.setColumn3(&handFilteredForce[k]);
+					wrench.w.setColumn3(&handFilteredForce[k + 3]);
+					strFT(i == 0 ? thumbSS : i == 1 ? indexSS : middleSS, wrench, t);
+					k += 6;
+				}
+				tRead = t;
 			}
-			tRead = t;
-			context.write("SensorBundle::run(): Reading forces at time %f\n", t);
+//			context.write("SensorBundle::run(): Reading forces at time %f\n", t);
 		}
 		else
 			sleep->sleep(tIdle);
@@ -332,10 +343,10 @@ void R2GPlanner::Desc::load(golem::Context& context, const golem::XMLContext* xm
 R2GPlanner::R2GPlanner(Scene &scene) : PosePlanner(scene) {
 }
 
-R2GPlanner::~R2GPlanner() {
-	if (sensorBundlePtr.get())
-		sensorBundlePtr->stop();
-}
+//R2GPlanner::~R2GPlanner() {
+//	if (sensorBundlePtr.get())
+//		sensorBundlePtr->stop();
+//}
 
 bool R2GPlanner::create(const Desc& desc) {
 	PosePlanner::create(desc); // throws
@@ -434,19 +445,19 @@ bool R2GPlanner::create(const Desc& desc) {
 	SensorBundle::Desc sensorBundleDesc;
 	sensorBundleDesc.sensorSeq = armHandForce->getSensorSeq();
 	sensorBundlePtr = sensorBundleDesc.create(context);
-	//Sensor::Seq sensorSeq = armHandForce->getSensorSeq();
-	//// NOTE: skips the sensor at the wrist
-	//for (auto i = sensorSeq.begin(); i != sensorSeq.end(); ++i) {
-	//	//		if (i == sensorSeq.begin()) continue;
-	//	FT* sensor = grasp::is<FT>(*i);
-	//	if (sensor)
-	//	if (i == sensorSeq.begin())
-	//		wristFTSensor = sensor;
-	//	else
-	//		ftSensorSeq.push_back(sensor);
-	//	else
-	//		context.write("FT sensor is not available\n");
-	//}
+	Sensor::Seq sensorSeq = armHandForce->getSensorSeq();
+	// NOTE: skips the sensor at the wrist
+	for (auto i = sensorSeq.begin(); i != sensorSeq.end(); ++i) {
+		//		if (i == sensorSeq.begin()) continue;
+		FT* sensor = grasp::is<FT>(*i);
+		if (sensor)
+		if (i == sensorSeq.begin())
+			wristFTSensor = sensor;
+		else
+			ftSensorSeq.push_back(sensor);
+		else
+			context.write("FT sensor is not available\n");
+	}
 	// set FT guard for the thumb
 	Chainspace::Index chain = handInfo.getChains().begin();
 	FTGuard::Desc thumbFTDesc = FTGuard::Desc();
@@ -2057,11 +2068,11 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 	if (trajectory.size() < 2)
 		throw Message(Message::LEVEL_ERROR, "Player::perform(): At least two waypoints required");
 
-	//golem::Controller::State::Seq initTrajectory;
-	//findTrajectory(lookupState(), &trajectory.front(), nullptr, SEC_TM_REAL_ZERO, initTrajectory);
+	golem::Controller::State::Seq initTrajectory;
+	findTrajectory(lookupState(), &trajectory.front(), nullptr, SEC_TM_REAL_ZERO, initTrajectory);
 
-	//golem::Controller::State::Seq completeTrajectory = initTrajectory;
-	//completeTrajectory.insert(completeTrajectory.end(), trajectory.begin(), trajectory.end());
+	golem::Controller::State::Seq completeTrajectory = initTrajectory;
+	completeTrajectory.insert(completeTrajectory.end(), trajectory.begin(), trajectory.end());
 
 	context.write("R2GPlanner::perform()");
 	// create trajectory item
@@ -2076,7 +2087,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 	grasp::data::Trajectory* trajectoryIf = is<grasp::data::Trajectory>(itemTrajectory.get());
 	if (!trajectoryIf)
 		throw Message(Message::LEVEL_ERROR, "Player::perform(): unable to create trajectory using handler %s", trajectoryHandler.c_str());
-	trajectoryIf->setWaypoints(/*completeTrajectory*/grasp::Waypoint::make(trajectory, trajectory));
+	trajectoryIf->setWaypoints(grasp::Waypoint::make(completeTrajectory, completeTrajectory)/*grasp::Waypoint::make(trajectory, trajectory)*/);
 
 	// block displaying the current item
 	RenderBlock renderBlock(*this);
@@ -2114,7 +2125,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 	// start recording
 	recordingStart(data, item, true);
 	recordingWaitToStart();
-	const SecTmReal initRecTime = context.getTimer().elapsed;
+	const SecTmReal initRecTime = context.getTimer().elapsed();
 
 	// send trajectory
 	sendTrajectory(trajectory);
@@ -2164,13 +2175,9 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 		if (controller->waitForEnd(0))
 			break;
 
-		// print every 10th robot state
-		if (i % 10 == 0) {
-			context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
-
-			Controller::State state = lookupState();
-			robotPoses.push_back(state);
-
+		Controller::State state = lookupState();
+		robotPoses.push_back(state);
+		if (wristFTSensor) {
 			wristFTSensor->read(wristData);
 			wristFT.push_back(wristData.wrench);
 			Twist wwrench; SecTmReal wt;
@@ -2197,8 +2204,11 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 
 			indexData.wrench.v.getColumn3(&force[12]);
 			indexData.wrench.w.getColumn3(&force[15]);
+		}
 
-			//collectFTInp(state, force);
+		// print every 10th robot state
+		if (i % 10 == 0) {
+			context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
 
 			//RealSeq handTorques; handTorques.assign(dimensions(), REAL_ZERO);
 			//if (armHandForce) armHandForce->getHandForce(handTorques);
@@ -2231,11 +2241,11 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 	std::stringstream prefixRawIndex;
 	prefixRawIndex << std::fixed << std::setprecision(3) << "./data/boris/experiments/ft_readings/raw_index" << "-" << context.getTimer().elapsed();
 
-	auto strFT = [=](std::ostream& ostr, const Twist& twist, const golem::SecTmReal t) {
-		ostr << t << "\t" << twist.v.x << "\t" << twist.v.y << "\t" << twist.v.z << "\t" << twist.w.x << "\t" << twist.w.y << "\t" << twist.w.z << std::endl;
+	auto strFT = [=](std::ostream& ostr, const Twist& twist, const golem::SecTmReal tAbs, const golem::SecTmReal tRel) {
+		ostr << tAbs << "\t" << tRel << "\t" << twist.v.x << "\t" << twist.v.y << "\t" << twist.v.z << "\t" << twist.w.x << "\t" << twist.w.y << "\t" << twist.w.z << std::endl;
 	};
 	auto strFTDesc = [=](std::ostream& ostr, const std::string& prefix) {
-		ostr << "t" << prefix << "vx" << "\t" << prefix << "vy" << "\t" << prefix << "vz" << "\t" << prefix << "wx" << "\t" << prefix << "wy" << "\t" << prefix << "wz" << std::endl;
+		ostr << "tAbs" << "tRel" << prefix << "vx" << "\t" << prefix << "vy" << "\t" << prefix << "vz" << "\t" << prefix << "wx" << "\t" << prefix << "wy" << "\t" << prefix << "wz" << std::endl;
 	};
 
 	// writing data into a text file, open file
@@ -2268,12 +2278,12 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 
 	for (U32 indexjj = 0; indexjj < thumbFT.size(); ++indexjj) {
 		const SecTmReal t = robotPoses[indexjj].t - initRecTime;
-		strFT(wristSS, wristFT[indexjj], t);
-		strFT(rawWristSS, rawWristFT[indexjj], t);
-		strFT(thumbSS, thumbFT[indexjj], t);
-		strFT(rawThumbSS, rawThumbFT[indexjj], t);
-		strFT(indexSS, indexFT[indexjj], t);
-		strFT(rawIndexSS, rawIndexFT[indexjj], t);
+		strFT(wristSS, wristFT[indexjj], robotPoses[indexjj].t, t);
+		strFT(rawWristSS, rawWristFT[indexjj], robotPoses[indexjj].t, t);
+		strFT(thumbSS, thumbFT[indexjj], robotPoses[indexjj].t, t);
+		strFT(rawThumbSS, rawThumbFT[indexjj], robotPoses[indexjj].t, t);
+		strFT(indexSS, indexFT[indexjj], robotPoses[indexjj].t, t);
+		strFT(rawIndexSS, rawIndexFT[indexjj], robotPoses[indexjj].t, t);
 	}
 
 	//if (record2) {

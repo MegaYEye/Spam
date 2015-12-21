@@ -115,7 +115,7 @@ public:
 			forceReader = nullptr;
 			collectInp = nullptr;
 			forceFilter = nullptr;
-			strFT = [=](std::ostream& ostr, const Twist& twist, const golem::SecTmReal t) {
+			strFT = [=](std::ostream& ostr, const golem::Twist& twist, const golem::SecTmReal t) {
 				ostr << t << "\t" << twist.v.x << "\t" << twist.v.y << "\t" << twist.v.z << "\t" << twist.w.x << "\t" << twist.w.y << "\t" << twist.w.z << std::endl;
 			};
 			strFTDesc = [=](std::ostream& ostr) {
@@ -124,7 +124,7 @@ public:
 			path = "./data/boris/experiments/ftsensors/";
 			sepField = "-";
 			ext = ".txt";
-			write = true;
+			write = false;
 
 			sensorSeq.clear();
 
@@ -188,7 +188,9 @@ protected:
 	golem::MSecTmU32 threadTimeOut;
 
 	/** File to collect data from the ft sensor of the hand */
-	std::vector<std::ofstream> dataFTRawSeq, dataFTFilteredSeq, lowpassSeq;
+//	std::vector<std::ofstream&> dataFTRawSeq, dataFTFilteredSeq, lowpassSeq;
+	bool write;
+	std::ofstream thumbSS, indexSS, middleSS;
 
 	/** Sequence of FT sensors */
 	FTSensorSeq ftSensorSeq;
@@ -632,7 +634,7 @@ protected:
 	void renderHand(const golem::Controller::State &state, const golem::Bounds::Seq &bounds, bool clear = true);
 
 	R2GPlanner(golem::Scene &scene);
-	~R2GPlanner();
+//	~R2GPlanner();
 	bool create(const Desc& desc);
 };
 

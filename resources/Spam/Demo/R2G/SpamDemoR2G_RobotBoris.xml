@@ -420,7 +420,7 @@
     <recording label="recorder">
       <sensor id="OpenNI+OpenNIDemoR2G"/>
       <sensor id="PointGrey+PointGreyDemoR2G"/>
-      <sensor id="OpenGL+OpenGLDemoR2G"/>
+      <!--<sensor id="OpenGL+OpenGLDemoR2G"/>-->
     </recording>
   </recorder>
 
