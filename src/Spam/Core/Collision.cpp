@@ -122,8 +122,8 @@ Collision::Collision(const grasp::Manipulator& manipulator, const Desc& desc) : 
 		ftBounds[j].create(manipulator.getJointBounds(j));
 		size_t k = 0;
 		for (Bounds::Triangle::SeqSeq::iterator t0 = ftBounds[j].getTriangles().begin(); t0 != ftBounds[j].getTriangles().end(); ++t0)
-			//for (auto t1 = t0->begin(); t1 != t0->end(); ++t1)
-			//	t1->face = faces[k++];
+			for (auto t1 = t0->begin(); t1 != t0->end(); ++t1)
+				t1->face = faces[k++];
 		ftJoints.push_back(j);
 	}
 	// base
@@ -1058,7 +1058,7 @@ golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDes
 		fingerGuardSeq[(*guard)->getHandChain()][Direction::z] = Math::abs((*guard)->wrench.getV().z) > (*guard)->limits[Direction::z] ? (*guard)->wrench.getV().z : REAL_ZERO;
 		facesInCollision[(*guard)->getHandChain()] = (*guard)->faces.empty() ? Face::UNKNOWN : (*guard)->faces[0];
 
-		manipulator.getContext().write("Guard[%d] = %s\n", (*guard)->getHandChain(), triggeredFingers[(*guard)->getHandChain()] ? "TRUE" : "FALSE");
+		manipulator.getContext().write("Guard[%d] = %s -> face=%s\n", (*guard)->getHandChain(), triggeredFingers[(*guard)->getHandChain()] ? "TRUE" : "FALSE", FaceName[facesInCollision[(*guard)->getHandChain()]]);
 	}
 
 	// loops over fingers: thumb = 0,..., pinky = 4

@@ -175,6 +175,8 @@ public:
 	/** Faces in contact */
 	FaceSeq faces;
 
+	/** Enable guard after a contact */
+	inline void unlock() { this->mode = Mode::ENABLE; }
 	/** Check for disable mode */
 	inline bool isDisable() const { return this->mode == Mode::DISABLE; }
 	/** Check for enable mode */

@@ -673,7 +673,7 @@ void Belief::createUpdate(grasp::Cloud::Appearance debugAppearance, golem::Debug
 	Collision::Desc::Ptr cloudDesc;
 	cloudDesc.reset(new Collision::Desc());
 	Collision::Ptr cloud = cloudDesc->create(*manipulator);
-	waypointDesc.depthStdDev = 0.0035/*0.0005*/; waypointDesc.likelihood = 1000.0; waypointDesc.points = 10000; waypointDesc.neighbours = 100;
+	waypointDesc.depthStdDev = 0.01/*0.0005*/; waypointDesc.likelihood = 1000.0; waypointDesc.points = 10000; waypointDesc.neighbours = 100;
 	waypointDesc.radius = REAL_ZERO;
 	
 	golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO, cdf = golem::REAL_ZERO;
@@ -682,8 +682,8 @@ void Belief::createUpdate(grasp::Cloud::Appearance debugAppearance, golem::Debug
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
 		grasp::Cloud::PointSeq points;
 		grasp::Cloud::transform(sampledPose->toMat34(), modelPoints, points);
-		renderer.reset();
-		debugAppearance.draw(points, renderer);
+		//renderer.reset();
+		//debugAppearance.draw(points, renderer);
 		cloud->create(rand, points);
 		sampledPose->weight = cloud->evaluateFT(renderer, waypointDesc, config, triggeredGuards, false);
 		grasp::RBDist error;

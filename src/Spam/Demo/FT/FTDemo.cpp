@@ -86,33 +86,37 @@ void FTDemo::create(const Desc& desc) {
 		// command keys
 		std::string createModelCmd("PM");
 		std::string createQueryCmd("PQ");
+		std::string trjPlayCmd("TP");
 		// create a model for the object
 		context.write("Create a model...\n");
-//		executeCmd(createModelCmd); // move the robot to the home pose after scanning
+		executeCmd(createModelCmd); // move the robot to the home pose after scanning
 		context.write("Create a query...\n");
-//		executeCmd(createQueryCmd);
+		executeCmd(createQueryCmd);
 
-		grasp::data::Item::Map::const_iterator item = to<Data>(dataCurrentPtr)->getItem<grasp::data::Item::Map::const_iterator>(true);
-		grasp::data::Trajectory* trajectory = is<grasp::data::Trajectory>(item->second.get());
-		if (!trajectory)
-			throw Cancel("Error: no trajectory selected.");
-		// play
-		//Controller::State::Seq inp = trajectory->getWaypoints();
-		grasp::Waypoint::Seq inp = trajectory->getWaypoints();
-		if (inp.size() < 3)
-			throw Cancel("Error: the selected trajectory have not at least 3 waypoints.");
+		//executeCmd(trjPlayCmd);
 
-		for (;;) {
-			if (!execute(dataCurrentPtr, inp))
-				return;
-			//if (contactOccured) {
-			//	//grasp::to<Data>(cdata->second)->replanning = false;
-			//	contactOccured = false;
-			//	updateAndResample(dataCurrentPtr);
-			//	enableForceReading = false;
-			//	continue;
-			//}
-		}
+
+		////grasp::data::Item::Map::const_iterator item = to<Data>(dataCurrentPtr)->getItem<grasp::data::Item::Map::const_iterator>(true);
+		////grasp::data::Trajectory* trajectory = is<grasp::data::Trajectory>(item->second.get());
+		////if (!trajectory)
+		////	throw Cancel("Error: no trajectory selected.");
+		////// play
+		//////Controller::State::Seq inp = trajectory->getWaypoints();
+		////grasp::Waypoint::Seq inp = trajectory->getWaypoints();
+		////if (inp.size() < 3)
+		////	throw Cancel("Error: the selected trajectory have not at least 3 waypoints.");
+
+		//for (;;) {
+		//	//if (!execute(dataCurrentPtr, inp))
+		//	//	return;
+		//	if (contactOccured) {
+		//		//grasp::to<Data>(cdata->second)->replanning = false;
+		//		contactOccured = false;
+		//		updateAndResample(dataCurrentPtr);
+		//		enableForceReading = false;
+		//		continue;
+		//	}
+		//}
 
 	}));
 
@@ -179,7 +183,6 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	// start recording
 	recordingStart(data, item, true);
 	recordingWaitToStart();
-	const SecTmReal initRecTime = context.getTimer().elapsed();
 
 	// send trajectory
 	sendTrajectory(trajectory);
@@ -203,7 +206,7 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 		robotPoses.push_back(state);
 		sensorBundlePtr->increment();
 
-		if (false && wristFTSensor) {
+		if (wristFTSensor) {
 			wristFTSensor->read(wristData);
 			wristFT.push_back(wristData.wrench);
 			Twist wwrench; SecTmReal wt;
@@ -235,8 +238,9 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 		// print every 10th robot state
 		if (i % 10 == 0)
 			context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
-		if (i > 200)
-			enableForceReading = true;
+		if (!isGrasping && i > 200) {
+			enableForceReading = expectedCollisions(state);
+		}
 	}
 	enableForceReading = false;
 	sensorBundlePtr->start2read = false;
@@ -293,7 +297,7 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	strFTDesc(rawIndexSS, std::string("ft_"));
 
 	for (U32 indexjj = 0; indexjj < thumbFT.size(); ++indexjj) {
-		const SecTmReal t = robotPoses[indexjj].t - initRecTime;
+		const SecTmReal t = robotPoses[indexjj].t - recorderStart;
 		strFT(wristSS, wristFT[indexjj], robotPoses[indexjj].t, t);
 		strFT(rawWristSS, rawWristFT[indexjj], robotPoses[indexjj].t, t);
 		strFT(thumbSS, thumbFT[indexjj], robotPoses[indexjj].t, t);

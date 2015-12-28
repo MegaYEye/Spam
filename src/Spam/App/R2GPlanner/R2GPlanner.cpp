@@ -89,8 +89,8 @@ void SensorBundle::create(const Desc& desc) {
 	read = desc.read;
 	start2read = false;
 	idx = 0;
+	forceSS.open("./data/ft_data/forces.txt");
 	if (read) {
-		forceSS.open("C:/Users/wmemnone/Development/Projects/bin/data/ft_data/bowl/forces.txt");
 		ft.resize(1074);
 		for (auto ii = ft.begin(); ii != ft.end(); ++ii)
 			ii->assign(18, REAL_ZERO);
@@ -310,7 +310,7 @@ void SensorBundle::run() {
 				golem::CriticalSectionWrapper csw(cs);
 				handFilteredForce = output;
 			}
-			strTorques(forceSS, output, t);
+			if (start2read) strTorques(forceSS, output, t);
 			if (write) {
 				Twist wrench;
 				size_t k = 0;
@@ -320,9 +320,9 @@ void SensorBundle::run() {
 					strFT(i == 0 ? thumbSS : i == 1 ? indexSS : middleSS, wrench, t);
 					k += 6;
 				}
-				tRead = t;
 			}
-//			context.write("SensorBundle::run(): Reading forces at time %f\n", t);
+			tRead = t;
+			//			context.write("SensorBundle::run(): Reading forces at time %f\n", t);
 		}
 		else
 			sleep->sleep(tIdle);
@@ -769,14 +769,14 @@ bool R2GPlanner::create(const Desc& desc) {
 		size_t k = 0;
 		U32 contacts = golem::numeric_const<U32>::ZERO;
 		handFilteredForce = sensorBundlePtr->getFilteredForces(); // sensorBundlePtr.get() ? sensorBundlePtr->getFilteredForces() : handFilteredForce;
-		if (indexkk++ % 10 == 0) {
-			context.write("FT Thumb [%f %f %f %f %f %f]\n",
-				handFilteredForce[0], handFilteredForce[1], handFilteredForce[2], handFilteredForce[3], handFilteredForce[4], handFilteredForce[5]);
-			context.write("FT Index [%f %f %f %f %f %f]\n",
-				handFilteredForce[6], handFilteredForce[7], handFilteredForce[8], handFilteredForce[9], handFilteredForce[10], handFilteredForce[11]);
-			context.write("FT Middle [%f %f %f %f %f %f]\n",
-				handFilteredForce[12], handFilteredForce[13], handFilteredForce[14], handFilteredForce[15], handFilteredForce[16], handFilteredForce[17]);
-		}
+		//if (indexkk++ % 10 == 0) {
+		//	context.write("FT Thumb [%f %f %f %f %f %f]\n",
+		//		handFilteredForce[0], handFilteredForce[1], handFilteredForce[2], handFilteredForce[3], handFilteredForce[4], handFilteredForce[5]);
+		//	context.write("FT Index [%f %f %f %f %f %f]\n",
+		//		handFilteredForce[6], handFilteredForce[7], handFilteredForce[8], handFilteredForce[9], handFilteredForce[10], handFilteredForce[11]);
+		//	context.write("FT Middle [%f %f %f %f %f %f]\n",
+		//		handFilteredForce[12], handFilteredForce[13], handFilteredForce[14], handFilteredForce[15], handFilteredForce[16], handFilteredForce[17]);
+		//}
 		for (auto i = ftGuards.begin(); i < ftGuards.end(); ++i) {
 			(*i)->setColumn6(&handFilteredForce[k]);
 			if ((*i)->checkContacts())
@@ -3210,7 +3210,7 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 		//mfsePoses.push_back(Sample(newPoses[i], REAL_ONE, i*REAL_ONE));
 		//continue;
 		grasp::RBCoord c = newPoses[i];
-		rand.nextGaussianArray<golem::Real>(&c[0], &c[0] + grasp::RBCoord::N, &(newPoses[i])[0], &pBelief->pose.covarianceSqrt[0]); // normalised multivariate Gaussian
+//		rand.nextGaussianArray<golem::Real>(&c[0], &c[0] + grasp::RBCoord::N, &(newPoses[i])[0], &pBelief->pose.covarianceSqrt[0]); // normalised multivariate Gaussian
 		grasp::Cloud::PointSeq points;
 		grasp::Cloud::transform(newPoses[i].toMat34(), modelPoints, points);
 		debugRenderer.reset();
@@ -3261,6 +3261,8 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	//showDistrPoints = true;
 //	if (screenCapture) universe.postScreenCaptureFrames(-1);
 	pHeuristic->setHypothesisBounds();
+	for (auto g = ftGuards.begin(); g != ftGuards.end(); ++g)
+		(*g)->unlock();
 
 	// stop recording
 	recordingStop(trajectoryIdlePerf);

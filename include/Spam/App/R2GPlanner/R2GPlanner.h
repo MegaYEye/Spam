@@ -129,7 +129,7 @@ public:
 			ext = ".txt";
 			write = false;
 
-			read = true;
+			read = false;
 
 			sensorSeq.clear();
 
