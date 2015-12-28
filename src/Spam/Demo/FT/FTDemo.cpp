@@ -63,11 +63,57 @@ void FTDemo::create(const Desc& desc) {
 	ftpath = desc.path;
 	sepDir = desc.sepDir;
 	iteration = 1;
-	menuCmdMap.insert(std::make_pair("Z", [=]() {
+
+	auto executeCmd = [&](const std::string command) {
+		MenuCmdMap::const_iterator cmd = menuCmdMap.find(command);
+		if (cmd == menuCmdMap.end())
+			throw Cancel(makeString("Error: impossible to execute command %s.", command.c_str()).c_str());
+		cmd->second();
+	};
+
+	menuCtrlMap.insert(std::make_pair("Z", [=](MenuCmdMap& menuCmdMap, std::string& desc) {
+		desc = "Press a key to: (D)ata gathering/(B)elief update test...";
+	}));
+	menuCmdMap.insert(std::make_pair("ZD", [=]() {
 		// item name
 		readString("Enter item name: ", object);
 		// item name
 		readNumber("Enter iteration: ", iteration);
+	}));
+	menuCmdMap.insert(std::make_pair("ZB", [=]() {
+		grasp::to<Data>(dataCurrentPtr)->stratType = Strategy::MYCROFT;
+		grasp::to<Data>(dataCurrentPtr)->actionType = action::IG_PLAN_M2Q;
+		// command keys
+		std::string createModelCmd("PM");
+		std::string createQueryCmd("PQ");
+		// create a model for the object
+		context.write("Create a model...\n");
+//		executeCmd(createModelCmd); // move the robot to the home pose after scanning
+		context.write("Create a query...\n");
+//		executeCmd(createQueryCmd);
+
+		grasp::data::Item::Map::const_iterator item = to<Data>(dataCurrentPtr)->getItem<grasp::data::Item::Map::const_iterator>(true);
+		grasp::data::Trajectory* trajectory = is<grasp::data::Trajectory>(item->second.get());
+		if (!trajectory)
+			throw Cancel("Error: no trajectory selected.");
+		// play
+		//Controller::State::Seq inp = trajectory->getWaypoints();
+		grasp::Waypoint::Seq inp = trajectory->getWaypoints();
+		if (inp.size() < 3)
+			throw Cancel("Error: the selected trajectory have not at least 3 waypoints.");
+
+		for (;;) {
+			if (!execute(dataCurrentPtr, inp))
+				return;
+			//if (contactOccured) {
+			//	//grasp::to<Data>(cdata->second)->replanning = false;
+			//	contactOccured = false;
+			//	updateAndResample(dataCurrentPtr);
+			//	enableForceReading = false;
+			//	continue;
+			//}
+		}
+
 	}));
 
 }
@@ -145,6 +191,7 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	TwistSeq rawThumbFT, rawIndexFT, rawWristFT;
 	FT::Data thumbData, indexData, wristData;
 	grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
+	sensorBundlePtr->start2read = true;
 	// repeat every send waypoint until trajectory end
 	for (U32 i = 0; controller->waitForBegin(); ++i) {
 		if (universe.interrupted())
@@ -154,6 +201,8 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 
 		Controller::State state = lookupState();
 		robotPoses.push_back(state);
+		sensorBundlePtr->increment();
+
 		if (false && wristFTSensor) {
 			wristFTSensor->read(wristData);
 			wristFT.push_back(wristData.wrench);
@@ -186,8 +235,11 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 		// print every 10th robot state
 		if (i % 10 == 0)
 			context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
+		if (i > 200)
+			enableForceReading = true;
 	}
 	enableForceReading = false;
+	sensorBundlePtr->start2read = false;
 
 	std::string dir = makeString("%s%s/%s/trial0%d/", ftpath.c_str(), object.c_str(), item.c_str(), iteration++);
 	golem::mkdir(dir.c_str());

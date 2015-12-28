@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <Grasp/Data/Image/Image.h>
 #include <Grasp/Data/PointsCurv/PointsCurv.h>
+#include <boost/tokenizer.hpp>
 
 #ifdef WIN32
 	#pragma warning (push)
@@ -85,6 +86,68 @@ void SensorBundle::create(const Desc& desc) {
 		middleSS.open(lowpass[2]);
 		strFTDesc(middleSS);
 	}
+	read = desc.read;
+	start2read = false;
+	idx = 0;
+	if (read) {
+		forceSS.open("C:/Users/wmemnone/Development/Projects/bin/data/ft_data/bowl/forces.txt");
+		ft.resize(1074);
+		for (auto ii = ft.begin(); ii != ft.end(); ++ii)
+			ii->assign(18, REAL_ZERO);
+		std::string ftWPrefix = makeString("C:/Users/wmemnone/Development/Projects/bin/data/ft_data/bowl/wrist.txt");
+		std::string ftTPrefix = makeString("C:/Users/wmemnone/Development/Projects/bin/data/ft_data/bowl/thumb.txt");
+		std::string ftIPrefix = makeString("C:/Users/wmemnone/Development/Projects/bin/data/ft_data/bowl/index.txt");
+		ftWristFile.open(ftWPrefix, std::ios_base::in);
+		ftThumbFile.open(ftTPrefix, std::ios_base::in);
+		ftIndexFile.open(ftIPrefix, std::ios_base::in);
+		if (!ftWristFile.good() || !ftThumbFile.good() || !ftIndexFile.good())
+			context.write("Error: Cannot open the ft files\n");
+		size_t i = 0, j = 0;
+		std::string wline, tline, iline;
+		while (std::getline(ftWristFile, wline) && std::getline(ftThumbFile, tline) && std::getline(ftIndexFile, iline)) {
+			boost::char_separator<char> sep("\t");
+			boost::tokenizer<boost::char_separator<char> > wtokens(wline, sep), ttokens(tline, sep), itokens(iline, sep);
+			auto wll = wtokens.begin(); wll++; wll++;
+			auto tll = ttokens.begin(); tll++; tll++;
+			auto ill = itokens.begin(); ill++; ill++;
+			while (wll != wtokens.end() && tll != ttokens.end() && ill != itokens.end()) {
+				if (j < 6) {
+					ft[i][j] = std::stod(*tll);// std::stod(*wll);
+					ft[i][j + 6] = std::stod(*ill); // std::stod(*tll);
+					ft[i][j + 12] = REAL_ZERO; // std::stod(*ill);
+					j++;
+				}
+				else {
+					j = 0;
+					i++;
+					if (i > ftWrist.size())
+						break;
+				}
+				wll++;
+				tll++;
+				ill++;
+			}
+		}
+		context.write("FT Wrist size=%d\n", ft.size());
+		RealSeq seq = ft[0];
+		context.write("[%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f]\n", 
+			seq[0], seq[1], seq[2], seq[3], seq[4], seq[5],
+			seq[6], seq[7], seq[8], seq[9], seq[10], seq[11],
+			seq[12], seq[13], seq[14], seq[15], seq[16], seq[17]);
+		seq = ft[1];
+		context.write("[%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f]\n",
+			seq[0], seq[1], seq[2], seq[3], seq[4], seq[5],
+			seq[6], seq[7], seq[8], seq[9], seq[10], seq[11],
+			seq[12], seq[13], seq[14], seq[15], seq[16], seq[17]);
+
+		//for (auto ii = ftWrist.begin(); ii != ftWrist.end(); ++ii) {
+		//	context.write("[");
+		//	for (auto jj = ii->begin(); jj != ii->end(); ++jj)
+		//		context.write("%.3f ", *jj);
+		//	context.write("]\n");
+		//}
+		
+	}
 
 	dimensionality = desc.dimensionality;
 
@@ -96,7 +159,7 @@ void SensorBundle::create(const Desc& desc) {
 	sigma = desc.sigma;
 	Real i = -2;
 	for (I32 j = 0; j < windowSize + 1; j++) {
-		v[j] = N(i, REAL_ONE);
+		v[j] = N(i, sigma);
 		i += delta;
 	}
 
@@ -188,6 +251,12 @@ void SensorBundle::create(const Desc& desc) {
 void SensorBundle::run() {
 	//if (ftSensorSeq.empty())
 	//	return;
+	auto strTorques = [=](std::ostream& ostr, const grasp::RealSeq& forces, const SecTmReal t) {
+		ostr << t << "\t";
+		for (auto i = 0; i < forces.size(); ++i)
+			ostr << forces[i] << "\t";
+		ostr << std::endl;
+	};
 
 	sleep.reset(new golem::Sleep);
 
@@ -195,14 +264,23 @@ void SensorBundle::run() {
 		SecTmReal t = context.getTimer().elapsed();
 		if (t - tRead > tCycle) {
 			RealSeq force;
-			force.assign(dimensions(), REAL_ZERO);
-			size_t k = 0;
-			for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
-				FT::Data data;
-				(*i)->read(data);
-				data.wrench.v.getColumn3(&force[k]);
-				data.wrench.w.getColumn3(&force[k + 3]);
-				k += 6;
+			{
+				golem::CriticalSectionWrapper csw(cs);
+				force = handFilteredForce;
+			}
+			if (!read) {
+				size_t k = 0;
+				for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
+					FT::Data data;
+					(*i)->read(data);
+					data.wrench.v.getColumn3(&force[k]);
+					data.wrench.w.getColumn3(&force[k + 3]);
+					k += 6;
+				}
+			}
+			else {
+				if (start2read)
+					force = ft[idx];
 			}
 			//		collectInp(force);
 			for (I32 i = 0; i < dimensions(); ++i)
@@ -232,9 +310,10 @@ void SensorBundle::run() {
 				golem::CriticalSectionWrapper csw(cs);
 				handFilteredForce = output;
 			}
+			strTorques(forceSS, output, t);
 			if (write) {
 				Twist wrench;
-				k = 0;
+				size_t k = 0;
 				for (size_t i = 0; i < 3; ++i) {
 					wrench.v.setColumn3(&handFilteredForce[k]);
 					wrench.w.setColumn3(&handFilteredForce[k + 3]);
@@ -463,19 +542,19 @@ bool R2GPlanner::create(const Desc& desc) {
 	FTGuard::Desc thumbFTDesc = FTGuard::Desc();
 	thumbFTDesc.chain = HandChain::THUMB;
 	thumbFTDesc.jointIdx = handInfo.getJoints(chain++).end() - 1;
-	thumbFTDesc.limits = fLimit;
+	thumbFTDesc.setLimits(&fLimit[0]);
 	ftGuards.push_back(thumbFTDesc.create());
 	// set FT guard for the index
 	FTGuard::Desc indexFTDesc = FTGuard::Desc();
 	indexFTDesc.chain = HandChain::INDEX;
 	indexFTDesc.jointIdx = handInfo.getJoints(chain++).end() - 1;
-	indexFTDesc.limits = fLimit;
+	indexFTDesc.setLimits(&fLimit[6]);
 	ftGuards.push_back(indexFTDesc.create());
 	// set FT guard for the thumb
 	FTGuard::Desc middleFTDesc = FTGuard::Desc();
 	middleFTDesc.chain = HandChain::MIDDLE;
 	middleFTDesc.jointIdx = handInfo.getJoints(chain++).end() - 1;
-	middleFTDesc.limits = fLimit;
+	middleFTDesc.setLimits(&fLimit[12]);
 	ftGuards.push_back(middleFTDesc.create());
 	//handForces.assign(handInfo.getChains().size(), Vec3::zero());
 
@@ -686,18 +765,18 @@ bool R2GPlanner::create(const Desc& desc) {
 
 		//context.write("Thumb [%.3f %.3f %.3f %.3f %.3f %.3f]\r",
 		//	handFilteredForce[0], handFilteredForce[1], handFilteredForce[2], handFilteredForce[3], handFilteredForce[4], handFilteredForce[5]);
-
-		//if (indexkk++ % 10 == 0) {
-		//	context.write("Thumb [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
-		//		handFilteredForce[0], handFilteredForce[1], handFilteredForce[2], handFilteredForce[3], handFilteredForce[4], handFilteredForce[5]);
-		//	context.write("Index [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
-		//		handFilteredForce[6], handFilteredForce[7], handFilteredForce[8], handFilteredForce[9], handFilteredForce[10], handFilteredForce[11]);
-		//	context.write("Middle [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
-		//		handFilteredForce[12], handFilteredForce[13], handFilteredForce[14], handFilteredForce[15], handFilteredForce[16], handFilteredForce[17]);
-		//}
+		static size_t indexkk = 0;
 		size_t k = 0;
 		U32 contacts = golem::numeric_const<U32>::ZERO;
-		handFilteredForce = sensorBundlePtr.get() ? sensorBundlePtr->getFilteredForces() : handFilteredForce;
+		handFilteredForce = sensorBundlePtr->getFilteredForces(); // sensorBundlePtr.get() ? sensorBundlePtr->getFilteredForces() : handFilteredForce;
+		if (indexkk++ % 10 == 0) {
+			context.write("FT Thumb [%f %f %f %f %f %f]\n",
+				handFilteredForce[0], handFilteredForce[1], handFilteredForce[2], handFilteredForce[3], handFilteredForce[4], handFilteredForce[5]);
+			context.write("FT Index [%f %f %f %f %f %f]\n",
+				handFilteredForce[6], handFilteredForce[7], handFilteredForce[8], handFilteredForce[9], handFilteredForce[10], handFilteredForce[11]);
+			context.write("FT Middle [%f %f %f %f %f %f]\n",
+				handFilteredForce[12], handFilteredForce[13], handFilteredForce[14], handFilteredForce[15], handFilteredForce[16], handFilteredForce[17]);
+		}
 		for (auto i = ftGuards.begin(); i < ftGuards.end(); ++i) {
 			(*i)->setColumn6(&handFilteredForce[k]);
 			if ((*i)->checkContacts())

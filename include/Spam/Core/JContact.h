@@ -157,6 +157,11 @@ public:
 		}
 		/** Creates the object from the description. */
 		virtual FTGuard* create() const;
+
+		inline void setLimits(golem::Real* v) {
+			for (size_t i = 0; i < DIM; ++i)
+				limits[i] = v[i];
+		}
 	};
 
 	/** Mode of the ft guard */
@@ -225,6 +230,11 @@ public:
 		v[3] = wrench.getW().x;
 		v[4] = wrench.getW().y;
 		v[5] = wrench.getW().z;
+	}
+
+	inline void setLimits(golem::Real* v) {
+		for (size_t i = 0; i < DIM; ++i)
+			limits[i] = v[i];
 	}
 
 	/** Writes 3 consecutive values from the ptr passed

@@ -86,6 +86,9 @@ public:
 		std::string path, sepField, ext;
 		bool write;
 
+		/** Read ft values from file */
+		bool read;
+
 		grasp::Sensor::Seq sensorSeq;
 
 		/** Dimensionality of the filter (DoFs)*/
@@ -126,6 +129,8 @@ public:
 			ext = ".txt";
 			write = false;
 
+			read = true;
+
 			sensorSeq.clear();
 
 			dimensionality = 18;
@@ -134,7 +139,7 @@ public:
 			windowSize = 40;
 			delta = .1;
 			mask.assign(windowSize, golem::REAL_ZERO);
-			sigma = golem::REAL_ONE;
+			sigma = golem::Real(2.65);
 
 			threadPriority = golem::Thread::HIGHEST;
 			tCycle = golem::SecTmReal(0.02);
@@ -157,6 +162,7 @@ public:
 	void setSensorSeq(const grasp::Sensor::Seq& sensorSeq);
 
 	inline grasp::RealSeq getFilteredForces() {
+		golem::CriticalSectionWrapper csw(cs);
 		return handFilteredForce;
 	}
 
@@ -165,6 +171,14 @@ public:
 		release();
 	}
 
+	inline void increment() {
+		if (idx < ft.size() - 1)
+			idx++;
+		else
+			context.write("End of trajectories! idx=%d ft.size()=%d\n", idx, ft.size());
+	}
+
+	bool start2read;
 	///** Emergency mode handler */
 	//void setForceReaderHandler(ThreadTask::Function forceReaderHandler);
 
@@ -189,8 +203,13 @@ protected:
 
 	/** File to collect data from the ft sensor of the hand */
 //	std::vector<std::ofstream&> dataFTRawSeq, dataFTFilteredSeq, lowpassSeq;
-	bool write;
-	std::ofstream thumbSS, indexSS, middleSS;
+	bool write, read;
+	std::ifstream ftWristFile, ftThumbFile, ftIndexFile;
+	std::vector<grasp::RealSeq> ftWrist, ftThumb, ftIndex, ft;
+	std::ofstream thumbSS, indexSS, middleSS, forceSS;
+
+	/** Time stamp of the reading forces */
+	golem::U32 idx;
 
 	/** Sequence of FT sensors */
 	FTSensorSeq ftSensorSeq;
