@@ -121,9 +121,14 @@ Collision::Collision(const grasp::Manipulator& manipulator, const Desc& desc) : 
 		const golem::Configspace::Index j = manipulator.getHandInfo().getJoints(i).end() - 1;
 		ftBounds[j].create(manipulator.getJointBounds(j));
 		size_t k = 0;
-		for (Bounds::Triangle::SeqSeq::iterator t0 = ftBounds[j].getTriangles().begin(); t0 != ftBounds[j].getTriangles().end(); ++t0)
-			for (auto t1 = t0->begin(); t1 != t0->end(); ++t1)
-				t1->face = faces[k++];
+		for (Bounds::Triangle::SeqSeq::iterator t0 = ftBounds[j].getTriangles().begin(); t0 != ftBounds[j].getTriangles().end(); ++t0) {
+			for (auto t1 = t0->begin(); t1 != t0->end(); ++t1) {
+				if (k < faces.size())
+					t1->face = faces[k++];
+				else
+					t1->face = Face::UNKNOWN;
+			}
+		}
 		ftJoints.push_back(j);
 	}
 	// base
@@ -506,16 +511,18 @@ size_t Collision::simulateFT(golem::DebugRenderer& renderer, const FlannDesc& de
 					}
 
 					if (boundsCollisions > 0) {
+						const Real value = (this->desc.ftContact.ftMedian[k] + (2 * rand.nextUniform<Real>()*this->desc.ftContact.ftStd[k] - this->desc.ftContact.ftStd[k]));//* force * 0.1/* * 1000*/;
+						//if (debug) manipulator.getContext().write("Collision joint=%d finger=%d link=%d force=%3.3f\n", i, U32(k/4)+1, U32(k%4), forces[k]);
 						if (t1->face == Face::TIP)
-							forces[k * 6] = -depth * 100000;
+							forces[k * 6] = -value;
 						else if (t1->face == Face::FRONT)
-							forces[k * 6 + 1] = -depth * 100000;
+							forces[k * 6 + 1] = -value;
 						else if (t1->face == Face::BACK)
-							forces[k * 6 + 1] = depth * 100000;
+							forces[k * 6 + 1] = value;
 						else if (t1->face == Face::LEFT)
-							forces[k * 6 + 2] = -depth * 100000;
+							forces[k * 6 + 2] = -value;
 						else if (t1->face == Face::RIGHT)
-							forces[k * 6 + 2] = depth * 100000;
+							forces[k * 6 + 2] = value;
 						collisions += boundsCollisions;
 						collided++;
 						break;

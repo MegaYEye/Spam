@@ -37,11 +37,19 @@ using namespace spam;
 
 //------------------------------------------------------------------------------
 
-SensorBundle::SensorBundle(const Context& context) : context(context) {};
+SensorBundle::SensorBundle(Controller& ctrl) : controller(&ctrl), context(ctrl.getContext()), rand(ctrl.getContext().getRandSeed()) {};
+
+void SensorBundle::Desc::load(golem::Context& context, const golem::XMLContext* xmlcontext) {
+	xmlcontext = xmlcontext->getContextFirst("sensor_bundle");
+
+	spam::XMLData(*objCollisionDescPtr, xmlcontext->getContextFirst("collision"));
+}
 
 void SensorBundle::create(const Desc& desc) {
 	strFT = desc.strFT;
 	strFTDesc = desc.strFTDesc;
+
+	collisionPtr.reset();
 
 	std::vector<std::string> /*ftDataFilteredPath, ftDataRawPath, */lowpass;
 	for (auto i = desc.sensorSeq.begin(); i != desc.sensorSeq.end(); ++i) {
@@ -88,6 +96,7 @@ void SensorBundle::create(const Desc& desc) {
 	}
 	read = desc.read;
 	start2read = false;
+	simulate = desc.simulate;
 	idx = 0;
 	forceSS.open("./data/ft_data/forces.txt");
 	if (read) {
@@ -233,6 +242,7 @@ void SensorBundle::create(const Desc& desc) {
 	tIdle = desc.tIdle;
 	tRead = context.getTimer().elapsed();
 
+	this->desc = desc;
 	// user create
 	userCreate();
 
@@ -269,13 +279,27 @@ void SensorBundle::run() {
 				force = handFilteredForce;
 			}
 			if (!read) {
-				size_t k = 0;
-				for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
-					FT::Data data;
-					(*i)->read(data);
-					data.wrench.v.getColumn3(&force[k]);
-					data.wrench.w.getColumn3(&force[k + 3]);
-					k += 6;
+				if (simulate && start2read && collisionPtr.get()) {
+					for (auto i = 0; i < force.size(); ++i)
+						force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
+
+					golem::Controller::State dflt = controller->createState();
+					controller->setToDefault(dflt);
+
+					controller->lookupState(golem::SEC_TM_REAL_MAX, dflt);
+					dflt.cvel.setToDefault(controller->getStateInfo().getJoints());
+					dflt.cacc.setToDefault(controller->getStateInfo().getJoints());
+					(void)collisionPtr->simulateFT(desc.objCollisionDescPtr->flannDesc, rand, dflt, force);
+				}
+				else {
+					size_t k = 0;
+					for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
+						FT::Data data;
+						(*i)->read(data);
+						data.wrench.v.getColumn3(&force[k]);
+						data.wrench.w.getColumn3(&force[k + 3]);
+						k += 6;
+					}
 				}
 			}
 			else {
@@ -414,7 +438,8 @@ void R2GPlanner::Desc::load(golem::Context& context, const golem::XMLContext* xm
 
 	golem::XMLData(fLimit, xmlcontext->getContextFirst("limit"), false);
 
-	spam::XMLData(*objCollisionDescPtr, xmlcontext->getContextFirst("collision"));
+	sensorBundleDesc.load(context, xmlcontext);
+//	spam::XMLData(*objCollisionDescPtr, xmlcontext->getContextFirst("collision"));
 }
 
 //------------------------------------------------------------------------------
@@ -464,8 +489,6 @@ bool R2GPlanner::create(const Desc& desc) {
 	//	w.points = 20000;// desc.maxModelPoints;
 	//	collision.reset(new Collision(context, *manipulator));
 	contactOccured = false;
-
-	collisionPtr = desc.objCollisionDescPtr->create(*manipulator);
 
 	//std::stringstream prefix;
 	//prefix << std::fixed << std::setprecision(3) << "./data/boris/experiments/ftsensors/ftsensors" << "-" << context.getTimer().elapsed();
@@ -521,9 +544,12 @@ bool R2GPlanner::create(const Desc& desc) {
 		fLimit[6], fLimit[7], fLimit[8], fLimit[9], fLimit[10], fLimit[11]);
 	context.write("Middle limits [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
 		fLimit[12], fLimit[13], fLimit[14], fLimit[15], fLimit[16], fLimit[17]);
-	SensorBundle::Desc sensorBundleDesc;
-	sensorBundleDesc.sensorSeq = armHandForce->getSensorSeq();
-	sensorBundlePtr = sensorBundleDesc.create(context);
+	
+	SensorBundle::Desc sbDesc = desc.sensorBundleDesc;
+	sbDesc.sensorSeq = armHandForce->getSensorSeq();
+	sensorBundlePtr = sbDesc.create(*controller);
+	sensorBundlePtr->setManipulator(manipulator.get());
+
 	Sensor::Seq sensorSeq = armHandForce->getSensorSeq();
 	// NOTE: skips the sensor at the wrist
 	for (auto i = sensorSeq.begin(); i != sensorSeq.end(); ++i) {
@@ -1120,7 +1146,7 @@ bool R2GPlanner::create(const Desc& desc) {
 		to<Data>(dataCurrentPtr)->createRender();
 		// set the simulated object
 		if (!to<Data>(dataCurrentPtr)->simulateObjectPose.empty()) {
-			collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+			sensorBundlePtr->collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
 			objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataCurrentPtr)->simulateObjectPose));
 		}
 
@@ -1364,7 +1390,7 @@ bool R2GPlanner::create(const Desc& desc) {
 					executeCmd(createQueryCmd);
 				// set the simulated object
 				if (!to<Data>(dataCurrentPtr)->simulateObjectPose.empty()) {
-					collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+					sensorBundlePtr->collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
 					objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataCurrentPtr)->simulateObjectPose));
 				}
 				reset(); // move the robot to the home pose after scanning
@@ -1628,7 +1654,7 @@ bool R2GPlanner::create(const Desc& desc) {
 		};
 
 		if (!to<Data>(dataCurrentPtr)->simulateObjectPose.empty()) {
-			collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+			sensorBundlePtr->collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
 			objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataCurrentPtr)->simulateObjectPose));
 		}
 
@@ -1720,7 +1746,7 @@ bool R2GPlanner::create(const Desc& desc) {
 		points.resize(curvPoints.size());
 		Cloud::copy(curvPoints, points);
 
-		collisionPtr->create(rand, points);
+		sensorBundlePtr->collisionPtr->create(rand, points);
 		objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(points));
 
 		Collision::FlannDesc waypointDesc;

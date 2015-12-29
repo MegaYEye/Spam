@@ -759,6 +759,11 @@ public:
 	/** Collision detection to simulate contact at execution time */
 	virtual size_t simulate(const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, grasp::RealSeq& forces, bool debug = false) const;
 	/** Collision detection to simulate contact at execution time */
+	inline size_t simulateFT(const FlannDesc& desc, const golem::Rand& rand, const golem::Controller::State& state, grasp::RealSeq& forces) const {
+		golem::DebugRenderer renderer;
+		return simulateFT(renderer, desc, rand, manipulator.getConfig(state), forces, false);
+	}
+	/** Collision detection to simulate contact at execution time */
 	virtual size_t simulateFT(golem::DebugRenderer& renderer, const FlannDesc& desc, const golem::Rand& rand, const grasp::Manipulator::Config& config, grasp::RealSeq& forces, bool debug = false) const;
 
 	/** Collision likelihood estimation at a given waypoint */

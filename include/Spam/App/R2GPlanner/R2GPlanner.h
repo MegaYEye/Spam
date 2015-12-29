@@ -89,6 +89,10 @@ public:
 		/** Read ft values from file */
 		bool read;
 
+		bool simulate;
+		/** Collision description file. Used for collision with the ground truth */
+		Collision::Desc::Ptr objCollisionDescPtr;
+
 		grasp::Sensor::Seq sensorSeq;
 
 		/** Dimensionality of the filter (DoFs)*/
@@ -131,6 +135,9 @@ public:
 
 			read = false;
 
+			simulate = true;
+			objCollisionDescPtr.reset(new Collision::Desc());
+
 			sensorSeq.clear();
 
 			dimensionality = 18;
@@ -145,10 +152,13 @@ public:
 			tCycle = golem::SecTmReal(0.02);
 			tIdle = golem::SecTmReal(0.01);
 		}
-		bool isValid() {
-			return true;
+		virtual void assertValid(const grasp::Assert::Context &ac) const {
+			grasp::Assert::valid(objCollisionDescPtr != nullptr, ac, "Collision description: invalid");
 		}
-		GRASP_CREATE_FROM_OBJECT_DESC1(SensorBundle, SensorBundle::Ptr, golem::Context&)
+		/** Load descritpion from xml context. */
+		virtual void load(golem::Context& context, const golem::XMLContext* xmlcontext);
+
+		GRASP_CREATE_FROM_OBJECT_DESC1(SensorBundle, SensorBundle::Ptr, golem::Controller&)
 	};
 
 	/** Force reader */
@@ -178,13 +188,27 @@ public:
 			context.write("End of trajectories! idx=%d ft.size()=%d\n", idx, ft.size());
 	}
 
+	inline void setManipulator(grasp::Manipulator* manipulator) {
+		this->manipulator.reset(manipulator);
+		collisionPtr = desc.objCollisionDescPtr->create(*this->manipulator.get());
+	}
+
 	bool start2read;
 	///** Emergency mode handler */
 	//void setForceReaderHandler(ThreadTask::Function forceReaderHandler);
 
+	/** Pointer to collision detection with the ground truth */
+	Collision::Ptr collisionPtr;
+
 protected:
 	/** Context */
 	golem::Context context;
+	/** Genrator of pseudo-random numbers */
+	golem::Rand rand;
+	/** Pointer to controller */
+	golem::Controller* controller;
+	/** Manipulator interface */
+	grasp::Manipulator::Ptr manipulator;
 	/** Description file */
 	Desc desc;
 
@@ -203,7 +227,7 @@ protected:
 
 	/** File to collect data from the ft sensor of the hand */
 //	std::vector<std::ofstream&> dataFTRawSeq, dataFTFilteredSeq, lowpassSeq;
-	bool write, read;
+	bool write, read, simulate;
 	std::ifstream ftWristFile, ftThumbFile, ftIndexFile;
 	std::vector<grasp::RealSeq> ftWrist, ftThumb, ftIndex, ft;
 	std::ofstream thumbSS, indexSS, middleSS, forceSS;
@@ -274,7 +298,7 @@ protected:
 	/** Idle time */
 	golem::SecTmReal tIdle;
 
-	SensorBundle(const golem::Context& context);
+	SensorBundle(golem::Controller& ctrl);
 
 	void create(const Desc& desc);
 };
@@ -360,7 +384,7 @@ public:
 		size_t maxModelPoints;
 
 		/** Collision description file. Used for collision with the ground truth */
-		Collision::Desc::Ptr objCollisionDescPtr;
+//		Collision::Desc::Ptr objCollisionDescPtr;
 
 		/** Guards to retrieve a contact */
 		grasp::RealSeq fLimit;
@@ -379,6 +403,9 @@ public:
 		golem::Profile::Desc::Ptr pProfileDesc;
 		/** Trajectory profile configspace distance multiplier */
 		grasp::RealSeq distance;
+
+		/** Sensor bundle desc file */
+		SensorBundle::Desc sensorBundleDesc;
 
 		/** Constructs from description object */
 		Desc() {
@@ -406,7 +433,8 @@ public:
 
 			maxModelPoints = 5000;
 
-			objCollisionDescPtr.reset(new Collision::Desc());
+			sensorBundleDesc.setToDefault();
+//			objCollisionDescPtr.reset(new Collision::Desc());
 		}
 
 		/** Checks if the description is valid. */
@@ -414,7 +442,7 @@ public:
 			PosePlanner::Desc::assertValid(ac);
 
 			grasp::Assert::valid(maxModelPoints > 0, ac, "Max model point is not positive");
-			grasp::Assert::valid(objCollisionDescPtr != nullptr, ac, "Collision description: invalid");
+//			grasp::Assert::valid(objCollisionDescPtr != nullptr, ac, "Collision description: invalid");
 		}
 		/** Load descritpion from xml context. */
 		virtual void load(golem::Context& context, const golem::XMLContext* xmlcontext);
@@ -553,7 +581,7 @@ protected:
 	std::vector<std::string> itemPerformedTrj;
 
 	/** Pointer to collision detection with the ground truth */
-	Collision::Ptr collisionPtr;
+//	Collision::Ptr collisionPtr;
 
 	/** Resets the controllers */
 	bool enableControllers;
