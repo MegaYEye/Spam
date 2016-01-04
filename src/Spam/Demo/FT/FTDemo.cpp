@@ -93,6 +93,11 @@ void FTDemo::create(const Desc& desc) {
 		context.write("Create a query...\n");
 		executeCmd(createQueryCmd);
 
+		// set the simulated object
+		if (!to<Data>(dataCurrentPtr)->simulateObjectPose.empty()) {
+			sensorBundlePtr->collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+			objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataCurrentPtr)->simulateObjectPose));
+		}
 		//executeCmd(trjPlayCmd);
 
 

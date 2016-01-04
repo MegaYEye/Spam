@@ -200,6 +200,14 @@ public:
 	/** Pointer to collision detection with the ground truth */
 	Collision::Ptr collisionPtr;
 
+	/** Render */
+	void render() {
+		{
+			golem::CriticalSectionWrapper csw(csRender);
+			debugRenderer.render();
+		}
+	}
+
 protected:
 	/** Context */
 	golem::Context context;
@@ -209,6 +217,8 @@ protected:
 	golem::Controller* controller;
 	/** Manipulator interface */
 	grasp::Manipulator::Ptr manipulator;
+	/** Debug renderer */
+	golem::DebugRenderer debugRenderer;
 	/** Description file */
 	Desc desc;
 
@@ -251,7 +261,7 @@ protected:
 	golem::Real sigma;
 
 	/** force reader access cs */
-	golem::CriticalSection cs;
+	golem::CriticalSection cs, csRender;
 	/** Input force at sensor, sequence */
 	std::vector<grasp::RealSeq> forceInpSensorSeq;
 	/** Filtered forces for the hand */

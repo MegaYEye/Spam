@@ -668,7 +668,7 @@ golem::Real Belief::density(const grasp::RBCoord &c) const {
 	return sum;// up to scaling factor
 }
 
-void Belief::createUpdate(grasp::Cloud::Appearance debugAppearance, golem::DebugRenderer& renderer, const Collision::Ptr collision, const golem::Waypoint &w, FTGuard::SeqPtr& triggeredGuards, const grasp::RBCoord &rbPose, golem::UIKeyboardMouseCallback* callback) {
+void Belief::createUpdate(golem::DebugRenderer& renderer, const golem::Waypoint &w, FTGuard::SeqPtr& triggeredGuards, const grasp::RBCoord &rbPose) {
 	Collision::FlannDesc waypointDesc;
 	Collision::Desc::Ptr cloudDesc;
 	cloudDesc.reset(new Collision::Desc());

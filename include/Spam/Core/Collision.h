@@ -309,6 +309,7 @@ public:
 						surfaces.back()[j].t1 = Vec3(mesh->getVertices()[mesh->getTriangles()[j].t1]); // e.g. first triangle
 						surfaces.back()[j].t2 = Vec3(mesh->getVertices()[mesh->getTriangles()[j].t2]); // e.g. first triangle
 						surfaces.back()[j].t3 = Vec3(mesh->getVertices()[mesh->getTriangles()[j].t3]); // e.g. first triangle
+//						surfaces.back()[j].point = Vec3(mesh->getVertices()[mesh->getTriangles()[j].t1]); // e.g. first triangle
 						surfaces.back()[j].point = (mesh->getVertices()[mesh->getTriangles()[j].t1] + mesh->getVertices()[mesh->getTriangles()[j].t2] + mesh->getVertices()[mesh->getTriangles()[j].t3]) / Real(3.0); // centroid
 						triangles.back()[j].distance = Real(mesh->getDistances()[j]);
 						surfaces.back()[j].face = Face::UNKNOWN;
@@ -328,44 +329,9 @@ public:
 		}
 		/** Pose */
 		static inline void setPose(const Mat34& pose, const typename Surface::Seq& surfaces, typename Triangle::Seq& triangles) {
-			//Real normalSize(0.01);
-			//Vec3 normalx(1, 0, 0), normaly(0, 1, 0), normalz(0, 0, 1);
-			//Vec3 nx, ny, nz;
-			//nx.multiply(normalSize, normalx);
-			//ny.multiply(normalSize, normaly);
-			//nz.multiply(normalSize, normalz);
-			//pose.R.multiply(nx, nx);
-			//pose.R.multiply(ny, ny);
-			//pose.R.multiply(nz, nz);
 			triangles.resize(surfaces.size());
-			for (size_t i = 0; i < triangles.size(); ++i) {
+			for (size_t i = 0; i < triangles.size(); ++i)
 				setPose(pose, surfaces[i], triangles[i]);
-				//Mat34 m; m.setId(); m.p = triangles[i].point;
-				//Vec3 n;
-				//n.multiply(normalSize, triangles[i].normal);
-				////m.R.multiply((Vec3&)n, (Vec3&)n);
-				//Real v1 = m.R.m11 * n.v1 + m.R.m12 * n.v2 + m.R.m13 * n.v3;
-				//Real v2 = m.R.m21 * n.v1 + m.R.m22 * n.v2 + m.R.m23 * n.v3;
-				//Real v3 = m.R.m31 * n.v1 + m.R.m32 * n.v2 + m.R.m33 * n.v3;
-				//n.v1 = v1;
-				//n.v2 = v2;
-				//n.v3 = v3;
-				//const Real tnx = n.dot(nx);
-				//const Real tny = n.dot(ny);
-				//const Real tnz = n.dot(nz);
-				//if (tnx < numeric_const<Real>::EPS)
-				//	triangles[i].face = Face::RIGHT;
-				//else if (tnx > numeric_const<Real>::EPS)
-				//	triangles[i].face = Face::LEFT;
-				//else if (tnz > numeric_const<Real>::EPS)
-				//	triangles[i].face = Face::BACK;
-				//else if (tnz < numeric_const<Real>::EPS)
-				//	triangles[i].face = Face::FRONT;
-				//else if (tny > numeric_const<Real>::EPS)
-				//	triangles[i].face = Face::TOP;
-				//else if (tny < numeric_const<Real>::EPS)
-				//	triangles[i].face = Face::TIP;
-			}
 		}
 		/** Pose */
 		inline void setPose(const Mat34& pose) {
@@ -416,7 +382,7 @@ public:
 				// check for penetration
 				if (penetration > golem::numeric_const<Real>::ZERO) {
 					const Real d = i->distance - i->normal.dot(point);
-					if (d < golem::numeric_const<Real>::ZERO) // no collision
+					if (d > golem::numeric_const<Real>::ZERO) // no collision
 						penetration = -golem::numeric_const<Real>::ONE;
 				}
 			}

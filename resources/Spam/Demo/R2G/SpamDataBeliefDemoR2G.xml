@@ -2,7 +2,7 @@
 
 <grasp>
   <data delete_if_moved="1" delete_if_unlinked="1" delete_if_temporary="1" ext_suffix="hbs">
-    <belief points="1" features="1" attempts="10" kernels="10" neighbours="5" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7" cluster="1">
+    <belief points="1" features="1" attempts="10" kernels="100" neighbours="5" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7" cluster="1">
       <nn_search neighbours="0" search_checks="32" search_kdtrees="4" search_leaf_max_size="10"/>
       <covariance dim="7" c1="0.001" c2="0.001" c3="0.001" c4="0.001" c5="0.0001" c6="0.0001" c7="0.0001"/>
       <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>

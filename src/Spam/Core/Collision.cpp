@@ -473,6 +473,7 @@ size_t Collision::simulateFT(golem::DebugRenderer& renderer, const FlannDesc& de
 			if (debug) {
 				renderer.reset();
 				renderer.addAxes(poses[j], Vec3(.05, .05, .05));
+				draw(renderer, this->desc.boundsAppearence, poses[j], bounds);
 				//size_t tt = 0;
 				//manipulator.getContext().write("Triangles %d\n", bounds.getTriangles().size());
 				//for (auto t = bounds.getTriangles().begin(); t != bounds.getTriangles().end(); ++t) {
@@ -502,9 +503,10 @@ size_t Collision::simulateFT(golem::DebugRenderer& renderer, const FlannDesc& de
 					golem::U32 boundsCollisions = 0;
 					median.setZero();
 					depth = bounds.distance(seq.data(), seq.data() + seq.size(), median, boundsCollisions);
-					
+					//edepth = bounds.evaluate(seq.data(), seq.data() + seq.size(), (Bounds::RealEval)desc.depthStdDev, boundsCollisions);
+
 					if (debug) {
-						//manipulator.getContext().write("Simulate depth=%f seq=%d\n", depth, seq.size());
+						//manipulator.getContext().write("Simulate depth=%f (col=%d) seq=%d\n", depth, boundsCollisions, seq.size());
 						draw(seq.begin(), seq.end(), this->desc.featureAppearence, renderer);
 						Mat34 m(Mat33::identity(), median);
 						renderer.addAxes(m, Vec3(0.005, 0.005, 0.005));
@@ -512,7 +514,8 @@ size_t Collision::simulateFT(golem::DebugRenderer& renderer, const FlannDesc& de
 
 					if (boundsCollisions > 0) {
 						const Real value = (this->desc.ftContact.ftMedian[k] + (2 * rand.nextUniform<Real>()*this->desc.ftContact.ftStd[k] - this->desc.ftContact.ftStd[k]));//* force * 0.1/* * 1000*/;
-						//if (debug) manipulator.getContext().write("Collision joint=%d finger=%d link=%d force=%3.3f\n", i, U32(k/4)+1, U32(k%4), forces[k]);
+						if (debug) manipulator.getContext().write("Simulate depth=%f (col=%d) seq=%d\n", depth, boundsCollisions, seq.size());
+						if (debug) manipulator.getContext().write("Collision joint=%d finger=%d link=%d force=%3.3f\n", i, U32(k / 4) + 1, U32(k % 4), value);
 						if (t1->face == Face::TIP)
 							forces[k * 6] = -value;
 						else if (t1->face == Face::FRONT)
@@ -1065,7 +1068,7 @@ golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDes
 		fingerGuardSeq[(*guard)->getHandChain()][Direction::z] = Math::abs((*guard)->wrench.getV().z) > (*guard)->limits[Direction::z] ? (*guard)->wrench.getV().z : REAL_ZERO;
 		facesInCollision[(*guard)->getHandChain()] = (*guard)->faces.empty() ? Face::UNKNOWN : (*guard)->faces[0];
 
-		manipulator.getContext().write("Guard[%d] = %s -> face=%s\n", (*guard)->getHandChain(), triggeredFingers[(*guard)->getHandChain()] ? "TRUE" : "FALSE", FaceName[facesInCollision[(*guard)->getHandChain()]]);
+		if (debug) manipulator.getContext().write("Guard[%d] = %s -> face=%s\n", (*guard)->getHandChain(), triggeredFingers[(*guard)->getHandChain()] ? "TRUE" : "FALSE", FaceName[facesInCollision[(*guard)->getHandChain()]]);
 	}
 
 	// loops over fingers: thumb = 0,..., pinky = 4
