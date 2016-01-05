@@ -69,7 +69,7 @@ namespace data {
 class ItemBelief;
 class HandlerBelief;
 
-/** Data item representing grasp training data.
+/** Data item representing belief state data.
 */
 class GOLEM_LIBRARY_DECLDIR ItemBelief : public grasp::data::Item, public spam::data::BeliefState {
 public:

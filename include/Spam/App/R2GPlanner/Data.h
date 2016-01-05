@@ -46,9 +46,7 @@
 
 //------------------------------------------------------------------------------
 
-#include <Spam/HBPlan/Belief.h>
-#include <Spam/HBPlan/Heuristic.h>
-#include <Spam/HBPlan/GraphPlanner.h>
+#include <Grasp/Data/Trajectory/Trajectory.h>
 
 //------------------------------------------------------------------------------
 

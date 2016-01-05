@@ -3202,7 +3202,6 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	//	sampledPose->cdf = cdf;
 	//}
 
-
 	pBelief->createUpdate(debugRenderer, w, ftGuards, trialPtr != trialDataMap.end() ? grasp::to<TrialData>(trialPtr)->queryPointsTrn : grasp::RBCoord());
 	
 	// render the mismatch between estimate and ground truth before resampling

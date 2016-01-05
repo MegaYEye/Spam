@@ -421,7 +421,7 @@ IF (BUILD_SPAM_HBPLAN)
 			optimized GolemPlan${CMAKE_RELEASE_POSTFIX} debug GolemPlan${CMAKE_DEBUG_POSTFIX}
 			optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
 			optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
-            		optimized GolemDeviceMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceMultiCtrl${CMAKE_DEBUG_POSTFIX}
+            optimized GolemDeviceMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceMultiCtrl${CMAKE_DEBUG_POSTFIX}
 		)
 	elseif (UNIX)
 		TARGET_LINK_LIBRARIES(SpamHBPlan SpamCore
@@ -429,7 +429,7 @@ IF (BUILD_SPAM_HBPLAN)
 			#optimized GolemUICtrl${CMAKE_RELEASE_POSTFIX} debug GolemUICtrl${CMAKE_DEBUG_POSTFIX}
 			optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
 			optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
-            		optimized GolemDeviceMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceMultiCtrl${CMAKE_DEBUG_POSTFIX}
+            optimized GolemDeviceMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceMultiCtrl${CMAKE_DEBUG_POSTFIX}
 	)
 	endif()	
 	SET_PROPERTY(TARGET SpamHBPlan PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
@@ -545,14 +545,16 @@ IF (BUILD_SPAM_APP)
 		TARGET_LINK_LIBRARIES(SpamApp SpamHBPlan
 			optimized GraspApp${CMAKE_RELEASE_POSTFIX} debug GraspApp${CMAKE_DEBUG_POSTFIX}
 			optimized GraspActiveCtrl${CMAKE_RELEASE_POSTFIX} debug GraspActiveCtrl${CMAKE_DEBUG_POSTFIX}
-            		optimized GraspDataPointsCurv${CMAKE_RELEASE_POSTFIX} debug GraspDataPointsCurv${CMAKE_DEBUG_POSTFIX}
+            optimized GraspDataPointsCurv${CMAKE_RELEASE_POSTFIX} debug GraspDataPointsCurv${CMAKE_DEBUG_POSTFIX}
+			optimized GraspDataTrajectory${CMAKE_RELEASE_POSTFIX} debug GraspDataTrajectory${CMAKE_DEBUG_POSTFIX}
 			optimized GraspArmHandForce${CMAKE_RELEASE_POSTFIX} debug GraspArmHandForce${CMAKE_DEBUG_POSTFIX}
 		)
 	elseif (UNIX)
 		TARGET_LINK_LIBRARIES(SpamApp SpamHBPlan
 			optimized GraspApp${CMAKE_RELEASE_POSTFIX} debug GraspApp${CMAKE_DEBUG_POSTFIX}	
 			optimized GraspActiveCtrl${CMAKE_RELEASE_POSTFIX} debug GraspActiveCtrl${CMAKE_DEBUG_POSTFIX}
-            		optimized GraspDataPointsCurv${CMAKE_RELEASE_POSTFIX} debug GraspDataPointsCurv${CMAKE_DEBUG_POSTFIX}
+            optimized GraspDataPointsCurv${CMAKE_RELEASE_POSTFIX} debug GraspDataPointsCurv${CMAKE_DEBUG_POSTFIX}
+			optimized GraspDataTrajectory${CMAKE_RELEASE_POSTFIX} debug GraspDataTrajectory${CMAKE_DEBUG_POSTFIX}
 			optimized GraspArmHandForce${CMAKE_RELEASE_POSTFIX} debug GraspArmHandForce${CMAKE_DEBUG_POSTFIX}	 
 
 		)
@@ -714,7 +716,7 @@ IF (BUILD_SPAM_DATA_R2GTRAJECTORY)
 		ADD_LIBRARY(SpamDataR2GTrajectory STATIC ${DATA_R2GTRAJECTORY_HEADERS} ${DATA_R2GTRAJECTORY_SOURCES} ${DATA_R2GTRAJECTORY_FILES})
 	endif(BUILD_DYNAMIC_LIBS)
 	if (WIN32)
-		TARGET_LINK_LIBRARIES(SpamDataR2GTrajectory SpamHBPlan)
+		TARGET_LINK_LIBRARIES(SpamDataR2GTrajectory SpamHBPlan )
 	elseif (UNIX)
 		TARGET_LINK_LIBRARIES(SpamDataR2GTrajectory SpamHBPlan)
 	endif()
