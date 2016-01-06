@@ -2510,6 +2510,9 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 //------------------------------------------------------------------------------
 
 bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq& trajectory) {
+	if (trajectory.size() < 3)
+		throw Cancel("Error: the selected trajectory have not at least 3 waypoints.");
+
 	const golem::Chainspace::Index armChain = armInfo.getChains().begin();
 	bool silent = to<Data>(dataPtr)->actionType != action::NONE_ACTION;
 //	context.debug("execute(): silen=%s, actionType=%s\n", silent ? "TRUE" : "FALSE", actionToString(grasp::to<Data>(dataPtr)->actionType));
@@ -2527,6 +2530,14 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 		isGrasping = false; // used in perform(). Prevent from enable forcereader while grasping
 		enableForceReading = false; // enables/disable force reader
 	};
+	const U32 initIdx = 0, pregraspIdx = 1, graspIdx = 2;
+	// pregrasp has the wrist pose of the 2nd element in the trajectory
+	Controller::State pregrasp = trajectory[pregraspIdx].state;
+	// and the fingers opened as the 1st element in the trajectory
+	for (auto j = handInfo.getJoints().begin(); j != handInfo.getJoints().end(); ++j)
+		pregrasp.cpos[j] = trajectory[initIdx].state.cpos[j];
+	// grasp pose
+	Controller::State grasp = trajectory[graspIdx].state;
 	grasp::RealSeq vl;
 	vl.assign(20, REAL_ZERO);
 	vl[0] = Real(0.22); vl[1] = Real(0.6); vl[2] = Real(0.1); vl[3] = Real(0.1);
@@ -2558,17 +2569,18 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 		Controller::State cend = lookupState();
 		// transform w.r.t. query frame
 		try {
-			findTarget(grasp::to<Data>(dataPtr)->queryTransform, grasp::to<Data>(dataPtr)->modelFrame, trajectory[1].state, cend);
+			findTarget(grasp::to<Data>(dataPtr)->queryTransform, grasp::to<Data>(dataPtr)->modelFrame, pregrasp/*trajectory[1].state*/, cend);
 		}
 		catch (const Message& msg) {
 			context.write("%s\n", msg.str().c_str());
 			resetPlanning();
 			return false;
 		}
-		//auto i = handInfo.getChains().begin();
-		//for (auto j = handInfo.getJoints(i).begin(); j != handInfo.getJoints(i).end(); ++j) {
-		//	const size_t k = j - handInfo.getJoints().begin();
-		//	cend.cpos[j] = vv[k];
+		//for (auto i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i) {
+		//	for (auto j = handInfo.getJoints(i).begin(); j != handInfo.getJoints(i).end(); ++j) {
+		//		const size_t k = j - handInfo.getJoints().begin();
+		//		cend.cpos[j] = pregrasp[k];
+		//	}
 		//}
 		//i++; i++; i++;//move to the ring finger
 		//for (; i != handInfo.getChains().end(); ++i) {
@@ -2892,7 +2904,7 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 		Controller::State cnow = lookupState();
 		for (auto i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i) {
 			for (auto j = handInfo.getJoints(i).begin(); j != handInfo.getJoints(i).end(); ++j)
-				openfingers.cpos[j] = trajectory[1].state.cpos[j]; // pre-grasp fingers' pose
+				openfingers.cpos[j] = trajectory[0].state.cpos[j]; // pre-grasp fingers' pose
 		}
 		// transform w.r.t. query frame 
 		findTarget(Mat34::identity(), openfingers, openfingers);

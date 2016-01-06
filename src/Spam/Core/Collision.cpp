@@ -1196,7 +1196,7 @@ golem::Real Collision::evaluateFT(golem::DebugRenderer& renderer, const FlannDes
 			}
 
 			if (!triggeredFingers[finger] && depth > REAL_ZERO) {// the hypothesis intersects a finger that has no contact retrieved
-				manipulator.getContext().write("Finger %d: Simulated depth = %.4f. Finger not in contact => return zero!\n", finger, depth);
+				if (debug) manipulator.getContext().write("Finger %d: Simulated depth = %.4f. Finger not in contact => return zero!\n", finger, depth);
 				return REAL_ZERO;
 			}
 			// if no contact is retrieve and there is no intersection, don't change eval

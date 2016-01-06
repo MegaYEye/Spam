@@ -135,7 +135,7 @@ public:
 
 			read = false;
 
-			simulate = true;
+			simulate = false;
 			objCollisionDescPtr.reset(new Collision::Desc());
 
 			sensorSeq.clear();
