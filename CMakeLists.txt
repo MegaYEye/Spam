@@ -772,6 +772,7 @@ IF(BUILD_SPAM_DEMO_R2G)
 		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspDataPointsCurvDemoR2G.xml
 		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspDataTrajectoryDemoR2G.xml
 		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspDataVideoDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GolemDeviceDLRHitHandIITactile.xml
 	)
 	
 	ADD_EXECUTABLE(SpamDemoR2G ${DEMO_R2G_SOURCES} ${DEMO_R2G_HEADERS} ${DEMO_R2G_FILES})

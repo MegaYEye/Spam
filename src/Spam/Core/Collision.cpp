@@ -115,13 +115,16 @@ Collision::Collision(const grasp::Manipulator& manipulator, const Desc& desc) : 
 
 	// ft only
 //	faces = { Face::FRONT, Face::FRONT, Face::TOP, Face::TOP, Face::RIGHT, Face::RIGHT, Face::LEFT, Face::LEFT, Face::TIP, Face::TIP, Face::BACK, Face::BACK };
-	faces = { Face::RIGHT, Face::RIGHT, Face::RIGHT, Face::RIGHT, Face::RIGHT, Face::LEFT, Face::LEFT, Face::LEFT, Face::LEFT, Face::LEFT, Face::TOP, Face::TOP, Face::BACK, Face::BACK,
-		Face::TIP, Face::TIP, Face::TIP, Face::TIP, Face::TIP, Face::FRONT, Face::FRONT, Face::FRONT, Face::FRONT};
+
+	//faces = { Face::RIGHT, Face::RIGHT, Face::RIGHT, Face::RIGHT, Face::RIGHT, Face::LEFT, Face::LEFT, Face::LEFT, Face::LEFT, Face::LEFT, Face::TOP, Face::TOP, Face::BACK, Face::BACK,
+	//	Face::TIP, Face::TIP, Face::TIP, Face::TIP, Face::TIP, Face::FRONT, Face::FRONT, Face::FRONT, Face::FRONT};
+
+	faces = { Face::FRONT, Face::FRONT, Face::BACK, Face::BACK, Face::RIGHT, Face::RIGHT, Face::TOP, Face::TOP, Face::LEFT, Face::LEFT, Face::TIP, Face::TIP};
 	for (golem::Chainspace::Index i = manipulator.getHandInfo().getChains().begin(); i != manipulator.getHandInfo().getChains().end(); ++i) {
 		const golem::Configspace::Index j = manipulator.getHandInfo().getJoints(i).end() - 1;
 		ftBounds[j].create(manipulator.getJointBounds(j));
-		size_t k = 0;
 		for (Bounds::Triangle::SeqSeq::iterator t0 = ftBounds[j].getTriangles().begin(); t0 != ftBounds[j].getTriangles().end(); ++t0) {
+			size_t k = 0;
 			for (auto t1 = t0->begin(); t1 != t0->end(); ++t1) {
 				if (k < faces.size())
 					t1->face = faces[k++];
@@ -1548,7 +1551,7 @@ void Collision::draw(golem::DebugRenderer& renderer, const Bounds::Appearance ap
 				renderer.addLine(t->t1, t->t2, appearance.boundsColour);
 				renderer.addLine(t->t2, t->t3, appearance.boundsColour);
 				renderer.addLine(t->t3, t->t1, appearance.boundsColour);
-
+				::Sleep(5000);
 			}
 		}
 	}

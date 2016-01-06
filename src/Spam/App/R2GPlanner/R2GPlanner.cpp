@@ -1844,12 +1844,6 @@ bool R2GPlanner::create(const Desc& desc) {
 		return;
 	}));
 
-	menuCmdMap.insert(std::make_pair("O", [=]() {
-		record = !record;
-		context.write("record ft %s\n", record ? "ON" : "OFF");
-	}));
-
-
 	ragDesc = desc;
 
 	return true;
