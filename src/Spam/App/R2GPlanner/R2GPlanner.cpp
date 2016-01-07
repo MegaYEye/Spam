@@ -1160,6 +1160,8 @@ bool R2GPlanner::create(const Desc& desc) {
 		if (inp.size() < 3)
 			throw Cancel("Error: the selected trajectory have not at least 3 waypoints.");
 		
+		to<Data>(dataCurrentPtr)->actionType = action::NONE_ACTION;
+		select(to<Data>(dataCurrentPtr)->stratType);
 		for (;;) {
 			if (!execute(dataCurrentPtr, inp))
 				return;
@@ -1483,7 +1485,7 @@ bool R2GPlanner::create(const Desc& desc) {
 				U32 iteration = 1, failures = 0;
 				const RBCoord obj(simQueryFrame * to<Data>(dataCurrentPtr)->modelFrame);
 				for (; failures < maxFailures && iteration < maxIterations;) {
-					grasp::to<Data>(dataCurrentPtr)->actionType = action::IG_PLAN_M2Q;
+					grasp::to<Data>(dataCurrentPtr)->actionType = action::IG_TRAJ_OPT;  //action::IG_PLAN_M2Q;
 					grasp::RBCoord queryPose(grasp::to<Data>(dataCurrentPtr)->queryFrame);
 					grasp::RBDist error;
 					error.lin = obj.p.distance(queryPose.p);
@@ -2171,8 +2173,11 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 	golem::Controller::State::Seq initTrajectory;
 	findTrajectory(lookupState(), &trajectory.front(), nullptr, SEC_TM_REAL_ZERO, initTrajectory);
 
-	golem::Controller::State::Seq completeTrajectory = initTrajectory;
-	completeTrajectory.insert(completeTrajectory.end(), trajectory.begin(), trajectory.end());
+	golem::Controller::State::Seq out = initTrajectory;
+	out.insert(out.end(), trajectory.begin(), trajectory.end());
+
+	golem::Controller::State::Seq completeTrajectory;
+	profile(this->trjDuration, out, completeTrajectory, false);
 
 	context.write("R2GPlanner::perform()");
 	// create trajectory item
@@ -2687,27 +2692,30 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 		pHeuristic->setPointCloudCollision(true);
 		isGrasping = false;
 		// select index 
-		U32 index = 1;
-		selectIndex(trajectory, index, "waypoint");
-		index -= 1;
+		//U32 index = 1;
+		//selectIndex(trajectory, index, "waypoint");
+		//index -= 1;
+		const U32 cstartIdx = 0, cendIdx = 1;
 
-		Controller::State cend = lookupState();
-		cend.cpos = trajectory[index].state.cpos;
+		Controller::State cstart = lookupState(), cend = lookupState();
+		cstart.cpos = trajectory[cstartIdx].state.cpos;
+		cend.cpos = trajectory[cendIdx].state.cpos;
 
 		// transform w.r.t. query frame
-		findTarget(grasp::to<Data>(dataPtr)->queryTransform, trajectory[index].state, cend);
+		findTarget(grasp::to<Data>(dataPtr)->queryTransform, trajectory[cstartIdx].state, cstart);
+		findTarget(grasp::to<Data>(dataPtr)->queryTransform, trajectory[cendIdx].state, cend);
 
 		//Bounds::Seq bounds = manipulator->getBounds(manipulator->getConfig(cend), manipulator->getConfig(cend).toMat34());
 		//renderHand(cend, bounds, true);
 
 		Controller::State::Seq approach;
 		try {
-			findTrajectory(lookupState(), &cend, nullptr, 0, approach);
+			findTrajectory(cstart, &cend, nullptr, 0, approach);
 		}
 		catch (const Message&) { return false; }
 
-		Controller::State::Seq out;
-		profile(this->trjDuration, approach, out, silent);
+		Controller::State::Seq out = approach;
+		//profile(this->trjDuration, approach, out, silent);
 		pHeuristic->setPointCloudCollision(true);
 		
 		// add trajectory waypoint
@@ -2947,8 +2955,8 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 		}
 		// disable active controller to apply enough force to the object to grasp.
 		if (armHandForce->getArmCtrl()->getMode() != ActiveCtrlForce::MODE_ENABLED || armHandForce->getHandCtrl()->getMode() != ActiveCtrlForce::MODE_ENABLED) {
-			armHandForce->getArmCtrl()->setMode(ActiveCtrlForce::MODE_ENABLED);
-			armHandForce->getHandCtrl()->setMode(ActiveCtrlForce::MODE_ENABLED);
+			armHandForce->getArmCtrl()->setMode(armMode/*ActiveCtrlForce::MODE_ENABLED*/);
+			armHandForce->getHandCtrl()->setMode(handMode/*ActiveCtrlForce::MODE_ENABLED*/);
 		}
 
 

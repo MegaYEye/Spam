@@ -140,8 +140,11 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	golem::Controller::State::Seq initTrajectory;
 	findTrajectory(lookupState(), &trajectory.front(), nullptr, SEC_TM_REAL_ZERO, initTrajectory);
 
-	golem::Controller::State::Seq completeTrajectory = initTrajectory;
-	completeTrajectory.insert(completeTrajectory.end(), trajectory.begin(), trajectory.end());
+	golem::Controller::State::Seq out = initTrajectory;
+	out.insert(out.end(), trajectory.begin(), trajectory.end());
+
+	golem::Controller::State::Seq completeTrajectory;
+	profile(this->trjDuration, out, completeTrajectory, false);
 
 	// create trajectory item
 	grasp::data::Item::Ptr itemTrajectory;
@@ -190,7 +193,7 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	recordingWaitToStart();
 
 	// send trajectory
-	sendTrajectory(trajectory);
+	sendTrajectory(completeTrajectory);
 
 	Controller::State::Seq robotPoses; robotPoses.clear();
 	TwistSeq ftSeq; ftSeq.clear();
