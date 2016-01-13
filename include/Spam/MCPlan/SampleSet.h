@@ -27,7 +27,7 @@ namespace spam {
 
 //------------------------------------------------------------------------------
 
-typedef golem::Vec3 Vec3;
+//typedef golem::Vec3 Vec3;
 typedef std::vector<golem::Vec3> Vec3Seq;
 typedef std::vector<golem::Real> Vec;
 

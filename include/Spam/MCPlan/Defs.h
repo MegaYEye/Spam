@@ -32,8 +32,7 @@
 //typedef golem::Real Real;
 #endif
 
-float claudio_used_time()
-{ 
+float claudio_used_time() { 
 #if defined(__unix__)
 
 #if defined(CLK_TCK)
@@ -54,8 +53,7 @@ float claudio_used_time()
 #endif
 };
 
-
-float claudio_used_time(float& T){ 
+float claudio_used_time(float& T) { 
 	float t = T;
 	T = claudio_used_time();
 	return  T-t;

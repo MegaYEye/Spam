@@ -459,6 +459,7 @@ IF (BUILD_SPAM_MCPLAN)
 		${PROJECT_ROOT}/include/Spam/MCPlan/Covs.h
 		${PROJECT_ROOT}/include/Spam/MCPlan/CovLaplace.h
 		${PROJECT_ROOT}/include/Spam/MCPlan/CovThinPlate.h
+		${PROJECT_ROOT}/include/Spam/MCPlan/CovSE.h
 		${PROJECT_ROOT}/include/Spam/MCPlan/Defs.h
 		${PROJECT_ROOT}/include/Spam/MCPlan/GaussianProcess.h
 		${PROJECT_ROOT}/include/Spam/MCPlan/Heuristic.h

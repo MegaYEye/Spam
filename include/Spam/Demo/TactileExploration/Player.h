@@ -129,12 +129,37 @@ protected:
 	
 	grasp::Cloud::PointSeq cloudPoints;
 	/** Debug renderer */
-	golem::DebugRenderer debugRenderer;
+	golem::DebugRenderer cdebugRenderer;
 	/** Appereance for point clouds: model point cloud */
 	grasp::Cloud::Appearance pointAppearance;
 
 	/** golem::UIRenderer interface */
 	virtual void render() const;
+	/** golem::UIRenderer interface */
+	virtual void renderCloud(const spam::Vec3Seq& cloud, const golem::RGBA colour = golem::RGBA::BLACK);
+	/** golem::UIRenderer interface */
+	virtual void renderCromCloud(const spam::Vec3Seq& cloud, const Vec& vars, const golem::RGBA cInit = golem::RGBA::BLUE, const golem::RGBA cEnd = golem::RGBA::RED);
+	/** golem::UIRenderer interface */
+	virtual void renderNormals(const spam::Vec3Seq& cloud, const spam::Vec3Seq& normals, const golem::RGBA cNormals = golem::RGBA::MAGENTA);
+
+	/** find minimum value in a std::vector */
+	template <typename _Real> _Real min(const std::vector<_Real>& v) {
+		_Real minimum = numeric_const<_Real>::MAX;
+		for (auto i = v.begin(); i != v.end(); ++i) {
+			if (*i < minimum)
+				minimum = *i;
+		}
+			return minimum;
+	}
+	/** find maximum value in a std::vector */
+	template <typename _Real> _Real max(const std::vector<_Real>& v) {
+		_Real maximum = numeric_const<_Real>::MIN;
+		for (auto i = v.begin(); i != v.end(); ++i) {
+			if (*i > maximum)
+				maximum = *i;
+		}
+		return maximum;
+	}
 
 	void create(const Desc& desc);
 	RRTPlayer(golem::Scene& scene);

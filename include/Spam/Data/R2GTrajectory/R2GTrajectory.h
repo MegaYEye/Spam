@@ -48,6 +48,7 @@
 
 #include <Spam/App/R2GPlanner/Data.h>
 #include <Grasp/Contact/Manipulator.h>
+#include <Spam/HBPlan/Heuristic.h>
 
 //------------------------------------------------------------------------------
 
@@ -97,6 +98,9 @@ public:
 	/** Trajectory: Sets waypoint collection with no velocity profile. */
 	virtual void setWaypoints(const grasp::Waypoint::Seq& waypoints);
 
+	/** Trajectory: Returns waypoints with velocity profile. */
+	virtual void createTrajectory(golem::Controller::State::Seq& trajectory);
+
 protected:
 	/** Data handler */
 	HandlerR2GTrajectory& handler;
@@ -109,7 +113,7 @@ protected:
 	virtual bool isConvertSupported(const grasp::data::Handler& handler) const;
 
 	/** Export: Export to file */
-	virtual void export(const std::string& path) const;
+	virtual void exportt(const std::string& path) const;
 	/** Export: Available file types */
 	virtual const grasp::StringSeq& getExportFileTypes() const;
 
@@ -223,6 +227,9 @@ protected:
 	/** Manipulator */
 	grasp::Manipulator::Ptr manipulator;
 
+	/** Smart pointer to the ft driven heuristic */
+	FTDrivenHeuristic* pHeuristic;
+
 	/** Pose suffix */
 	std::string poseSuffix;
 
@@ -256,7 +263,14 @@ protected:
 	golem::DebugRenderer renderer;
 
 	/** HandlerPlan: Sets planner and controllers. */
-	virtual void set(const golem::Planner& planner, const grasp::StringSeq& controllerIDSeq);
+	virtual void set(golem::Planner& planner, const grasp::StringSeq& controllerIDSeq);
+
+	/** Creates trajectory from state sequence */
+	virtual void create(const golem::ConfigspaceCoord& delta, golem::Controller::State::Seq& trajectory) const;
+	/** Profile state sequence */
+	virtual void profile(golem::SecTmReal duration, golem::Controller::State::Seq& trajectory) const;
+	/** Trajectory: Returns waypoints with velocity profile. */
+	virtual void createTrajectory(const ItemR2GTrajectory& item, golem::Controller::State::Seq& trajectory);
 
 	/** Convert: Convert current item */
 	virtual grasp::data::Item::Ptr convert(ItemR2GTrajectory& item, const grasp::data::Handler& handler);
