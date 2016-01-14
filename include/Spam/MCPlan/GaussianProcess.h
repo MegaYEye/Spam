@@ -25,6 +25,7 @@
 #include <Spam/MCPlan/CovThinPlate.h>
 #include <Spam/MCPlan/CovSE.h>
 #include <omp.h>
+#include <Grasp/Core/Defs.h>
 
 //------------------------------------------------------------------------------
 
@@ -50,6 +51,8 @@ public:
 		/** Pointer to the descriptor */
 		typedef boost::shared_ptr<Desc> Ptr;
 
+		golem::U32 populationSize;
+
 		golem::Real delta0;
 		golem::Real deltaMin;
 		golem::Real deltaMax;
@@ -62,14 +65,16 @@ public:
 			setToDefault();
 		}
 		void setToDefault() {
-			delta0 = 0.1;
+			populationSize = 10;
+
+			delta0 = 0.01;
 			deltaMin = 1e-6;
-			deltaMax = 50;
-			etaMinus = 0.5;
-			etaPlus = 1.2;
+			deltaMax = 5;
+			etaMinus = 0.05;
+			etaPlus = 0.2;
 			epsStop = 1e-4;
 
-			maxIter = 10;
+			maxIter = 100;
 		}
 		bool isValid() {
 			return true;
@@ -84,54 +89,124 @@ public:
 
 	template <typename CovTypePtr, typename CovTypeDesc> void find(GaussianProcess<CovTypePtr, CovTypeDesc>* gp, bool verbose = true) {
 		clock_t t = clock();
+
+		golem::CriticalSection cs;
+		size_t k = 0;
 		int paramDim = gp->cf->getParamDim();
-		Eigen::VectorXd delta = Eigen::VectorXd::Ones(paramDim) * delta0;
-		Eigen::VectorXd gradOld = Eigen::VectorXd::Zero(paramDim);
-		Eigen::VectorXd params = gp->cf->getLogHyper();
-		Eigen::VectorXd bestParams = params;
-		double best = log(0);
+		Real solutionEval = log(0);
+		Eigen::VectorXd bestParams = gp->cf->getLogHyper();
+		context.write("Optimisation::find(): iter=0 params size=%d\n", bestParams.size());
+		for (size_t i = 0; i < bestParams.size(); ++i)
+			context.write("params[%d] = %f\n", i, bestParams(i));
 
-		context.write("Optimisation::find(): iter=0 params size=%d\n", params.size());
-		for (size_t i = 0; i < params.size(); ++i)
-			context.write("params[%d] = %f\n", i, params(i));
+		grasp::ParallelsTask(context.getParallels(), [&](grasp::ParallelsTask*) {
+			Real testEval = log(0);
+			Eigen::VectorXd delta = Eigen::VectorXd::Ones(paramDim) * delta0;
+			Eigen::VectorXd gradOld = Eigen::VectorXd::Zero(paramDim);
+			Eigen::VectorXd testParams = bestParams;
 
-		for (size_t i = 0; i < maxIter; ++i) {
-			Eigen::VectorXd grad = -gp->logLikelihoodGradient();
-			gradOld = gradOld.cwiseProduct(grad);
-			for (int j = 0; j < gradOld.size(); ++j) {
-				if (gradOld(j) > 0) {
-					delta(j) = std::min(delta(j)*etaPlus, deltaMax);
+			for (;;) {
+				{
+					CriticalSectionWrapper csw(cs);
+					if (solutionEval < testEval) {
+						context.debug("Solution %f params [%f %f %f]\n", testEval, testParams(0), testParams(1), 0/*, testParams(2)*/);
+						solutionEval = testEval;
+						bestParams = testParams;
+						gp->cf->setLogHyper(bestParams);
+					}
+					if (++k > desc.populationSize)
+						break;
 				}
-				else if (gradOld(j) < 0) {
-					delta(j) = std::max(delta(j)*etaMinus, deltaMin);
-					grad(j) = 0;
+
+				Eigen::VectorXd params = gp->cf->sampleParams();
+//				context.debug("Init params [%f %f]\n", params(0), params(1));
+				for (size_t i = 0; i < maxIter; ++i) {
+					Eigen::VectorXd grad = -gp->logLikelihoodGradient();
+					gradOld = gradOld.cwiseProduct(grad);
+					for (int j = 0; j < gradOld.size(); ++j) {
+						if (gradOld(j) > 0) {
+							delta(j) = std::min(delta(j)*etaPlus, deltaMax);
+						}
+						else if (gradOld(j) < 0) {
+							delta(j) = std::max(delta(j)*etaMinus, deltaMin);
+							grad(j) = 0;
+						}
+						params(j) += -sign(grad(j)) * delta(j);
+					}
+					gradOld = grad;
+					if (gradOld.norm() < epsStop) break;
+					double eval = gp->logLikelihood();
+					if (testEval < eval) {
+						testEval = eval;
+						testParams = params;
+					}
+					CriticalSectionWrapper csw(cs);
+					gp->cf->setLogHyper(params);
 				}
-				params(j) += -sign(grad(j)) * delta(j);
 			}
-			gradOld = grad;
-			if (gradOld.norm() < epsStop) break;
-			gp->cf->setLogHyper(params);
-			double lik = gp->logLikelihood();
-			if (verbose)
-				context.write("Optimisation::find(): iter=%d lik=%f params[l,s]=[%f, %f]\n", i+1, lik, params(0), params(1));
-			//std::cout << i << " " << -lik << std::endl;
-			if (lik > best) {
-				best = lik;
-				bestParams = params;
-			}
-		}
-		gp->cf->setLogHyper(bestParams);
-		context.write("Optimisation::find(): Elapsed time: %.4fs\nbest lik=%f params size=%d\n", (float)(clock() - t) / CLOCKS_PER_SEC, best, bestParams.size());
+		});
+
+		//gp->cf->setLogHyper(bestParams);
+		context.write("Optimisation::find(): Elapsed time: %.4fs\n", (float)(clock() - t) / CLOCKS_PER_SEC);
+		context.write("Optimisation::find(): best solutionEval=%f params size=%d\n", solutionEval, bestParams.size());
 		for (size_t i = 0; i < bestParams.size(); ++i)
 			context.write("params[%d] = %f\n", i, bestParams(i));
 
 	}
+
+	//template <typename CovTypePtr, typename CovTypeDesc> void find(GaussianProcess<CovTypePtr, CovTypeDesc>* gp, bool verbose = true) {
+	//	clock_t t = clock();
+	//	int paramDim = gp->cf->getParamDim();
+	//	Eigen::VectorXd delta = Eigen::VectorXd::Ones(paramDim) * delta0;
+	//	Eigen::VectorXd gradOld = Eigen::VectorXd::Zero(paramDim);
+	//	Eigen::VectorXd params = gp->cf->getLogHyper();
+	//	Eigen::VectorXd bestParams = params;
+	//	double best = log(0);
+
+	//	context.write("Optimisation::find(): iter=0 params size=%d\n", params.size());
+	//	for (size_t i = 0; i < params.size(); ++i)
+	//		context.write("params[%d] = %f\n", i, params(i));
+
+	//	for (size_t i = 0; i < maxIter; ++i) {
+	//		Eigen::VectorXd grad = -gp->logLikelihoodGradient();
+	//		gradOld = gradOld.cwiseProduct(grad);
+	//		for (int j = 0; j < gradOld.size(); ++j) {
+	//			if (gradOld(j) > 0) {
+	//				delta(j) = std::min(delta(j)*etaPlus, deltaMax);
+	//			}
+	//			else if (gradOld(j) < 0) {
+	//				delta(j) = std::max(delta(j)*etaMinus, deltaMin);
+	//				grad(j) = 0;
+	//			}
+	//			params(j) += -sign(grad(j)) * delta(j);
+	//		}
+	//		gradOld = grad;
+	//		if (gradOld.norm() < epsStop) break;
+	//		gp->cf->setLogHyper(params);
+	//		double lik = gp->logLikelihood();
+	//		if (verbose)
+	//			context.write("Optimisation::find(): iter=%d lik=%f params[l,s]=[%f, %f]\n", i+1, lik, params(0), params(1));
+	//		//std::cout << i << " " << -lik << std::endl;
+	//		if (lik > best) {
+	//			best = lik;
+	//			bestParams = params;
+	//		}
+	//	}
+	//	gp->cf->setLogHyper(bestParams);
+	//	context.write("Optimisation::find(): Elapsed time: %.4fs\nbest lik=%f params size=%d\n", (float)(clock() - t) / CLOCKS_PER_SEC, best, bestParams.size());
+	//	for (size_t i = 0; i < bestParams.size(); ++i)
+	//		context.write("params[%d] = %f\n", i, bestParams(i));
+
+	//}
+
 	/** D'ctor */
 //	~Optimisation() {} // don't need to do anything
 
 protected:
 	/** Context */
 	golem::Context context;
+	/** Description file */
+	Desc desc;
 
 	/** Optimisation parameters */
 	golem::Real delta0;
@@ -151,6 +226,8 @@ protected:
 
 	/** Create from descriptor */
 	void create(const Desc& desc) {
+		this->desc = desc;
+
 		delta0 = desc.delta0;
 		deltaMin = desc.deltaMin;
 		deltaMax = desc.deltaMax;
@@ -184,11 +261,11 @@ public:
     public:
         /** Initial size of the kernel matrix */
 		golem::U32 initialLSize;
-        /** Noise use to compute K(x,x) */
-		golem::Real noise;
         /** Covariance description file */
         CovTypeDesc covTypeDesc;
 
+		/** Enable optimisation */
+		bool optimise;
 		/** Optimisation procedure descriptor file */
 		Optimisation::Desc::Ptr optimisationDescPtr;
 
@@ -203,9 +280,9 @@ public:
         /** Set to default */
         void setToDefault() {
             initialLSize = 1500;
-            noise = golem::REAL_ZERO;
             covTypeDesc.setToDefault();
 
+			optimise = true;
 			optimisationDescPtr.reset(new Optimisation::Desc);
 
 			atlas = true;
@@ -399,7 +476,8 @@ public:
     void set(SampleSet::Ptr trainingData) {
         sampleset = trainingData;
 		// param optimisation
-		optimisationPtr->find<CovTypePtr, CovTypeDesc>(this);
+		if (desc.optimise)
+			optimisationPtr->find<CovTypePtr, CovTypeDesc>(this);
     }
 
     /** Get name of the covariance function */
@@ -509,8 +587,6 @@ protected:
     boost::shared_ptr<Eigen::MatrixXd> L;
 	/** Input vector dimensionality. */
     size_t input_dim;
-    /** Noise parameter */
-	golem::Real delta_n;
     /** Enable/disable to update the alpha vector */
 	bool alpha_needs_update;
     //initial L size
@@ -564,13 +640,13 @@ protected:
         size_t counter = 0;
 		Kppdiff.resize(n, n);
         //#pragma omp parallel for
+#pragma omp parallel for collapse(2)
         for(size_t i = 0; i < n; ++i) {
             for(size_t j = 0; j <= i; ++j) {
-                const double k_ij = cf->get(sampleset->x(i), sampleset->x(j));
-                // add noise on the diagonal of the kernel
-                (*L)(i, j) = i == j ? k_ij + delta_n : k_ij;
+                // compute kernel and add noise on the diagonal of the kernel
+				(*L)(i, j) = cf->get(sampleset->x(i), sampleset->x(j), i == j);
 				Kppdiff(i, j) = cf->getDiff(sampleset->x(i), sampleset->x(j));
-				//context.write("GP::compute(): Computing k(%lu, %lu)\r", i, j);
+				//context.write("GP::compute(): Computing k(%lu, %lu) = %f\r", i, j, (*L)(i, j));
 			}
 		}		
 		InvKppY = L->topLeftCorner(n, n).inverse() * convertToEigen(sampleset->y());
@@ -599,7 +675,6 @@ protected:
         cf = desc.covTypeDesc.create();
         //sampleset = desc.trainingData;
         input_dim = 3;
-        delta_n = desc.noise;
         initialLSize = desc.initialLSize;
         alpha.reset(new Eigen::VectorXd);
         k_star.reset(new Eigen::VectorXd);
@@ -618,6 +693,7 @@ protected:
 typedef GaussianProcess<spam::BaseCovFunc::Ptr, spam::Laplace::Desc> LaplaceRegressor;
 typedef GaussianProcess<spam::BaseCovFunc::Ptr, spam::CovSE::Desc> GaussianRegressor;
 typedef GaussianProcess<spam::BaseCovFunc::Ptr, spam::CovSEArd::Desc> GaussianARDRegressor;
+typedef GaussianProcess<spam::BaseCovFunc::Ptr, spam::ThinPlate::Desc> ThinPlateRegressor;
 //typedef GaussianProcess<gp::Laplace::Ptr, gp::Laplace::Desc> LaplaceRegressor;
 //typedef GaussianProcess<gp::ThinPlate> ThinPlateRegressor;
 //class LaplaceRegressor : public GaussianProcess<gp::Laplace> {};

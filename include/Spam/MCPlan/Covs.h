@@ -112,6 +112,9 @@ public:
 		/** Size of parameter vector. */
 		size_t paramDim;
 
+		/** Noise parameter */
+		double noise;
+
 		/** Default C'tor */
 		Desc() {
 			setToDefault();
@@ -120,7 +123,8 @@ public:
 		/** Set values to default */
 		void setToDefault() {
 			inputDim = 0;
-			paramDim = 2;
+			paramDim = 1;
+			noise = 0.0;
 		}
 		
 		/** Creates the object from the description. */
@@ -141,14 +145,17 @@ public:
 	}
 	  
     /** Compute the kernel */
-    virtual inline double get(const golem::Vec3& x1, const golem::Vec3& x2) const { return x1.distance(x2); }
+    virtual inline double get(const golem::Vec3& x1, const golem::Vec3& x2, const bool dirac = false) const { 
+		const double d = x1.distance(x2);
+		return dirac ? d : d + sn2; 
+	}
 	/** Compute the kernel */
-	virtual double get(const Eigen::VectorXd &x1, const Eigen::VectorXd &x2) const {
+	virtual double get(const Eigen::VectorXd &x1, const Eigen::VectorXd &x2, const bool dirac = false) const {
 		return x1.dot(x2);
 	}
 	/** Compute the derivate */
-	virtual inline double getDiff(const golem::Vec3& x1, const golem::Vec3& x2, const double noise = .0) const { 
-		return (x1.distanceSqr(x2) + noise)*2; 
+	virtual inline double getDiff(const golem::Vec3& x1, const golem::Vec3& x2) const { 
+		return x1.distanceSqr(x2)*2; 
 	}
 
     /** Access to loghyper_change */
@@ -206,6 +213,16 @@ public:
 		return solver.matrixL() * y;
 	}
 
+	inline Eigen::VectorXd sampleParams() const {
+		Eigen::VectorXd sol; 
+		sol.resize(paramDim);
+		for (size_t i = 0; i < paramDim; ++i) {
+			sol(i) = 2 * range(i) * drand48() - range(i);
+		}
+		return sol;
+//		return Eigen::VectorXd::Random(paramDim, 1);
+	}
+
     virtual ~BaseCovFunc() {};
 
 protected:
@@ -215,9 +232,14 @@ protected:
 	size_t inputDim;
 	/** Size of parameter vector. */
 	size_t paramDim;
+
+	/** Noise on the input points */
+	double sn2; 
+
 	/** Parameter vector containing the log hyperparameters of the covariance function.
 	*  The number of necessary parameters is given in param_dim. */
 	Eigen::VectorXd loghyper;
+	Eigen::VectorXd range;
 
 	static inline double drand48() {
 		return (rand() / (RAND_MAX + 1.0));
@@ -235,6 +257,8 @@ protected:
 		paramDim = desc.paramDim;
 		loghyper.resize(paramDim);
 		loghyper.setZero();
+		sn2 = desc.noise * desc.noise;
+		range.setOnes(paramDim);
     }
         
 	/** Default C'tor */
