@@ -83,7 +83,7 @@ public:
 	/** thin plate kernel derivative = 6.*EE.^2 - 6.*(leng).* EE */
 	inline double getDiff(const golem::Vec3& x1, const golem::Vec3& x2) const {
 		const double EE = x1.distance(x2);
-		return 6 * std::pow(EE, 2.0) - 2* threeLength* EE;
+		return 6 * std::pow(EE, 2.0) - 2 * threeLength * EE;
 	}
 
 	/** Update parameter vector.

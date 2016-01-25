@@ -639,8 +639,7 @@ protected:
         // compute kernel matrix (lower triangle)
         size_t counter = 0;
 		Kppdiff.resize(n, n);
-        //#pragma omp parallel for
-#pragma omp parallel for collapse(2)
+//#pragma omp parallel for collapse(2)
         for(size_t i = 0; i < n; ++i) {
             for(size_t j = 0; j <= i; ++j) {
                 // compute kernel and add noise on the diagonal of the kernel

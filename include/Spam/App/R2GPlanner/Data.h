@@ -46,14 +46,56 @@
 
 //------------------------------------------------------------------------------
 
-#include <Grasp/Data/Trajectory/Trajectory.h>
+#include <Grasp/Core/Ctrl.h>
+#include <Grasp/Core/Data.h>
+#include <Grasp/Core/RB.h>
+#include <Golem/Plan/Planner.h>
 
 //------------------------------------------------------------------------------
 
-namespace grasp {
+namespace spam {
 namespace data {
+
 //------------------------------------------------------------------------------
 
+/** Initialises handler.
+*	(Optionally) Implemented by Handler.
+*/
+class HandlerR2GPlan {
+public:
+	/** Sets planner and controllers. */
+	virtual void set(const golem::Planner& planner, const grasp::StringSeq& controllerIDSeq) = 0;
+};
+
+/** Trajectory collection and tools.
+*	(Optionally) Implemented by Item.
+*/
+class R2GTrajectory {
+public:
+	enum Type {
+		NONE = 0,
+		APPROACH,
+		ACTION
+	};
+
+	/** Sets waypoint collection with no velocity profile. */
+	virtual void setWaypoints(const grasp::Waypoint::Seq& waypoints) = 0;
+	/** Trajectory: Sets waypoint collection with no velocity profile. */
+	virtual void setWaypoints(const grasp::Waypoint::Seq& waypoints, const Type type) = 0;
+	/** Returns waypoints without velocity profile. */
+	virtual const grasp::Waypoint::Seq& getWaypoints() const = 0;
+	/** Trajectory: Returns waypoints without velocity profile. */
+	virtual const grasp::Waypoint::Seq& getWaypoints(const Type type) const = 0;
+
+	/** Returns command trajectory with velocity profile. */
+	virtual void createTrajectory(golem::Controller::State::Seq& trajectory) = 0;
+	/** Returns command trajectory with velocity profile. */
+	virtual void createAction(golem::Controller::State::Seq& trajectory) = 0;
+
+
+	/** Last waypoint of the reach-to-grasp trajectory */
+	size_t pregraspIdx;
+};
 
 //------------------------------------------------------------------------------
 

@@ -207,16 +207,39 @@ void RRTPlayer::create(const Desc& desc) {
 
 		/*****  Create the model  *********************************************/
 		SampleSet::Ptr trainingData(new SampleSet(cloud, targets));
-		GaussianRegressor::Desc guassianDesc;
-		guassianDesc.initialLSize = guassianDesc.initialLSize > Ntot ? guassianDesc.initialLSize : Ntot + 100;
-		guassianDesc.covTypeDesc.inputDim = trainingData->cols();
-		guassianDesc.covTypeDesc.length = 0.03;
-		guassianDesc.covTypeDesc.sigma = 0.015;
-		guassianDesc.covTypeDesc.noise = 0.0001;
-		guassianDesc.optimise = false;;
-		GaussianRegressor::Ptr gp = guassianDesc.create(context);
-		context.write("%s Regressor created. inputDim=%d, parmDim=%d, l=%f, s=%f\n", gp->getName().c_str(), guassianDesc.covTypeDesc.inputDim, guassianDesc.covTypeDesc.paramDim,
-			guassianDesc.covTypeDesc.length, guassianDesc.covTypeDesc.sigma);
+//#define cov_thin_plate
+#define cov_thin_plate
+#ifdef cov_se
+		GaussianRegressor::Desc covDesc;
+		covDesc.initialLSize = covDesc.initialLSize > Ntot ? covDesc.initialLSize : Ntot + 100;
+		covDesc.covTypeDesc.inputDim = trainingData->cols();
+		covDesc.covTypeDesc.length = 0.03;
+		covDesc.covTypeDesc.sigma = 0.015;
+		covDesc.covTypeDesc.noise = 0.0001;
+		covDesc.optimise = false;
+		GaussianRegressor::Ptr gp = covDesc.create(context);
+		context.write("%s Regressor created. inputDim=%d, parmDim=%d, l=%f, s=%f\n", gp->getName().c_str(), covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
+			covDesc.covTypeDesc.length, covDesc.covTypeDesc.sigma);
+#endif
+#ifdef cov_thin_plate
+		ThinPlateRegressor::Desc covDesc;
+		covDesc.initialLSize = covDesc.initialLSize > Ntot ? covDesc.initialLSize : Ntot + 100;
+		covDesc.covTypeDesc.inputDim = trainingData->cols();
+		covDesc.covTypeDesc.noise = 0.0001;
+		Real l = REAL_ZERO;
+		for (size_t i = 0; i < cloud.size(); ++i) {
+			for (size_t j = i; j < cloud.size(); ++j) {
+				const Real d = cloud[i].distance(cloud[j]);
+				if (l < d) l = d;
+			}
+		}
+		covDesc.covTypeDesc.length = l;
+		covDesc.optimise = false;
+		context.write("ThinPlate cov: inputDim=%d, parmDim=%d, R=%f noise=%f\n", covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
+			covDesc.covTypeDesc.length, covDesc.covTypeDesc.noise);
+		ThinPlateRegressor::Ptr gp = covDesc.create(context);
+		context.write("%s Regressor created\n", gp->getName().c_str());
+#endif
 		gp->set(trainingData);
 
 		/*****  Query the model with a point  *********************************/
@@ -250,7 +273,7 @@ void RRTPlayer::create(const Desc& desc) {
 		for (size_t i = 0; i < testSize; ++i) {
 			//points[i] = x_star[i];
 			nn[i] = Vec3(normals(i, 0), normals(i, 1), normals(i, 2));
-			golem::kahanSum(normError, c, 1 - ::abs(nn[i].dot(normStar[i])));
+			golem::kahanSum(normError, c, (1 - ::abs(nn[i].dot(normStar[i])))*90);
 			golem::kahanSum(evalError, c1, std::pow(fx[i] - yStar[i], 2));
 			context.write("Evaluate[%d]: f(x_star) = %f -> f_star = %f v_star = %f normal=[%f %f %f] dot=%f\n", i, yStar[i], fx[i], varx[i], normals(i, 0), normals(i, 1), normals(i, 2), nn[i].dot(normStar[i]));
 		}
