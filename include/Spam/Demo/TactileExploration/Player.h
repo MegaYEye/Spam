@@ -138,7 +138,7 @@ protected:
 	/** golem::UIRenderer interface */
 	virtual void renderCloud(const spam::Vec3Seq& cloud, const golem::RGBA colour = golem::RGBA::BLACK);
 	/** golem::UIRenderer interface */
-	virtual void renderCromCloud(const spam::Vec3Seq& cloud, const Vec& vars, const golem::RGBA cInit = golem::RGBA::BLUE, const golem::RGBA cEnd = golem::RGBA::RED);
+	virtual void renderCromCloud(const spam::Vec3Seq& cloud, const spam::RealSeq& vars, const golem::RGBA cInit = golem::RGBA::BLUE, const golem::RGBA cEnd = golem::RGBA::RED);
 	/** golem::UIRenderer interface */
 	virtual void renderNormals(const spam::Vec3Seq& cloud, const spam::Vec3Seq& normals, const golem::RGBA cNormals = golem::RGBA::MAGENTA);
 

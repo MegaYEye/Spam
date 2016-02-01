@@ -29,7 +29,7 @@ namespace spam {
 
 //typedef golem::Vec3 Vec3;
 typedef std::vector<golem::Vec3> Vec3Seq;
-typedef std::vector<golem::Real> Vec;
+typedef std::vector<golem::Real> RealSeq;
 
 //------------------------------------------------------------------------------
 
@@ -42,7 +42,8 @@ public:
 	/** C'tor.
 	*   @param x input
 	*/
-	SampleSet(const Vec3Seq& inputs, const Vec& targets);
+	SampleSet(const Vec3Seq& inputs, const RealSeq& targets);
+	SampleSet(const Vec3Seq& inputs, const RealSeq& targets, const Vec3Seq& normals);
 
 	/** Destructor. */
 	virtual ~SampleSet();
@@ -50,7 +51,8 @@ public:
 	/** Add input-output patterns to sample set.
 	* @param x input array
 	* @param y target values */
-	void add(const Vec3Seq& newInputs, const Vec& newTargets);
+	void add(const Vec3Seq& newInputs, const RealSeq& newTargets);
+	void add(const Vec3Seq& newInputs, const RealSeq& newTargets, const Vec3Seq& Normals);
 
 	/** Get input vector at index k. */
 	//const Eigen::VectorXd & x(size_t k);
@@ -62,12 +64,12 @@ public:
 	bool set_y(size_t i, double y);
 
 	/** Get reference to vector of target values. */
-	Vec y() const;
+	RealSeq y() const;
 
 	/** Get number of samples. */
 	inline size_t rows() const { return n; };
-	/** Get dim of samples. */
-	inline size_t cols() const { return 3; };
+	/** Get dimensionality of input space. */
+	inline size_t cols() const { return d; };
 
 	/** Clear sample set. */
 	void clear();
@@ -75,13 +77,20 @@ public:
 	/** Check if sample set is empty. */
 	inline bool empty() const { return n == 0; };
 
+	RealSeq getNormals() const { return N; }
+
 private:
 	/** Container holding input vectors. */
 	Vec3Seq X;
 	/** Container holding target values. */
-	Vec Y;
+	RealSeq Y;
+	/** Container holding target normal vectors. */
+	RealSeq N;
+
 	/** Number of samples. */
 	size_t n;
+	/** Dimensionality of input space. */
+	size_t d;
 };
 //------------------------------------------------------------------------------
 

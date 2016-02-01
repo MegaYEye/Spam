@@ -79,10 +79,10 @@ public:
 		return twoSigma2*std::exp(power);
 	}
 	/** laplacian derivate = -1*invLenght*[sigma_f^2*exp(sqrt((p_1-p_2)'*(p_1-p_2))/(-leng))] */
-	inline double getDiff(const golem::Vec3& x1, const golem::Vec3& x2, const double noise = .0) const {
-		const double EE = get(x1, x2) + noise;//sqrt(DD);
-		return -1 * invLength * EE;
-	}
+	//inline double getDiff(const golem::Vec3& x1, const golem::Vec3& x2, const double noise = .0) const {
+	//	const double EE = get(x1, x2) + noise;//sqrt(DD);
+	//	return -1 * invLength * EE;
+	//}
 
 	/** Covariance gradient of two input vectors with respect to the hyperparameters.
 	*  @param x1 first input vector

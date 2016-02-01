@@ -69,22 +69,23 @@ public:
 	}
 	
     //thin plate kernel = 2.*EE.^3 - 3.*(leng).* EE.^2 + (leng*ones(size(EE))).^3
-	inline double get(const golem::Vec3& x1, const golem::Vec3& x2, const bool dirac = false) const {
-        const double EE = x1.distance(x2);
-		const double noise = dirac ? sn2 : .0;
-		return 2 * std::pow(EE, 3.0) - threeLength*pow(EE, 2.0) + length3;
-    }
+	//inline double get(const golem::Vec3& x1, const golem::Vec3& x2, const bool dirac = false) const {
+ //       const double EE = x1.distance(x2);
+	//	const double noise = dirac ? sn2 : .0;
+	//	return 2 * std::pow(EE, 3.0) - threeLength * pow(EE, 2.0) + length3;
+ //   }
 	/** Compute the kernel */
 	virtual double get(const Eigen::VectorXd &x1, const Eigen::VectorXd &x2, const bool dirac = false) const {
 		const double EE = (x1 - x2).squaredNorm();
 		const double noise = dirac ? sn2 : .0;
-		return 2 * std::pow(EE, 3.0) - threeLength*pow(EE, 2.0) + length3;
+		return 2 * std::pow(EE, 3.0) - threeLength * pow(EE, 2.0) + length3;
 	}
 	/** thin plate kernel derivative = 6.*EE.^2 - 6.*(leng).* EE */
-	inline double getDiff(const golem::Vec3& x1, const golem::Vec3& x2) const {
-		const double EE = x1.distance(x2);
-		return 6 * std::pow(EE, 2.0) - 2 * threeLength * EE;
-	}
+	//inline double getDiff(const golem::Vec3& x1, const golem::Vec3& x2) const {
+	//	const double EE = x1.distance(x2);
+	//	return 6 * ::pow(EE, 2.0) - 2 * threeLength * EE;
+	//	//		return 6 * EE * (EE - loghyper(0));
+	//}
 
 	/** Update parameter vector.
 	*  @param p new parameter vector */

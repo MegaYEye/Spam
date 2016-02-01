@@ -65,7 +65,7 @@ public:
 			setToDefault();
 		}
 		void setToDefault() {
-			populationSize = 10;
+			populationSize = 50;
 
 			delta0 = 0.01;
 			deltaMin = 1e-6;
@@ -272,6 +272,9 @@ public:
 		/** Enable atlas */
 		bool atlas;
 
+		/** Enable derivative */
+		bool derivative;
+
         /** C'tor */
         Desc() {
             setToDefault();
@@ -286,6 +289,8 @@ public:
 			optimisationDescPtr.reset(new Optimisation::Desc);
 
 			atlas = true;
+
+			derivative = true;
         }
 
         /** Creates the object from the description. */
@@ -306,24 +311,28 @@ public:
     };
 
     /** Predict f_* ~ GP(x_*) */
-	void evaluate(const Vec3Seq& x, std::vector<golem::Real>& fx, std::vector<golem::Real>& vars) {
+	void evaluate(const Vec3Seq& x, RealSeq& fx, RealSeq& vars) {
 		const size_t size = x.size();
 		fx.assign(size, REAL_ZERO);
 		vars.assign(size, REAL_ZERO);
 		for (size_t i = 0; i < size; ++i) {
-			fx[i] = f(x[i]);
+			fx[i] = f(x[i])(0);
 			vars[i] = var(x[i]);
 		}
 	}
-    virtual golem::Real f(const golem::Vec3& xStar) {
-        if (sampleset->empty()) return 0;
+    virtual Eigen::Vector4d f(const golem::Vec3& xStar) {
+        if (sampleset->empty()) 
+			throw Message(Message::LEVEL_ERROR, "No training data available.");
 
         //Eigen::Map<const Eigen::VectorXd> x_star(x.v, input_dim);
         compute(true);
         update_alpha();
         update_k_star(xStar);
         //std::cout << "size alpha=" << alpha->size() << " k_star=" << k_star->size() << std::endl;
-        return k_star->dot(*alpha);
+		Eigen::Vector4d sol;
+		for (size_t i = 0; i < 4; ++i)
+			sol(i) = k_star->row(i).dot(*alpha);
+		return sol;
     }
 
     /** Predict variance v[f_*] ~ var(x_*)  */
@@ -335,97 +344,13 @@ public:
         update_alpha();
         update_k_star(xStar); //update_k_star(x_star);
         size_t n = sampleset->rows();
-        Eigen::VectorXd v = L->topLeftCorner(n, n).triangularView<Eigen::Lower>().solve(*k_star);
+		Eigen::VectorXd ks = k_star->block(0, 0, 1, n);
+        Eigen::VectorXd v = L->topLeftCorner(n, n).triangularView<Eigen::Lower>().solve(ks);
 		return cf->get(xStar, xStar) - v.dot(v); //cf->get(x_star, x_star) - v.dot(v);
     }
 
 	/** Predict f, var, N, Tx and Ty */
-//	virtual void evaluate(const golem::Vec3& x, golem::Real& fx, golem::Real& varx, Eigen::Vector3d& normal, Eigen::Vector3d& tx, Eigen::Vector3d& ty) {
-//		clock_t t = clock();
-//
-//		fx = f(x);
-//		varx = var(x);
-//
-//		const size_t n = sampleset->rows(), nnew = sampleset->rows() + 1;
-//		const size_t dim = sampleset->cols();
-//
-//		// differential of covariance with selected kernel
-//		Eigen::MatrixXd Kppdiff, Kpp;
-//		Kppdiff.resize(nnew, nnew);
-//		Kpp.resize(nnew, nnew);
-//		N.resize(nnew, dim);
-//		Tx.resize(nnew, dim);
-//		Ty.resize(nnew, dim);
-//
-//		for (size_t i = 0; i < nnew; ++i) {
-//			for (size_t j = 0; j <= i; ++j) {
-//				const double k_ij = cf->get(sampleset->x(i), sampleset->x(j));
-//				// add noise on the diagonal of the kernel
-//				Kpp(i, j) = i == j ? k_ij + delta_n : k_ij;
-//				Kppdiff(i, j) = cf->getDiff(sampleset->x(i), sampleset->x(j), i == j ? delta_n : .0);
-//				//			context.write("GP::compute(): Computing k(%lu, %lu)\r", i, j);
-//			}
-//		}
-//		const Eigen::MatrixXd invKpp = Kpp.inverse();
-//		InvKppY = invKpp * convertToEigen(sampleset->y());
-//		//#pragma omp parallel for
-//		for (size_t i = 0; i < nnew; ++i) {
-//			for (size_t j = 0; j <= i; ++j)
-//				N.row(i) += InvKppY(j)*Kppdiff(i, j)*(convertToEigen(sampleset->x(i) - sampleset->x(j)));
-//
-//			N.row(i).normalize();
-////			context.write("N[%d] = [%f %f %f]\n", i, N(i, 0), N(i, 1), N(i, 2));
-//			Eigen::Vector3d Ni = N.row(i);
-//			Eigen::Vector3d Txi, Tyi;
-//			computeTangentBasis(Ni, Txi, Tyi);
-//			Tx.row(i) = Txi;
-//			Ty.row(i) = Tyi;
-//		}
-//		normal = N.row(nnew - 1);
-//		//context.write("GP::evaluate(): Elapsed time: %.4fs\n", (float)(clock() - t) / CLOCKS_PER_SEC);
-//	}
-//	virtual void evaluate(Eigen::MatrixXd& normal, Eigen::MatrixXd& tx, Eigen::MatrixXd& ty) {
-//		clock_t t = clock();
-//
-//		const size_t n = sampleset->rows();
-//		const size_t dim = sampleset->cols();
-//
-//		// differential of covariance with selected kernel
-//		Eigen::MatrixXd Kppdiff;
-//		Kppdiff.resize(n, n);
-//		N.resize(n, dim);
-//		Tx.resize(n, dim);
-//		Ty.resize(n, dim);
-//
-//		for (size_t i = 0; i < n; ++i) {
-//			for (size_t j = 0; j <= i; ++j) {
-//				Kppdiff(i, j) = cf->getDiff(sampleset->x(i), sampleset->x(j)/*, i == j ? delta_n : .0*/);
-////				context.write("KppDiff[%d, %d] = %f\n", i, j, Kppdiff(i, j));
-//			}
-////			context.write("InvKppY[%d] = %f\n", i, InvKppY(i));
-//		}
-//		Real error = REAL_ZERO;
-//		//#pragma omp parallel for
-//		for (size_t i = 0; i < n; ++i) {
-//			for (size_t j = 0; j <= i; ++j)
-//				N.row(i) += InvKppY(j)*Kppdiff(i, j)*(convertToEigen(sampleset->x(i) - sampleset->x(j)));
-//				
-//			N.row(i).normalize();
-//			Vec3 nn(N(i, 0), N(i, 1), N(i, 2));
-//			context.write("Error[%d] = %f \n", i, sampleset->x(i).distance(nn));
-//			error += sampleset->x(i).distance(nn);
-//			Eigen::Vector3d Ni = N.row(i);
-//			Eigen::Vector3d Txi, Tyi;
-//			computeTangentBasis(Ni, Txi, Tyi);
-//			Tx.row(i) = Txi;
-//			Ty.row(i) = Tyi;
-//		}
-//		normal = N;
-//		tx = Tx;
-//		ty = Ty;
-//		context.write("GP::evaluate(): Elapsed time: %.4fs. Tot error %f\n", (float)(clock() - t) / CLOCKS_PER_SEC, error / n);
-//	}
-	virtual void evaluate(const Vec3Seq& x, std::vector<golem::Real>& fx, std::vector<golem::Real>& varx, Eigen::MatrixXd& normals, Eigen::MatrixXd& tx, Eigen::MatrixXd& ty) {
+	virtual void evaluate(const Vec3Seq& x, RealSeq& fx, RealSeq& varx, Eigen::MatrixXd& normals, Eigen::MatrixXd& tx, Eigen::MatrixXd& ty) {
 		clock_t t = clock();
 
 		// compute f(x) and V(x)
@@ -448,7 +373,7 @@ public:
 		for (size_t i = 0; i < nq; ++i) {
 			for (size_t j = 0; j < np; ++j) {
 				Kqp(i, j) = cf->get(x[i], sampleset->x(j));
-				Kqpdiff(i, j) = cf->getDiff(x[i], sampleset->x(j));
+				Kqpdiff(i, j) = cf->getDiff(x[i], sampleset->x(j), -1);
 			}
 		}
 		// compute error
@@ -486,12 +411,12 @@ public:
     }
 
     /** Add input-output pairs to sample set. */
-    void add_patterns(const Vec3Seq& newInputs, const Vec& newTargets) {
+	void add_patterns(const Vec3Seq& newInputs, const RealSeq& newTargets) {
         assert(newInputs.size() == newTargets.size());
 
         // the size of the inputs before adding new samples
         const size_t n = sampleset->rows();
-        sampleset->add(newInputs, newTargets);
+		sampleset->add(newInputs, newTargets);
 
         // create kernel matrix if sampleset is empty
         if (n == 0) {
@@ -526,7 +451,7 @@ public:
     golem::Real logLikelihood() {
         compute();
         update_alpha();
-        int n = sampleset->rows();
+        int n = 4 * sampleset->rows();
 		const std::vector<golem::Real>& targets = sampleset->y();
         Eigen::Map<const Eigen::VectorXd> y(&targets[0], sampleset->rows());
 		golem::Real det = (golem::Real)(2 * L->diagonal().head(n).array().log().sum());
@@ -537,7 +462,7 @@ public:
 	{
 		compute(false);
 		update_alpha();
-		size_t n = sampleset->rows();
+		size_t n = 4 * sampleset->rows();
 		Eigen::VectorXd grad = Eigen::VectorXd::Zero(cf->getParamDim());
 		Eigen::VectorXd g(grad.size());
 		Eigen::MatrixXd W = Eigen::MatrixXd::Identity(n, n);
@@ -580,11 +505,12 @@ protected:
     /** Alpha is cached for performance. */
     boost::shared_ptr<Eigen::VectorXd> alpha;
     /** Last test kernel vector. */
-    boost::shared_ptr<Eigen::VectorXd> k_star;
+	boost::shared_ptr<Eigen::MatrixXd> k_star;
 	/** Linear solver used to invert the covariance matrix. */
     // Eigen::LLT<Eigen::MatrixXd> solver;
 	/** Lower triangle matrix of kernel (points) */
-    boost::shared_ptr<Eigen::MatrixXd> L;
+	boost::shared_ptr<Eigen::MatrixXd> L;
+
 	/** Input vector dimensionality. */
     size_t input_dim;
     /** Enable/disable to update the alpha vector */
@@ -605,10 +531,41 @@ protected:
 
     /** Compute k_* = K(x_*, x) */
 	void update_k_star(const golem::Vec3& x_star) {
-        k_star->resize(sampleset->rows());
-		for (size_t i = 0; i < sampleset->rows(); ++i) {
-            (*k_star)(i) = cf->get(x_star, sampleset->x(i));
+		const size_t n = sampleset->rows();
+		const size_t ndt = 4 * n;
+        k_star->resize(4, ndt);
+		// first row in K*
+		// -> [x*x1, ... , x*xn, dx(x*x1), dy(x*x1), dz(x*x1), ..., dx(x*xn), dy(x*xn), dz(x*xn)] [1x4n]
+		size_t i = 0;
+		for (size_t j = 0; j < n; ++j)
+			(*k_star)(i, j) = cf->get(x_star, sampleset->x(j));
+		for (size_t j = 0; j < n; ++j) {
+			for (size_t d = 0; d < 3; ++d)
+				(*k_star)(i, n + 3 * j + d) = cf->getDiff(x_star, sampleset->x(j), d);
 		}
+
+		// 2nd row in K*
+		// -> [dx(x*x1), dx(x*x2), dx(x*x3), ..., dx(x*xn), ...
+		//    ... dxdx(x*x1), dxdy(x*x1), dxdz(x*x1), ..., dxdx(x*xn), dxdy(x*xn), dxdz(x*xn)] [1x4n]
+		// the loop goes for 3rd and 4th row as well -> [3x4n]
+		for (i = 1; i < 4; ++i) {
+			size_t j = 0;
+			for (j = 0; j < n; ++j) 
+				(*k_star)(i, j) = cf->getDiff(x_star, sampleset->x(j), i-1);
+			for (; j < ndt; ++j)
+				for (size_t d = 0; d < 3; ++d)
+					(*k_star)(i, j) = cf->getDiff(x_star, sampleset->x(j), i-1, d);
+
+		}
+		//context.write("K_star [%d %d]\n", k_star->rows(), k_star->cols());
+		//for (size_t i = 0; i < k_star->rows(); ++i) {
+		//	for (size_t j = 0; j < k_star->cols(); ++j)
+		//		context.write("%f ", (*k_star)(i, j));
+		//	context.write("\n");
+		//}
+		//for (size_t i = 0; i < 4; ++i) {
+		//	(*k_star)(i, j) = cf->get(x_star, sampleset->x(i));
+		//}
     }
 
     /** Update alpha vector (mean) */
@@ -616,13 +573,25 @@ protected:
         // can previously computed values be used?
         if (!alpha_needs_update) return;
         alpha_needs_update = false;
-        alpha->resize(sampleset->rows());
+		const size_t ndt = 4 * sampleset->rows();
+        alpha->resize(ndt);
 		// Map target values to VectorXd
-        const std::vector<double>& targets = sampleset->y();
-        Eigen::Map<const Eigen::VectorXd> y(&targets[0], sampleset->rows());
-		size_t n = sampleset->rows();
-        *alpha = L->topLeftCorner(n, n).triangularView<Eigen::Lower>().solve(y);
-		L->topLeftCorner(n, n).triangularView<Eigen::Lower>().adjoint().solveInPlace(*alpha);
+        //const std::vector<double>& targets = sampleset->y();
+		const RealSeq& targets = sampleset->y();
+		if (targets.size() != ndt)
+			throw Message(Message::LEVEL_ERROR, "Target and alpha vector have a size dismatch.");
+
+		Eigen::Map<const Eigen::VectorXd> y(&targets[0], ndt);
+		*alpha = L->topLeftCorner(ndt, ndt).triangularView<Eigen::Lower>().solve(y);
+		//context.write("alpha [%d %d]\n", alpha->rows(), alpha->cols());
+		//for (size_t i = 0; i < alpha->size(); ++i)
+		//	context.write("%f ", (*alpha)(i));
+		//context.write("\n");
+		L->topLeftCorner(ndt, ndt).triangularView<Eigen::Lower>().adjoint().solveInPlace(*alpha);
+		//context.write("alpha2 [%d %d]\n", alpha->rows(), alpha->cols());
+		//for (size_t i = 0; i < alpha->size(); ++i)
+		//	context.write("%f ", (*alpha)(i));
+		//context.write("\n");
 	}
 
     /** Compute covariance matrix and perform cholesky decomposition. */
@@ -634,24 +603,44 @@ protected:
 		// input size
         const size_t n = sampleset->rows();
 		const size_t dim = sampleset->cols();
+
 		// resize L if necessary
-        if (n > L->rows()) L->resize(n + initialLSize, n + initialLSize);
-        // compute kernel matrix (lower triangle)
-        size_t counter = 0;
-		Kppdiff.resize(n, n);
+        if (4 * n > L->rows()) L->resize(4 * n + initialLSize, 4 * n + initialLSize);
+
+		// compute kernel matrix (lower triangle)
 //#pragma omp parallel for collapse(2)
         for(size_t i = 0; i < n; ++i) {
             for(size_t j = 0; j <= i; ++j) {
                 // compute kernel and add noise on the diagonal of the kernel
 				(*L)(i, j) = cf->get(sampleset->x(i), sampleset->x(j), i == j);
-				Kppdiff(i, j) = cf->getDiff(sampleset->x(i), sampleset->x(j));
-				//context.write("GP::compute(): Computing k(%lu, %lu) = %f\r", i, j, (*L)(i, j));
+//				context.write("Computing L(%lu, %lu) = %f\n", i, j, (*L)(i, j));
 			}
-		}		
-		InvKppY = L->topLeftCorner(n, n).inverse() * convertToEigen(sampleset->y());
+		}	
+		// first derivative
+		for (size_t i = 0; i < n; ++i) {
+			for (size_t d = 0; d < 3; ++d) {
+				for (size_t j = 0; j < n; ++j) {
+					// compute kernel and add noise on the diagonal of the kernel
+					(*L)(n + i * 3 + d, j) = cf->getDiff(sampleset->x(i), sampleset->x(j), d, i == j);
+//					context.write("Computing L(%lu, %lu)=d%luk(%lu, %lu) = %f\n", n + i * 3 + d, j, d, i, j, (*L)(n + i * 3 + d, j));
+				}
+				for (size_t j = 0; j < i * 3 + d + 1; ++j) {
+					(*L)(n + i * 3 + d, n + j) = cf->getDiff2(sampleset->x(i), sampleset->x(j), d, j % 3, i == j);
+//					context.write("Computing L(%lu, %lu)=d%lud%luk(%lu, %lu) = %f\n", n + i * 3 + d, n + j, d, j % 3, i, j, (*L)(n + i * 3 + d, n + j));
+				}
+			}
+		}
+		const size_t ndt = 4 * n;
+		InvKppY = L->topLeftCorner(ndt, ndt).inverse() * convertToEigen(sampleset->y());
+		//context.write("L: [%d %d]\n", ndt, ndt);
+		//for (size_t i = 0; i < ndt; ++i) {
+		//	for (size_t j = 0; j <= i; ++j) {
+		//		context.write("%.3f ", (*L)(i, j));
+		//	}
+		//	context.write("\n");
+		//}
 		// perform cholesky factorization
-        //solver.compute(K.selfadjointView<Eigen::Lower>());
-        L->topLeftCorner(n, n) = L->topLeftCorner(n, n).selfadjointView<Eigen::Lower>().llt().matrixL();
+		L->topLeftCorner(ndt, ndt) = L->topLeftCorner(ndt, ndt).selfadjointView<Eigen::Lower>().llt().matrixL();
 		alpha_needs_update = true;
 		if (verbose) context.write("GP::Compute(): Elapsed time: %.4fs\n", (float)(clock() - t) / CLOCKS_PER_SEC);
     }
@@ -676,10 +665,10 @@ protected:
         input_dim = 3;
         initialLSize = desc.initialLSize;
         alpha.reset(new Eigen::VectorXd);
-        k_star.reset(new Eigen::VectorXd);
+		k_star.reset(new Eigen::MatrixXd);
         L.reset(new Eigen::MatrixXd);
         L->resize(initialLSize, initialLSize);
-        alpha_needs_update = true;
+		alpha_needs_update = true;
 	}
 
     /** Default C'tor */
