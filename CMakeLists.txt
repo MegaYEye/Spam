@@ -815,6 +815,7 @@ IF(BUILD_SPAM_DEMO_FT)
 		${PROJECT_ROOT}/resources/Spam/Demo/FT/SpamDemoFT_RobotBoris.xml
 		${PROJECT_ROOT}/resources/Spam/Demo/FT/SpamDemoFT_RobotBorisSim.xml
 		${PROJECT_ROOT}/resources/Spam/Demo/R2G/SpamDataBeliefDemoR2G.xml
+		${PROJECT_ROOT}/resources/Spam/Demo/R2G/SpamDataR2GTrajectoryDemoR2G.xml
 		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraDepthSimDemoR2G.xml
 		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraKinectDemoR2G.xml
 		${PROJECT_ROOT}/resources/Spam/Demo/R2G/GraspCameraOpenCVDemoR2G.xml
@@ -875,7 +876,7 @@ IF(BUILD_SPAM_DEMO_TACTILE)
 		SET_TARGET_PROPERTIES(SpamDemoTactileExploration PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -Wno-invalid-offsetof")
 	endif()
 	TARGET_LINK_LIBRARIES(SpamDemoTactileExploration SpamApp SpamMCPlan)
-	COPY_FILES(SpamDemoTactileExploration ${RUNTIME_OUTPUT_DIRECTORY} ${DEMO_R2G_FILES})
+	COPY_FILES(SpamDemoTactileExploration ${RUNTIME_OUTPUT_DIRECTORY} ${DEMO_TACTILE_FILES})
 	SET_PROPERTY(TARGET SpamDemoTactileExploration PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
 	SET_PROPERTY(TARGET SpamDemoTactileExploration PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
 	

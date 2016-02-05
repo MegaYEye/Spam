@@ -42,13 +42,19 @@ SampleSet::SampleSet(const Vec3Seq& inputs, const RealSeq& targets, const Vec3Se
 //	Y.insert(Y.end(), targets.begin(), targets.end());
 	
 	Y.assign(4 * n, REAL_ZERO);
-	for (size_t i = 0; i < targets.size(); ++i)
-		Y[i] = targets[i];
-	for (size_t i = 0; i < normals.size(); ++i) {
-		Y[n + 3 * i] = normals[i].x;
-		Y[n + 3 * i + 1] = normals[i].y;
-		Y[n + 3 * i + 2] = normals[i].z;
+	for (size_t i = 0; i < targets.size(); ++i) {
+		Y[i * 4] = targets[i];
+		Y[i * 4 + 1] = normals[i].x;
+		Y[i * 4 + 2] = normals[i].y;
+		Y[i * 4 + 3] = normals[i].z;
 	}
+	//for (size_t i = 0; i < targets.size(); ++i)
+	//	Y[i] = targets[i];
+	//for (size_t i = 0; i < normals.size(); ++i) {
+	//	Y[n + 3 * i] = normals[i].x;
+	//	Y[n + 3 * i + 1] = normals[i].y;
+	//	Y[n + 3 * i + 2] = normals[i].z;
+	//}
 
 	//printf("Trainind data:\n");
 	//for (size_t i = 0; i < Y.size(); ++i)

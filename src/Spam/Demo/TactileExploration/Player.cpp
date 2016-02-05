@@ -114,10 +114,218 @@ void RRTPlayer::create(const Desc& desc) {
 		t->print();
 	}));
 
+	menuCmdMap.insert(std::make_pair("K", [=]() {
+		context.write("Point cloud test\n");
+
+		const std::string itemName = "jug-curv";
+		grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(itemName);
+		if (ptr == to<Data>(dataCurrentPtr)->itemMap.end())
+			throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): Does not find %s.", itemName.c_str());
+
+		// retrive point cloud with curvature
+		grasp::data::ItemPointsCurv *pointsCurv = is<grasp::data::ItemPointsCurv>(ptr->second.get());
+		if (!pointsCurv)
+			throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): Does not support PointdCurv interface.");
+		grasp::Cloud::PointCurvSeq curvPoints = *pointsCurv->cloud;
+
+		// copy as a vector of points in 3D
+		const bool draw = true;
+		Vec3 modelFrame = Vec3::zero();
+		const size_t Nsur = 30, Next = 5, Nint = 1, Ncurv = curvPoints.size();
+		const size_t Ntot = Nsur + Next + Nint;
+		Vec3Seq cloud, surCloud, points, pclNormals;
+		cloud.resize(Ntot);
+		surCloud.resize(Nsur);
+		points.resize(Ncurv);
+		pclNormals.resize(Ncurv);
+		for (size_t i = 0; i < Ncurv; ++i) {
+			points[i] = Cloud::getPoint<Real>(curvPoints[i]);
+			pclNormals[i] = Cloud::getNormal<Real>(curvPoints[i]);
+		}
+		//		if (draw) renderCloud(points, RGBA::YELLOW);
+
+		Vec3Seq extCloud;
+		extCloud.resize(Next);
+		RealSeq targets;
+		targets.resize(Ntot);
+
+		context.write("Load %d points from model point cloud (%d)\n", Nsur, Ncurv);
+		for (size_t i = 0; i < Nsur; ++i) {
+			const size_t index = size_t(rand.next() % Ncurv);
+			surCloud[i] = cloud[i] = Cloud::getPoint<Real>(curvPoints[index]);
+			targets[i] = REAL_ZERO;
+			modelFrame += cloud[i];
+		}
+		// render model point cloud
+		if (draw) renderCloud(surCloud, RGBA::YELLOW);
+		modelFrame /= Nsur;
+		if (draw) {
+			Mat34 frame; frame.setId();
+			frame.p = modelFrame;
+			cdebugRenderer.addAxes(frame, Vec3(0.02, 0.02, 0.02));
+		}
+		// max radious
+		Real length = REAL_ZERO;
+		//		context.write("Model frame [%f %f %f] d=%f\n", modelFrame.x, modelFrame.y, modelFrame.z);
+		//for (size_t i = 0; i < cloud.size(); ++i) {
+		//	for (size_t j = i + 1; j < cloud.size(); ++j) {
+		//		const Real d = cloud[i].distance(cloud[j]);
+		//		//			context.write("point[%d] [%f %f %f] d=%f\n", i, cloud[i].x, cloud[i].y, cloud[i].z, d);
+		//		if (length < d)
+		//			length = d;
+		//	}
+		//}
+		for (size_t i = 0; i < Nsur; ++i) {
+			const Real d = modelFrame.distance(cloud[i]);
+			if (length < d)
+				length = d;
+		}
+		// zero-mean points
+		for (size_t i = 0; i < Nsur; ++i)
+			cloud[i] -= modelFrame;
+
+		length = 1.2 * length;
+		const Real lengthSqr = length * length;
+		context.write("Create %d external points as a sphere of radius %f\n", Next, length);
+		for (size_t i = 0; i < Next; ++i) {
+			const golem::Real theta = 2 * REAL_PI*rand.nextUniform<golem::Real>(0, 1) - REAL_PI;
+			const golem::Real colatitude = (REAL_PI / 2) - (2 * REAL_PI*rand.nextUniform<golem::Real>(0, 1) - REAL_PI);
+			const golem::Real z = (2 * rand.nextUniform<golem::Real>(0, length) - length) * Math::cos(colatitude);
+			Vec3 point(Math::sin(theta)*sqrt(lengthSqr - z*z), Math::cos(theta)*Math::sqrt(lengthSqr - z*z), z);
+
+			//const size_t index = size_t(rand.next() % Ncurv);
+			//const Vec3 v = points[index] - modelFrame;
+			//const Vec3 p = points[index] + v;
+			cloud[Nsur + i] = point;
+			extCloud[i] = point + modelFrame;
+			targets[Nsur + i] = REAL_ONE;
+		}
+		if (draw) renderCloud(extCloud, RGBA::RED);
+
+		cloud[Nsur + Next] = Vec3::zero();//modelFrame;
+		targets[Nsur + Next] = -REAL_ONE;
+
+		/*****  Create the model  *********************************************/
+		SampleSet::Ptr trainingData(new SampleSet(cloud, targets, cloud));
+//#define	simplethinplate
+#define simple_cov_se
+#ifdef simple_cov_se
+		SimpleGaussianRegressor::Desc covDesc;
+		covDesc.initialLSize = covDesc.initialLSize > Ntot ? covDesc.initialLSize : Ntot + 100;
+		covDesc.covTypeDesc.inputDim = trainingData->cols();
+		covDesc.covTypeDesc.length = 0.03;
+		covDesc.covTypeDesc.sigma = 0.015;
+		covDesc.covTypeDesc.noise = 0.0001;
+		covDesc.optimise = false;
+		SimpleGaussianRegressor::Ptr gp = covDesc.create(context);
+		context.write("%s Regressor created. inputDim=%d, parmDim=%d, l=%f, s=%f\n", gp->getName().c_str(), covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
+			covDesc.covTypeDesc.length, covDesc.covTypeDesc.sigma);
+#endif
+#ifdef simplethinplate
+		SimpleThinPlateRegressor::Desc covDesc;
+		covDesc.initialLSize = covDesc.initialLSize > Ntot ? covDesc.initialLSize : Ntot + 100;
+		covDesc.covTypeDesc.inputDim = trainingData->cols();
+		covDesc.covTypeDesc.noise = REAL_ZERO; // 0.0001;
+		Real l = REAL_ZERO;
+		for (size_t i = 0; i < cloud.size(); ++i) {
+			for (size_t j = i; j < cloud.size(); ++j) {
+				const Real d = cloud[i].distance(cloud[j]);
+				if (l < d) l = d;
+			}
+		}
+		covDesc.covTypeDesc.length = l;
+		covDesc.optimise = false;
+		context.write("ThinPlate cov: inputDim=%d, parmDim=%d, R=%f noise=%f\n", covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
+			covDesc.covTypeDesc.length, covDesc.covTypeDesc.noise);
+		SimpleThinPlateRegressor::Ptr gp = covDesc.create(context);
+#endif
+		gp->set(trainingData);
+
+		/*****  Query the model with a point  *********************************/
+		golem::Vec3 q(cloud[0]);
+		const double qf = gp->f(q);
+		const double qVar = gp->var(q);
+
+		context.write("Test estimate first point in the model\ny = %f -> qf = %f qVar = %f\n\n", targets[0], qf, qVar);
+
+		/*****  Evaluate points and normals  *********************************************/
+		const size_t testSize = 50;
+		context.write("Evaluate %d points and normals\n", testSize);
+		std::vector<Real> fx, varx;
+		Eigen::MatrixXd normals, tx, ty;
+		Vec3Seq nn, xStar, normStar, xStarPoints;
+		nn.resize(testSize);
+		normStar.resize(testSize);
+		RealSeq yStar;
+		xStar.resize(testSize); yStar.assign(testSize, REAL_ZERO);
+		xStarPoints.resize(testSize);
+		for (size_t i = 0; i < testSize; ++i) {
+			const size_t index = size_t(rand.next() % Ncurv);
+			xStarPoints[i] = Cloud::getPoint<Real>(curvPoints[index]);
+			xStar[i] = xStarPoints[i] - modelFrame;
+			normStar[i] = Cloud::getNormal<Real>(curvPoints[index]);
+			normStar[i].normalise();
+			yStar[i] = REAL_ZERO;
+		}
+		Real evalError = REAL_ZERO, normError = REAL_ZERO, c = REAL_ZERO, c1 = REAL_ZERO;
+		gp->evaluate(xStar, fx, varx, normals, tx, ty);
+		for (size_t i = 0; i < testSize; ++i) {
+			//points[i] = x_star[i];
+			nn[i] = Vec3(normals(i, 0), normals(i, 1), normals(i, 2));
+			golem::kahanSum(normError, c, (1 - ::abs(nn[i].dot(normStar[i]))) * 90);
+			golem::kahanSum(evalError, c1, std::pow(fx[i] - yStar[i], 2));
+			context.write("Evaluate[%d]: f(x_star) = %f -> f_star = %f v_star = %f normal=[%f %f %f] dot=%f\n", i, yStar[i], fx[i], varx[i], normals(i, 0), normals(i, 1), normals(i, 2), nn[i].dot(normStar[i]));
+		}
+		context.write("Evaluate(): error=%f avg=%f normError=%f avg=%f\n\n", evalError, evalError / testSize, normError, normError / testSize);
+		// render normals
+		if (draw) renderCromCloud(xStarPoints, varx);
+		if (draw) renderNormals(xStarPoints, nn);
+		if (draw) renderNormals(xStarPoints, normStar, RGBA::BLUE);
+
+		return;
+		/*****  Re-construct the object  *********************************************/
+		const Real deltaStep = length / 10;
+		Vec3Seq xStar2; xStar2.resize(10000);
+		size_t count = 0, jj = 0;
+		for (Real i = -length; i < length; i = i + deltaStep) {
+			for (Real j = -length; j < length; j = j + deltaStep) {
+				for (Real z = -length; z < length; z = z + deltaStep) {
+					if (count >= 10000)
+						break;
+					xStar2[count++] = Vec3(i, j, z);
+				}
+			}
+		}
+		gp->evaluate(xStar2, fx, varx, normals, tx, ty);
+		count = 0; jj = 0;
+		nn.clear(); nn.resize(xStar2.size());
+		RealSeq varxx; varxx.resize(xStar2.size());
+		Vec3Seq object; object.resize(xStar2.size());
+		for (size_t i = 0; i < xStar2.size(); ++i) {
+			if (::abs(fx[i]) < 0.02) {
+				object[count] = modelFrame + xStar2[i];
+				varxx[count] = varx[i];
+				nn[count++] = Vec3(normals(i, 0), normals(i, 1), normals(i, 2));
+			}
+		}
+		to<Data>(dataCurrentPtr)->createRender();
+		renderCromCloud(object, varx);
+		renderNormals(object, nn);
+		//renderCloud(object, RGBA::BLACK);
+
+		/*****  done  *********************************************/
+		context.write("Done.\n");
+	}));
+
+	/****************************************************/
+	/**													*/
+	/**		TEST GUASSIAN PROCESS with DERIVATIVE		*/
+	/**													*/
+	/****************************************************/
 	menuCmdMap.insert(std::make_pair("F", [=]() {
 		context.write("Point cloud test\n");
 
-		const std::string itemName = "model-curv-6_views"; // "jug-curv";
+		const std::string itemName = "jug-curv"; //"model-curv-6_views"; //
 		grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(itemName);
 		if (ptr == to<Data>(dataCurrentPtr)->itemMap.end())
 			throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): Does not find %s.", itemName.c_str());
@@ -133,7 +341,7 @@ void RRTPlayer::create(const Desc& desc) {
 		Vec3 modelFrame = Vec3::zero();
 		const size_t Nsur = 300, Next = 50, Nint = 1, Ncurv =  curvPoints.size();
 		const size_t Ntot = Nsur + Next + Nint;
-		const Real extRadius = 1.2;
+		const Real extRadius = 1.2, intRho = 0.001;
 		Vec3Seq cloud, surCloud, surNormals, points, pclNormals, nns;
 		cloud.resize(Ntot);
 		surNormals.resize(Nsur);
@@ -215,27 +423,36 @@ void RRTPlayer::create(const Desc& desc) {
 			renderNormals(extCloud, extNormals);
 		}
 
-		cloud[Nsur + Next] = Vec3::zero();//modelFrame;
-		targets[Nsur + Next] = -REAL_ONE;
-		nns[Nsur + Next] = Vec3(1.0, .0, .0);
+		context.write("\nInternal point(s) %lu:\n", Nint);
+		const Real intRhoSqr = intRho * intRho;
+		for (size_t i = Nsur + Next; i < Nsur + Next + Nint; ++i) {
+			const golem::Real theta = 2 * REAL_PI*rand.nextUniform<golem::Real>(0, 1) - REAL_PI;
+			const golem::Real colatitude = (REAL_PI / 2) - (2 * REAL_PI*rand.nextUniform<golem::Real>(0, 1) - REAL_PI);
+			const golem::Real z = (2 * rand.nextUniform<golem::Real>(0, intRho) - intRho) * Math::cos(colatitude);
+			golem::Vec3 point(Math::sin(theta)*sqrt(intRhoSqr - z*z), Math::cos(theta)*Math::sqrt(intRhoSqr - z*z), z);
+			cloud[i] = nns[i] = point;
+			nns[i].normalise();
+
+			targets[i] = -REAL_ONE;
+		}
 
 		/*****  Create the model  *********************************************/
 		SampleSet::Ptr trainingData(new SampleSet(cloud, targets, nns));
 #define cov_se
-//#define cov_thin_plate
+//#define cov_thinplate
 #ifdef cov_se
 		GaussianARDRegressor::Desc covDesc;
 		covDesc.initialLSize = covDesc.initialLSize > Ntot ? covDesc.initialLSize : Ntot + 100;
 		covDesc.covTypeDesc.inputDim = trainingData->cols();
-		covDesc.covTypeDesc.length = 1.0; // 0.03;
-		covDesc.covTypeDesc.sigma = 1.0; // 0.015;
-		covDesc.covTypeDesc.noise = 0.001;
+		covDesc.covTypeDesc.length = 0.03; // 0.03;
+		covDesc.covTypeDesc.sigma = 0.015; // 0.015;
+		covDesc.covTypeDesc.noise = 0.01;
 		covDesc.optimise = false;
 		GaussianARDRegressor::Ptr gp = covDesc.create(context);
 		context.write("%s Regressor created. inputDim=%d, parmDim=%d, l=%f, s=%f\n", gp->getName().c_str(), covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
 			covDesc.covTypeDesc.length, covDesc.covTypeDesc.sigma);
 #endif
-#ifdef cov_thin_plate
+#ifdef cov_thinplate
 		ThinPlateRegressor::Desc covDesc;
 		covDesc.initialLSize = covDesc.initialLSize > Ntot ? covDesc.initialLSize : Ntot + 100;
 		covDesc.covTypeDesc.inputDim = trainingData->cols();
@@ -252,8 +469,8 @@ void RRTPlayer::create(const Desc& desc) {
 		context.write("ThinPlate cov: inputDim=%d, parmDim=%d, R=%f noise=%f\n", covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
 			covDesc.covTypeDesc.length, covDesc.covTypeDesc.noise);
 		ThinPlateRegressor::Ptr gp = covDesc.create(context);
-		context.write("%s Regressor created\n", gp->getName().c_str());
 #endif
+		context.write("%s Regressor created\n", gp->getName().c_str());
 		gp->set(trainingData);
 
 		/*****  Query the model with a point  *********************************/
@@ -267,72 +484,41 @@ void RRTPlayer::create(const Desc& desc) {
 		context.write("Test estimate first point in the model\ny = %f -> qf = %f qVar = %f error=%f\n\n", targets[0], qf, qVar, er);
 		if (!::isfinite(qf) || !::isfinite(qVar))
 			return;
-		return;
+
 		/*****  Evaluate points and normals  *********************************************/
 		const size_t testSize = 50;
 		context.write("Evaluate %d points and normals\n", testSize);
-		std::vector<Real> fx, varx;
-		Eigen::MatrixXd normals, tx, ty;
+		RealSeq fx, varx;
+		fx.resize(testSize); varx.resize(testSize);
 		Vec3Seq nn, xStar, normStar, xStarPoints; 
-		//nn.resize(testSize);
-		//normStar.resize(testSize);
-		//Vec yStar;
-		//xStar.resize(testSize); yStar.assign(testSize, REAL_ZERO);
-		//xStarPoints.resize(testSize);
-		//for (size_t i = 0; i < testSize; ++i) {
-		//	const size_t index = size_t(rand.next() % Ncurv);
-		//	xStarPoints[i] = Cloud::getPoint<Real>(curvPoints[index]);
-		//	xStar[i] = xStarPoints[i] - modelFrame;
-		//	normStar[i] = Cloud::getNormal<Real>(curvPoints[index]);
-		//	normStar[i].normalise();
-		//	yStar[i] = REAL_ZERO;
-		//}
-		//Real evalError = REAL_ZERO, normError = REAL_ZERO, c = REAL_ZERO, c1 = REAL_ZERO;
-		//gp->evaluate(xStar, fx, varx, normals, tx, ty);
-		//for (size_t i = 0; i < testSize; ++i) {
-		//	//points[i] = x_star[i];
-		//	nn[i] = Vec3(normals(i, 0), normals(i, 1), normals(i, 2));
-		//	golem::kahanSum(normError, c, (1 - ::abs(nn[i].dot(normStar[i])))*90);
-		//	golem::kahanSum(evalError, c1, std::pow(fx[i] - yStar[i], 2));
-		//	context.write("Evaluate[%d]: f(x_star) = %f -> f_star = %f v_star = %f normal=[%f %f %f] dot=%f\n", i, yStar[i], fx[i], varx[i], normals(i, 0), normals(i, 1), normals(i, 2), nn[i].dot(normStar[i]));
-		//}
-		//context.write("Evaluate(): error=%f avg=%f normError=%f avg=%f\n\n", evalError, evalError / testSize, normError, normError / testSize);
-		//// render normals
-		//if (draw) renderCromCloud(xStarPoints, varx);
-		//if (draw) renderNormals(xStarPoints, nn);
-		//if (draw) renderNormals(xStarPoints, normStar, RGBA::BLUE);
-
-		/*****  Re-construct the object  *********************************************/
-		const Real deltaStep = length / 10;
-		Vec3Seq xStar2; xStar2.resize(10000);
-		size_t count = 0, jj = 0;
-		for (Real i = -length; i < length; i = i + deltaStep) {
-			for (Real j = -length; j < length; j = j + deltaStep) {
-				for (Real z = -length; z < length; z = z + deltaStep) {
-					if (count >= 10000)
-						break;
-					xStar2[count++] = Vec3(i, j, z);
-					context.write("Points %d\r", count);
-				}
-			}
+		nn.resize(testSize);
+		normStar.resize(testSize);
+		RealSeq yStar;
+		xStar.resize(testSize); yStar.assign(testSize, REAL_ZERO);
+		xStarPoints.resize(testSize);
+		for (size_t i = 0; i < testSize; ++i) {
+			const size_t index = size_t(rand.next() % Ncurv);
+			xStarPoints[i] = Cloud::getPoint<Real>(curvPoints[index]);
+			xStar[i] = xStarPoints[i] - modelFrame;
+			normStar[i] = Cloud::getNormal<Real>(curvPoints[index]);
+			normStar[i].normalise();
+			yStar[i] = REAL_ZERO;
 		}
-		context.write("\nevaluate test sets...\n");
-		gp->evaluate(xStar2, fx, varx, normals, tx, ty);
-		count = 0; jj = 0;
-		nn.clear(); nn.resize(xStar2.size());
-		RealSeq varxx; varxx.resize(xStar2.size());
-		Vec3Seq object; object.resize(xStar2.size());
-		for (size_t i = 0; i < xStar2.size(); ++i) {
-			if (::abs(fx[i]) < 0.1) {
-				object[count] = modelFrame + xStar2[i];
-				varxx[count] = varx[i];
-				nn[count++] = Vec3(normals(i, 0), normals(i, 1), normals(i, 2));
-				context.write("Evaluate[%d/%d]: f_star = %f v_star = %f normal=[%f %f %f]\n", i, count, fx[i], varx[i], normals(i, 0), normals(i, 1), normals(i, 2));
-			}
+		Real evalError = REAL_ZERO, normError = REAL_ZERO, c = REAL_ZERO, c1 = REAL_ZERO;
+		for (size_t i = 0; i < testSize; ++i) {
+			//points[i] = x_star[i];
+			const Eigen::Vector4d res = gp->f(q);
+			fx[i] = res(0);
+			nn[i] = Vec3(res(1), res(2), res(3));
+			golem::kahanSum(normError, c, (1 - ::abs(nn[i].dot(normStar[i])))*90);
+			golem::kahanSum(evalError, c1, std::pow(fx[i] - yStar[i], 2));
+			context.write("Evaluate[%d]: f(x_star) = %f -> f_star = %f v_star = %f normal=[%f %f %f] dot=%f\n", i, yStar[i], fx[i], varx[i], nn[i].x, nn[i].y, nn[i].z, nn[i].dot(normStar[i]));
 		}
-		to<Data>(dataCurrentPtr)->createRender();
-		renderCromCloud(object,varx);
-//		renderNormals(object, nn);
+		context.write("Evaluate(): error=%f avg=%f normError=%f avg=%f\n\n", evalError, evalError / testSize, normError, normError / testSize);
+		// render normals
+		if (draw) renderCromCloud(xStarPoints, varx);
+		if (draw) renderNormals(xStarPoints, nn);
+		if (draw) renderNormals(xStarPoints, normStar, RGBA::BLUE);
 
 		/*****  done  *********************************************/
 		context.write("\nDone.\n");
