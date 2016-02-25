@@ -699,13 +699,13 @@ bool FTDemo::execute(grasp::data::Data::Map::iterator dataPtr, spam::data::R2GTr
 		pHeuristic->setPointCloudCollision(true);
 		isGrasping = false;
 
-		Controller::State::Seq seq, trnSeq;
+		Controller::State::Seq seq;
 		trajectory.createTrajectory(seq);
 		// transform w.r.t. query frame
 		Controller::State cstart = lookupState(), cend = lookupState();
 
 		// transform w.r.t. query frame
-		findTarget(grasp::to<Data>(dataPtr)->queryTransform, seq[0], cstart);
+		//findTarget(grasp::to<Data>(dataPtr)->queryTransform, seq[0], cstart);
 		findTarget(grasp::to<Data>(dataPtr)->queryTransform, seq[1], cend);
 
 		Controller::State::Seq approach;

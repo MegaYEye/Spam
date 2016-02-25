@@ -469,6 +469,7 @@ bool R2GPlanner::create(const Desc& desc) {
 	}
 
 	trjDuration = desc.trjDuration;
+	initTrjDur = desc.initTrjDur;
 	trjIdle = desc.trjIdle;
 
 	if (desc.trjExtrapol.size() < (size_t)info.getJoints().size())
@@ -2177,7 +2178,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 	out.insert(out.end(), trajectory.begin(), trajectory.end());
 
 	golem::Controller::State::Seq completeTrajectory;
-	profile(this->trjDuration, out, completeTrajectory, false);
+	profile(initTrjDur, out, completeTrajectory, true);
 
 	context.write("R2GPlanner::perform()");
 	// create trajectory item
@@ -2233,7 +2234,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 	const SecTmReal initRecTime = context.getTimer().elapsed();
 
 	// send trajectory
-	sendTrajectory(trajectory);
+	sendTrajectory(completeTrajectory);
 
 	bool record2 = brecord ? true : false;
 	//Controller::State::Seq robotPoses; robotPoses.clear();
@@ -2537,12 +2538,12 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 	};
 	const U32 initIdx = 0, pregraspIdx = 1, graspIdx = 2;
 	// pregrasp has the wrist pose of the 2nd element in the trajectory
-	Controller::State pregrasp = trajectory[pregraspIdx].state;
+	Controller::State& pregrasp = trajectory[pregraspIdx].state;
 	// and the fingers opened as the 1st element in the trajectory
 	for (auto j = handInfo.getJoints().begin(); j != handInfo.getJoints().end(); ++j)
 		pregrasp.cpos[j] = trajectory[initIdx].state.cpos[j];
 	// grasp pose
-	Controller::State grasp = trajectory[graspIdx].state;
+	Controller::State& grasp = trajectory[graspIdx].state;
 	grasp::RealSeq vl;
 	vl.assign(20, REAL_ZERO);
 	vl[0] = Real(0.22); vl[1] = Real(0.6); vl[2] = Real(0.1); vl[3] = Real(0.1);

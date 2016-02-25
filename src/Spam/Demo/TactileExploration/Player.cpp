@@ -131,7 +131,7 @@ void RRTPlayer::create(const Desc& desc) {
 		// copy as a vector of points in 3D
 		const bool draw = true;
 		Vec3 modelFrame = Vec3::zero();
-		const size_t Nsur = 30, Next = 5, Nint = 1, Ncurv = curvPoints.size();
+		const size_t Nsur = 300, Next = 2, Nint = 1, Ncurv = curvPoints.size();
 		const size_t Ntot = Nsur + Next + Nint;
 		Vec3Seq cloud, surCloud, points, pclNormals;
 		cloud.resize(Ntot);
@@ -206,34 +206,34 @@ void RRTPlayer::create(const Desc& desc) {
 		targets[Nsur + Next] = -REAL_ONE;
 
 		/*****  Create the model  *********************************************/
-		SampleSet::Ptr trainingData(new SampleSet(cloud, targets, cloud));
-//#define	simplethinplate
-#define simple_cov_se
+		SampleSet::Ptr trainingData(new SampleSet(cloud, targets));
+#define	simplethinplate
+//#define simple_cov_se
 #ifdef simple_cov_se
 		SimpleGaussianRegressor::Desc covDesc;
 		covDesc.initialLSize = covDesc.initialLSize > Ntot ? covDesc.initialLSize : Ntot + 100;
 		covDesc.covTypeDesc.inputDim = trainingData->cols();
-		covDesc.covTypeDesc.length = 0.03;
-		covDesc.covTypeDesc.sigma = 0.015;
-		covDesc.covTypeDesc.noise = 0.0001;
-		covDesc.optimise = false;
+		covDesc.covTypeDesc.length = 1.0;
+		covDesc.covTypeDesc.sigma = 1.0;
+		covDesc.covTypeDesc.noise = 0.01;
+		covDesc.optimise = true;
 		SimpleGaussianRegressor::Ptr gp = covDesc.create(context);
 		context.write("%s Regressor created. inputDim=%d, parmDim=%d, l=%f, s=%f\n", gp->getName().c_str(), covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
 			covDesc.covTypeDesc.length, covDesc.covTypeDesc.sigma);
 #endif
 #ifdef simplethinplate
 		SimpleThinPlateRegressor::Desc covDesc;
-		covDesc.initialLSize = covDesc.initialLSize > Ntot ? covDesc.initialLSize : Ntot + 100;
+		covDesc.initialLSize = covDesc.initialLSize > Ntot ? covDesc.initialLSize : Ntot + covDesc.initialLSize;
 		covDesc.covTypeDesc.inputDim = trainingData->cols();
-		covDesc.covTypeDesc.noise = REAL_ZERO; // 0.0001;
+		covDesc.covTypeDesc.noise = 0.0; //0.01;
 		Real l = REAL_ZERO;
 		for (size_t i = 0; i < cloud.size(); ++i) {
-			for (size_t j = i; j < cloud.size(); ++j) {
+			for (size_t j = 0; j < i; ++j) {
 				const Real d = cloud[i].distance(cloud[j]);
 				if (l < d) l = d;
 			}
 		}
-		covDesc.covTypeDesc.length = l;
+		covDesc.covTypeDesc.length = l + 0.01;
 		covDesc.optimise = false;
 		context.write("ThinPlate cov: inputDim=%d, parmDim=%d, R=%f noise=%f\n", covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
 			covDesc.covTypeDesc.length, covDesc.covTypeDesc.noise);
@@ -247,12 +247,14 @@ void RRTPlayer::create(const Desc& desc) {
 		const double qVar = gp->var(q);
 
 		context.write("Test estimate first point in the model\ny = %f -> qf = %f qVar = %f\n\n", targets[0], qf, qVar);
-
+		if (!isfinite(qf) || !isfinite(qVar))
+			return;
+		
 		/*****  Evaluate points and normals  *********************************************/
 		const size_t testSize = 50;
 		context.write("Evaluate %d points and normals\n", testSize);
 		std::vector<Real> fx, varx;
-		Eigen::MatrixXd normals, tx, ty;
+		Eigen::MatrixXd normals, tx, ty, V;
 		Vec3Seq nn, xStar, normStar, xStarPoints;
 		nn.resize(testSize);
 		normStar.resize(testSize);
@@ -268,21 +270,21 @@ void RRTPlayer::create(const Desc& desc) {
 			yStar[i] = REAL_ZERO;
 		}
 		Real evalError = REAL_ZERO, normError = REAL_ZERO, c = REAL_ZERO, c1 = REAL_ZERO;
-		gp->evaluate(xStar, fx, varx, normals, tx, ty);
+		gp->evaluate(xStar, fx, varx, normals, tx, ty, V);
 		for (size_t i = 0; i < testSize; ++i) {
 			//points[i] = x_star[i];
 			nn[i] = Vec3(normals(i, 0), normals(i, 1), normals(i, 2));
 			golem::kahanSum(normError, c, (1 - ::abs(nn[i].dot(normStar[i]))) * 90);
 			golem::kahanSum(evalError, c1, std::pow(fx[i] - yStar[i], 2));
-			context.write("Evaluate[%d]: f(x_star) = %f -> f_star = %f v_star = %f normal=[%f %f %f] dot=%f\n", i, yStar[i], fx[i], varx[i], normals(i, 0), normals(i, 1), normals(i, 2), nn[i].dot(normStar[i]));
+			context.write("Evaluate[%d]: f(x_star) = %f -> f_star = %f v_star = %f normal=[%f %f %f] error=%f [deg]\n", i, yStar[i], fx[i], varx[i], nn[i].x, nn[i].y, nn[i].z, (1 - ::abs(nn[i].dot(normStar[i]))) * 90);
 		}
 		context.write("Evaluate(): error=%f avg=%f normError=%f avg=%f\n\n", evalError, evalError / testSize, normError, normError / testSize);
 		// render normals
 		if (draw) renderCromCloud(xStarPoints, varx);
 		if (draw) renderNormals(xStarPoints, nn);
 		if (draw) renderNormals(xStarPoints, normStar, RGBA::BLUE);
+		return; 
 
-		return;
 		/*****  Re-construct the object  *********************************************/
 		const Real deltaStep = length / 10;
 		Vec3Seq xStar2; xStar2.resize(10000);
@@ -296,7 +298,7 @@ void RRTPlayer::create(const Desc& desc) {
 				}
 			}
 		}
-		gp->evaluate(xStar2, fx, varx, normals, tx, ty);
+		gp->evaluate(xStar2, fx, varx, normals, tx, ty, V);
 		count = 0; jj = 0;
 		nn.clear(); nn.resize(xStar2.size());
 		RealSeq varxx; varxx.resize(xStar2.size());
@@ -339,7 +341,7 @@ void RRTPlayer::create(const Desc& desc) {
 		// copy as a vector of points in 3D
 		const bool draw = true;
 		Vec3 modelFrame = Vec3::zero();
-		const size_t Nsur = 300, Next = 50, Nint = 1, Ncurv =  curvPoints.size();
+		const size_t Nsur = 100, Next = 20, Nint = 1, Ncurv =  curvPoints.size();
 		const size_t Ntot = Nsur + Next + Nint;
 		const Real extRadius = 1.2, intRho = 0.001;
 		Vec3Seq cloud, surCloud, surNormals, points, pclNormals, nns;
@@ -438,25 +440,26 @@ void RRTPlayer::create(const Desc& desc) {
 
 		/*****  Create the model  *********************************************/
 		SampleSet::Ptr trainingData(new SampleSet(cloud, targets, nns));
-#define cov_se
-//#define cov_thinplate
+//#define cov_se
+#define covf_thinplate
 #ifdef cov_se
-		GaussianARDRegressor::Desc covDesc;
-		covDesc.initialLSize = covDesc.initialLSize > Ntot ? covDesc.initialLSize : Ntot + 100;
+		GaussianRegressor::Desc covDesc;
+		covDesc.initialLSize = covDesc.initialLSize > 4 * Ntot ? covDesc.initialLSize : 4 * Ntot + covDesc.initialLSize;
 		covDesc.covTypeDesc.inputDim = trainingData->cols();
-		covDesc.covTypeDesc.length = 0.03; // 0.03;
-		covDesc.covTypeDesc.sigma = 0.015; // 0.015;
+		covDesc.covTypeDesc.length = 0.4; // 0.03;
+		covDesc.covTypeDesc.sigma = 0.3; // 0.015;
 		covDesc.covTypeDesc.noise = 0.01;
-		covDesc.optimise = false;
-		GaussianARDRegressor::Ptr gp = covDesc.create(context);
+		covDesc.optimise = true;
+		covDesc.debug = false;
+		GaussianRegressor::Ptr gp = covDesc.create(context);
 		context.write("%s Regressor created. inputDim=%d, parmDim=%d, l=%f, s=%f\n", gp->getName().c_str(), covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
 			covDesc.covTypeDesc.length, covDesc.covTypeDesc.sigma);
 #endif
-#ifdef cov_thinplate
+#ifdef covf_thinplate
 		ThinPlateRegressor::Desc covDesc;
-		covDesc.initialLSize = covDesc.initialLSize > Ntot ? covDesc.initialLSize : Ntot + 100;
+		covDesc.initialLSize = covDesc.initialLSize > 4 * Ntot ? covDesc.initialLSize : 4 * Ntot + covDesc.initialLSize;
 		covDesc.covTypeDesc.inputDim = trainingData->cols();
-		covDesc.covTypeDesc.noise = REAL_ZERO; // 0.0001;
+		covDesc.covTypeDesc.noise = 0.01;
 		Real l = REAL_ZERO;
 		for (size_t i = 0; i < cloud.size(); ++i) {
 			for (size_t j = i; j < cloud.size(); ++j) {
@@ -466,6 +469,7 @@ void RRTPlayer::create(const Desc& desc) {
 		}
 		covDesc.covTypeDesc.length = l;
 		covDesc.optimise = false;
+		covDesc.debug = false;
 		context.write("ThinPlate cov: inputDim=%d, parmDim=%d, R=%f noise=%f\n", covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
 			covDesc.covTypeDesc.length, covDesc.covTypeDesc.noise);
 		ThinPlateRegressor::Ptr gp = covDesc.create(context);
@@ -474,12 +478,15 @@ void RRTPlayer::create(const Desc& desc) {
 		gp->set(trainingData);
 
 		/*****  Query the model with a point  *********************************/
+		const size_t index = size_t(rand.next() % Ncurv);
+		golem::Vec3 cc = Cloud::getPoint<Real>(curvPoints[index]);
 		golem::Vec3 q(cloud[0]);
 		golem::Vec3 qn(nns[0]);
 		const Eigen::Vector4d vv = gp->f(q);
 		const double qf = vv(0);
 		const golem::Vec3 qfn(vv(1), vv(2), vv(3));
 		const double qVar = gp->var(q);
+//		const double qVar = gp->var(q)(0);
 		const double er = nns[0].distance(qfn);
 		context.write("Test estimate first point in the model\ny = %f -> qf = %f qVar = %f error=%f\n\n", targets[0], qf, qVar, er);
 		if (!::isfinite(qf) || !::isfinite(qVar))
@@ -524,16 +531,15 @@ void RRTPlayer::create(const Desc& desc) {
 		context.write("\nDone.\n");
 	}));
 
-
-	menuCmdMap.insert(std::make_pair("Y", [=]() {
+	menuCmdMap.insert(std::make_pair("U", [=]() {
 		/*****  Global variables  ******************************************/
-		size_t N_sur = 5, N_ext = 1, N_int = 1, N_tot = N_sur + N_ext + N_int;
-		const Real surRho = 0.05, extRho = 0.1, intRho = 0.001;
+		size_t N_sur = 150, N_ext = 20, N_int = 1, N_tot = N_sur + N_ext + N_int;
+		const Real surRho = 0.02, extRho = 0.02, intRho = 0.001;
 		const Real surRhoSqr = Math::sqr(surRho), extRhoSqr = Math::sqr(extRho), intRhoSqr = Math::sqr(intRho);
-		golem::Real noise = 0.001; //
+		golem::Real noise = 0.0;// 0.001; //
 
-		const bool prtInit = true;
-		const bool prtPreds = false;
+		const bool prtInit = false;
+		const bool prtPreds = true;
 		const bool draw = true;
 
 		/*****  Generate Input data  ******************************************/
@@ -555,7 +561,7 @@ void RRTPlayer::create(const Desc& desc) {
 			// draws
 			surCloud[i] = point;
 
-			double y = point.magnitudeSqr() - surRhoSqr;
+			double y = 0.0;// point.magnitudeSqr() - surRhoSqr;
 			targets[i] = y;
 			if (prtInit)
 				context.write("points[%d] th(%f) = [%f %f %f] targets[%d] = %f\n", i, theta, point.x, point.y, point.z, i, y);
@@ -579,7 +585,7 @@ void RRTPlayer::create(const Desc& desc) {
 			normals[i].normalise();
 			extCloud[i] = point;
 
-			double y = point.magnitudeSqr() - surRhoSqr;
+			double y = 1.0;// point.magnitudeSqr() - surRhoSqr;
 			targets[i] = y;
 			if (prtInit)
 				context.write("points[%d] th(%f) = [%f %f %f] targets[%d] = %f\n", i, theta, point.x, point.y, point.z, i, y);
@@ -598,73 +604,64 @@ void RRTPlayer::create(const Desc& desc) {
 			cloud[i] = normals[i] = point;
 			normals[i].normalise();
 
-			double y = point.magnitudeSqr() - surRhoSqr;
+			double y = -1.0;// point.magnitudeSqr() - surRhoSqr;
 			targets[i] = y;
 			if (prtInit)
 				context.write("points[%d] th(%f) = [%f %f %f] targets[%d] = %f\n", i, theta, point.x, point.y, point.z, i, y);
 		}
 
 		/*****  Create the model  *********************************************/
-		SampleSet::Ptr trainingData(new SampleSet(cloud, targets, normals));
-#define gaussianReg //cov_thin_plate //gaussianReg
-#ifdef laplaceReg
-			LaplaceRegressor::Desc laplaceDesc;
-			laplaceDesc.covTypeDesc.inputDim = trainingData->cols();
-			laplaceDesc.covTypeDesc.noise = noise;
-			LaplaceRegressor::Ptr gp = laplaceDesc.create(context);
-			context.write("Laplace Regressor created %s\n", gp->getName().c_str());
+		SampleSet::Ptr trainingData(new SampleSet(cloud, targets));
+#define covu_thin_plate //gaussianReg
+//#define covu_se
+#ifdef covu_se
+		SimpleGaussianRegressor::Desc covDesc;
+		covDesc.initialLSize = covDesc.initialLSize > N_tot ? covDesc.initialLSize : N_tot + 100;
+		covDesc.covTypeDesc.inputDim = trainingData->cols();
+		covDesc.covTypeDesc.length = 0.03;
+		covDesc.covTypeDesc.sigma = 0.015;
+		covDesc.covTypeDesc.noise = noise;// 0.0001;
+		covDesc.optimise = false;
+		SimpleGaussianRegressor::Ptr gp = covDesc.create(context);
+		context.write("%s Regressor created. inputDim=%d, parmDim=%d, l=%f, s=%f noise=%f\n", gp->getName().c_str(), covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
+			covDesc.covTypeDesc.length, covDesc.covTypeDesc.sigma, covDesc.covTypeDesc.noise);
 #endif
-#ifdef gaussianReg
-			GaussianARDRegressor::Desc covDesc;
-			covDesc.initialLSize = covDesc.initialLSize > N_tot ? covDesc.initialLSize : N_tot + 100;
-			covDesc.covTypeDesc.inputDim = trainingData->cols();
-			covDesc.covTypeDesc.length = 1.0; // 0.03;
-			covDesc.covTypeDesc.sigma = 1.0; // 0.015;
-			covDesc.covTypeDesc.noise = noise;// 0.0001;
-			covDesc.optimise = true;
-			GaussianARDRegressor::Ptr gp = covDesc.create(context);
-			context.write("%s Regressor created. inputDim=%d, parmDim=%d, l=%f, s=%f noise=%f\n", gp->getName().c_str(), covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
-				covDesc.covTypeDesc.length, covDesc.covTypeDesc.sigma, covDesc.covTypeDesc.noise);
-#endif
-#ifdef cov_thin_plate
-			ThinPlateRegressor::Desc covDesc;
-//			covDesc.initialLSize = trainingData->rows();
-			covDesc.covTypeDesc.inputDim = trainingData->cols();
-			covDesc.covTypeDesc.noise = 0.0001;
-			Real l = REAL_ZERO;
-			for (size_t i = 0; i < cloud.size(); ++i) {
-				for (size_t j = i; j < cloud.size(); ++j) {
-					const Real d = cloud[i].distance(cloud[j]);
-					if (l < d) l = d;
-				}
+#ifdef covu_thin_plate
+		SimpleThinPlateRegressor::Desc covDesc;
+		//			covDesc.initialLSize = trainingData->rows();
+		covDesc.covTypeDesc.inputDim = trainingData->cols();
+		covDesc.covTypeDesc.noise = 0.0;
+		Real l = REAL_ZERO;
+		for (size_t i = 0; i < cloud.size(); ++i) {
+			for (size_t j = i; j < cloud.size(); ++j) {
+				const Real d = cloud[i].distance(cloud[j]);
+				if (l < d) l = d;
 			}
-			covDesc.covTypeDesc.length = l;
-			covDesc.optimise = false;
-			context.write("ThinPlate cov: inputDim=%d, parmDim=%d, R=%f noise=%f\n", covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
-				covDesc.covTypeDesc.length, covDesc.covTypeDesc.noise);
-			ThinPlateRegressor::Ptr gp = covDesc.create(context);
-			context.write("%s Regressor created\n", gp->getName().c_str());
+		}
+		covDesc.covTypeDesc.length = 1.0;
+		covDesc.optimise = false;
+		context.write("ThinPlate cov: inputDim=%d, parmDim=%d, R=%f noise=%f\n", covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
+			covDesc.covTypeDesc.length, covDesc.covTypeDesc.noise);
+		SimpleThinPlateRegressor::Ptr gp = covDesc.create(context);
+		context.write("%s Regressor created\n", gp->getName().c_str());
 #endif
 		gp->set(trainingData);
 		context.write("Training dataset X[%d %d] Y[%d]\n", trainingData->rows(), trainingData->cols(), trainingData->y().size());
 
 		/*****  Query the model with a point  *********************************/
 		golem::Vec3 q(cloud[0]);
-		const Eigen::Vector4d vv = gp->f(q);
-		const double qf = vv(0);
-		const golem::Vec3 qfn(vv(1), vv(2), vv(3));
+		const double qf = gp->f(q);
 		const double qVar = gp->var(q);
-		const double er = normals[0].distance(qfn);
+		q.normalise();
+		const double er = normals[0].distance(q);
 
 		if (prtPreds)
 			context.write("Test estimate first point in the model\ny = %f -> qf = %f qVar = %f error=%f\n\n", targets[0], qf, qVar, er);
-		return;
+
 		/*****  Query the model with new points  *********************************/
-		const size_t testSize = 150;
+		const size_t testSize = 50;
 		context.write("Query model with new %d points\n", testSize);
-		const double range = 1.0;
 		Vec3Seq x_star, n_star, nx_star; x_star.resize(testSize); n_star.resize(testSize); nx_star.resize(testSize);
-//		Vec3Seq points; points.resize(testSize);
 		RealSeq vars;
 		RealSeq y_star; y_star.resize(testSize);
 		Real predError = REAL_ZERO;
@@ -678,22 +675,11 @@ void RRTPlayer::create(const Desc& desc) {
 			// save the point for later
 			x_star[i] = n_star[i] = point;
 			n_star[i].normalise();
-//			points[i] = point;
+			//			points[i] = point;
 			// compute the y value
 			double y = point.magnitudeSqr() - surRhoSqr;
 			// save the y value for later
 			y_star[i] = y;
-
-			// gp estimate of y value
-			const Eigen::Vector4d vv = gp->f(q);
-			const double f_star = vv(0);
-			nx_star[i] = golem::Vec3(vv(1), vv(2), vv(3));
-			const double v_star = gp->var(q);
-			const double er = n_star[i].distance(nx_star[i]);
-			vars.push_back(v_star);
-			predError += std::pow(f_star - y, 2);
-			if (prtPreds)
-				context.write("Evaluate[%d]: f(x_star) = %f -> f_star = %f v_star = %f err = %f\n", i, y, f_star, v_star, er);
 		}
 		if (prtPreds)
 			context.write("Prediction(): error=%f avg=%f\n\n", predError, predError / testSize);
@@ -701,22 +687,159 @@ void RRTPlayer::create(const Desc& desc) {
 		if (draw) renderCromCloud(x_star, vars);
 
 		/*****  Evaluate points and normals  *********************************************/
-//		context.write("Evaluate %d points and normals\n", testSize);
-//		std::vector<Real> fx, varx;
-//		Eigen::MatrixXd normals2, tx, ty;
-//		Vec3Seq nn; nn.resize(testSize);
-////		points.clear(); points.resize(testSize);
-//		Real evalError = REAL_ZERO;
-//		gp->evaluate(x_star, fx, varx, normals2, tx, ty);
-//		for (size_t i = 0; i < testSize; ++i) {
-//			//points[i] = x_star[i];
-//			nn[i] = Vec3(normals2(i, 0), normals2(i, 1), normals2(i, 2));
-//			evalError += std::pow(fx[i] - y_star[i], 2);
-//			if (prtPreds)
-//				context.write("Evaluate[%d]: f(x_star) = %f -> f_star = %f v_star = %f normal=[%f %f %f]\n", i, y_star[i], fx[i], varx[i], normals2(i, 0), normals2(i, 1), normals2(i,2));
-//		}
-		//if (prtPreds)
-		//	context.write("Evaluate(): error=%f avg=%f\n\n", evalError, evalError / testSize);
+		context.write("Evaluate %d points and normals\n", testSize);
+		std::vector<Real> fx, varx;
+		Eigen::MatrixXd normals2, tx, ty, V;
+		Vec3Seq nn; nn.resize(testSize);
+//		points.clear(); points.resize(testSize);
+		Real evalError = REAL_ZERO, evalNError = REAL_ZERO;
+		gp->evaluate(x_star, fx, varx, normals2, tx, ty, V);
+		for (size_t i = 0; i < testSize; ++i) {
+			//points[i] = x_star[i];
+			fx[i] = gp->f(x_star[i]);
+			varx[i] = gp->var(x_star[i]);
+			nn[i] = Vec3(normals2(i, 0), normals2(i, 1), normals2(i, 2));
+			Vec3 np = x_star[i];
+			np.normalise();
+			evalError += std::pow(fx[i] - y_star[i], 2);
+			evalNError += nn[i].distance(np);
+			if (prtPreds)
+				context.write("Evaluate[%d]: f(x_star) = %f -> f_star = %f v_star = %f normal=[%f %f %f] V=[%f %f %f]\n", i, y_star[i], fx[i], varx[i], normals2(i, 0), normals2(i, 1), normals2(i, 2), V(i, 0), V(i, 1), V(i, 2));
+		}
+		if (prtPreds)
+			context.write("Evaluate(): error=%f avg=%f n_avg=%f\n\n", evalError, evalError / testSize, evalNError / testSize);
+		// render normals
+		if (draw) renderNormals(x_star, nn);
+		return;
+
+		/*****  Add point to the model  *********************************************/
+		context.write("Add %d patterns to the model\n", testSize);
+		gp->add_patterns(x_star, y_star);
+
+		// test on the test points
+		for (size_t i = 0; i < testSize; ++i) {
+			const double q2f = 0; // gp->f(x_star[i]);
+			const double q2Var = gp->var(x_star[i]);
+
+			if (prtPreds)
+				context.write("f(x_star) = %f -> f_star = %f v_star = %f\n", y_star[i], q2f, q2Var);
+
+		}
+	}));
+
+	menuCmdMap.insert(std::make_pair("Y", [=]() {
+		/*****  Global variables  ******************************************/
+		size_t N_sur = 100, N_ext = 20, N_int = 1, N_tot = N_sur + N_ext + N_int;
+		const Real surRho = 0.025, extRho = 0.05, intRho = 0.001;
+		golem::Real noise = 0.001; //
+
+		const bool prtInit = true;
+		const bool prtPreds = true;
+		const bool draw = true;
+
+		/*****  Generate Input data  ******************************************/
+		Vec3Seq cloud, surCloud, normals;
+		RealSeq targets;
+		golem::Vec3 frameSize(.01, .01, .01);
+		context.write("Generate input data %lu\n", N_sur + N_ext + N_int);
+		
+		context.write("Cloud points %lu:\n", N_sur);
+		createSphere(REAL_ZERO, surRho, noise, N_sur, cloud, targets, normals, prtInit);
+		// reset render
+		if (draw) to<Data>(dataCurrentPtr)->createRender();
+		// render model point cloud
+		if (draw) renderCloud(cloud, RGBA::GREEN);
+		
+		context.write("\nExternal points %lu:\n", N_ext);
+		createSphere(REAL_ONE, extRho, noise, N_ext, cloud, targets, normals, prtInit);
+
+		context.write("\nInternal point(s) %lu:\n", N_int);
+		createSphere(-REAL_ONE, intRho, noise, N_int, cloud, targets, normals, prtInit);
+
+		//cloud.push_back(Vec3(0.031193, 0.177345, 0.033029));
+		//cloud.push_back(Vec3(-0.058635, 0.173399, 0.164797));
+		//cloud.push_back(Vec3(-0.225947, - 0.020312, 0.122944));
+		//cloud.push_back(Vec3(0.566214, 0.076836, - 0.137992));
+		//cloud.push_back(Vec3(-0.075327, 0.007571, - 0.006788));
+
+		//normals.push_back(Vec3(0.031193, 0.177345, 0.033029).normalise());
+		//normals.push_back(Vec3(-0.058635, 0.173399, 0.164797).normalise());
+		//normals.push_back(Vec3(-0.225947, -0.020312, 0.122944).normalise());
+		//normals.push_back(Vec3(0.566214, 0.076836, -0.137992).normalise());
+		//normals.push_back(Vec3(-0.075327, 0.007571, -0.006788).normalise());
+
+		//targets.push_back(0);
+		//targets.push_back(0);
+		//targets.push_back(0);
+		//targets.push_back(1.0);
+		//targets.push_back(-1.0);
+
+		/*****  Create the model  *********************************************/
+		SampleSet::Ptr trainingData(new SampleSet(cloud, targets, normals));
+//#define cov_thin_plate
+#define gaussianReg
+#ifdef gaussianReg
+			GaussianRegressor::Desc covDesc;
+			covDesc.initialLSize = covDesc.initialLSize > N_tot ? covDesc.initialLSize : N_tot + 100;
+			covDesc.covTypeDesc.inputDim = trainingData->cols();
+			covDesc.covTypeDesc.length = 0.025; // 0.03;
+			covDesc.covTypeDesc.sigma = 0.01; // 0.015;
+			covDesc.covTypeDesc.noise = noise;// 0.0001;
+			covDesc.optimise = true;
+			covDesc.debug = false;
+			GaussianRegressor::Ptr gp = covDesc.create(context);
+			context.write("%s Regressor created. inputDim=%d, parmDim=%d, l=%f, s=%f noise=%f\n", gp->getName().c_str(), covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
+				covDesc.covTypeDesc.length, covDesc.covTypeDesc.sigma, covDesc.covTypeDesc.noise);
+#endif
+#ifdef cov_thin_plate
+			ThinPlateRegressor::Desc covDesc;
+//			covDesc.initialLSize = trainingData->rows();
+			covDesc.covTypeDesc.inputDim = trainingData->cols();
+			covDesc.covTypeDesc.noise = 0.0; // noise;
+			Real l = REAL_ZERO;
+			for (size_t i = 0; i < cloud.size(); ++i) {
+				for (size_t j = i; j < cloud.size(); ++j) {
+					const Real d = cloud[i].distance(cloud[j]);
+					if (l < d) l = d;
+				}
+			}
+			covDesc.covTypeDesc.length = l;
+			covDesc.optimise = false;
+			covDesc.debug = false;
+			context.write("ThinPlate cov: inputDim=%d, parmDim=%d, R=%f noise=%f\n", covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
+				covDesc.covTypeDesc.length, covDesc.covTypeDesc.noise);
+			ThinPlateRegressor::Ptr gp = covDesc.create(context);
+			context.write("%s Regressor created\n", gp->getName().c_str());
+#endif
+		gp->set(trainingData);
+		context.write("Training dataset X[%d %d] Y[%d]\n", trainingData->rows(), trainingData->cols(), trainingData->y().size());
+
+		/*****  Query the model with new points  *********************************/
+		const size_t testSize = 250;
+		context.write("Query model with new %d points\n", testSize);
+		Vec3Seq x_star, n_star, nx_star; nx_star.resize(testSize);
+		RealSeq vars;
+		RealSeq y_star;
+		createSphere(0.0, surRho, noise, testSize, x_star, y_star, n_star, prtInit);
+
+		Real predError = REAL_ZERO;
+		for (size_t i = 0; i < testSize; ++i) {
+			// gp estimate of y value
+			const Eigen::Vector4d vv = gp->f(x_star[i]);
+			const double f_star = vv(0);
+			nx_star[i] = golem::Vec3(vv(1), vv(2), vv(3));
+			nx_star[i].normalise();
+			const double v_star = gp->var(x_star[i]);
+			//const double v_star = gp->var(x_star[i])(0);
+			const double er = (1 - abs(n_star[i].dot(nx_star[i])))*90;
+			vars.push_back(v_star);
+			predError += std::pow(f_star - y_star[i], 2);
+			if (prtPreds)
+				context.write("Evaluate[%d]: f(x_star) = %f -> f_star = %f v_star = %f normal=[%f %f %f] err = %f [deg]\n", i, y_star[i], f_star, v_star, nx_star[i].x, nx_star[i].y, nx_star[i].z, er);
+		}
+		if (prtPreds)
+			context.write("Prediction(): error=%f avg=%f\n\n", predError, predError / testSize);
+
 		// render normals
 		if (draw) renderNormals(x_star, nx_star);
 		return;
@@ -740,6 +863,27 @@ void RRTPlayer::create(const Desc& desc) {
 
 //------------------------------------------------------------------------------
 
+void RRTPlayer::createSphere(const golem::Real surRho, const golem::Real rho, const golem::Real noise, const size_t size, spam::Vec3Seq& points, spam::RealSeq& targets, spam::Vec3Seq& normals, const bool verbose) const {
+	const golem::Real rhoSqr = Math::sqr(rho), surRhoSqr = Math::sqr(surRho);
+	for (size_t i = 0; i < size; ++i) {
+		const golem::Real theta = 2 * REAL_PI*rand.nextUniform<golem::Real>(0, 1) - REAL_PI;
+		const golem::Real colatitude = (REAL_PI / 2) - (2 * REAL_PI*rand.nextUniform<golem::Real>(0, 1) - REAL_PI);
+		const golem::Real z = (2 * rand.nextUniform<golem::Real>(0, rho) - rho) * Math::cos(colatitude);
+		golem::Vec3 point(Math::sin(theta)*sqrt(rhoSqr - z*z), Math::cos(theta)*Math::sqrt(rhoSqr - z*z), z);
+		point += golem::Vec3(2 * noise * rand.nextUniform<golem::Real>(0, 1) - noise, 2 * noise * rand.nextUniform<golem::Real>(0, 1) - noise, 2 * noise * rand.nextUniform<golem::Real>(0, 1) - noise);
+		points.push_back(point);
+		normals.push_back(point);
+		normals.back().normalise();
+		const double y = surRho; // point.magnitudeSqr() - surRhoSqr;
+		targets.push_back(y);
+		if (verbose)
+			context.write("points[%d] th(%f) = [%f %f %f] targets[%d] = %f\n", i, theta, point.x, point.y, point.z, i, y);
+	}
+
+}
+
+//------------------------------------------------------------------------------
+
 void RRTPlayer::render() const {
 //	R2GPlanner::render();
 	{
@@ -758,7 +902,7 @@ void RRTPlayer::renderCloud(const spam::Vec3Seq& cloud, const RGBA colour) {
 
 void RRTPlayer::renderCromCloud(const spam::Vec3Seq& cloud, const spam::RealSeq& vars, const golem::RGBA cInit, const golem::RGBA cEnd) {
 	if (cloud.size() != vars.size()) {
-		context.write("Error: Size mismatch!\n");
+		context.write("renderCromCloud(): Error: Size mismatch [cloud %d - vars %d]!\n", cloud.size(), vars.size());
 		return;
 	}
 	cdebugRenderer.setPointSize(0.02);
@@ -784,7 +928,7 @@ void RRTPlayer::renderCromCloud(const spam::Vec3Seq& cloud, const spam::RealSeq&
 void RRTPlayer::renderNormals(const spam::Vec3Seq& cloud, const spam::Vec3Seq& normals, const golem::RGBA cNormals) {
 	const size_t size = cloud.size() != normals.size() ? 0 : normals.size();
 	if (size == 0) 
-		context.write("Error: Size mismatch!\n");
+		context.write("renderNormals(): Error: Size mismatch [cloud %d - normals %d]!\n", cloud.size(), normals.size());
 
 	const Real normalSize = Real(0.01);
 	for (auto ni = 0; ni < size; ++ni) {

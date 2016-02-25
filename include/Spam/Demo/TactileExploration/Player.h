@@ -133,6 +133,9 @@ protected:
 	/** Appereance for point clouds: model point cloud */
 	grasp::Cloud::Appearance pointAppearance;
 
+	/** Create a sphere of points */
+	void createSphere(const golem::Real surRho, const golem::Real rho, const golem::Real noise, const size_t size, spam::Vec3Seq& points, spam::RealSeq& targets, spam::Vec3Seq& normals, const bool verbose = true) const;
+
 	/** golem::UIRenderer interface */
 	virtual void render() const;
 	/** golem::UIRenderer interface */

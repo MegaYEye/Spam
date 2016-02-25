@@ -135,7 +135,7 @@ public:
 
 			read = false;
 
-			simulate = false;
+			simulate = true;
 			objCollisionDescPtr.reset(new Collision::Desc());
 
 			sensorSeq.clear();
@@ -401,6 +401,8 @@ public:
 
 		/** Trajectory duration */
 		golem::SecTmReal trjDuration;
+		/** Initial trajectory in perform */
+		golem::SecTmReal initTrjDur;
 		/** Trajectory idle time */
 		golem::SecTmReal trjIdle;
 		/** Trajectory extrapolation */
@@ -428,6 +430,7 @@ public:
 			dataDesc.reset(new Data::Desc);
 
 			trjDuration = golem::SecTmReal(2.0);
+			initTrjDur = golem::SecTmReal(1.0);
 			trjIdle = golem::SecTmReal(1.0);
 			trjExtrapolFac = golem::Real(1.0);
 			trjExtrapol.assign(golem::Configspace::DIM, golem::REAL_ONE);
@@ -465,14 +468,6 @@ public:
 		return handFilteredForce;
 	}
 
-	/** Force reader */
-	//GuardsReader guardsReader;
-	//GuardFTReader guardsFTReader;
-	///** Collect history of FT readings for statistics */
-	//grasp::ActiveCtrlForce::ForceReader collectFTInp;
-	///** FT 2-oreder high-pass filter */
-	//grasp::ActiveCtrlForce::ForceReader ftFilter;
-
 protected:
 	/** Mode of Active Ctrl */
 	grasp::ActiveCtrlForce::Mode armMode, handMode;
@@ -483,50 +478,11 @@ protected:
 	grasp::ArmHandForce *armHandForce;
 	/** Guards to retrieve a contact */
 	grasp::RealSeq fLimit;
-	///** Number of averaging steps before stopping collecting readings */
-	//golem::U32 windowSize;
-	//golem::I32 steps;
-	//// gaussian filter mask
-	//grasp::RealSeq mask;
-	//// computes gaussian
-	//template <typename _Real> inline _Real N(const _Real x, const _Real stdev) {
-	//	const _Real norm = golem::numeric_const<_Real>::ONE / (stdev*golem::Math::sqrt(2 * golem::numeric_const<_Real>::PI));
-	//	return norm*golem::Math::exp(-.5*golem::Math::sqr(_Real(x) / _Real(stdev))); // gaussian
- //   };
-	//// computes guassian on a vector
-	//template <typename _Ptr, typename _Real> inline std::vector<_Real> N(_Ptr begin, _Ptr end, const size_t dim, const _Real stdev) {
-	//	std::vector<_Real> output;
-	//	output.assign(dim, golem::numeric_const<_Real>::ZERO);
-	//	size_t idx = 0;
-	//	for (_Ptr i = begin; i != end; ++i) {
-	//		output[idx++] = N(*i, stdev);
-	//	}
-	//	return output;
- //   };
+
+	/** Independent thread to read FT sensors */
 	SensorBundle::Ptr sensorBundlePtr;
-	///** I/O simulator timer */
-	//golem::shared_ptr<golem::Sleep> sleep;
-	///** Time */
-	//golem::SecTmReal tRead;
-	///** Cycle time */
-	//golem::SecTmReal tCycle;
-	///** Idle time */
-	//golem::SecTmReal tIdle;
-
-	///** Sersors read handler */
-	//grasp::ThreadTask::Function forceReaderHandler;
-	///** Force Reader handler thread */
-	//grasp::ThreadTask forceReaderHandlerThread;
-
-	//grasp::Vec3Seq handForces;
-	//grasp::Vec3Seq getHandForceVec(golem::SecTmReal time = golem::SEC_TM_REAL_MAX, golem::SecTmReal delta = golem::SEC_TM_REAL_ONE) const;
-
-	/** Input force at sensor, sequence */
-	//std::vector<grasp::RealSeq> forceInpSensorSeq;
 	/** Filtered forces for the hand */
 	grasp::RealSeq handFilteredForce;
-	/** force reader access cs */
-	//golem::CriticalSection csHandForce;
 	// Return hand DOFs */
 	inline size_t dimensions() const { return 18; }// (size_t)handInfo.getJoints().size();
 
@@ -534,7 +490,6 @@ protected:
 	inline bool expectedCollisions(const golem::Controller::State& state) const {
 		return pHeuristic->expectedCollisions(state);
 	}
-
 
 	/** Particles renderer */
 	golem::DebugRenderer sampleRenderer;
@@ -583,15 +538,10 @@ protected:
 			throw grasp::Cancel("Invalid index");
     };
 
-
 	bool printing;
-//	golem::Bounds::Seq handBounds, waypointBounds;
 
 	/** Item to remove from data after a trial is saved */
 	std::vector<std::string> itemPerformedTrj;
-
-	/** Pointer to collision detection with the ground truth */
-//	Collision::Ptr collisionPtr;
 
 	/** Resets the controllers */
 	bool enableControllers;
@@ -602,39 +552,17 @@ protected:
 	bool forcereadersilent;
 	bool contactOccured;
 	
-	/** File to collect data from the ft sensor of the hand */
-	//std::ofstream dataFTRaw, dataFTFiltered, dataSimContact;
 	bool record, contact, brecord;
 	/** Query transformation */
 	grasp::RBCoord queryPointsTrn;
 
 	/** Combined action waypoints */
 	golem::Controller::State::Seq robotStates;
-	/** Contains the index of the triggered guards */
-//	FTGuard::Seq triggeredGuards;
 	/** Structure for FT sensors */
 	FTGuard::SeqPtr ftGuards;
 
 	/** Iterations counter */
 	size_t iterations;
-
-	/** Checks the validity of a sample */
-//	template <typename _PTR> bool isValidSample(const grasp::RBPose::Sample &sample, _PTR begin, _PTR end, golem::Real eps = golem::REAL_EPS) const {
-//		std::printf("particle frame<%.4f,%.4f,%.4f> w=%.5f\n", sample.p.x, sample.p.y, sample.p.z, sample.weight);
-		//if (sample.weight < theta)
-		//	return false;
-//		for (_PTR i = begin; i != end; ++i) {
-			//if (pRBPose->distance(sample, *i) < eps)
-//            if (grasp::RBPose::Sample::distance(sample, *i) < eps)
-//				return false;
-//		}
-//		return true;
-//	};
-
-	/** Get current points transformed */
-//	grasp::Cloud::PointSeqMap::iterator getTrnPoints(Data::Map::iterator dataPtr, const golem::Mat34 &trn);
-	/** Get current points transformed */
-//	grasp::Cloud::RawPointSeqMultiMap::iterator getTrnRawPoints(Data::Map::iterator dataPtr, const golem::Mat34 &trn);
 
 	/** Simulates contacts between the robot's hand and object's partial point cloud */
 	golem::Real simContacts(const golem::Bounds::Seq::const_iterator &begin, const golem::Bounds::Seq::const_iterator &end, const golem::Mat34 pose);
@@ -679,6 +607,8 @@ protected:
 	/** golem::Profile::CallbackDist: Coordinate enabled state */
 	virtual bool distCoordEnabled(const golem::Configspace::Index& index) const;
 
+	/** initial trajectory in perform */
+	golem::SecTmReal initTrjDur;
 	/** Trajectory profile */
 	void profile(golem::SecTmReal duration, const golem::Controller::State::Seq& inp, golem::Controller::State::Seq& out, const bool silent = false) const;
 	/** Perform trajectory */

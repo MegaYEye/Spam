@@ -40,6 +40,24 @@ template <class CovTypePtr, class CovTypeDesc> class SimpleGP;
 
 //------------------------------------------------------------------------------
 
+static golem::Real determinant(const Eigen::MatrixXd& M, golem::Real& maxEVR, golem::Real& maxEVI, golem::Real& minEVR, golem::Real& minEVI) {
+	Eigen::EigenSolver<Eigen::MatrixXd> es(M);
+	Eigen::VectorXcd ei = es.eigenvalues();
+	golem::Real det = golem::REAL_ONE, maxR = -golem::REAL_MAX, maxI = -golem::REAL_MAX, minR = golem::REAL_MAX, minI = golem::REAL_MAX;
+	for (size_t i = 0; i < ei.size(); ++i) {
+		const golem::Real mr = ei(i).real();
+		const golem::Real mi = ei(i).imag();
+		if (maxR < mr) maxR = mr;
+		if (minR > mr) minR = mr;
+		if (maxI < mi) maxI = mi;
+		if (minI > mi) minI = mi;
+		det *= ei(i).real();
+	}
+	maxEVR = maxR; minEVR = minR; maxEVI = maxI; minEVI = minI;
+	return (golem::Real)det;
+}
+//------------------------------------------------------------------------------
+
 /** Gradient-based optimizer (RProp). */
 class Optimisation {
 public:
@@ -66,7 +84,7 @@ public:
 			setToDefault();
 		}
 		void setToDefault() {
-			populationSize = 50;
+			populationSize = 250;
 
 			delta0 = 0.01;
 			deltaMin = 1e-6;
@@ -75,7 +93,7 @@ public:
 			etaPlus = 0.2;
 			epsStop = 1e-4;
 
-			maxIter = 100;
+			maxIter = 150;
 		}
 		bool isValid() {
 			return true;
@@ -110,7 +128,9 @@ public:
 				{
 					CriticalSectionWrapper csw(cs);
 					if (solutionEval < testEval) {
-						context.debug("Solution %f params [%f %f %f]\n", testEval, testParams(0), testParams(1), 0/*, testParams(2)*/);
+						context.debug("Solution %f\n", testEval);
+						for (size_t i = 0; i < testParams.size(); ++i)
+							context.debug("params[%d] = %f\n", i, testParams(i));
 						solutionEval = testEval;
 						bestParams = testParams;
 						gp->cf->setLogHyper(bestParams);
@@ -177,7 +197,9 @@ public:
 				{
 					CriticalSectionWrapper csw(cs);
 					if (solutionEval < testEval) {
-						context.debug("Solution %f params [%f %f %f]\n", testEval, testParams(0), testParams(1), 0/*, testParams(2)*/);
+						context.debug("Solution %f\n", testEval);
+						for (size_t i = 0; i < testParams.size(); ++i)
+							context.debug("params[%d] = %f\n", i, testParams(i));
 						solutionEval = testEval;
 						bestParams = testParams;
 						gp->cf->setLogHyper(bestParams);
@@ -351,10 +373,7 @@ public:
         compute(true);
         update_alpha();
         update_k_star(xStar);
-        //std::cout << "size alpha=" << alpha->size() << " k_star=" << k_star->size() << std::endl;
 		Eigen::Vector4d sol = (*k_star) * (*alpha);
-		//for (size_t i = 0; i < 4; ++i)
-		//	sol(i) = k_star->row(i).dot(*alpha);
 		return sol;
     }
 
@@ -404,7 +423,7 @@ public:
 		//#pragma omp parallel for
 		for (size_t i = 0; i < nq; ++i) {
 			for (size_t j = 0; j < np; ++j)
-				normals.row(i) += InvKppY(j)*Kqpdiff(i, j)*(convertToEigen(x[i] - sampleset->x(j)));
+				normals.row(i) += (*alpha)(j)*Kqpdiff(i, j)*(convertToEigen(x[i] - sampleset->x(j)));
 
 			normals.row(i).normalize();
 			golem::Vec3 ni(normals(i, 0), normals(i, 1), normals(i, 2)), p = x[i];
@@ -476,7 +495,7 @@ public:
         update_alpha();
         int n = 4 * sampleset->rows();
 		const std::vector<golem::Real>& targets = sampleset->y();
-        Eigen::Map<const Eigen::VectorXd> y(&targets[0], sampleset->rows());
+		Eigen::Map<const Eigen::VectorXd> y(&targets[0], targets.size());
 		golem::Real det = (golem::Real)(2 * L->diagonal().head(n).array().log().sum());
 		return (golem::Real)(- 0.5*y.dot(*alpha) - 0.5*det - 0.5*n*log2pi);
     }
@@ -541,17 +560,6 @@ protected:
     //initial L size
 	golem::U32 initialLSize;
 
-	/** (inward) normal sequence */
-	Eigen::MatrixXd N; 
-	/** Tangent basis in x direction */
-	Eigen::MatrixXd Tx;
-	/** Tangen basis in y direction */
-	Eigen::MatrixXd Ty;
-	/** Weights */
-	Eigen::VectorXd InvKppY;
-	/** Derivative of the kernel */
-	Eigen::MatrixXd Kppdiff;
-
     /** Compute k_* = K(x_*, x) */
 	void update_k_star(const golem::Vec3& x_star) {
 		const size_t n = sampleset->rows();
@@ -592,7 +600,7 @@ protected:
 			context.write("K* [%d %d]\n", k_star->rows(), k_star->cols());
 			for (size_t i = 0; i < k_star->rows(); ++i) {
 				for (size_t j = 0; j < k_star->cols(); ++j)
-					context.write("%.3f ", (*k_star)(i, j));
+					context.write("%.5f ", (*k_star)(i, j));
 				context.write("\n");
 			}
 		}
@@ -648,9 +656,21 @@ protected:
             for(size_t j = 0; j <= i; ++j) {
                 // compute kernel and add noise on the diagonal of the kernel
 				(*L)(i, j) = cf->get(sampleset->x(i), sampleset->x(j), i == j);
+				(*L)(i, j) += i == j ? 0.01 : 0.0;
 				if (desc.debug) context.write("Computing L(%lu, %lu) = %f\n", i, j, (*L)(i, j));
 			}
 		}	
+		Eigen::MatrixXd k = L->topLeftCorner(n, n).selfadjointView<Eigen::Lower>();
+		golem::Real maxR, minR, maxI, minI;
+//		golem::Real d1 = determinant(k, maxR, minR, maxI, minI);
+//		context.write("det[K(X,X)] = %f eigenvalues max = (%f, %f) min = (%f, %f)\n", d1, maxR, maxI, minR, minI);
+		//context.write("K(X,X): [%d %d]\n", n, n);
+		//for (size_t i = 0; i < n; ++i) {
+		//	for (size_t j = 0; j < n; ++j) {
+		//		context.write("%.5f ", k(i, j));
+		//	}
+		//	context.write("\n");
+		//}
 		// derivatives
 		for (size_t i = 0; i < n; ++i) {
 			for (size_t d = 0; d < 3; ++d) {
@@ -667,29 +687,159 @@ protected:
 				size_t j = 0;
 				for (size_t z = 0; z < i * 3 + d + 1; ++z) {
 					(*L)(n + i * 3 + d, n + z) = cf->getDiff2(sampleset->x(i), sampleset->x(j), d, z % 3, i == j);
+					(*L)(n + i * 3 + d, n + z) += i == j && d == z % 3 ? 0.01 : 0.0;
 					if (desc.debug) context.write("Computing L(%lu, %lu)=d%lud%luk(%lu, %lu) = %f\n", n + i * 3 + d, n + z, d, z % 3, i, j, (*L)(n + i * 3 + d, n + z));
 					if (z % 3 == 2) ++j;
 				}
 			}
 		}
+//		context.write("det[K*(x,X)] = %f\n", L->block(n, 0, 3 * n, n).determinant());
+		Eigen::MatrixXd kx1 = L->block(n, 0, n, n);
+//		golem::Real d2 = determinant(kx1, maxR, minR, maxI, minI);
+//		context.write("det[dxK(x,x)] = %f eigenvalues max = (%f, %f) min = (%f, %f)\n", d2, maxR, maxI, minR, minI);
+//		context.write("dxK(X,X): [%d %d]\n", n, n);
+		//for (size_t i = 0; i < n; ++i) {
+		//	for (size_t j = 0; j < n; ++j) {
+		//		context.write("%.5f ", kx1(i, j));
+		//	}
+		//	context.write("\n");
+		//}
+		Eigen::MatrixXd kx2 = L->block(2 * n, 0, n, n);
+//		golem::Real d3 = determinant(kx2, maxR, minR, maxI, minI);
+//		context.write("det[dyK(x,x)] = %f eigenvalues max = (%f, %f) min = (%f, %f)\n", d3, maxR, maxI, minR, minI);
+		//context.write("dyK(X,X): [%d %d]\n", n, n);
+		//for (size_t i = 0; i < n; ++i) {
+		//	for (size_t j = 0; j < n; ++j) {
+		//		context.write("%.5f ", kx2(i, j));
+		//	}
+		//	context.write("\n");
+		//}
+		Eigen::MatrixXd kx3 = L->block(3 * n, 0, n, n);
+//		golem::Real d4 = determinant(kx3, maxR, minR, maxI, minI);
+//		context.write("det[dzK(x,x)] = %f eigenvalues max = (%f, %f) min = (%f, %f)\n", d4, maxR, maxI, minR, minI);
+		//context.write("dzK(X,X): [%d %d]\n", n, n);
+		//for (size_t i = 0; i < n; ++i) {
+		//	for (size_t j = 0; j < n; ++j) {
+		//		context.write("%.5f ", kx3(i, j));
+		//	}
+		//	context.write("\n");
+		//}
+		Eigen::MatrixXd kxx = L->block(n, n, 3 * n, 3 * n).selfadjointView<Eigen::Lower>();
+//		golem::Real d5 = determinant(kxx, maxR, minR, maxI, minI);
+//		context.write("det[K(x,x)] = %f eigenvalues max = (%f, %f) min = (%f, %f)\n", d5, maxR, maxI, minR, minI);
+		//context.write("L: [%d %d]\n", 4*n, 4*n);
+		//for (size_t i = 0; i < 4*n; ++i) {
+		//	for (size_t j = 0; j < 4*n; ++j) {
+		//		context.write("%.5f ", (*L)(i, j));
+		//	}
+		//	context.write("\n");
+		//}
+		//Eigen::MatrixXd tmp = L->topLeftCorner(4 * n, 4 * n).selfadjointView<Eigen::Lower>();
+		//golem::Real kmean = tmp.mean();
+		//context.write("K mean %f\n", kmean);
+		//context.write("K: [%d %d]\n", 4 * n, 4 * n);
+		//for (size_t i = 0; i < 4 * n; ++i) {
+		//	for (size_t j = 0; j < 4 * n; ++j) {
+		//		context.write("%.5f ", tmp(i, j));
+		//	}
+		//	context.write("\n");
+		//}
+		//for (size_t i = 0; i < tmp.rows(); ++i) {
+		//	const golem::Real rowMean = tmp.row(i).mean();
+		//	for (size_t j = 0; j <= i; ++j)
+		//		tmp(i, j) -= rowMean;
+		//}
+		//for (size_t j = 0; j < tmp.cols(); ++j) {
+		//	const golem::Real colMean = tmp.col(j).mean();
+		//	for (size_t i = j; i < tmp.rows(); ++i)
+		//		tmp(i, j) -= colMean;
+		//}
+		//for (size_t i = 0; i < tmp.rows(); ++i) {
+		//	for (size_t j = 0; j <= i; ++j)  
+		//		tmp(i, j) = -tmp(i,j)*(*L)(i,j)*(*L)(i,j)/2;
+		//}
+		//tmp = tmp.selfadjointView<Eigen::Lower>();
+		//context.write("K: [%d %d]\n", 4 * n, 4 * n);
+		//for (size_t i = 0; i < 4 * n; ++i) {
+		//	for (size_t j = 0; j < 4 * n; ++j) {
+		//		context.write("%.5f ", tmp(i, j));
+		//	}
+		//	context.write("\n");
+		//}
+		//context.write("det[tmp] = %f row sum= %f  col sum = %f\n", determinant(context, tmp), tmp.row(0).sum(), tmp.col(0).sum());
+		//for (size_t i = 0; i < 4 * n; ++i) {
+		//	for (size_t j = 0; j <= i; ++j)
+		//		(*L)(i, j) = tmp(i, j);
+		//}
+		//context.write("L: [%d %d]\n", 4 * n, 4 * n);
+		//for (size_t i = 0; i < 4 * n; ++i) {
+		//	for (size_t j = 0; j < 4 * n; ++j) {
+		//		context.write("%.5f ", (*L)(i, j));
+		//	}
+		//	context.write("\n");
+		//}
+		//context.write("d2xK(X,X): [%d %d]\n", 3 * n, 3 * n);
+		//for (size_t i = 0; i < 3*n; ++i) {
+		//	for (size_t j = 0; j < 3*n; ++j) {
+		//		context.write("%.5f ", kxx(i, j));
+		//	}
+		//	context.write("\n");
+		//}
 		const size_t ndt = 4 * n;
-//		InvKppY = L->topLeftCorner(ndt, ndt).inverse() * convertToEigen(sampleset->y());
+		// save temporarely the original covariance matrix
+		Eigen::MatrixXd K = L->topLeftCorner(ndt, ndt).selfadjointView<Eigen::Lower>();
+		// perform cholesky factorization
+		L->topLeftCorner(ndt, ndt) = L->topLeftCorner(ndt, ndt).selfadjointView<Eigen::Lower>().ldlt().matrixL();
+		// compute K = LL^T to check if the K matrix is defined positive
+		Eigen::MatrixXd LLT = L->topLeftCorner(ndt, ndt) * L->topLeftCorner(ndt, ndt).transpose();
+		golem::Real Ldet = pow(L->diagonal().head(ndt).array().prod(), 2.0);
+		golem::Real Kdet = pow(K.diagonal().head(ndt).array().prod(), 2.0);
+		golem::Real LLTdet = LLT.determinant();
+//		context.write("det[L] = %f det[K] = %f det[LL^T] = %f\n", Ldet, Kdet, LLTdet);
+		if (abs(Ldet) < golem::REAL_EPS || !isfinite(Ldet) || isnan(Ldet) || isinf(Ldet))
+			context.write("ERROR: not invertable matrix L. det[L] = %f\n", Ldet);
+		if (!LLT.isApprox(K.topLeftCorner(ndt, ndt), 1e-3)) {
+			Eigen::EigenSolver<Eigen::MatrixXd> es(K);
+			bool isSemidefined = true;
+			Eigen::VectorXcd eigenvalues = es.eigenvalues();
+			for (size_t i = 0; i < eigenvalues.size(); ++i) {
+				if (eigenvalues(i).real() <= -golem::REAL_EPS) {
+					isSemidefined = false;
+//					context.write("K Eigenvalue[%d] = (%f, %f)\n", i, eigenvalues(i).real(), eigenvalues(i).imag());
+					//break;
+				}
+			}
+			if (isSemidefined)
+				context.write("MATRIX K IS DEFINED SEMI-POSITIVE!\n");
+			else
+				context.write("ERROR MATRIX K IS NOT DEFINED SEMI-POSITIVE!\n");
+		}
+		else
+			context.write("MATRIX K IS DEFINED POSITIVE!\n");
+
 		if (desc.debug)  {
 			context.write("K: [%d %d]\n", ndt, ndt);
 			for (size_t i = 0; i < ndt; ++i) {
-				for (size_t j = 0; j <= i; ++j) {
-					context.write("%.3f ", (*L)(i, j));
+				for (size_t j = 0; j < ndt; ++j) {
+					context.write("%.5f ", K(i, j));
+				}
+				context.write("\n");
+			}
+
+			context.write("LL^T: [%d %d]\n", LLT.rows(), LLT.cols());
+			for (size_t i = 0; i < LLT.rows(); ++i) {
+				for (size_t j = 0; j < ndt; ++j) {
+					context.write("%.5f ", LLT(i, j));
 				}
 				context.write("\n");
 			}
 		}
-		// perform cholesky factorization
-		L->topLeftCorner(ndt, ndt) = L->topLeftCorner(ndt, ndt).selfadjointView<Eigen::Lower>().llt().matrixL();
+
 		if (desc.debug) {
 			context.write("L: [%d %d]\n", ndt, ndt);
 			for (size_t i = 0; i < ndt; ++i) {
 				for (size_t j = 0; j <= i; ++j) {
-					context.write("%.3f ", (*L)(i, j));
+					context.write("%.5f ", (*L)(i, j));
 				}
 				context.write("\n");
 			}
@@ -803,6 +953,7 @@ public:
 			vars[i] = var(x[i]);
 		}
 	}
+
 	virtual golem::Real f(const golem::Vec3& xStar) {
 		if (sampleset->empty())
 			throw Message(Message::LEVEL_ERROR, "No training data available.");
@@ -828,7 +979,7 @@ public:
 	}
 
 	/** Predict f, var, N, Tx and Ty */
-	virtual void evaluate(const Vec3Seq& x, RealSeq& fx, RealSeq& varx, Eigen::MatrixXd& normals, Eigen::MatrixXd& tx, Eigen::MatrixXd& ty) {
+	virtual void evaluate(const Vec3Seq& x, RealSeq& fx, RealSeq& varx, Eigen::MatrixXd& normals, Eigen::MatrixXd& tx, Eigen::MatrixXd& ty, Eigen::MatrixXd& V) {
 		clock_t t = clock();
 
 		// compute f(x) and V(x)
@@ -840,11 +991,15 @@ public:
 		printf("np=%d nq=%d dim=%d\n", np, nq, dim);
 
 		// differential of covariance with selected kernel
-		Eigen::MatrixXd Kqp, Kqpdiff;
+		Eigen::MatrixXd Kqp, Kqpdiffx, Kqpdiffy, Kqpdiffz;;
 		// row = number of query points
 		// col = number of points in the kernels + 1
 //		Kqp.resize(nq, np + 1);
-		Kqpdiff.resize(nq, np + 1);
+		Kqpdiffx.resize(nq, np);
+		Kqpdiffy.resize(nq, np);
+		Kqpdiffz.resize(nq, np);
+		// normals variance
+		V.resize(nq, 3);
 		normals.resize(nq, dim);
 		tx.resize(nq, dim);
 		ty.resize(nq, dim);
@@ -853,16 +1008,28 @@ public:
 		for (size_t i = 0; i < nq; ++i) {
 			for (size_t j = 0; j < np; ++j) {
 //				Kqp(i, j) = cf->get(x[i], sampleset->x(j));
-				Kqpdiff(i, j) = cf->getDiff(x[i], sampleset->x(j), -1);
+				//Kqpdiffx(i, j) = cf->getDiff(x[i], sampleset->x(j), 0);
+				//Kqpdiffy(i, j) = cf->getDiff(x[i], sampleset->x(j), 1);
+				//Kqpdiffz(i, j) = cf->getDiff(x[i], sampleset->x(j), 2);
+				Kqpdiffx(i, j) = cf->getDiff(sampleset->x(j), x[i], 0);
+				Kqpdiffy(i, j) = cf->getDiff(sampleset->x(j), x[i], 1);
+				Kqpdiffz(i, j) = cf->getDiff(sampleset->x(j), x[i], 2);
 			}
 		}
+
 		// compute error
 		golem::Real error = REAL_ZERO;
 		//#pragma omp parallel for
 		for (size_t i = 0; i < nq; ++i) {
-			for (size_t j = 0; j < np; ++j)
-				normals.row(i) += (*alpha)(j)*Kqpdiff(i, j)*(convertToEigen(x[i] - sampleset->x(j)));
-
+			normals(i, 0) = Kqpdiffx.row(i).dot(*alpha);
+			normals(i, 1) = Kqpdiffy.row(i).dot(*alpha);
+			normals(i, 2) = Kqpdiffz.row(i).dot(*alpha);
+			Eigen::VectorXd vx = L->topLeftCorner(np, np).triangularView<Eigen::Lower>().solve(Kqpdiffx.row(i));
+			V(i, 0) = cf->getDiff2(x[i], x[i], 0, 0) - vx.dot(vx);
+			Eigen::VectorXd vy = L->topLeftCorner(np, np).triangularView<Eigen::Lower>().solve(Kqpdiffy.row(i));
+			V(i, 1) = cf->getDiff2(x[i], x[i], 1, 1) - vy.dot(vy);
+			Eigen::VectorXd vz = L->topLeftCorner(np, np).triangularView<Eigen::Lower>().solve(Kqpdiffz.row(i));
+			V(i, 2) = cf->getDiff2(x[i], x[i], 2, 2) - vz.dot(vz);
 			normals.row(i).normalize();
 			golem::Vec3 ni(normals(i, 0), normals(i, 1), normals(i, 2)), p = x[i];
 			p.normalise();
@@ -874,6 +1041,7 @@ public:
 			tx.row(i) = Txi;
 			ty.row(i) = Tyi;
 		}
+
 		context.write("GP::evaluate(): Error=%d\nElapsed time: %.4fs\n", error / nq, (float)(clock() - t) / CLOCKS_PER_SEC);
 	}
 
@@ -931,7 +1099,7 @@ public:
 	golem::Real logLikelihood() {
 		compute();
 		update_alpha();
-		int n = 4 * sampleset->rows();
+		int n = sampleset->rows();
 		const std::vector<golem::Real>& targets = sampleset->y();
 		Eigen::Map<const Eigen::VectorXd> y(&targets[0], sampleset->rows());
 		golem::Real det = (golem::Real)(2 * L->diagonal().head(n).array().log().sum());
@@ -942,7 +1110,7 @@ public:
 	{
 		compute(false);
 		update_alpha();
-		size_t n = 4 * sampleset->rows();
+		size_t n = sampleset->rows();
 		Eigen::VectorXd grad = Eigen::VectorXd::Zero(cf->getParamDim());
 		Eigen::VectorXd g(grad.size());
 		Eigen::MatrixXd W = Eigen::MatrixXd::Identity(n, n);
@@ -985,6 +1153,8 @@ protected:
 	// Eigen::LLT<Eigen::MatrixXd> solver;
 	/** Lower triangle matrix of kernel (points) */
 	boost::shared_ptr<Eigen::MatrixXd> L;
+	/** Weights */
+	Eigen::VectorXd InvKppY;
 
 	/** Input vector dimensionality. */
 	size_t input_dim;
@@ -1012,13 +1182,17 @@ protected:
 		Eigen::Map<const Eigen::VectorXd> y(&targets[0], sampleset->rows());
 		size_t n = sampleset->rows();
 		*alpha = L->topLeftCorner(n, n).triangularView<Eigen::Lower>().solve(y);
-		context.write("alpha [%d %d]\n", alpha->rows(), alpha->cols());
-		for (size_t i = 0; i < alpha->size(); ++i)
-			context.write("alpha[%d] = %f\n", i, (*alpha)(i));
+		//context.write("alpha [%d %d]\n", alpha->rows(), alpha->cols());
+		//for (size_t i = 0; i < alpha->size(); ++i)
+		//	context.write("alpha[%d] = %f\n", i, (*alpha)(i));
 		L->topLeftCorner(n, n).triangularView<Eigen::Lower>().adjoint().solveInPlace(*alpha);
-		context.write("\nalpha^-1 [%d %d]\n", alpha->rows(), alpha->cols());
 		for (size_t i = 0; i < alpha->size(); ++i)
-			context.write("alpha^-1[%d] = %f\n", i, (*alpha)(i));
+			if (!isfinite((*alpha)(i)) || isnan((*alpha)(i)) || isinf((*alpha)(i)))
+				context.write("GP::update_alpha(): alpha[%d] = %f is not finite.\n", i, (*alpha)(i));
+
+		//context.write("\nalpha^-1 [%d %d]\n", alpha->rows(), alpha->cols());
+		//for (size_t i = 0; i < alpha->size(); ++i)
+		//	context.write("alpha^-1[%d] = %f\n", i, (*alpha)(i));
 	}
 
 	/** Compute covariance matrix and perform cholesky decomposition. */
@@ -1038,12 +1212,58 @@ protected:
 			for (size_t j = 0; j <= i; ++j) {
 				// add noise on the diagonal of the kernel
 				(*L)(i, j) = cf->get(sampleset->x(i), sampleset->x(j), i == j);
+				if (!isfinite((*L)(i, j)) || isnan((*L)(i, j)) || isinf((*L)(i, j)))
+					context.write("GP::compute(): L[%d, %d] = %f is not finite.\n", i, j, (*L)(i, j));
 				//printf("GP::compute(): Computing k(%lu, %lu)\r", i, j);
 			}
 		}
 		// perform cholesky factorization
-		//solver.compute(K.selfadjointView<Eigen::Lower>());
-		L->topLeftCorner(n, n) = L->topLeftCorner(n, n).selfadjointView<Eigen::Lower>().llt().matrixL();
+		Eigen::MatrixXd K = L->topLeftCorner(n, n).selfadjointView<Eigen::Lower>();
+		L->topLeftCorner(n, n) = L->topLeftCorner(n, n).selfadjointView<Eigen::Lower>().ldlt().matrixL();
+		Eigen::MatrixXd LLT = L->topLeftCorner(n, n) * L->topLeftCorner(n, n).transpose();
+		golem::Real maxR, minR, maxI, minI;
+		golem::Real Ldet = determinant(L->topLeftCorner(n, n), maxR, minR, maxI, minI);
+		golem::Real L2det = pow(L->diagonal().head(n).array().prod(), 2.0);
+		golem::Real Kdet = determinant(K, maxR, minR, maxI, minI);
+		golem::Real LLTdet = determinant(LLT, maxR, minR, maxI, minI);
+		context.write("det[L] = %f (%f) det[K] = %f det[LL^T] = %f\n", Ldet, L2det, Kdet, LLTdet);
+		if (abs(Ldet) < golem::REAL_EPS || !isfinite(Ldet) || isnan(Ldet) || isinf(Ldet))
+			context.write("ERROR: Cholesky has produced a L matrix with det[L] = %f\n", Ldet);
+		if (!LLT.isApprox(K.topLeftCorner(n, n), 1e-3)) {
+			Eigen::EigenSolver<Eigen::MatrixXd> es(K);
+			bool isSemidefined = true;
+			Eigen::VectorXcd eigenvalues = es.eigenvalues();
+			for (size_t i = 0; i < eigenvalues.size(); ++i) {
+				if (eigenvalues(i).real() <= golem::REAL_ZERO) {
+					isSemidefined = false;
+					context.write("K Eigenvalue[%d] = (%f, %f)\n", i, eigenvalues(i).real(), eigenvalues(i).imag());
+					//break;
+				}
+			}
+			if (isSemidefined)
+				context.write("MATRIX K IS DEFINED SEMI-POSITIVE!\n");
+			else
+				context.write("ERROR MATRIX K IS NOT DEFINED SEMI-POSITIVE!\n");
+		}
+		else
+			context.write("MATRIX K IS DEFINED POSITIVE!\n");
+
+		//context.write("K: [%d %d]\n", n, n);
+		//for (size_t i = 0; i < n; ++i) {
+		//	for (size_t j = 0; j < n; ++j) {
+		//		context.write("%.5f ", K(i, j));
+		//	}
+		//	context.write("\n");
+		//}
+
+		//context.write("L: [%d %d]\n", n, n);
+		//for (size_t i = 0; i < n; ++i) {
+		//	for (size_t j = 0; j <= i; ++j) {
+		//		context.write("%.5f ", (*L)(i, j));
+		//	}
+		//	context.write("\n");
+		//}
+
 		alpha_needs_update = true;
 		if (verbose) printf("GP::Compute(): Elapsed time: %.4fs\n", (float)(clock() - t) / CLOCKS_PER_SEC);
 	}

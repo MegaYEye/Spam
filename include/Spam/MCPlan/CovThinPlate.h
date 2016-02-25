@@ -68,33 +68,26 @@ public:
 		return "ThinPlate";
 	}
 	
-    //thin plate kernel = 2.*EE.^3 - 3.*(leng).* EE.^2 + (leng*ones(size(EE))).^3
-	//inline double get(const golem::Vec3& x1, const golem::Vec3& x2, const bool dirac = false) const {
- //       const double EE = x1.distance(x2);
-	//	const double noise = dirac ? sn2 : .0;
-	//	return 2 * std::pow(EE, 3.0) - threeLength * pow(EE, 2.0) + length3;
- //   }
 	/** Compute the kernel */
 	virtual double get(const Eigen::VectorXd &xi, const Eigen::VectorXd &xj, const bool dirac = false) const {
 		const double r = (xi - xj).norm();
 		const double noise = dirac ? sn2 : .0;
-		return 2 * std::pow(r, 3.0) - threeLength * pow(r, 2.0) + length3;
+		return 2 * std::pow(r, 3.0) - threeLength * pow(r, 2.0) + length3/* + noise*/;
 	}
 
-	/** thin plate kernel derivative = 6.*EE.^2 - 6.*(leng).* EE */
+	/** thin plate kernel derivative = 6(xi - xj)(r - R) */
 	virtual inline double getDiff(const Eigen::VectorXd& xi, const Eigen::VectorXd& xj, const size_t dx, const bool dirac = false) const {
 		const double r = (xi - xj).norm();
-		// (r/|r|)6r^2 - 6Rr
-		return (r / abs(r)) * 6 * r * r - 6 * loghyper(0) * r;
-		//-golem::REAL_ONE * ell * k
+//		printf("r=%f R=%f dx=%d xi-xj=%f dk=%f\n", r, loghyper(0), dx, (xi(dx) - xj(dx)), 6 * (r - loghyper(0)) * ((xi(dx) - xj(dx))));
+		return dx < 0 ? 6 * r * (r - loghyper(0)) : 6 * (r - loghyper(0)) * ((xi(dx) - xj(dx))); // 6 * r * r - 6 * loghyper(0) * r;
 	}
 
-	/** thin plate kernel derivative = 6.*EE.^2 - 6.*(leng).* EE */
+	/** thin plate kernel derivative = 6[(xi - xj)(xi - xj) + r - R] */
 	virtual inline double getDiff2(const Eigen::VectorXd& xi, const Eigen::VectorXd& xj, const size_t dx1, const size_t dx2, const bool dirac = false) const {
 		const double r = (xi - xj).norm();
-//		const double noise = dirac ? sn2 : .0;
-		return (xi(dx1)-xj(dx1) * (xi(dx2) - xj(dx2)) * (r / abs(r)) * 6 * r * r - 6 * loghyper(0) * r);
-		//		return noise + (1/ell * k) + (((xj(dx1) - xi(dx1)) * (xj(dx2) - xi(dx2))) / (ell*ell)) * k;
+		const double noise = dirac ? sn2 : .0;
+		return 6 * (r - loghyper(0)) * (((xi(dx1) - xj(dx1)) * (xi(dx2) - xj(dx2))));
+		//return dirac || r < golem::REAL_EPS ? dx1 == dx2 ? loghyper(0)/*6 * (r - loghyper(0))*/ : golem::REAL_ZERO : 6 * (r - loghyper(0)) * (((xi(dx1) - xj(dx1)) * (xi(dx2) - xj(dx2))) / r/* + noise*/);
 	}
 
 	/** Update parameter vector.
