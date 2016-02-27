@@ -1548,9 +1548,6 @@ bool R2GPlanner::create(const Desc& desc) {
 						// debug: draws model's point cloud and the robot pose w.r.t it
 						showModelPointCloud = true;
 						to<Data>(dataCurrentPtr)->createRender();
-						grasp::Manipulator::Config config(cinit.cpos, manipulator->getBaseFrame(cinit.cpos));
-						Bounds::Seq bounds = manipulator->getBounds(config.config, config.frame.toMat34());
-						renderHand(cend, bounds, false);
 
 						// interpolates the fingers' pose
 						golem::Waypoint w, w0, w1;
@@ -1580,9 +1577,7 @@ bool R2GPlanner::create(const Desc& desc) {
 							grasp::Manipulator::Config config1(w.cpos, manipulator->getBaseFrame(w.cpos));
 							Bounds::Seq bounds = manipulator->getBounds(config1.config, config1.frame.toMat34());
 							renderHand(cend, bounds, false);
-							Quat q; manipulator->getBaseFrame(w.cpos).R.toQuat(q);
-							grasp::RBCoord cc(manipulator->getBaseFrame(w.cpos).p, q);
-							grasp::Manipulator::Waypoint waypoint(w.cpos, cc);
+							grasp::Manipulator::Waypoint waypoint(w.cpos, config1.frame);
 							grasp::Contact::Likelihood likelihood;
 							optimisation->evaluate(0, waypoint, likelihood);
 							

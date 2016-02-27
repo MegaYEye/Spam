@@ -1574,7 +1574,7 @@ void spam::XMLData(spam::Collision::FlannDesc& val, golem::XMLContext* xmlcontex
 	golem::XMLData("likelihood", val.likelihood, xmlcontext, create);
 	
 	try {
-		golem::XMLData("radius", val.points, xmlcontext, create);
+		golem::XMLData("radius", val.radius, xmlcontext, create);
 	}
 	catch (const Message&) {}
 }

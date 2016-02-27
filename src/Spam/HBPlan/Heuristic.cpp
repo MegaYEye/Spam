@@ -92,7 +92,6 @@ bool FTDrivenHeuristic::create(const Desc &desc) {
 
 	ftDrivenDesc = desc;
 //	context.write("Heuristic params: dflt=%f limits=%f root=%f\n", desc.costDesc.distDfltFac, desc.costDesc.distLimitsFac, desc.costDesc.distRootFac);
-	ftDrivenDesc.ftModelDesc = desc.ftModelDesc;
 	//ftDrivenDesc.ftModelDesc.dim = 0;
 	//for (Chainspace::Index i = stateInfo.getChains().begin(); i < stateInfo.getChains().end(); ++i) {
 	//	const ChainDesc* cdesc = getChainDesc()[i];
@@ -577,7 +576,6 @@ bool FTDrivenHeuristic::collides(const golem::Waypoint &w, ThreadData* data) con
 #ifdef _HEURISTIC_PERFMON
 			++perfCollisionPointCloud;
 #endif
-//			context.write("Collision checking\n");
 			if ((*maxLhdPose)->checkNN(ftDrivenDesc.checkDesc, config))
 				return true;
 		}
