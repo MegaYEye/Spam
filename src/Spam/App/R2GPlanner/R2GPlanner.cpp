@@ -15,6 +15,7 @@
 #include <Grasp/Data/Image/Image.h>
 #include <Grasp/Data/PointsCurv/PointsCurv.h>
 #include <boost/tokenizer.hpp>
+#include <Grasp/Contact/OptimisationSA.h>
 
 #ifdef WIN32
 	#pragma warning (push)
@@ -400,11 +401,8 @@ void spam::R2GPlanner::Data::createRender() {
 	PosePlanner::Data::createRender();
 	{
 		golem::CriticalSectionWrapper csw(owner->getCS());
-		owner->debugRenderer.reset();
-		//owner->debugRenderer.setColour(RGBA::BLACK);
-		//owner->debugRenderer.setLineWidth(Real(2.0));
-		//context.write("createRender(): Hand bounds size = %d\n", owner->handBounds.size());
-		//owner->debugRenderer.addWire(owner->handBounds.begin(), owner->handBounds.end());
+		owner->debugRenderer.render();
+		owner->sampleRenderer.render();
 	}
 }
 
@@ -1317,7 +1315,7 @@ bool R2GPlanner::create(const Desc& desc) {
 		// CREATE A MODEL POINT CLOUD
 		//--------------------------------------------------------------------//
 		// object name
-		std::string objectName("");
+		std::string objectName;
 		readString("Enter object name: ", objectName);
 		// create a model for the object
 		context.write("Create a model...\n");
@@ -1329,6 +1327,14 @@ bool R2GPlanner::create(const Desc& desc) {
 		//--------------------------------------------------------------------//
 		// CREATE A PREDICTIVE MODEL FOR THE GRASP
 		//--------------------------------------------------------------------//
+		context.write("Create a predictive contact model for the grasp [%s]...\n", modelGraspItem.c_str());
+		if (option("YN", "Create a new contact model? (Y/N)") == 'Y') {
+			dataItemLabel = modelGraspItem;
+			executeCmd(itemTransCmd);
+			modelGraspItem = dataItemLabel;
+		}
+		context.write("done.\n");
+		/*
 		// create a grasp
 		context.write("Create a predictive contact model for the grasp...\n");
 		std::vector<std::string> modelGraspItemSeq; modelGraspItemSeq.clear();
@@ -1347,7 +1353,7 @@ bool R2GPlanner::create(const Desc& desc) {
 		//		continue;
 		//	break;
 			context.write("done.\n");
-		//}
+		//}*/
 
 		//--------------------------------------------------------------------//
 		// TRIALS
@@ -1407,8 +1413,8 @@ bool R2GPlanner::create(const Desc& desc) {
 				//--------------------------------------------------------------------//
 				// create a grasp
 				// retrieve model contact
-				if (modelGraspItemSeq.empty())
-					throw Message(Message::LEVEL_ERROR, "R2GPlanner::demo(): No model grasp have been created.");
+				//if (modelGraspItemSeq.empty())
+				//	throw Message(Message::LEVEL_ERROR, "R2GPlanner::demo(): No model grasp have been created.");
 
 				// generate features
 				grasp::data::Transform* transform = is<grasp::data::Transform>(queryGraspHandler);
@@ -1417,12 +1423,12 @@ bool R2GPlanner::create(const Desc& desc) {
 
 
 				grasp::data::Item::List list;
-				for (auto i = modelGraspItemSeq.begin(); i != modelGraspItemSeq.end(); ++i) {
-					grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(*i);
-					if (ptr == to<Data>(dataCurrentPtr)->itemMap.end())
-						throw Message(Message::LEVEL_ERROR, "R2GPlanner::estimatePose(): Does not find %s.", (*i).c_str());
-					list.insert(list.end(), ptr);
-				}
+				//for (auto i = modelGraspItemSeq.begin(); i != modelGraspItemSeq.end(); ++i) {
+				grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(modelGraspItem);
+				if (ptr == to<Data>(dataCurrentPtr)->itemMap.end())
+					throw Message(Message::LEVEL_ERROR, "R2GPlanner::estimatePose(): Does not find %s.", modelGraspItem.c_str());
+				list.insert(list.end(), ptr);
+				//}
 				// retrieve model point cloud
 				modelPtr = to<Data>(dataCurrentPtr)->itemMap.find(modelItem);
 				if (modelPtr == to<Data>(dataCurrentPtr)->itemMap.end())
@@ -1439,10 +1445,13 @@ bool R2GPlanner::create(const Desc& desc) {
 					queryGraspPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(queryGraspItem, queryGraspItemPtr));
 					Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, queryGraspPtr, to<Data>(dataCurrentPtr)->getView());
 				}
+				to<Data>(dataCurrentPtr)->createRender();
 				context.write("Transform: handler %s, inputs %s, %s...\n", queryGraspHandler->getID().c_str(), queryGraspPtr->first.c_str(), modelItem.c_str());
-//				to<Data>(dataCurrentPtr)->createRender();
+				// calculate the scor eof the desired grasp
+				grasp::data::ContactQuery *cq = is<grasp::data::ContactQuery>(queryGraspPtr);
+				const golem::Real dGraspLik = cq->getData().configs[0]->likelihood.value;
+				context.info("Desired grasp quality (active lik) %f\n", dGraspLik);
 //				context.write("done.\n");
-
 				//--------------------------------------------------------------------//
 				// CREATE A GRASP TRAJECTORY
 				//--------------------------------------------------------------------//
@@ -1511,14 +1520,92 @@ bool R2GPlanner::create(const Desc& desc) {
 					}
 
 					if (contactOccured && grasp::to<Data>(dataCurrentPtr)->stratType != Strategy::ELEMENTARY) {
-						//grasp::to<Data>(cdata->second\A0)->replanning = false;
+						// updates belief
 						contactOccured = false;
 						updateAndResample(dataCurrentPtr);
 						enableForceReading = false;
-						++iteration;
-						//bool r = unlockContact();
-						//context.write("unlock contact %s\n", r ? "TRUE" : "FALSE");
-						continue;
+						// decides if attempts to grasp anyway or to re-plan
+						//cq->getData().configs[0]->getContact()->getOptimisation()->;
+						grasp::OptimisationSA::Desc optimisationDesc;
+						grasp::Contact c = *cq->getData().configs[0]->getContact();
+						const OptimisationSA* optimisation = dynamic_cast<const OptimisationSA*>(cq->getData().configs[0]->getContact()->getOptimisation());
+						if (!optimisation)
+							continue;
+				
+						// cinit is the current robot pose (open fingers)
+						// cend is the final pose of the robot (close fingers)
+						Controller::State cinit = lookupState(), cend = lookupState();
+
+						// The contact query is build on the model's point cloud.
+						// Transforms the robot pose w.r.t model's point cloud
+						Mat34 poseFrameInv;
+						poseFrameInv.setInverse(grasp::to<Data>(dataCurrentPtr)->queryTransform);
+						findTarget(poseFrameInv, grasp::to<Data>(dataCurrentPtr)->queryFrame, cend, cend);
+						cinit = cend;
+						for (auto i = handInfo.getJoints().begin(); i != handInfo.getJoints().end(); ++i)
+							cend.cpos[i] = inp[2].state.cpos[i];
+
+						// debug: draws model's point cloud and the robot pose w.r.t it
+						showModelPointCloud = true;
+						to<Data>(dataCurrentPtr)->createRender();
+						grasp::Manipulator::Config config(cinit.cpos, manipulator->getBaseFrame(cinit.cpos));
+						Bounds::Seq bounds = manipulator->getBounds(config.config, config.frame.toMat34());
+						renderHand(cend, bounds, false);
+
+						// interpolates the fingers' pose
+						golem::Waypoint w, w0, w1;
+						w0.setup(*controller, cinit.cpos, false, true);
+						w1.setup(*controller, cend.cpos, false, true);
+
+						Real dist = REAL_ZERO;
+						for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j)
+							dist += Math::sqr(w1.cpos[j] - w0.cpos[j]);
+						dist = Math::sqrt(dist) / handInfo.getJoints().size();
+
+						const U32 size = (U32)Math::round(dist / 0.01) + 1;
+						Real p[2];
+						context.write("Optimisation\ndist %f size %d\n", dist, size);
+
+						golem::Real lik = REAL_ZERO;
+						// test for collisions in the range (w0, w1) - not excluding w0 and w1
+						for (U32 i = 0; i <= size; ++i) {
+							p[0] = Real(i) / Real(size);
+							p[1] = REAL_ONE - p[0];
+
+							// lineary interpolate coordinates
+							w = w1;
+							for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j)
+								w.cpos[j] = p[0] * w0.cpos[j] + p[1] * w1.cpos[j];
+
+							grasp::Manipulator::Config config1(w.cpos, manipulator->getBaseFrame(w.cpos));
+							Bounds::Seq bounds = manipulator->getBounds(config1.config, config1.frame.toMat34());
+							renderHand(cend, bounds, false);
+							Quat q; manipulator->getBaseFrame(w.cpos).R.toQuat(q);
+							grasp::RBCoord cc(manipulator->getBaseFrame(w.cpos).p, q);
+							grasp::Manipulator::Waypoint waypoint(w.cpos, cc);
+							grasp::Contact::Likelihood likelihood;
+							optimisation->evaluate(0, waypoint, likelihood);
+							
+							// memorises the most likelihood configuration along the path
+							if (lik < abs(likelihood.value))
+								lik = abs(likelihood.value);
+							context.write("Iteration %d Loss %f -> lik.value = %f\n", i, lik, likelihood.value);
+						}
+						// computes the loss [1-lik/(desired grasp lik)]. low or negative values are good!
+						// dGraspLik (desired grasp lik) should never been zero!
+						// ISSUE: lik is always zero!
+						const Real loss = dGraspLik != REAL_ZERO ? 1 - abs(lik / dGraspLik) : REAL_ZERO;
+						// if loss is greater than 0.25, then we replan, otherwise go for a grasp!
+						if (loss > 0.25) {
+							//grasp::to<Data>(cdata->second\A0)->replanning = false;
+//							contactOccured = false;
+//							updateAndResample(dataCurrentPtr);
+//							enableForceReading = false;
+							++iteration;
+							//bool r = unlockContact();
+							//context.write("unlock contact %s\n", r ? "TRUE" : "FALSE");
+							continue;
+						}
 					}
 					// grasp
 					//if (error.lin < 0.01) {
@@ -1860,6 +1947,7 @@ void R2GPlanner::render() const {
 	{
 		golem::CriticalSectionWrapper csw(getCS());
 		debugRenderer.render();
+		sampleRenderer.render();
 		sensorBundlePtr->render();
 	}
 }
@@ -1867,14 +1955,14 @@ void R2GPlanner::render() const {
 void R2GPlanner::renderHand(const golem::Controller::State &state, const Bounds::Seq &bounds, bool clear) {
 	{
 		golem::CriticalSectionWrapper csw(getCS());
-		//debugRenderer.reset();
+		debugRenderer.reset();
 		if (clear)
 			handBounds.clear();
 		if (!bounds.empty())
 			handBounds.insert(handBounds.end(), bounds.begin(), bounds.end());
-		//debugRenderer.setColour(RGBA::BLACK);
-		//debugRenderer.setLineWidth(Real(2.0));
-		//debugRenderer.addWire(handBounds.begin(), handBounds.end());
+		debugRenderer.setColour(RGBA::BLACK);
+		debugRenderer.setLineWidth(Real(2.0));
+		debugRenderer.addWire(handBounds.begin(), handBounds.end());
 	}
 }
 
@@ -1926,6 +2014,7 @@ void R2GPlanner::findTarget(const golem::Mat34& queryTrn, const golem::Mat34& mo
 	poseFrameInv.setInverse(gwcs.wpos[armChain]);
 	graspFrame.multiply(poseFrameInv, modelFrame);
 	graspFrameInv.setInverse(graspFrame);
+	//gwcs.wpos[armChain].multiply(queryTrn, graspFrameInv);
 	gwcs.wpos[armChain].multiply(modelFrame, graspFrameInv);
 	gwcs.wpos[armChain].multiply(queryTrn, gwcs.wpos[armChain]);
 	gwcs.t = target.t;
@@ -2323,7 +2412,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 			//Twist wrench; if (graspSensorForce) graspSensorForce->readSensor(wrench, s.t);
 			//ftSeq.push_back(wrench);
 
-			if (!isGrasping && i > 150) {
+			if (!isGrasping && i > 500) {
 				enableForceReading = sensorBundlePtr->start2read = expectedCollisions(state);
 				//record = true;
 			}
@@ -2587,9 +2676,9 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 			resetPlanning();
 			return false;
 		}
-		//grasp::Manipulator::Config config(cend.cpos, manipulator->getBaseFrame(cend.cpos));
-		//Bounds::Seq bounds = manipulator->getBounds(config.config, config.frame.toMat34());
-		//renderHand(cend, bounds, true);
+		grasp::Manipulator::Config config(cend.cpos, manipulator->getBaseFrame(cend.cpos));
+		Bounds::Seq bounds = manipulator->getBounds(config.config, config.frame.toMat34());
+		renderHand(cend, bounds, true);
 
 		Controller::State::Seq approach;
 		try {

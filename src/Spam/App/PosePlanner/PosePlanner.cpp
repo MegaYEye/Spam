@@ -282,12 +282,12 @@ void spam::PosePlanner::Data::createRender() {
 		if (!vertices.empty() && !triangles.empty())
 			owner->modelRenderer.addAxes3D(frame, Vec3(0.2));	
 
-		const bool showmodel = !modelPoints.empty() && queryPoints.empty();
+		const bool showmodel = !modelPoints.empty() /*&& queryPoints.empty()*/;
 		const bool showquery = !queryPoints.empty();
 //		printf("renderData showmodel %s showquery %s showSamplePoints %s\n", showmodel ? "ON" : "OFF", showquery ? "ON" : "OFF", owner->showSamplePoints ? "ON" : "OFF");
 
 		if (showmodel || showquery) {
-			if (showmodel && !showquery) {
+			if (showmodel/* && !showquery*/) {
 				owner->modelRenderer.addAxes(modelFrame, owner->modelFrameSize);
 				if (owner->showModelPointCloud)
 					owner->modelAppearance.drawPoints(modelPoints, owner->modelRenderer);

@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <Grasp/Data/Image/Image.h>
 #include <Grasp/Data/PointsCurv/PointsCurv.h>
+#include <Grasp/Contact/OptimisationSA.h>
 
 #ifdef WIN32
 #pragma warning (push)
@@ -348,6 +349,10 @@ void FTDemo::create(const Desc& desc) {
 					Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, queryContactPtr, to<Data>(dataCurrentPtr)->getView());
 				}
 				context.write("Transform: handler %s, inputs %s, %s...\n", queryGraspHandler->getID().c_str(), queryContactPtr->first.c_str(), modelItem.c_str());
+				// calculate the scor eof the desired grasp
+				grasp::data::ContactQuery *cq = is<grasp::data::ContactQuery>(queryContactPtr);
+				const golem::Real dGraspLik = cq->getData().configs[0]->likelihood.value;
+				context.info("Desired grasp quality (active lik) %f\n", dGraspLik);
 
 				//--------------------------------------------------------------------//
 				// CREATE A GRASP TRAJECTORY
@@ -370,9 +375,13 @@ void FTDemo::create(const Desc& desc) {
 				context.write("done.\n");
 
 				context.write("Transform: handler %s, input %s...\n", queryHandlerTrj->getID().c_str(), queryTrjPtr->first.c_str());
-				spam::data::R2GTrajectory* trajectory = is<spam::data::R2GTrajectory>(queryTrjPtr);
+//				spam::data::R2GTrajectory* trajectory = is<spam::data::R2GTrajectory>(queryTrjPtr);
+				grasp::data::Trajectory* trajectory = is<grasp::data::Trajectory>(queryTrjPtr);
 				if (!trajectory)
 					throw Message(Message::LEVEL_ERROR, "Handler %s does not support Trajectory interface", queryHandlerTrj->getID().c_str());
+				grasp::Waypoint::Seq inp = trajectory->getWaypoints();
+				if (inp.size() < 3)
+					throw Cancel("Error: the selected trajectory have not at least 3 waypoints.");
 
 				// set render to show only mean hypothesis and ground truth
 				resetDataPointers();
@@ -387,27 +396,57 @@ void FTDemo::create(const Desc& desc) {
 				U32 iteration = 1, failures = 0;
 				const RBCoord obj(simQueryFrame * to<Data>(dataCurrentPtr)->modelFrame);
 				for (; failures < maxFailures && iteration < maxIterations;) {
-					if (!execute(dataCurrentPtr, *trajectory)) { // if it fails to find a trajectory repeat 
+					grasp::to<Data>(dataCurrentPtr)->actionType = action::IG_PLAN_M2Q;
+					if (!execute(dataCurrentPtr, inp)) { // if it fails to find a trajectory repeat 
 						++failures;
 						continue;
 					}
 
 					if (contactOccured && grasp::to<Data>(dataCurrentPtr)->stratType != Strategy::ELEMENTARY) {
-						contactOccured = false;
-						updateAndResample(dataCurrentPtr);
-						enableForceReading = false;
-						++iteration;
-						continue;
+						// decide if attempt to grasp if a contact occured
+						//cq->getData().configs[0]->getContact()->getOptimisation()->;
+						grasp::OptimisationSA::Desc optimisationDesc;
+						grasp::Contact c = *cq->getData().configs[0]->getContact();
+						const OptimisationSA* optimisation = dynamic_cast<const OptimisationSA*>(cq->getData().configs[0]->getContact()->getOptimisation());
+						if (!optimisation)
+							continue;
+
+						Controller::State cinit = lookupState(), cend = lookupState();
+						findTarget(grasp::to<Data>(dataCurrentPtr)->queryTransform, inp[2].state, cend);
+						grasp::Manipulator::Config config(cend.cpos, manipulator->getBaseFrame(cend.cpos));
+
+						Bounds::Seq bounds = manipulator->getBounds(config.config, config.frame.toMat34());
+						renderHand(cend, bounds, true);
+
+
+						Quat q; manipulator->getBaseFrame(cend.cpos).R.toQuat(q);
+						grasp::RBCoord cc(manipulator->getBaseFrame(cend.cpos).p, q);
+						grasp::Manipulator::Waypoint waypoint(cend.cpos, cc);
+						grasp::Contact::Likelihood likelihood;
+						optimisation->evaluate(0, waypoint, likelihood);
+						const Real loss = dGraspLik != REAL_ZERO ? 1 - abs(likelihood.value / dGraspLik) : REAL_ZERO;
+						context.write("Loss %f -> lik.value = %f\n", loss, likelihood.value);
+						// if loss is greater than 0.25, then we replan -> go for a grasp!
+						if (loss > 0.25) {
+							//grasp::to<Data>(cdata->second\A0)->replanning = false;
+							contactOccured = false;
+							updateAndResample(dataCurrentPtr);
+							enableForceReading = false;
+							++iteration;
+							//bool r = unlockContact();
+							//context.write("unlock contact %s\n", r ? "TRUE" : "FALSE");
+							continue;
+						}
 					}
 					grasp::to<Data>(dataCurrentPtr)->actionType = action::GRASP;
 					context.write("Iteration %u: execute trajectory (%s)\n", iteration, actionToString(grasp::to<Data>(dataCurrentPtr)->actionType).c_str());
-					if (!execute(dataCurrentPtr, *trajectory)) {// not successfully close fingers
+					if (!execute(dataCurrentPtr, inp)) {// not successfully close fingers
 						++failures;
 						continue;
 					}
 					grasp::to<Data>(dataCurrentPtr)->actionType = action::IG_PLAN_LIFT;
 					context.write("Iteration %u: execute trajectory (%s)\n", iteration, actionToString(grasp::to<Data>(dataCurrentPtr)->actionType).c_str());
-					if (!execute(dataCurrentPtr, *trajectory)) {// not successfully close fingers
+					if (!execute(dataCurrentPtr, inp)) {// not successfully close fingers
 						++failures;
 						continue;
 					}
@@ -470,15 +509,6 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	if (trajectory.size() < 2)
 		throw Message(Message::LEVEL_ERROR, "Player::perform(): At least two waypoints required");
 
-	golem::Controller::State::Seq initTrajectory;
-	findTrajectory(lookupState(), &trajectory.front(), nullptr, SEC_TM_REAL_ZERO, initTrajectory);
-
-	golem::Controller::State::Seq out = initTrajectory;
-	out.insert(out.end(), trajectory.begin(), trajectory.end());
-
-	golem::Controller::State::Seq completeTrajectory;
-	profile(this->trjDuration, out, completeTrajectory, false);
-
 	// create trajectory item
 	grasp::data::Item::Ptr itemTrajectory;
 	grasp::data::Handler::Map::const_iterator handlerPtr = handlerMap.find(trajectoryHandler);
@@ -491,7 +521,7 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	grasp::data::Trajectory* trajectoryIf = is<grasp::data::Trajectory>(itemTrajectory.get());
 	if (!trajectoryIf)
 		throw Message(Message::LEVEL_ERROR, "Player::perform(): unable to create trajectory using handler %s", trajectoryHandler.c_str());
-	trajectoryIf->setWaypoints(grasp::Waypoint::make(completeTrajectory, completeTrajectory)/*grasp::Waypoint::make(trajectory, trajectory)*/);
+	trajectoryIf->setWaypoints(grasp::Waypoint::make(trajectory, trajectory)/*grasp::Waypoint::make(trajectory, trajectory)*/);
 
 	// block displaying the current item
 	RenderBlock renderBlock(*this);
@@ -526,15 +556,15 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	recordingWaitToStart();
 
 	// send trajectory
-	sendTrajectory(completeTrajectory);
+	sendTrajectory(trajectory);
 
 	Controller::State::Seq robotPoses; robotPoses.clear();
-	TwistSeq ftSeq; ftSeq.clear();
-	std::vector<grasp::RealSeq> forceInpSensorSeq;
-	TwistSeq thumbFT, indexFT, wristFT;
-	TwistSeq rawThumbFT, rawIndexFT, rawWristFT;
-	FT::Data thumbData, indexData, wristData;
-	grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
+	//TwistSeq ftSeq; ftSeq.clear();
+	//std::vector<grasp::RealSeq> forceInpSensorSeq;
+	//TwistSeq thumbFT, indexFT, wristFT;
+	//TwistSeq rawThumbFT, rawIndexFT, rawWristFT;
+	//FT::Data thumbData, indexData, wristData;
+	//grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
 	sensorBundlePtr->start2read = true;
 	// repeat every send waypoint until trajectory end
 	for (U32 i = 0; controller->waitForBegin(); ++i) {
@@ -547,105 +577,106 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 		robotPoses.push_back(state);
 		sensorBundlePtr->increment();
 
-		if (wristFTSensor) {
-			wristFTSensor->read(wristData);
-			wristFT.push_back(wristData.wrench);
-			Twist wwrench; SecTmReal wt;
-			wristFTSensor->readSensor(wwrench, wt);
-			rawWristFT.push_back(wwrench);
+		/*
+		//if (wristFTSensor) {
+		//	wristFTSensor->read(wristData);
+		//	wristFT.push_back(wristData.wrench);
+		//	Twist wwrench; SecTmReal wt;
+		//	wristFTSensor->readSensor(wwrench, wt);
+		//	rawWristFT.push_back(wwrench);
 
-			wristData.wrench.v.getColumn3(&force[0]);
-			wristData.wrench.w.getColumn3(&force[3]);
+		//	wristData.wrench.v.getColumn3(&force[0]);
+		//	wristData.wrench.w.getColumn3(&force[3]);
 
-			ftSensorSeq[0]->read(thumbData);
-			thumbFT.push_back(thumbData.wrench);
-			Twist wthumb; SecTmReal tt;
-			ftSensorSeq[0]->readSensor(wthumb, tt);
-			rawThumbFT.push_back(wthumb);
+		//	ftSensorSeq[0]->read(thumbData);
+		//	thumbFT.push_back(thumbData.wrench);
+		//	Twist wthumb; SecTmReal tt;
+		//	ftSensorSeq[0]->readSensor(wthumb, tt);
+		//	rawThumbFT.push_back(wthumb);
 
-			thumbData.wrench.v.getColumn3(&force[6]);
-			thumbData.wrench.w.getColumn3(&force[9]);
+		//	thumbData.wrench.v.getColumn3(&force[6]);
+		//	thumbData.wrench.w.getColumn3(&force[9]);
 
-			ftSensorSeq[1]->read(indexData);
-			indexFT.push_back(indexData.wrench);
-			Twist iwrench; SecTmReal it;
-			ftSensorSeq[1]->readSensor(iwrench, it);
-			rawIndexFT.push_back(iwrench);
+		//	ftSensorSeq[1]->read(indexData);
+		//	indexFT.push_back(indexData.wrench);
+		//	Twist iwrench; SecTmReal it;
+		//	ftSensorSeq[1]->readSensor(iwrench, it);
+		//	rawIndexFT.push_back(iwrench);
 
-			indexData.wrench.v.getColumn3(&force[12]);
-			indexData.wrench.w.getColumn3(&force[15]);
-		}
+		//	indexData.wrench.v.getColumn3(&force[12]);
+		//	indexData.wrench.w.getColumn3(&force[15]);
+		//}*/
 
 		// print every 10th robot state
 		if (i % 10 == 0)
 			context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
-		if (!isGrasping && i > 200) {
+		if (!isGrasping && i > 600) {
 			enableForceReading = expectedCollisions(state);
 		}
 	}
 	enableForceReading = false;
 	sensorBundlePtr->start2read = false;
+	/*
+	//std::string dir = makeString("%s%s/%s/trial0%d/", ftpath.c_str(), object.c_str(), item.c_str(), iteration++);
+	//golem::mkdir(dir.c_str());
+	//std::stringstream prefixWrist;
+	//prefixWrist << std::fixed << std::setprecision(3) << dir << "wrist" << "-" << context.getTimer().elapsed();
+	//std::stringstream prefixThumb;
+	//prefixThumb << std::fixed << std::setprecision(3) << dir << "thumb" << " - " << context.getTimer().elapsed();
+	//std::stringstream prefixIndex;
+	//prefixIndex << std::fixed << std::setprecision(3) << dir << "index" << " - " << context.getTimer().elapsed();
 
-	std::string dir = makeString("%s%s/%s/trial0%d/", ftpath.c_str(), object.c_str(), item.c_str(), iteration++);
-	golem::mkdir(dir.c_str());
-	std::stringstream prefixWrist;
-	prefixWrist << std::fixed << std::setprecision(3) << dir << "wrist" << "-" << context.getTimer().elapsed();
-	std::stringstream prefixThumb;
-	prefixThumb << std::fixed << std::setprecision(3) << dir << "thumb" << " - " << context.getTimer().elapsed();
-	std::stringstream prefixIndex;
-	prefixIndex << std::fixed << std::setprecision(3) << dir << "index" << " - " << context.getTimer().elapsed();
+	//std::stringstream prefixRawWrist;
+	//prefixRawWrist << std::fixed << std::setprecision(3) << dir << "raw_wrist" << " - " << context.getTimer().elapsed();
+	//std::stringstream prefixRawThumb;
+	//prefixRawThumb << std::fixed << std::setprecision(3) << dir << "raw_thumb" << "-" << context.getTimer().elapsed();
+	//std::stringstream prefixRawIndex;
+	//prefixRawIndex << std::fixed << std::setprecision(3) << dir << "raw_index" << "-" << context.getTimer().elapsed();
 
-	std::stringstream prefixRawWrist;
-	prefixRawWrist << std::fixed << std::setprecision(3) << dir << "raw_wrist" << " - " << context.getTimer().elapsed();
-	std::stringstream prefixRawThumb;
-	prefixRawThumb << std::fixed << std::setprecision(3) << dir << "raw_thumb" << "-" << context.getTimer().elapsed();
-	std::stringstream prefixRawIndex;
-	prefixRawIndex << std::fixed << std::setprecision(3) << dir << "raw_index" << "-" << context.getTimer().elapsed();
+	//auto strFT = [=](std::ostream& ostr, const Twist& twist, const golem::SecTmReal tAbs, const golem::SecTmReal tRel) {
+	//	ostr << tAbs << "\t" << tRel << "\t" << twist.v.x << "\t" << twist.v.y << "\t" << twist.v.z << "\t" << twist.w.x << "\t" << twist.w.y << "\t" << twist.w.z << std::endl;
+	//};
+	//auto strFTDesc = [=](std::ostream& ostr, const std::string& prefix) {
+	//	ostr << "tAbs" << "tRel" << prefix << "vx" << "\t" << prefix << "vy" << "\t" << prefix << "vz" << "\t" << prefix << "wx" << "\t" << prefix << "wy" << "\t" << prefix << "wz" << std::endl;
+	//};
 
-	auto strFT = [=](std::ostream& ostr, const Twist& twist, const golem::SecTmReal tAbs, const golem::SecTmReal tRel) {
-		ostr << tAbs << "\t" << tRel << "\t" << twist.v.x << "\t" << twist.v.y << "\t" << twist.v.z << "\t" << twist.w.x << "\t" << twist.w.y << "\t" << twist.w.z << std::endl;
-	};
-	auto strFTDesc = [=](std::ostream& ostr, const std::string& prefix) {
-		ostr << "tAbs" << "tRel" << prefix << "vx" << "\t" << prefix << "vy" << "\t" << prefix << "vz" << "\t" << prefix << "wx" << "\t" << prefix << "wy" << "\t" << prefix << "wz" << std::endl;
-	};
+	//// writing data into a text file, open file
+	//const std::string wristPath = grasp::makeString("%s.txt", prefixWrist.str().c_str());
+	//golem::mkdir(wristPath.c_str()); // make sure the directory exists
+	//std::ofstream wristSS(wristPath);
+	//const std::string rawWristPath = grasp::makeString("%s.txt", prefixRawWrist.str().c_str());
+	//golem::mkdir(rawWristPath.c_str()); // make sure the directory exists
+	//std::ofstream rawWristSS(rawWristPath);
+	//const std::string thumbPath = grasp::makeString("%s.txt", prefixThumb.str().c_str());
+	//golem::mkdir(thumbPath.c_str()); // make sure the directory exists
+	//std::ofstream thumbSS(thumbPath);
+	//const std::string rawThumbPath = grasp::makeString("%s.txt", prefixRawThumb.str().c_str());
+	//golem::mkdir(rawThumbPath.c_str()); // make sure the directory exists
+	//std::ofstream rawThumbSS(rawThumbPath);
+	//const std::string indexPath = grasp::makeString("%s.txt", prefixIndex.str().c_str());
+	//golem::mkdir(indexPath.c_str()); // make sure the directory exists
+	//std::ofstream indexSS(indexPath);
+	//const std::string rawIndexPath = grasp::makeString("%s.txt", prefixRawIndex.str().c_str());
+	//golem::mkdir(rawIndexPath.c_str()); // make sure the directory exists
+	//std::ofstream rawIndexSS(rawIndexPath);
 
-	// writing data into a text file, open file
-	const std::string wristPath = grasp::makeString("%s.txt", prefixWrist.str().c_str());
-	golem::mkdir(wristPath.c_str()); // make sure the directory exists
-	std::ofstream wristSS(wristPath);
-	const std::string rawWristPath = grasp::makeString("%s.txt", prefixRawWrist.str().c_str());
-	golem::mkdir(rawWristPath.c_str()); // make sure the directory exists
-	std::ofstream rawWristSS(rawWristPath);
-	const std::string thumbPath = grasp::makeString("%s.txt", prefixThumb.str().c_str());
-	golem::mkdir(thumbPath.c_str()); // make sure the directory exists
-	std::ofstream thumbSS(thumbPath);
-	const std::string rawThumbPath = grasp::makeString("%s.txt", prefixRawThumb.str().c_str());
-	golem::mkdir(rawThumbPath.c_str()); // make sure the directory exists
-	std::ofstream rawThumbSS(rawThumbPath);
-	const std::string indexPath = grasp::makeString("%s.txt", prefixIndex.str().c_str());
-	golem::mkdir(indexPath.c_str()); // make sure the directory exists
-	std::ofstream indexSS(indexPath);
-	const std::string rawIndexPath = grasp::makeString("%s.txt", prefixRawIndex.str().c_str());
-	golem::mkdir(rawIndexPath.c_str()); // make sure the directory exists
-	std::ofstream rawIndexSS(rawIndexPath);
+	////// writing data into a text file, prepare headers
+	//strFTDesc(wristSS, std::string("ft_"));
+	//strFTDesc(rawWristSS, std::string("ft_"));
+	//strFTDesc(thumbSS, std::string("ft_"));
+	//strFTDesc(rawThumbSS, std::string("ft_"));
+	//strFTDesc(indexSS, std::string("ft_"));
+	//strFTDesc(rawIndexSS, std::string("ft_"));
 
-	//// writing data into a text file, prepare headers
-	strFTDesc(wristSS, std::string("ft_"));
-	strFTDesc(rawWristSS, std::string("ft_"));
-	strFTDesc(thumbSS, std::string("ft_"));
-	strFTDesc(rawThumbSS, std::string("ft_"));
-	strFTDesc(indexSS, std::string("ft_"));
-	strFTDesc(rawIndexSS, std::string("ft_"));
-
-	for (U32 indexjj = 0; indexjj < thumbFT.size(); ++indexjj) {
-		const SecTmReal t = robotPoses[indexjj].t - recorderStart;
-		strFT(wristSS, wristFT[indexjj], robotPoses[indexjj].t, t);
-		strFT(rawWristSS, rawWristFT[indexjj], robotPoses[indexjj].t, t);
-		strFT(thumbSS, thumbFT[indexjj], robotPoses[indexjj].t, t);
-		strFT(rawThumbSS, rawThumbFT[indexjj], robotPoses[indexjj].t, t);
-		strFT(indexSS, indexFT[indexjj], robotPoses[indexjj].t, t);
-		strFT(rawIndexSS, rawIndexFT[indexjj], robotPoses[indexjj].t, t);
-	}
+	//for (U32 indexjj = 0; indexjj < thumbFT.size(); ++indexjj) {
+	//	const SecTmReal t = robotPoses[indexjj].t - recorderStart;
+	//	strFT(wristSS, wristFT[indexjj], robotPoses[indexjj].t, t);
+	//	strFT(rawWristSS, rawWristFT[indexjj], robotPoses[indexjj].t, t);
+	//	strFT(thumbSS, thumbFT[indexjj], robotPoses[indexjj].t, t);
+	//	strFT(rawThumbSS, rawThumbFT[indexjj], robotPoses[indexjj].t, t);
+	//	strFT(indexSS, indexFT[indexjj], robotPoses[indexjj].t, t);
+	//	strFT(rawIndexSS, rawIndexFT[indexjj], robotPoses[indexjj].t, t);
+	//}*/
 
 	// stop recording
 	recordingStop(trajectoryIdlePerf);
@@ -662,7 +693,7 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	context.write("Performance finished!\n");
 }
 
-bool FTDemo::execute(grasp::data::Data::Map::iterator dataPtr, spam::data::R2GTrajectory& trajectory) {
+bool FTDemo::execute2(grasp::data::Data::Map::iterator dataPtr, spam::data::R2GTrajectory& trajectory) {
 	bool silent = to<Data>(dataPtr)->actionType != action::NONE_ACTION;
 	//	context.debug("execute(): silen=%s, actionType=%s\n", silent ? "TRUE" : "FALSE", actionToString(grasp::to<Data>(dataPtr)->actionType));
 	const int key = !silent ? option("MQTGU", "Press to (M)odel based or (Q)uery based grasp, (T)rajectory based planner, (G)rasp, (U)p lifting") :
