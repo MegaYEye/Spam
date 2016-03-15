@@ -14,7 +14,7 @@
     <simulation fps="30" real_time="0" skin_width="0.005" sleep_lin_vel_squared="0.0025" sleep_ang_vel_squared="0.0025" max_angular_velocity="7.0" bounce_threshold="-2.0"></simulation>
   </universe>
 
-  <scene name="RagPlanner">
+  <scene name="FT Demo">
     <simulation restitution="0.0" static_friction="0.2" dynamic_friction="0.1">
       <gravity v1="0.0" v2="0.0" v3="-9.81"/>
     </simulation>
@@ -273,7 +273,7 @@
     </trial_data>
   </pose_planner>
 
-  <player>
+  <player planner_index="0" trajectory_name="trajectory">
     <!-- To run robot server uncomment: <server .../> -->
     <!--<server port="54312" clients="10" message_interval="600.0"/>-->
 
@@ -294,7 +294,7 @@
     <!-- DLR Justin robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotJustin" -->
     <!-- DLR Justin robot (controller, planner): library_path="GolemDeviceRobotJustin" config_path="GolemDeviceRobotJustin" -->
 
-    <controller library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBorisTactile">
+    <controller library_path="GolemDeviceMultiCtrl" config_path="GolemCtrlRobotBorisTactile">
       <renderer>
         <joint_appearance line_width="1.0">
           <solid_colour R="192" G="192" B="0" A="100"></solid_colour>
@@ -314,7 +314,18 @@
         </state_renderer>
       </renderer>
     </controller>
-    <planner library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBorisTactile">
+    <planner library_path="GolemPlannerGraphPlanner" config_path="GolemCtrlRobotBorisTactile">
+      <controller id="KukaLWR+KukaLWRBorisR"/>
+      <controller id="DLRHitHandII+DLRHitHandIITactile"/>
+
+      <!--<sensor id="FTClient+FTClient"/>-->
+      <sensor id="FTDAQ+FTDAQWrist"/>
+      <sensor id="FTDAQ+FTDAQThumb"/>
+      <sensor id="FTDAQ+FTDAQIndex"/>
+      <sensor id="FTDAQ+FTDAQMiddle"/>
+
+      <trajectory name="trajectory" handler="Trajectory+TrajectoryDemoR2G" idle_begin="0.5" idle_end="2.0" idle_perf="5.0" duration="5.0" trials="5"/>
+
       <renderer show_duration="600.0">
         <goal_renderer show="1" vertex_position_show="0" vertex_frame_show="1" edge_show="0">
           <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>

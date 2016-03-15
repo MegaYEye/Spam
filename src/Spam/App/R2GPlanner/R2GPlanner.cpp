@@ -8,7 +8,8 @@
 
 #include <Golem/Tools/XMLData.h>
 #include <Golem/Tools/Data.h>
-#include <Golem/Plan/Data.h>
+#include <Golem/Planner/Data.h>
+#include <Golem/Planner/GraphPlanner/Data.h>
 //#include <Golem/Phys/PhysScene.h>
 #include <Spam/App/R2GPlanner/R2GPlanner.h>
 #include <algorithm>
@@ -563,25 +564,25 @@ bool R2GPlanner::create(const Desc& desc) {
 			context.write("FT sensor is not available\n");
 	}
 	// set FT guard for the thumb
-	Chainspace::Index chain = handInfo.getChains().begin();
+	Chainspace::Index chain = getPlanner().handInfo.getChains().begin();
 	FTGuard::Desc thumbFTDesc = FTGuard::Desc();
 	thumbFTDesc.chain = HandChain::THUMB;
-	thumbFTDesc.jointIdx = handInfo.getJoints(chain++).end() - 1;
+	thumbFTDesc.jointIdx = getPlanner().handInfo.getJoints(chain++).end() - 1;
 	thumbFTDesc.setLimits(&fLimit[0]);
 	ftGuards.push_back(thumbFTDesc.create());
 	// set FT guard for the index
 	FTGuard::Desc indexFTDesc = FTGuard::Desc();
 	indexFTDesc.chain = HandChain::INDEX;
-	indexFTDesc.jointIdx = handInfo.getJoints(chain++).end() - 1;
+	indexFTDesc.jointIdx = getPlanner().handInfo.getJoints(chain++).end() - 1;
 	indexFTDesc.setLimits(&fLimit[6]);
 	ftGuards.push_back(indexFTDesc.create());
 	// set FT guard for the thumb
 	FTGuard::Desc middleFTDesc = FTGuard::Desc();
 	middleFTDesc.chain = HandChain::MIDDLE;
-	middleFTDesc.jointIdx = handInfo.getJoints(chain++).end() - 1;
+	middleFTDesc.jointIdx = getPlanner().handInfo.getJoints(chain++).end() - 1;
 	middleFTDesc.setLimits(&fLimit[12]);
 	ftGuards.push_back(middleFTDesc.create());
-	//handForces.assign(handInfo.getChains().size(), Vec3::zero());
+	//handForces.assign(getPlanner().handInfo.getChains().size(), Vec3::zero());
 
 	// FT FILTER
 //	steps = 0;
@@ -647,10 +648,10 @@ bool R2GPlanner::create(const Desc& desc) {
 //
 //	guardsReader = [=](const Controller::State &state, grasp::RealSeq& force, std::vector<golem::Configspace::Index> &joints) {
 //		joints.clear();
-//		joints.reserve(handInfo.getJoints().size());
+//		joints.reserve(getPlanner().handInfo.getJoints().size());
 //		// the loop skips the last joint because it's coupled with the 3rd joint.
-//		for (Configspace::Index i = handInfo.getJoints().begin(); i != handInfo.getJoints().end(); ++i) {
-//			const size_t k = i - handInfo.getJoints().begin();
+//		for (Configspace::Index i = getPlanner().handInfo.getJoints().begin(); i != getPlanner().handInfo.getJoints().end(); ++i) {
+//			const size_t k = i - getPlanner().handInfo.getJoints().begin();
 //			if (Math::abs(handFilteredForce[k]) > fLimit[k])
 //				joints.push_back(i);
 //		}
@@ -875,7 +876,7 @@ bool R2GPlanner::create(const Desc& desc) {
 //		//for (U32 i = 0; i != joints.size(); ++i) {
 //		//	FTGuard guard(*manipulator);
 //		//	guard.create(joints[i]);
-//		//	const size_t k = joints[i] - handInfo.getJoints().begin();
+//		//	const size_t k = joints[i] - getPlanner().handInfo.getJoints().begin();
 //		//	guard.force = filteredForces[k]; //force[k];
 //		//	guard.threshold = fLimit[k];
 //		//	triggeredGuards.push_back(guard);
@@ -1526,12 +1527,13 @@ bool R2GPlanner::create(const Desc& desc) {
 						enableForceReading = false;
 						// decides if attempts to grasp anyway or to re-plan
 						//cq->getData().configs[0]->getContact()->getOptimisation()->;
+						
 						grasp::OptimisationSA::Desc optimisationDesc;
 						grasp::Contact c = *cq->getData().configs[0]->getContact();
 						const OptimisationSA* optimisation = dynamic_cast<const OptimisationSA*>(cq->getData().configs[0]->getContact()->getOptimisation());
 						if (!optimisation)
 							continue;
-				
+
 						// cinit is the current robot pose (open fingers)
 						// cend is the final pose of the robot (close fingers)
 						Controller::State cinit = lookupState(), cend = lookupState();
@@ -1542,7 +1544,7 @@ bool R2GPlanner::create(const Desc& desc) {
 						poseFrameInv.setInverse(grasp::to<Data>(dataCurrentPtr)->queryTransform);
 						findTarget(poseFrameInv, grasp::to<Data>(dataCurrentPtr)->queryFrame, cend, cend);
 						cinit = cend;
-						for (auto i = handInfo.getJoints().begin(); i != handInfo.getJoints().end(); ++i)
+						for (auto i = getPlanner().handInfo.getJoints().begin(); i != getPlanner().handInfo.getJoints().end(); ++i)
 							cend.cpos[i] = inp[2].state.cpos[i];
 
 						// debug: draws model's point cloud and the robot pose w.r.t it
@@ -1555,9 +1557,9 @@ bool R2GPlanner::create(const Desc& desc) {
 						w1.setup(*controller, cend.cpos, false, true);
 
 						Real dist = REAL_ZERO;
-						for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j)
+						for (Configspace::Index j = getPlanner().handInfo.getJoints().begin(); j < getPlanner().handInfo.getJoints().end(); ++j)
 							dist += Math::sqr(w1.cpos[j] - w0.cpos[j]);
-						dist = Math::sqrt(dist) / handInfo.getJoints().size();
+						dist = Math::sqrt(dist) / getPlanner().handInfo.getJoints().size();
 
 						const U32 size = (U32)Math::round(dist / 0.01) + 1;
 						Real p[2];
@@ -1571,25 +1573,50 @@ bool R2GPlanner::create(const Desc& desc) {
 
 							// lineary interpolate coordinates
 							w = w1;
-							for (Configspace::Index j = handInfo.getJoints().begin(); j < handInfo.getJoints().end(); ++j)
+							for (Configspace::Index j = getPlanner().handInfo.getJoints().begin(); j < getPlanner().handInfo.getJoints().end(); ++j)
 								w.cpos[j] = p[0] * w0.cpos[j] + p[1] * w1.cpos[j];
 
 							grasp::Manipulator::Config config1(w.cpos, manipulator->getBaseFrame(w.cpos));
 							Bounds::Seq bounds = manipulator->getBounds(config1.config, config1.frame.toMat34());
 							renderHand(cend, bounds, false);
-							grasp::Manipulator::Waypoint waypoint(w.cpos, config1.frame);
 							grasp::Contact::Likelihood likelihood;
-							optimisation->evaluate(0, waypoint, likelihood);
-							
+							if (false) {
+								grasp::Manipulator::Waypoint waypoint(w.cpos, config1.frame);								
+								//optimisation->evaluate(0, waypoint, likelihood);
+							}
+							else {
+								Collision::FlannDesc waypointDesc;
+								Collision::Desc::Ptr cloudDesc;
+								cloudDesc.reset(new Collision::Desc());
+								Collision::Ptr cloud = cloudDesc->create(*manipulator);
+								waypointDesc.depthStdDev = 0.0001/*0.0005*/; waypointDesc.likelihood = 10.0; waypointDesc.points = 10000; waypointDesc.neighbours = 100;
+								waypointDesc.radius = REAL_ZERO;
+
+								grasp::Manipulator::Config config2(w.cpos, manipulator->getBaseFrame(w.cpos));
+								debugRenderer.reset();
+								//		debugAppearance.draw(points, debugRenderer);
+								RealSeq ff = {0., 0., -0.1, 0., 0., 0.};
+								for (size_t i = 0; i < 3; ++i) {
+									ftGuards[i]->setColumn6(&ff[0]);
+									ftGuards[i]->checkContacts();
+								}
+								cloud->create(rand, modelPoints);
+								likelihood.value = cloud->evaluateFT(debugRenderer, waypointDesc, config2, ftGuards);
+								for (auto g = ftGuards.begin(); g != ftGuards.end(); ++g)
+									(*g)->unlock();
+							}
 							// memorises the most likelihood configuration along the path
 							if (lik < abs(likelihood.value))
 								lik = abs(likelihood.value);
 							context.write("Iteration %d Loss %f -> lik.value = %f\n", i, lik, likelihood.value);
 						}
+
 						// computes the loss [1-lik/(desired grasp lik)]. low or negative values are good!
 						// dGraspLik (desired grasp lik) should never been zero!
 						// ISSUE: lik is always zero!
 						const Real loss = dGraspLik != REAL_ZERO ? 1 - abs(lik / dGraspLik) : REAL_ZERO;
+						
+
 						// if loss is greater than 0.25, then we replan, otherwise go for a grasp!
 						if (loss > 0.25) {
 							//grasp::to<Data>(cdata->second\A0)->replanning = false;
@@ -1874,9 +1901,9 @@ bool R2GPlanner::create(const Desc& desc) {
 					p[1] = REAL_ONE - p[0];
 
 					// lineary interpolate coordinates
-					for (Configspace::Index l = armInfo.getJoints().begin(); l < armInfo.getJoints().end(); ++l)
+					for (Configspace::Index l = getPlanner().armInfo.getJoints().begin(); l < getPlanner().armInfo.getJoints().end(); ++l)
 						w.cpos[l] = p[0] * w0.cpos[l] + p[1] * w1.cpos[l];
-					for (Configspace::Index l = handInfo.getJoints().begin(); l < handInfo.getJoints().end(); ++l)
+					for (Configspace::Index l = getPlanner().handInfo.getJoints().begin(); l < getPlanner().handInfo.getJoints().end(); ++l)
 						w.cpos[l] = p[0] * w0.cpos[l] + p[1] * w1.cpos[l];
 
 					// skip reference pose computation
@@ -1965,8 +1992,8 @@ void R2GPlanner::renderHand(const golem::Controller::State &state, const Bounds:
 
 void R2GPlanner::findTarget(const golem::Mat34 &trn, const golem::Controller::State &target, golem::Controller::State &cend, const bool lifting) {
 	// arm chain and joints pointers
-	const golem::Chainspace::Index armChain = armInfo.getChains().begin();
-	const golem::Configspace::Range armJoints = armInfo.getJoints();
+	const golem::Chainspace::Index armChain = getPlanner().armInfo.getChains().begin();
+	const golem::Configspace::Range armJoints = getPlanner().armInfo.getJoints();
 	// Compute a sequence of targets corresponding to the transformed arm end-effector
 	GenWorkspaceChainState gwcs;
 	controller->chainForwardTransform(target.cpos, gwcs.wpos);
@@ -1979,12 +2006,12 @@ void R2GPlanner::findTarget(const golem::Mat34 &trn, const golem::Controller::St
 	cend = target;
 	{
 		// Find initial target position
-		if (!planner->findTarget(target, gwcs, cend))
+		if (!getPlanner().planner->findTarget(target, gwcs, cend))
 			throw Message(Message::LEVEL_ERROR, "spam::Robot::findTarget(): Unable to find initial target configuration");
 	}
 	//	context.write(">\n"); //std::cout << ">\n"; //context.write(">\n");
 	// set fingers pose
-	for (auto i = handInfo.getJoints().begin(); i != handInfo.getJoints().end(); ++i)
+	for (auto i = getPlanner().handInfo.getJoints().begin(); i != getPlanner().handInfo.getJoints().end(); ++i)
 		cend.cpos[i] = target.cpos[i];
 
 	// update arm configurations and compute average error
@@ -1998,8 +2025,8 @@ void R2GPlanner::findTarget(const golem::Mat34 &trn, const golem::Controller::St
 
 void R2GPlanner::findTarget(const golem::Mat34& queryTrn, const golem::Mat34& modelFrame, const golem::Controller::State& target, golem::Controller::State& cend, const bool lifting) {
 	// arm chain and joints pointers
-	const golem::Chainspace::Index armChain = armInfo.getChains().begin();
-	const golem::Configspace::Range armJoints = armInfo.getJoints();
+	const golem::Chainspace::Index armChain = getPlanner().armInfo.getChains().begin();
+	const golem::Configspace::Range armJoints = getPlanner().armInfo.getJoints();
 	// Compute a sequence of targets corresponding to the transformed arm end-effector
 	GenWorkspaceChainState gwcs;
 	controller->chainForwardTransform(target.cpos, gwcs.wpos);
@@ -2019,12 +2046,12 @@ void R2GPlanner::findTarget(const golem::Mat34& queryTrn, const golem::Mat34& mo
 	cend = target;
 	{
 		// Find initial target position
-		if (!planner->findTarget(target, gwcs, cend))
+		if (!getPlanner().planner->findTarget(target, gwcs, cend))
 			throw Message(Message::LEVEL_ERROR, "spam::Robot::findTarget(): Unable to find initial target configuration");
 	}
 	//	context.write(">\n"); //std::cout << ">\n"; //context.write(">\n");
 	// set fingers pose
-	for (auto i = handInfo.getJoints().begin(); i != handInfo.getJoints().end(); ++i)
+	for (auto i = getPlanner().handInfo.getJoints().begin(); i != getPlanner().handInfo.getJoints().end(); ++i)
 		cend.cpos[i] = target.cpos[i];
 
 	// update arm configurations and compute average error
@@ -2043,7 +2070,7 @@ void R2GPlanner::createTrajectory(const golem::Controller::State& begin, const g
 		throw Message(Message::LEVEL_ERROR, "Robot::findTrajectory(): no target specified");
 
 	// Trajectory from initial position to end position
-	for (golem::U32 i = 0; i < trajectoryTrials; ++i) {
+	for (golem::U32 i = 0; i < getPlanner().trajectoryTrials; ++i) {
 		if (universe.interrupted())
 			throw Exit();
 		context.debug("Player::findTrajectory(): Planning movement...\n");
@@ -2057,27 +2084,27 @@ void R2GPlanner::createTrajectory(const golem::Controller::State& begin, const g
 			// Setup workspace target
 			GenWorkspaceChainState wend;
 			wend.setToDefault(info.getChains().begin(), info.getChains().end()); // all used chains
-			wend.wpos[armInfo.getChains().begin()] = *pwend;
+			wend.wpos[getPlanner().armInfo.getChains().begin()] = *pwend;
 			// planner debug
 			//context.verbose("%s\n", plannerWorkspaceDebug(*planner, &wend.wpos).c_str());
-			if (!planner->findTarget(begin, wend, cend))
+			if (!getPlanner().planner->findTarget(begin, wend, cend))
 				continue;
 			// update configspace coords of the hand
-			if (pcend) cend.cpos.set(handInfo.getJoints(), pcend->cpos);
+			if (pcend) cend.cpos.set(getPlanner().handInfo.getJoints(), pcend->cpos);
 			// error
 			WorkspaceChainCoord wcc;
 			controller->chainForwardTransform(cend.cpos, wcc);
-			wcc[armInfo.getChains().begin()].multiply(wcc[armInfo.getChains().begin()], controller->getChains()[armInfo.getChains().begin()]->getReferencePose());
+			wcc[getPlanner().armInfo.getChains().begin()].multiply(wcc[getPlanner().armInfo.getChains().begin()], controller->getChains()[getPlanner().armInfo.getChains().begin()]->getReferencePose());
 			grasp::RBDist err;
-			err.set(grasp::RBCoord(*pwend), grasp::RBCoord(wcc[armInfo.getChains().begin()]));
+			err.set(grasp::RBCoord(*pwend), grasp::RBCoord(wcc[getPlanner().armInfo.getChains().begin()]));
 			context.debug("Robot::findTrajectory(): Pose error: lin=%.9f, ang=%.9f\n", err.lin, err.ang);
 		}
 
 		// planner debug
 		//context.verbose("%s\n", plannerConfigspaceDebug(*planner, &cend.cpos).c_str());
 		// Find collision-free trajectory and wait until the device is ready for new commands
-		cend.t = begin.t + (t > SEC_TM_REAL_ZERO ? t : trajectoryDuration);
-		if (planner->findGlobalTrajectory(begin, cend, trajectory, trajectory.begin()))
+		cend.t = begin.t + (t > SEC_TM_REAL_ZERO ? t : getPlanner().trajectoryDuration);
+		if (getPlanner().planner->findGlobalTrajectory(begin, cend, trajectory, trajectory.begin()))
 			return;// success
 	}
 
@@ -2088,8 +2115,8 @@ grasp::RBDist R2GPlanner::trnTrajectory(const golem::Mat34& actionFrame, const g
 	if (begin == end)
 		throw Message(Message::LEVEL_ERROR, "Robot::createTrajectory(2): Empty input trajectory");
 	// arm chain and joints pointers
-	const golem::Chainspace::Index armChain = armInfo.getChains().begin();
-	const golem::Configspace::Range armJoints = armInfo.getJoints();
+	const golem::Chainspace::Index armChain = getPlanner().armInfo.getChains().begin();
+	const golem::Configspace::Range armJoints = getPlanner().armInfo.getJoints();
 	// Compute a sequence of targets corresponding to the transformed arm end-effector
 	GenWorkspaceChainState::Seq seq;
 	//for (Controller::State::Seq::iterator i = trajectory.begin(); i != trajectory.end(); ++i) {
@@ -2125,12 +2152,12 @@ grasp::RBDist R2GPlanner::trnTrajectory(const golem::Mat34& actionFrame, const g
 		Controller::State cend = *begin;
 		// planner debug
 		//context.verbose("%s\n", plannerWorkspaceDebug(*planner, &seq[0].wpos).c_str());
-		if (!planner->findTarget(*begin, seq[0], cend))
+		if (!getPlanner().planner->findTarget(*begin, seq[0], cend))
 			throw Message(Message::LEVEL_ERROR, "Robot::createTrajectory(2): Unable to find initial target configuration");
 		// Find remaining position sequence
 		if (seq.size() == 1)
 			ctrajectory.push_back(cend);
-		else if (seq.size() > 1 && !planner->findLocalTrajectory(cend, ++seq.begin(), seq.end(), ctrajectory, ctrajectory.end()))
+		else if (seq.size() > 1 && !getPlanner().planner->findLocalTrajectory(cend, ++seq.begin(), seq.end(), ctrajectory, ctrajectory.end()))
 			throw Message(Message::LEVEL_ERROR, "Robot::createTrajectory(2): Unable to find trajectory");
 	}
 	// update arm configurations and compute average error
@@ -2139,7 +2166,7 @@ grasp::RBDist R2GPlanner::trnTrajectory(const golem::Mat34& actionFrame, const g
 	for (size_t i = 0; i < ctrajectory.size(); ++i, ++j) {
 		// copy config
 		trajectory.push_back(*j);
-		trajectory.back().set(armInfo.getJoints().begin(), armInfo.getJoints().end(), ctrajectory[i]);
+		trajectory.back().set(getPlanner().armInfo.getJoints().begin(), getPlanner().armInfo.getJoints().end(), ctrajectory[i]);
 		// error
 		WorkspaceChainCoord wcc;
 		controller->chainForwardTransform(trajectory.back().cpos, wcc);
@@ -2155,8 +2182,8 @@ grasp::RBDist R2GPlanner::findTrnTrajectory(const golem::Mat34& trn, const golem
 	if (begin == end)
 		throw Message(Message::LEVEL_ERROR, "Robot::transformTrajectory(): Empty input trajectory");
 	// arm chain and joints pointers
-	const golem::Chainspace::Index armChain = armInfo.getChains().begin();
-	const golem::Configspace::Range armJoints = armInfo.getJoints();
+	const golem::Chainspace::Index armChain = getPlanner().armInfo.getChains().begin();
+	const golem::Configspace::Range armJoints = getPlanner().armInfo.getJoints();
 	// Compute a sequence of targets corresponding to the transformed arm end-effector
 	GenWorkspaceChainState::Seq seq;
 	//// the starting pose of the robot does not need a tranformation
@@ -2182,15 +2209,15 @@ grasp::RBDist R2GPlanner::findTrnTrajectory(const golem::Mat34& trn, const golem
 		// planner debug
 		//context.debug("Seq[0]: %s\n", grasp::plannerWorkspaceDebug(*planner, &seq[0].wpos).c_str());
 		//context.debug("Seq[2]: %s\n", grasp::plannerWorkspaceDebug(*planner, &seq[2].wpos).c_str());
-		if (!planner->findTarget(*begin, seq[0], cend))
+		if (!getPlanner().planner->findTarget(*begin, seq[0], cend))
 			throw Message(Message::LEVEL_ERROR, "Robot::transformTrajectory(): Unable to find initial target configuration");
 		// compute the initial trajectory to move thee robot from current pose to the beginning of the approach trajectory
-		if (!planner->findGlobalTrajectory(startPose, cend, initTrajectory, initTrajectory.end()))
+		if (!getPlanner().planner->findGlobalTrajectory(startPose, cend, initTrajectory, initTrajectory.end()))
 			throw Message(Message::LEVEL_ERROR, "Robot::transformTrajectory(): Unable to find initial trajectory");
 		// Find remaining position sequence
 		if (seq.size() == 1)
 			ctrajectory.push_back(cend);
-		else if (seq.size() > 1 && !planner->findLocalTrajectory(cend, ++seq.begin(), seq.end(), ctrajectory, ctrajectory.end()))
+		else if (seq.size() > 1 && !getPlanner().planner->findLocalTrajectory(cend, ++seq.begin(), seq.end(), ctrajectory, ctrajectory.end()))
 			throw Message(Message::LEVEL_ERROR, "Robot::transformTrajectory(): Unable to find trajectory");
 	}
 	// update arm configurations and compute average error
@@ -2200,7 +2227,7 @@ grasp::RBDist R2GPlanner::findTrnTrajectory(const golem::Mat34& trn, const golem
 	for (size_t i = 0; i < ctrajectory.size(); ++i, ++j) {
 		// copy config
 		trajectory.push_back(*j);
-		trajectory.back().set(armInfo.getJoints().begin(), armInfo.getJoints().end(), ctrajectory[i]);
+		trajectory.back().set(getPlanner().armInfo.getJoints().begin(), getPlanner().armInfo.getJoints().end(), ctrajectory[i]);
 		// error
 		WorkspaceChainCoord wcc;
 		controller->chainForwardTransform(trajectory.back().cpos, wcc);
@@ -2267,16 +2294,16 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 	context.write("R2GPlanner::perform()");
 	// create trajectory item
 	grasp::data::Item::Ptr itemTrajectory;
-	grasp::data::Handler::Map::const_iterator handlerPtr = handlerMap.find(trajectoryHandler);
+	grasp::data::Handler::Map::const_iterator handlerPtr = handlerMap.find(getPlanner().trajectoryHandler);
 	if (handlerPtr == handlerMap.end())
-		throw Message(Message::LEVEL_ERROR, "Player::perform(): unknown default trajectory handler %s", trajectoryHandler.c_str());
+		throw Message(Message::LEVEL_ERROR, "Player::perform(): unknown default trajectory handler %s", getPlanner().trajectoryHandler.c_str());
 	grasp::data::Handler* handler = is<grasp::data::Handler>(handlerPtr);
 	if (!handler)
-		throw Message(Message::LEVEL_ERROR, "Player::perform(): invalid default trajectory handler %s", trajectoryHandler.c_str());
+		throw Message(Message::LEVEL_ERROR, "Player::perform(): invalid default trajectory handler %s", getPlanner().trajectoryHandler.c_str());
 	itemTrajectory = handler->create();
 	grasp::data::Trajectory* trajectoryIf = is<grasp::data::Trajectory>(itemTrajectory.get());
 	if (!trajectoryIf)
-		throw Message(Message::LEVEL_ERROR, "Player::perform(): unable to create trajectory using handler %s", trajectoryHandler.c_str());
+		throw Message(Message::LEVEL_ERROR, "Player::perform(): unable to create trajectory using handler %s", getPlanner().trajectoryHandler.c_str());
 	trajectoryIf->setWaypoints(grasp::Waypoint::make(trajectory, trajectory)/*grasp::Waypoint::make(trajectory, trajectory)*/);
 
 	// block displaying the current item
@@ -2583,7 +2610,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 	record = brecord = false;
 
 	// stop recording
-	recordingStop(trajectoryIdlePerf);
+	recordingStop(getPlanner().trajectoryIdlePerf);
 	recordingWaitToStop();
 
 	// insert trajectory
@@ -2603,7 +2630,7 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 	if (trajectory.size() < 3)
 		throw Cancel("Error: the selected trajectory have not at least 3 waypoints.");
 
-	const golem::Chainspace::Index armChain = armInfo.getChains().begin();
+	const golem::Chainspace::Index armChain = getPlanner().armInfo.getChains().begin();
 	bool silent = to<Data>(dataPtr)->actionType != action::NONE_ACTION;
 //	context.debug("execute(): silen=%s, actionType=%s\n", silent ? "TRUE" : "FALSE", actionToString(grasp::to<Data>(dataPtr)->actionType));
 	const int key = !silent ? option("MQTGU", "Press to (M)odel based or (Q)uery based grasp, (T)rajectory based planner, (G)rasp, (U)p lifting") :
@@ -2624,12 +2651,12 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 	// init has the wrist pose of the 2nd element in the trajectory
 	Controller::State init = trajectory[pregraspIdx].state;
 	// and the fingers opened as the 1st element in the trajectory
-	for (auto j = handInfo.getJoints().begin(); j != handInfo.getJoints().end(); ++j)
+	for (auto j = getPlanner().handInfo.getJoints().begin(); j != getPlanner().handInfo.getJoints().end(); ++j)
 		init.cpos[j] = trajectory[initIdx].state.cpos[j];
 	// pregrasp has the wrist pose of the 2nd element in the trajectory
 	Controller::State pregrasp = trajectory[graspIdx].state;
 	// and the fingers opened as the 1st element in the trajectory
-	for (auto j = handInfo.getJoints().begin(); j != handInfo.getJoints().end(); ++j)
+	for (auto j = getPlanner().handInfo.getJoints().begin(); j != getPlanner().handInfo.getJoints().end(); ++j)
 		pregrasp.cpos[j] = trajectory[initIdx].state.cpos[j];
 	// grasp pose
 	Controller::State grasp = trajectory[graspIdx].state;
@@ -2827,7 +2854,7 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 
 		// grasp configuration (fingers closed)
 		Controller::State cend = lookupState();
-		for (auto i = handInfo.getJoints().begin(); i != handInfo.getJoints().end(); ++i)
+		for (auto i = getPlanner().handInfo.getJoints().begin(); i != getPlanner().handInfo.getJoints().end(); ++i)
 			cend.cpos[i] = grasp.cpos[i];
 
 		Controller::State::Seq approach;
@@ -2872,8 +2899,8 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 		// print distance to the targt configuration
 		Controller::State cfg = lookupState();
 		std::stringstream ss;
-		for (auto i = handInfo.getJoints().begin(); i != handInfo.getJoints().end(); ++i) {
-			const size_t k = i - handInfo.getJoints().begin();
+		for (auto i = getPlanner().handInfo.getJoints().begin(); i != getPlanner().handInfo.getJoints().end(); ++i) {
+			const size_t k = i - getPlanner().handInfo.getJoints().begin();
 			ss << "c=" << k << " [" << cend.cpos[i] - cfg.cpos[i] << "]/t";
 		}
 		context.write("Hand joints error:\n%s\n", ss.str().c_str());
@@ -2948,8 +2975,8 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 		//::sleep(1000);
 		Controller::State openfingers = lookupState();
 		Controller::State cnow = lookupState();
-		for (auto i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i) {
-			for (auto j = handInfo.getJoints(i).begin(); j != handInfo.getJoints(i).end(); ++j)
+		for (auto i = getPlanner().handInfo.getChains().begin(); i != getPlanner().handInfo.getChains().end(); ++i) {
+			for (auto j = getPlanner().handInfo.getJoints(i).begin(); j != getPlanner().handInfo.getJoints(i).end(); ++j)
 				openfingers.cpos[j] = init.cpos[j]; // pre-grasp fingers' pose
 		}
 		// transform w.r.t. query frame 
@@ -3070,9 +3097,9 @@ Real R2GPlanner::simContacts(const golem::Bounds::Seq::const_iterator &begin, co
 //	golem::Waypoint w1(*controller, next.cpos), w0(*controller, prev.cpos);
 //
 //	grasp::Vec3Seq force;
-//	force.assign(handInfo.getChains().size(), Vec3::zero());
-//	for (Chainspace::Index i = handInfo.getChains().begin(); i != handInfo.getChains().end(); ++i) {
-//		const U32 k = (U32)(i - handInfo.getChains().begin());
+//	force.assign(getPlanner().handInfo.getChains().size(), Vec3::zero());
+//	for (Chainspace::Index i = getPlanner().handInfo.getChains().begin(); i != getPlanner().handInfo.getChains().end(); ++i) {
+//		const U32 k = (U32)(i - getPlanner().handInfo.getChains().begin());
 //		force[k] = w1.wpos[i].p - w0.wpos[i].p;
 //	}
 //	return force;
@@ -3343,7 +3370,7 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 		(*g)->unlock();
 
 	// stop recording
-	recordingStop(trajectoryIdlePerf);
+	recordingStop(getPlanner().trajectoryIdlePerf);
 	recordingWaitToStop();
 
 	// render the mismatch between estimate and ground truth after resempling

@@ -19,6 +19,7 @@
 #include <cmath>
 #include <boost/shared_ptr.hpp>
 #include <Eigen/Dense>
+#include <string>
 
 #if defined(__unix__)
 #include <unistd.h>
@@ -141,7 +142,7 @@ public:
 		}
 		
 		/** Creates the object from the description. */
-		CREATE_FROM_OBJECT_DESC_0(BaseCovFunc, BaseCovFunc::Ptr)
+		CREATE_FROM_OBJECT_DESC_1(BaseCovFunc, BaseCovFunc::Ptr, const golem::Context&)
 		
 		/** Assert valid descriptor files */
 		bool isValid(){ 
@@ -156,6 +157,15 @@ public:
 	virtual std::string getName() const {
 		return "BaseCovFunc";
 	}
+
+	/** Get the hyperparameters as a string */
+	virtual std::string getHyper2str() const {
+		std::stringstream ss;
+		for (size_t i = 0; i < paramDim; ++i)
+			ss << loghyper(i) << " ";
+		return ss.str();
+	}
+
 	  
  //   /** Compute the kernel */
     virtual inline double get(const golem::Vec3& x1, const golem::Vec3& x2, const bool dirac = false) const { 
@@ -248,7 +258,7 @@ public:
 		Eigen::VectorXd sol; 
 		sol.resize(paramDim);
 		for (size_t i = 0; i < paramDim; ++i) {
-			sol(i) = 2 * range(i) * drand48() - range(i);
+			sol(i) = 2 * range(i) * rand.nextUniform<golem::Real>(0, 1) - range(i);
 		}
 		return sol;
 //		return Eigen::VectorXd::Random(paramDim, 1);
@@ -257,6 +267,8 @@ public:
     virtual ~BaseCovFunc() {};
 
 protected:
+	/** Context */
+	golem::Context context;
 	/** Determine when to recompute the kernel */
 	bool loghyper_changed;
 	/** Input dimensionality. */
@@ -266,20 +278,21 @@ protected:
 
 	/** Noise on the input points */
 	double sn2; 
+	golem::Rand rand;
 
 	/** Parameter vector containing the log hyperparameters of the covariance function.
 	*  The number of necessary parameters is given in param_dim. */
 	Eigen::VectorXd loghyper;
 	Eigen::VectorXd range;
 
-	static inline double drand48() {
-		return (rand() / (RAND_MAX + 1.0));
-	};
+	//static inline double drand48() {
+	//	return (rand() / (RAND_MAX + 1.0));
+	//};
 
-	static double randn() {
-		double u1 = 1.0 - drand48(), u2 = 1.0 - drand48();
-		return sqrt(-2 * log(u1))*cos(2 * M_PI*u2);
-	};
+	//static double randn() {
+	//	double u1 = 1.0 - drand48(), u2 = 1.0 - drand48();
+	//	return sqrt(-2 * log(u1))*cos(2 * M_PI*u2);
+	//};
 
 	/** Create from descriptor */
     virtual void create(const Desc& desc) {
@@ -293,7 +306,7 @@ protected:
     }
         
 	/** Default C'tor */
-    BaseCovFunc() {}
+	BaseCovFunc(const golem::Context& context) : context(context), rand(context.getRandSeed()) {}
 };
 
 //------------------------------------------------------------------------------

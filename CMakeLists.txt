@@ -331,13 +331,14 @@ IF (BUILD_SPAM_CORE)
 			optimized GolemSys${CMAKE_RELEASE_POSTFIX} debug GolemSys${CMAKE_DEBUG_POSTFIX}
 			optimized GolemTools${CMAKE_RELEASE_POSTFIX} debug GolemTools${CMAKE_DEBUG_POSTFIX}
 			optimized GolemCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrl${CMAKE_DEBUG_POSTFIX}
-			##optimized GolemPlan${CMAKE_RELEASE_POSTFIX} debug GolemPlan${CMAKE_DEBUG_POSTFIX}
+			optimized GraspJointCtrl${CMAKE_RELEASE_POSTFIX} debug GraspJointCtrl${CMAKE_DEBUG_POSTFIX}
+			#optimized GolemPlanner${CMAKE_RELEASE_POSTFIX} debug GolemPlanner${CMAKE_DEBUG_POSTFIX}
 			optimized GolemUI${CMAKE_RELEASE_POSTFIX} debug GolemUI${CMAKE_DEBUG_POSTFIX}
 			optimized GolemUICtrl${CMAKE_RELEASE_POSTFIX} debug GolemUICtrl${CMAKE_DEBUG_POSTFIX}
-			##optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
-			##optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
-            		##optimized GolemDeviceMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceMultiCtrl${CMAKE_DEBUG_POSTFIX}
-            		${CMAKE_DL_LIBS}
+			#optimized GolemCtrlSM${CMAKE_RELEASE_POSTFIX} debug GolemCtrlSM${CMAKE_DEBUG_POSTFIX}
+			#optimized GolemCtrlSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrlSingleCtrl${CMAKE_DEBUG_POSTFIX}
+            #optimized GolemCtrlMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrlMultiCtrl${CMAKE_DEBUG_POSTFIX}
+            ${CMAKE_DL_LIBS}
 			optimized CamcalbCalb${CMAKE_RELEASE_POSTFIX} debug CamcalbCalb${CMAKE_DEBUG_POSTFIX}
 			optimized CamcalbMatas${CMAKE_RELEASE_POSTFIX} debug CamcalbMatas${CMAKE_DEBUG_POSTFIX}		 
 			${PCL_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBS}
@@ -361,12 +362,14 @@ IF (BUILD_SPAM_CORE)
 			optimized GolemSys${CMAKE_RELEASE_POSTFIX} debug GolemSys${CMAKE_DEBUG_POSTFIX}
 			optimized GolemTools${CMAKE_RELEASE_POSTFIX} debug GolemTools${CMAKE_DEBUG_POSTFIX}
 			optimized GolemCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrl${CMAKE_DEBUG_POSTFIX}
-			##optimized GolemPlan${CMAKE_RELEASE_POSTFIX} debug GolemPlan${CMAKE_DEBUG_POSTFIX}
+			optimized GraspJointCtrl${CMAKE_RELEASE_POSTFIX} debug GraspJointCtrl${CMAKE_DEBUG_POSTFIX}
+			#optimized GolemPlanner${CMAKE_RELEASE_POSTFIX} debug GolemPlanner${CMAKE_DEBUG_POSTFIX}
+			optimized GolemUI${CMAKE_RELEASE_POSTFIX} debug GolemUI${CMAKE_DEBUG_POSTFIX}
 			optimized GolemUICtrl${CMAKE_RELEASE_POSTFIX} debug GolemUICtrl${CMAKE_DEBUG_POSTFIX}
-			##optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
-			##optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
+			#optimized GolemCtrlSM${CMAKE_RELEASE_POSTFIX} debug GolemCtrlSM${CMAKE_DEBUG_POSTFIX}
+			#optimized GolemCtrlSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrlSingleCtrl${CMAKE_DEBUG_POSTFIX}
+            #optimized GolemCtrlMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrlMultiCtrl${CMAKE_DEBUG_POSTFIX}
 			${CMAKE_DL_LIBS}
-            		##optimized GolemDeviceMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceMultiCtrl${CMAKE_DEBUG_POSTFIX}
 			optimized GolemMath${CMAKE_RELEASE_POSTFIX} debug GolemMath${CMAKE_DEBUG_POSTFIX}
 			optimized GolemUI${CMAKE_RELEASE_POSTFIX} debug GolemUI${CMAKE_DEBUG_POSTFIX}
 			GL
@@ -418,18 +421,19 @@ IF (BUILD_SPAM_HBPLAN)
 	endif(BUILD_DYNAMIC_LIBS)
 	if (WIN32)
 		TARGET_LINK_LIBRARIES(SpamHBPlan SpamCore
-			optimized GolemPlan${CMAKE_RELEASE_POSTFIX} debug GolemPlan${CMAKE_DEBUG_POSTFIX}
-			optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
-			optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
-            optimized GolemDeviceMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceMultiCtrl${CMAKE_DEBUG_POSTFIX}
+			optimized GolemPlanner${CMAKE_RELEASE_POSTFIX} debug GolemPlanner${CMAKE_DEBUG_POSTFIX}
+			optimized GolemPlannerGraphPlanner${CMAKE_RELEASE_POSTFIX} debug GolemPlannerGraphPlanner${CMAKE_DEBUG_POSTFIX}
+			optimized GolemCtrlSM${CMAKE_RELEASE_POSTFIX} debug GolemCtrlSM${CMAKE_DEBUG_POSTFIX}
+			optimized GolemCtrlSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrlSingleCtrl${CMAKE_DEBUG_POSTFIX}
+            optimized GolemCtrlMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrlMultiCtrl${CMAKE_DEBUG_POSTFIX}
 		)
 	elseif (UNIX)
 		TARGET_LINK_LIBRARIES(SpamHBPlan SpamCore
-			optimized GolemPlan${CMAKE_RELEASE_POSTFIX} debug GolemPlan${CMAKE_DEBUG_POSTFIX}
-			#optimized GolemUICtrl${CMAKE_RELEASE_POSTFIX} debug GolemUICtrl${CMAKE_DEBUG_POSTFIX}
-			optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
-			optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
-            optimized GolemDeviceMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceMultiCtrl${CMAKE_DEBUG_POSTFIX}
+			optimized GolemPlanner${CMAKE_RELEASE_POSTFIX} debug GolemPlanner${CMAKE_DEBUG_POSTFIX}
+			optimized GolemPlannerGraphPlanner${CMAKE_RELEASE_POSTFIX} debug GolemPlannerGraphPlanner${CMAKE_DEBUG_POSTFIX}
+			optimized GolemCtrlSM${CMAKE_RELEASE_POSTFIX} debug GolemCtrlSM${CMAKE_DEBUG_POSTFIX}
+			optimized GolemCtrlSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrlSingleCtrl${CMAKE_DEBUG_POSTFIX}
+            optimized GolemCtrlMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrlMultiCtrl${CMAKE_DEBUG_POSTFIX}
 	)
 	endif()	
 	SET_PROPERTY(TARGET SpamHBPlan PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
@@ -484,18 +488,19 @@ IF (BUILD_SPAM_MCPLAN)
 	endif(BUILD_DYNAMIC_LIBS)
 	if (WIN32)
 		TARGET_LINK_LIBRARIES(SpamMCPlan SpamCore
-			optimized GolemPlan${CMAKE_RELEASE_POSTFIX} debug GolemPlan${CMAKE_DEBUG_POSTFIX}
-			optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
-			optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
-            optimized GolemDeviceMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceMultiCtrl${CMAKE_DEBUG_POSTFIX}
+			optimized GolemPlanner${CMAKE_RELEASE_POSTFIX} debug GolemPlanner${CMAKE_DEBUG_POSTFIX}
+			optimized GolemPlannerGraphPlanner${CMAKE_RELEASE_POSTFIX} debug GolemPlannerGraphPlanner${CMAKE_DEBUG_POSTFIX}
+			optimized GolemCtrlSM${CMAKE_RELEASE_POSTFIX} debug GolemCtrlSM${CMAKE_DEBUG_POSTFIX}
+			optimized GolemCtrlSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrlSingleCtrl${CMAKE_DEBUG_POSTFIX}
+            optimized GolemCtrlMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrlMultiCtrl${CMAKE_DEBUG_POSTFIX}
 		)
 	elseif (UNIX)
 		TARGET_LINK_LIBRARIES(SpamMCPlan SpamCore
-			optimized GolemPlan${CMAKE_RELEASE_POSTFIX} debug GolemPlan${CMAKE_DEBUG_POSTFIX}
-			#optimized GolemUICtrl${CMAKE_RELEASE_POSTFIX} debug GolemUICtrl${CMAKE_DEBUG_POSTFIX}
-			optimized GolemDeviceSM${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSM${CMAKE_DEBUG_POSTFIX}
-			optimized GolemDeviceSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceSingleCtrl${CMAKE_DEBUG_POSTFIX}
-            optimized GolemDeviceMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemDeviceMultiCtrl${CMAKE_DEBUG_POSTFIX}
+			optimized GolemPlanner${CMAKE_RELEASE_POSTFIX} debug GolemPlanner${CMAKE_DEBUG_POSTFIX}
+			optimized GolemPlannerGraphPlanner${CMAKE_RELEASE_POSTFIX} debug GolemPlannerGraphPlanner${CMAKE_DEBUG_POSTFIX}
+			optimized GolemCtrlSM${CMAKE_RELEASE_POSTFIX} debug GolemCtrlSM${CMAKE_DEBUG_POSTFIX}
+			optimized GolemCtrlSingleCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrlSingleCtrl${CMAKE_DEBUG_POSTFIX}
+            optimized GolemCtrlMultiCtrl${CMAKE_RELEASE_POSTFIX} debug GolemCtrlMultiCtrl${CMAKE_DEBUG_POSTFIX}
 	)
 	endif()	
 	SET_PROPERTY(TARGET SpamMCPlan PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})

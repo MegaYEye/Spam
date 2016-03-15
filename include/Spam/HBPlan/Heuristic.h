@@ -46,7 +46,7 @@
 
 //------------------------------------------------------------------------------
 
-#include <Golem/Device/SingleCtrl/Data.h>
+#include <Golem/Ctrl/SingleCtrl/Data.h>
 #include <Spam/HBPlan/Belief.h>
 
 //------------------------------------------------------------------------------

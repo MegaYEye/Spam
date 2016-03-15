@@ -51,7 +51,7 @@ public:
 		}
 		
 		/** Creates the object from the description. */
-		CREATE_FROM_OBJECT_DESC_0(Laplace, BaseCovFunc::Ptr)
+		CREATE_FROM_OBJECT_DESC_1(Laplace, BaseCovFunc::Ptr, const golem::Context&)
 		
 		/** Assert valid descriptor files */
 		bool isValid(){ 
@@ -123,7 +123,7 @@ private:
 		sqrt3 = sqrt(3);
 	}
         
-    Laplace() : BaseCovFunc() {}
+	Laplace(const golem::Context& context) : BaseCovFunc(context) {}
 };
 
 //------------------------------------------------------------------------------

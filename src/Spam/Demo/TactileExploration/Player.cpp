@@ -341,7 +341,7 @@ void RRTPlayer::create(const Desc& desc) {
 		// copy as a vector of points in 3D
 		const bool draw = true;
 		Vec3 modelFrame = Vec3::zero();
-		const size_t Nsur = 100, Next = 20, Nint = 1, Ncurv =  curvPoints.size();
+		const size_t Nsur = 200, Next = 0, Nint = 0, Ncurv =  curvPoints.size();
 		const size_t Ntot = Nsur + Next + Nint;
 		const Real extRadius = 1.2, intRho = 0.001;
 		Vec3Seq cloud, surCloud, surNormals, points, pclNormals, nns;
@@ -441,17 +441,76 @@ void RRTPlayer::create(const Desc& desc) {
 		/*****  Create the model  *********************************************/
 		SampleSet::Ptr trainingData(new SampleSet(cloud, targets, nns));
 //#define cov_se
-#define covf_thinplate
+#define cov_se_sc
+//#define cov_se_ard
+//#define covf_thinplate
 #ifdef cov_se
 		GaussianRegressor::Desc covDesc;
 		covDesc.initialLSize = covDesc.initialLSize > 4 * Ntot ? covDesc.initialLSize : 4 * Ntot + covDesc.initialLSize;
 		covDesc.covTypeDesc.inputDim = trainingData->cols();
-		covDesc.covTypeDesc.length = 0.4; // 0.03;
-		covDesc.covTypeDesc.sigma = 0.3; // 0.015;
-		covDesc.covTypeDesc.noise = 0.01;
+		covDesc.covTypeDesc.length = 0.0; // 0.03;
+		covDesc.covTypeDesc.sigma = 0.0; // 0.015;
+		covDesc.covTypeDesc.noise = 0.005;
+		covDesc.optimisationDescPtr->delta0 = 0.01;
+		covDesc.optimisationDescPtr->deltaMax = 2;
+		covDesc.optimisationDescPtr->deltaMin = 1e-6;
+		covDesc.optimisationDescPtr->epsStop = 1e-6;
+		covDesc.optimisationDescPtr->etaMinus = 0.5;
+		covDesc.optimisationDescPtr->etaPlus = 1.2;
+		covDesc.optimisationDescPtr->maxIter = 150;
+		RealSeq limit; limit.assign(covDesc.covTypeDesc.inputDim + 1, 2.0);
+		//limit[covDesc.covTypeDesc.inputDim] = 1.5;
+		covDesc.optimisationDescPtr->limits = limit;
 		covDesc.optimise = true;
 		covDesc.debug = false;
 		GaussianRegressor::Ptr gp = covDesc.create(context);
+		context.write("%s Regressor created. inputDim=%d, parmDim=%d, l=%f, s=%f\n", gp->getName().c_str(), covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
+			covDesc.covTypeDesc.length, covDesc.covTypeDesc.sigma);
+#endif
+#ifdef cov_se_sc
+		GaussianSESCRegressor::Desc covDesc;
+		covDesc.initialLSize = covDesc.initialLSize > 4 * Ntot ? covDesc.initialLSize : 4 * Ntot + covDesc.initialLSize;
+		covDesc.covTypeDesc.inputDim = trainingData->cols();
+		covDesc.covTypeDesc.length = 0.5; // 0.03;
+		covDesc.covTypeDesc.sigma = 0.5; // 0.015;
+		covDesc.covTypeDesc.noise = 0.005;
+		covDesc.optimisationDescPtr->delta0 = 0.01;
+		covDesc.optimisationDescPtr->deltaMax = 2;
+		covDesc.optimisationDescPtr->deltaMin = 1e-6;
+		covDesc.optimisationDescPtr->epsStop = 1e-6;
+		covDesc.optimisationDescPtr->etaMinus = 0.5;
+		covDesc.optimisationDescPtr->etaPlus = 1.2;
+		covDesc.optimisationDescPtr->maxIter = 150;
+		RealSeq limit; limit.assign(covDesc.covTypeDesc.inputDim + 1, 2.0);
+		//limit[covDesc.covTypeDesc.inputDim] = 1.5;
+		covDesc.optimisationDescPtr->limits = limit;
+		covDesc.optimise = false;
+		covDesc.debug = false;
+		GaussianSESCRegressor::Ptr gp = covDesc.create(context);
+		context.write("%s Regressor created. inputDim=%d, parmDim=%d, l=%f, s=%f\n", gp->getName().c_str(), covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
+			covDesc.covTypeDesc.length, covDesc.covTypeDesc.sigma);
+#endif
+
+#ifdef cov_se_ard
+		GaussianARDRegressor::Desc covDesc;
+		covDesc.initialLSize = covDesc.initialLSize > 4 * Ntot ? covDesc.initialLSize : 4 * Ntot + covDesc.initialLSize;
+		covDesc.covTypeDesc.inputDim = trainingData->cols();
+		covDesc.covTypeDesc.length = 0.5; // 0.03;
+		covDesc.covTypeDesc.sigma = 0.5; // 0.015;
+		covDesc.covTypeDesc.noise = 0.005;
+		covDesc.optimisationDescPtr->delta0 = 0.01;
+		covDesc.optimisationDescPtr->deltaMax = 2;
+		covDesc.optimisationDescPtr->deltaMin = 1e-6;
+		covDesc.optimisationDescPtr->epsStop = 1e-6;
+		covDesc.optimisationDescPtr->etaMinus = 0.5;
+		covDesc.optimisationDescPtr->etaPlus = 1.2;
+		covDesc.optimisationDescPtr->maxIter = 150;
+		RealSeq limit; limit.assign(covDesc.covTypeDesc.inputDim + 1, 2.0);
+		limit[covDesc.covTypeDesc.inputDim] = 1.5;
+		covDesc.optimisationDescPtr->limits = limit;
+		covDesc.optimise = true;
+		covDesc.debug = false;
+		GaussianARDRegressor::Ptr gp = covDesc.create(context);
 		context.write("%s Regressor created. inputDim=%d, parmDim=%d, l=%f, s=%f\n", gp->getName().c_str(), covDesc.covTypeDesc.inputDim, covDesc.covTypeDesc.paramDim,
 			covDesc.covTypeDesc.length, covDesc.covTypeDesc.sigma);
 #endif
@@ -474,7 +533,6 @@ void RRTPlayer::create(const Desc& desc) {
 			covDesc.covTypeDesc.length, covDesc.covTypeDesc.noise);
 		ThinPlateRegressor::Ptr gp = covDesc.create(context);
 #endif
-		context.write("%s Regressor created\n", gp->getName().c_str());
 		gp->set(trainingData);
 
 		/*****  Query the model with a point  *********************************/
@@ -491,7 +549,7 @@ void RRTPlayer::create(const Desc& desc) {
 		context.write("Test estimate first point in the model\ny = %f -> qf = %f qVar = %f error=%f\n\n", targets[0], qf, qVar, er);
 		if (!::isfinite(qf) || !::isfinite(qVar))
 			return;
-
+		
 		/*****  Evaluate points and normals  *********************************************/
 		const size_t testSize = 50;
 		context.write("Evaluate %d points and normals\n", testSize);
@@ -517,9 +575,11 @@ void RRTPlayer::create(const Desc& desc) {
 			const Eigen::Vector4d res = gp->f(q);
 			fx[i] = res(0);
 			nn[i] = Vec3(res(1), res(2), res(3));
-			golem::kahanSum(normError, c, (1 - ::abs(nn[i].dot(normStar[i])))*90);
+			nn[i].normalise();
+			const double er = (1 - abs(nn[i].dot(normStar[i]))) * 90;
+			golem::kahanSum(normError, c, er);
 			golem::kahanSum(evalError, c1, std::pow(fx[i] - yStar[i], 2));
-			context.write("Evaluate[%d]: f(x_star) = %f -> f_star = %f v_star = %f normal=[%f %f %f] dot=%f\n", i, yStar[i], fx[i], varx[i], nn[i].x, nn[i].y, nn[i].z, nn[i].dot(normStar[i]));
+			context.write("Evaluate[%d]: f(x_star) = %f -> f_star = %f v_star = %f normal=[%f %f %f] norm_error=%f (deg)\n", i, yStar[i], fx[i], varx[i], nn[i].x, nn[i].y, nn[i].z, er);
 		}
 		context.write("Evaluate(): error=%f avg=%f normError=%f avg=%f\n\n", evalError, evalError / testSize, normError, normError / testSize);
 		// render normals
@@ -729,11 +789,11 @@ void RRTPlayer::create(const Desc& desc) {
 
 	menuCmdMap.insert(std::make_pair("Y", [=]() {
 		/*****  Global variables  ******************************************/
-		size_t N_sur = 100, N_ext = 20, N_int = 1, N_tot = N_sur + N_ext + N_int;
+		size_t N_sur = 250, N_ext = 0, N_int = 0, N_tot = N_sur + N_ext + N_int;
 		const Real surRho = 0.025, extRho = 0.05, intRho = 0.001;
 		golem::Real noise = 0.001; //
 
-		const bool prtInit = true;
+		const bool prtInit = false;
 		const bool prtPreds = true;
 		const bool draw = true;
 
@@ -782,8 +842,8 @@ void RRTPlayer::create(const Desc& desc) {
 			GaussianRegressor::Desc covDesc;
 			covDesc.initialLSize = covDesc.initialLSize > N_tot ? covDesc.initialLSize : N_tot + 100;
 			covDesc.covTypeDesc.inputDim = trainingData->cols();
-			covDesc.covTypeDesc.length = 0.025; // 0.03;
-			covDesc.covTypeDesc.sigma = 0.01; // 0.015;
+			covDesc.covTypeDesc.length = 1.0; // 0.03;
+			covDesc.covTypeDesc.sigma = 1.0; // 0.015;
 			covDesc.covTypeDesc.noise = noise;// 0.0001;
 			covDesc.optimise = true;
 			covDesc.debug = false;

@@ -49,7 +49,8 @@
 #include <Grasp/Core/Ctrl.h>
 #include <Grasp/Core/Data.h>
 #include <Grasp/Core/RB.h>
-#include <Golem/Plan/Planner.h>
+#include <Golem/Planner/Data.h>
+#include <Golem/Planner/GraphPlanner/Data.h>
 
 //------------------------------------------------------------------------------
 
@@ -63,8 +64,10 @@ namespace data {
 */
 class HandlerR2GPlan {
 public:
+	/** Planner index. */
+	virtual golem::U32 getPlannerIndex() const = 0;
 	/** Sets planner and controllers. */
-	virtual void set(const golem::Planner& planner, const grasp::StringSeq& controllerIDSeq) = 0;
+	virtual void set(const golem::Planner& planner, const grasp::ControllerId::Seq& controllerIDSeq) = 0;
 };
 
 /** Trajectory collection and tools.

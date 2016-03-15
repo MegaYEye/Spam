@@ -7,8 +7,8 @@
  */
 
 #include <Spam/HBPlan/Heuristic.h>
-#include <Golem/Device/MultiCtrl/MultiCtrl.h>
-#include <Golem/Plan/Data.h>
+#include <Golem/Ctrl/MultiCtrl/MultiCtrl.h>
+#include <Golem/Planner/GraphPlanner/Data.h>
 
 //------------------------------------------------------------------------------
 

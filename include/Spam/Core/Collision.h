@@ -48,7 +48,7 @@
 
 #include <Grasp/Core/Cloud.h>
 #include <Grasp/Core/Search.h>
-#include <Golem/Plan/GraphPlanner.h>
+#include <Golem/Planner/GraphPlanner/GraphPlanner.h>
 #include <Spam/Core/JContact.h>
 
 //------------------------------------------------------------------------------

@@ -9,7 +9,7 @@
 #include <Spam/Data/R2GTrajectory/R2GTrajectory.h>
 #include <Grasp/App/Player/Data.h>
 #include <Golem/Tools/XMLData.h>
-#include <Golem/Plan/Data.h>
+#include <Golem/Planner/GraphPlanner/Data.h>
 #include <Golem/UI/Data.h>
 #include <Grasp/Core/Import.h>
 #include <Grasp/Core/Ctrl.h>
@@ -381,6 +381,8 @@ void spam::data::HandlerR2GTrajectory::create(const Desc& desc) {
 
 	waypointSuffix = desc.waypointSuffix;
 
+	plannerIndex = desc.plannerIndex;
+
 	profileDesc = desc.profileDesc; // shallow copy
 	profileDesc->pCallbackDist = this;
 
@@ -457,15 +459,22 @@ grasp::data::Item::Ptr spam::data::HandlerR2GTrajectory::create() const {
 
 //------------------------------------------------------------------------------
 
-void spam::data::HandlerR2GTrajectory::set(const golem::Planner& planner, const grasp::StringSeq& controllerIDSeq) {
+golem::U32 spam::data::HandlerR2GTrajectory::getPlannerIndex() const {
+	return plannerIndex;
+}
+
+void spam::data::HandlerR2GTrajectory::set(const golem::Planner& planner, const grasp::ControllerId::Seq& controllerIDSeq) {
 	this->planner = &planner;
 	this->controller = &planner.getController();
 
-	// Assuption: controller ids correspond to arm and hand
-	this->arm = controllerIDSeq.size() >= 1 ? findController(*const_cast<golem::Controller*>(controller), controllerIDSeq[0]) : nullptr;
-	this->hand = controllerIDSeq.size() >= 2 ? findController(*const_cast<golem::Controller*>(controller), controllerIDSeq[1]) : nullptr;
+	if (controllerIDSeq.size() < 2)
+		throw Message(Message::LEVEL_CRIT, "HandlerTrajectory(): arm and hand are required");
 
+	// joint and chain info
 	info = controller->getStateInfo();
+	armInfo = controllerIDSeq[0].findInfo(*const_cast<golem::Controller*>(controller));
+	handInfo = controllerIDSeq[1].findInfo(*const_cast<golem::Controller*>(controller));
+
 	for (Configspace::Index i = info.getJoints().begin(); i < info.getJoints().end(); ++i) {
 		const bool isArm = arm && arm->getStateInfo().getJoints().contains(i);
 		const bool isHand = hand && hand->getStateInfo().getJoints().contains(i);

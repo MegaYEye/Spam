@@ -14,7 +14,7 @@
     <simulation fps="30" real_time="0" skin_width="0.005" sleep_lin_vel_squared="0.0025" sleep_ang_vel_squared="0.0025" max_angular_velocity="7.0" bounce_threshold="-2.0"></simulation>
   </universe>
 
-  <scene name="RagPlanner">
+  <scene name="FT Demo">
     <simulation restitution="0.0" static_friction="0.2" dynamic_friction="0.1">
       <gravity v1="0.0" v2="0.0" v3="-9.81"/>
     </simulation>
@@ -105,7 +105,7 @@
 
     <heuristic contact_fac="1000.0" non_contact_fac="1000.0" max_surface_points_inkd="5000">
       <evaluation_model neighbours="1" points="250" depth_stddev="1.0" likelihood="1.0"/>
-      <check_model neighbours="50" points="10000" depth_stddev="0.10" likelihood="1000.0" radius="0.0025"/>
+      <check_model neighbours="50" points="10000" depth_stddev="0.10" likelihood="1000.0" radius="0.01"/>
       <ftmodel dist_max="0.1" cone_theta_orizontal_axis="0.5" cone_theta_vertical_axis="0.785" num_nearest_points="5" num_points="5000" mahalanobis_fac="0.05" enabled_likelihood="1" intrinsic_exp_parameter="1">
         <joint_fac dim="16" c1="0.01" c2="0.01" c3="0.38" c4="0.60" c5="0.01" c6="0.01" c7="0.38" c8="0.60" c9="0.01" c10="0.01" c11="0.38" c12="0.60" c13="0.01" c14="0.01" c15="0.38" c16="0.60"/>
       </ftmodel>
@@ -317,7 +317,7 @@
     </trial_data>
   </pose_planner>
 
-  <player>
+  <player planner_index="0" trajectory_name="trajectory">
     <!-- To run robot server uncomment: <server .../> -->
     <!--<server port="54312" clients="10" message_interval="600.0"/>-->
 
@@ -338,7 +338,7 @@
     <!-- DLR Justin robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotJustin" -->
     <!-- DLR Justin robot (controller, planner): library_path="GolemDeviceRobotJustin" config_path="GolemDeviceRobotJustin" -->
 
-    <controller library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBorisTactileSim">
+    <controller library_path="GolemDeviceMultiCtrl" config_path="GolemCtrlRobotBorisTactileSim">
       <renderer>
         <joint_appearance line_width="1.0">
           <solid_colour R="192" G="192" B="0" A="100"></solid_colour>
@@ -358,7 +358,12 @@
         </state_renderer>
       </renderer>
     </controller>
-    <planner library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotBorisTactileSim">
+    <planner library_path="GolemPlannerGraphPlanner" config_path="GolemCtrlRobotBorisTactileSim">
+      <controller id="KukaLWRSim+KukaLWRBorisR"/>
+      <controller id="DLRHitHandIISim+DLRHitHandIITactile"/>
+
+      <trajectory name="trajectory" handler="Trajectory+TrajectoryDemoR2G" idle_begin="0.5" idle_end="2.0" idle_perf="5.0" duration="5.0" trials="5"/>
+
       <renderer show_duration="600.0">
         <goal_renderer show="1" vertex_position_show="0" vertex_frame_show="1" edge_show="0">
           <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>

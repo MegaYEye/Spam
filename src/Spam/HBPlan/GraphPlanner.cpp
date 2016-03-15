@@ -8,9 +8,9 @@
  */
 
 #include <Spam/HBPlan/GraphPlanner.h>
-#include <Golem/Device/MultiCtrl/MultiCtrl.h>
-#include <Golem/Device/SingleCtrl/SingleCtrl.h>
-#include <Golem/Plan/Data.h>
+#include <Golem/Ctrl/MultiCtrl/MultiCtrl.h>
+#include <Golem/Ctrl/SingleCtrl/SingleCtrl.h>
+#include <Golem/Planner/GraphPlanner/Data.h>
 #include <iomanip> // std::setprecision
 
 //------------------------------------------------------------------------------

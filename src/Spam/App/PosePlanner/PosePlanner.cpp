@@ -8,7 +8,7 @@
 
 #include <Golem/Tools/XMLData.h>
 #include <Golem/Tools/Data.h>
-#include <Golem/Plan/Data.h>
+#include <Golem/Planner/GraphPlanner/Data.h>
 #include <Spam/App/PosePlanner/PosePlanner.h>
 
 #include <Golem/Math/Rand.h>
@@ -457,17 +457,17 @@ void PosePlanner::Desc::load(golem::Context& context, const golem::XMLContext* x
 	Player::Desc::load(context, xmlcontext);
 
 	RagGraphPlanner::Desc* pRagGraphPlanner(new RagGraphPlanner::Desc);
-	(golem::Planner::Desc&)*pRagGraphPlanner = *uiPlannerDesc->pPlannerDesc; // Planner
+	(golem::Planner::Desc&)*pRagGraphPlanner = *uiPlannerDesc->plannerDescSeq[0]; // Planner
 	//(golem::UIPlanner::Desc&)*pRagGraphPlanner = *uiPlannerDesc; // Physic planner
-	uiPlannerDesc->pPlannerDesc.reset(pRagGraphPlanner);
-	uiPlannerDesc->pPlannerDesc = RagGraphPlanner::Desc::load(&context, xmlcontext->getContextFirst("player planner"));
+	uiPlannerDesc->plannerDescSeq[0].reset(pRagGraphPlanner);
+	uiPlannerDesc->plannerDescSeq[0] = RagGraphPlanner::Desc::load(&context, xmlcontext->getContextFirst("player planner"));
 
 	xmlcontext = xmlcontext->getContextFirst("pose_planner");
 
 	FTDrivenHeuristic::Desc* pFTDrivenHeuristic(new FTDrivenHeuristic::Desc);
-	(golem::Heuristic::Desc&)*pFTDrivenHeuristic = *uiPlannerDesc->pPlannerDesc->pHeuristicDesc;
-	uiPlannerDesc->pPlannerDesc->pHeuristicDesc.reset(pFTDrivenHeuristic);
-	spam::XMLData((FTDrivenHeuristic::Desc&)*uiPlannerDesc->pPlannerDesc->pHeuristicDesc, xmlcontext->getContextFirst("heuristic"));
+	(golem::Heuristic::Desc&)*pFTDrivenHeuristic = *uiPlannerDesc->plannerDescSeq[0]->pHeuristicDesc;
+	uiPlannerDesc->plannerDescSeq[0]->pHeuristicDesc.reset(pFTDrivenHeuristic);
+	spam::XMLData((FTDrivenHeuristic::Desc&)*uiPlannerDesc->plannerDescSeq[0]->pHeuristicDesc, xmlcontext->getContextFirst("heuristic"));
 
 	//try {
 	//	XMLData((grasp::RBPose::Desc&)*pRBPoseDesc, const_cast<golem::XMLContext*>(xmlcontext));
@@ -622,10 +622,10 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	}
 
 	// manipulator
-	manipulator = desc.manipulatorDesc->create(*planner, desc.controllerIDSeq);
+	manipulator = desc.manipulatorDesc->create(*getPlanner().planner, getPlanner().controllerIDSeq);
 	manipulatorAppearance = desc.manipulatorAppearance;
 
-	pHeuristic = dynamic_cast<FTDrivenHeuristic*>(&planner->getHeuristic());
+	pHeuristic = dynamic_cast<FTDrivenHeuristic*>(&getPlanner().planner->getHeuristic());
 	pHeuristic->setBelief(&*pBelief);
 	pHeuristic->setManipulator(manipulator.get());
 

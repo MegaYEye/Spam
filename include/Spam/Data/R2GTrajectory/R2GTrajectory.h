@@ -146,7 +146,7 @@ protected:
 
 /** Data handler is associated with a particular item type, it knows how to create items, it can hold shared buffer.
 */
-class GOLEM_LIBRARY_DECLDIR HandlerR2GTrajectory : public grasp::data::Handler, public grasp::UI, public HandlerR2GPlan, public grasp::data::HandlerPlan, public grasp::data::Import, public golem::Profile::CallbackDist/*, public grasp::data::Transform*/ {
+class GOLEM_LIBRARY_DECLDIR HandlerR2GTrajectory : public grasp::data::Handler, public grasp::UI, public HandlerR2GPlan, public grasp::data::HandlerPlanner, public grasp::data::Import, public golem::Profile::CallbackDist/*, public grasp::data::Transform*/ {
 public:
 	friend class ItemR2GTrajectory;
 
@@ -361,6 +361,9 @@ public:
 		/** Waypoint suffix */
 		std::string waypointSuffix;
 
+		/** Planner index */
+		golem::U32 plannerIndex;
+
 		/** Trajectory profile description */
 		golem::Profile::Desc::Ptr profileDesc;
 		/** Trajectory profile configspace distance multiplier */
@@ -425,6 +428,8 @@ public:
 			grasp::data::Handler::Desc::setToDefault();
 
 			waypointSuffix = getFileExtWaypoint();
+
+			plannerIndex = 0;
 
 			profileDesc.reset(new golem::Profile::Desc);
 			distance.assign(golem::Configspace::DIM, golem::REAL_ONE);
@@ -544,6 +549,9 @@ protected:
 	/** waypoint suffix */
 	std::string waypointSuffix;
 
+	/** Planner index */
+	golem::U32 plannerIndex;
+
 	/** Planner */
 	const golem::Planner* planner;
 	/** Controller */
@@ -554,6 +562,8 @@ protected:
 	const golem::Controller* hand;
 	/** Controller state info */
 	golem::Controller::State::Info info;
+	/** Arm controller state info */
+	golem::Controller::State::Info armInfo;
 	/** Hand controller state info */
 	golem::Controller::State::Info handInfo;
 
@@ -652,8 +662,10 @@ protected:
 	/** Profile state sequence */
 	virtual void profile(golem::SecTmReal duration, golem::Controller::State::Seq& trajectory) const;
 
+	/** HandlerPlanner: Planner index. */
+	virtual golem::U32 getPlannerIndex() const;
 	/** HandlerPlan: Sets planner and controllers. */
-	virtual void set(const golem::Planner& planner, const grasp::StringSeq& controllerIDSeq);
+	virtual void set(const golem::Planner& planner, const grasp::ControllerId::Seq& controllerIDSeq);
 
 	/** Trajectory: Returns waypoints with velocity profile. */
 	virtual void createTrajectory(const ItemR2GTrajectory& item, golem::Controller::State::Seq& trajectory);

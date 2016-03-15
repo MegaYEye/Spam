@@ -9,7 +9,8 @@
 #include <Spam/Demo/FT/FTDemo.h>
 #include <Golem/Tools/XMLData.h>
 #include <Golem/Tools/Data.h>
-#include <Golem/Plan/Data.h>
+#include <Golem/Planner/Data.h>
+#include <Golem/Planner/GraphPlanner/Data.h>
 //#include <Golem/Phys/PhysScene.h>
 #include <algorithm>
 #include <Grasp/Data/Image/Image.h>
@@ -423,7 +424,7 @@ void FTDemo::create(const Desc& desc) {
 						grasp::RBCoord cc(manipulator->getBaseFrame(cend.cpos).p, q);
 						grasp::Manipulator::Waypoint waypoint(cend.cpos, cc);
 						grasp::Contact::Likelihood likelihood;
-						optimisation->evaluate(0, waypoint, likelihood);
+						//optimisation->evaluate(0, waypoint, likelihood);
 						const Real loss = dGraspLik != REAL_ZERO ? 1 - abs(likelihood.value / dGraspLik) : REAL_ZERO;
 						context.write("Loss %f -> lik.value = %f\n", loss, likelihood.value);
 						// if loss is greater than 0.25, then we replan -> go for a grasp!
@@ -511,16 +512,16 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 
 	// create trajectory item
 	grasp::data::Item::Ptr itemTrajectory;
-	grasp::data::Handler::Map::const_iterator handlerPtr = handlerMap.find(trajectoryHandler);
+	grasp::data::Handler::Map::const_iterator handlerPtr = handlerMap.find(getPlanner().trajectoryHandler);
 	if (handlerPtr == handlerMap.end())
-		throw Message(Message::LEVEL_ERROR, "Player::perform(): unknown default trajectory handler %s", trajectoryHandler.c_str());
+		throw Message(Message::LEVEL_ERROR, "Player::perform(): unknown default trajectory handler %s", getPlanner().trajectoryHandler.c_str());
 	grasp::data::Handler* handler = is<grasp::data::Handler>(handlerPtr);
 	if (!handler)
-		throw Message(Message::LEVEL_ERROR, "Player::perform(): invalid default trajectory handler %s", trajectoryHandler.c_str());
+		throw Message(Message::LEVEL_ERROR, "Player::perform(): invalid default trajectory handler %s", getPlanner().trajectoryHandler.c_str());
 	itemTrajectory = handler->create();
 	grasp::data::Trajectory* trajectoryIf = is<grasp::data::Trajectory>(itemTrajectory.get());
 	if (!trajectoryIf)
-		throw Message(Message::LEVEL_ERROR, "Player::perform(): unable to create trajectory using handler %s", trajectoryHandler.c_str());
+		throw Message(Message::LEVEL_ERROR, "Player::perform(): unable to create trajectory using handler %s", getPlanner().trajectoryHandler.c_str());
 	trajectoryIf->setWaypoints(grasp::Waypoint::make(trajectory, trajectory)/*grasp::Waypoint::make(trajectory, trajectory)*/);
 
 	// block displaying the current item
@@ -679,7 +680,7 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	//}*/
 
 	// stop recording
-	recordingStop(trajectoryIdlePerf);
+	recordingStop(getPlanner().trajectoryIdlePerf);
 	recordingWaitToStop();
 
 	// insert trajectory

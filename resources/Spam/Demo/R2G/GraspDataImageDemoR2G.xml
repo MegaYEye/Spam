@@ -53,6 +53,8 @@
       </appearance>
     </image>
 
+    <query normal_std_dev="100.0"/>
+
     <model file="CalibrationCube.obj" points="100000" features="1000000" attempts="10" kernels="500000" neighbours="20000" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-5">
       <nn_search search_checks="32" search_kdtrees="4"/>
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>

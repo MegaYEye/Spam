@@ -53,7 +53,7 @@ public:
 		}
 		
 		/** Creates the object from the description. */
-		CREATE_FROM_OBJECT_DESC_0(ThinPlate, BaseCovFunc::Ptr)
+		CREATE_FROM_OBJECT_DESC_1(ThinPlate, BaseCovFunc::Ptr, const golem::Context&)
 		
 		/** Assert valid descriptor files */
 		bool isValid(){ 
@@ -116,7 +116,7 @@ private:
 		sn2 = loghyper(1) * loghyper(1); //2 * loghyper(1) * loghyper(1);//
 	}
 
-	ThinPlate() : BaseCovFunc() {}
+	ThinPlate(const golem::Context& context) : BaseCovFunc(context) {}
 };
 
 //------------------------------------------------------------------------------
