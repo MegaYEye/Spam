@@ -403,15 +403,16 @@
       <triangle t1="7" t2="2" t3="6"/>
     </arm_tool_bounds>
 
-    <obstacle_bounds type="plane" distance="0.0" grid_size="10" grid_delta="0.1" group="1">
-      <normal v1="0.0" v2="0.0" v3="1.0"/>
-      <pose v1="0.0" v2="0.0" v3="-0.33" roll="0.0" pitch="0.0" yaw="0.0"/>
-      <!--<pose v1="0.0" v2="0.0" v3="-0.345" roll="0.0" pitch="0.0" yaw="0.0"/>-->
-    </obstacle_bounds>
-    <obstacle_bounds type="box" group="1" invisible="1">
-      <dimensions v1="0.15" v2="0.15" v3="0.15"/>
-      <pose v1="0.1" v2="0.0" v3="0.45" roll="0.0" pitch="0.0" yaw="0.0"/>
-    </obstacle_bounds>
+    <objects>
+      <bounds type="plane" distance="0.0" grid_size="10" grid_delta="0.1" group="1">
+        <normal v1="0.0" v2="0.0" v3="1.0"/>
+        <pose v1="0.0" v2="0.0" v3="-0.345" roll="0.0" pitch="0.0" yaw="0.0"/>
+      </bounds>
+      <bounds type="box" group="1" invisible="1">
+        <dimensions v1="0.15" v2="0.15" v3="0.15"/>
+        <pose v1="0.1" v2="0.0" v3="0.45" roll="0.0" pitch="0.0" yaw="0.0"/>
+      </bounds>
+    </objects>
   </player>
 
   <recorder>
@@ -444,7 +445,6 @@
     <handler library_path="GraspDataTrajectory" config_path="GraspDataTrajectory"/>
     <handler library_path="GraspDataContactModel" config_path="GraspDataContactModel"/>
     <handler library_path="GraspDataContactQuery" config_path="GraspDataContactQuery"/>
-    <handler library_path="GraspDataCompositions3D" config_path="GraspDataCompositions3D"/>
 
     <handler library_path="GraspDataImage" config_path="GraspDataImageDemoR2G"/>
     <handler library_path="GraspDataPointsCurv" config_path="GraspDataPointsCurvDemoR2G"/>

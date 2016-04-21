@@ -331,7 +331,7 @@
     <!-- DLR Justin robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotJustin" -->
     <!-- DLR Justin robot (controller, planner): library_path="GolemDeviceRobotJustin" config_path="GolemDeviceRobotJustin" -->
 
-    <controller library_path="GolemDeviceMultiCtrl" config_path="GolemCtrlRobotBorisTactileSim">
+    <controller library_path="GolemCtrlMultiCtrl" config_path="GolemCtrlRobotBorisSim">
       <renderer>
         <joint_appearance line_width="1.0">
           <solid_colour R="192" G="192" B="0" A="100"></solid_colour>
@@ -351,14 +351,11 @@
         </state_renderer>
       </renderer>
     </controller>
-    <planner library_path="GolemPlannerGraphPlanner" config_path="GolemPlannerRobotBorisRTactile">
-      <controller id="KukaLWRSim+KukaLWRBorisR" begin="0" end="1"/>
-      <controller id="DLRHitHandIISim+DLRHitHandIITactile" begin="1" end="6"/>
+    <planner library_path="GolemPlannerGraphPlanner" config_path="GolemPlannerRobotBorisR">
+      <controller id="KukaLWRSim+KukaLWRBorisR"/>
+      <controller id="DLRHitHandIISim+DLRHitHandIIBorisR"/>
 
-      <sensor id="FTClient+FTClientDemoDR55"/>
-      <!--<sensor id="FTDAQ+FTDAQ"/>-->
-
-      <trajectory handler="Trajectory+TrajectoryDemoDR55" idle_begin="0.5" idle_end="1.0" idle_perf="5.0" duration="5.0" trials="5"/>
+      <trajectory name="trajectory" handler="Trajectory+TrajectoryDemoR2G" idle_begin="0.5" idle_end="2.0" idle_perf="5.0" duration="5.0" trials="5"/>
 
       <renderer show_duration="600.0">
         <goal_renderer show="1" vertex_position_show="0" vertex_frame_show="1" edge_show="0">
@@ -400,7 +397,7 @@
     </planner>
 
     <controller id="KukaLWRSim+KukaLWRBorisR"/>
-    <controller id="DLRHitHandIISim+DLRHitHandIITactile"/>
+    <controller id="DLRHitHandIISim+DLRHitHandIIBorisR"/>
 
     <!--<sensor id="FTClient+FTClient"/>-->
 
@@ -439,14 +436,16 @@
       <triangle t1="7" t2="2" t3="6"/>
     </arm_tool_bounds>
 
-    <obstacle_bounds type="plane" distance="0.0" grid_size="10" grid_delta="0.1" group="1">
-      <normal v1="0.0" v2="0.0" v3="1.0"/>
-      <pose v1="0.0" v2="0.0" v3="-0.345" roll="0.0" pitch="0.0" yaw="0.0"/>
-    </obstacle_bounds>
-    <obstacle_bounds type="box" group="1" invisible="1">
-      <dimensions v1="0.15" v2="0.15" v3="0.15"/>
-      <pose v1="0.1" v2="0.0" v3="0.45" roll="0.0" pitch="0.0" yaw="0.0"/>
-    </obstacle_bounds>
+    <objects>
+      <bounds type="plane" distance="0.0" grid_size="10" grid_delta="0.1" group="1">
+        <normal v1="0.0" v2="0.0" v3="1.0"/>
+        <pose v1="0.0" v2="0.0" v3="-0.345" roll="0.0" pitch="0.0" yaw="0.0"/>
+      </bounds>
+      <bounds type="box" group="1" invisible="1">
+        <dimensions v1="0.15" v2="0.15" v3="0.15"/>
+        <pose v1="0.1" v2="0.0" v3="0.45" roll="0.0" pitch="0.0" yaw="0.0"/>
+      </bounds>
+    </objects>
   </player>
 
   <recorder>
@@ -475,7 +474,6 @@
     <handler library_path="GraspDataTrajectory" config_path="GraspDataTrajectory"/>
     <handler library_path="GraspDataContactModel" config_path="GraspDataContactModel"/>
     <handler library_path="GraspDataContactQuery" config_path="GraspDataContactQuery"/>
-    <handler library_path="GraspDataCompositions3D" config_path="GraspDataCompositions3D"/>
 
     <handler library_path="GraspDataImage" config_path="GraspDataImageDemoR2G"/>
     <handler library_path="GraspDataPointsCurv" config_path="GraspDataPointsCurvDemoR2G"/>

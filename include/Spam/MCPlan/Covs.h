@@ -214,11 +214,24 @@ public:
 		grad(convertToEigenXd(x1), convertToEigenXd(x2), g);
 	};
 
+	virtual void gradDiff(const golem::Vec3& x1, const golem::Vec3& x2, const int dx, Eigen::VectorXd& g) const {
+		gradDiff(convertToEigenXd(x1), convertToEigenXd(x2), dx, g);
+	};
+
+	virtual void gradDiff2(const golem::Vec3& x1, const golem::Vec3& x2, const size_t dx1, const size_t dx2, Eigen::VectorXd& g) const {
+		gradDiff2(convertToEigenXd(x1), convertToEigenXd(x2), dx1, dx2, g);
+	};
+
+
 	/** Covariance gradient of two input vectors with respect to the hyperparameters.
 	*  @param x1 first input vector
 	*  @param x2 second input vector
 	*  @param grad covariance gradient */
 	virtual void grad(const Eigen::VectorXd &x1, const Eigen::VectorXd &x2, Eigen::VectorXd& g) const {};
+
+	virtual void gradDiff(const Eigen::VectorXd& x1, const Eigen::VectorXd& x2, const int dx, Eigen::VectorXd& g) const {};
+
+	virtual void gradDiff2(const Eigen::VectorXd& x1, const Eigen::VectorXd& x2, const size_t dx1, const size_t dx2, Eigen::VectorXd& g) const {};
 
 	/** Update parameter vector.
 	*  @param p new parameter vector */

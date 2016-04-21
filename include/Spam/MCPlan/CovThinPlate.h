@@ -86,7 +86,7 @@ public:
 	virtual inline double getDiff2(const Eigen::VectorXd& xi, const Eigen::VectorXd& xj, const size_t dx1, const size_t dx2, const bool dirac = false) const {
 		const double r = (xi - xj).norm();
 		const double noise = dirac ? sn2 : .0;
-		return 6 * (r - loghyper(0)) * (((xi(dx1) - xj(dx1)) * (xi(dx2) - xj(dx2))));
+		return 6 * (r - loghyper(0)) * (dirac - (((xi(dx1) - xj(dx1)) * (xi(dx2) - xj(dx2)))));
 		//return dirac || r < golem::REAL_EPS ? dx1 == dx2 ? loghyper(0)/*6 * (r - loghyper(0))*/ : golem::REAL_ZERO : 6 * (r - loghyper(0)) * (((xi(dx1) - xj(dx1)) * (xi(dx2) - xj(dx2))) / r/* + noise*/);
 	}
 

@@ -468,7 +468,7 @@ void spam::data::HandlerR2GTrajectory::set(const golem::Planner& planner, const 
 	this->controller = &planner.getController();
 
 	if (controllerIDSeq.size() < 2)
-		throw Message(Message::LEVEL_CRIT, "HandlerTrajectory(): arm and hand are required");
+		throw Message(Message::LEVEL_CRIT, "HandlerR2GTrajectory(): arm and hand are required");
 
 	// joint and chain info
 	info = controller->getStateInfo();
@@ -476,8 +476,8 @@ void spam::data::HandlerR2GTrajectory::set(const golem::Planner& planner, const 
 	handInfo = controllerIDSeq[1].findInfo(*const_cast<golem::Controller*>(controller));
 
 	for (Configspace::Index i = info.getJoints().begin(); i < info.getJoints().end(); ++i) {
-		const bool isArm = arm && arm->getStateInfo().getJoints().contains(i);
-		const bool isHand = hand && hand->getStateInfo().getJoints().contains(i);
+		const bool isArm = armInfo.getJoints().contains(i);
+		const bool isHand = handInfo.getJoints().contains(i);
 		const size_t j = i - info.getJoints().begin();
 
 		// velocity
@@ -491,7 +491,6 @@ void spam::data::HandlerR2GTrajectory::set(const golem::Planner& planner, const 
 		// command
 		command[i] = commandFac[i] * (isArm ? cmdFac.arm : isHand ? cmdFac.hand : cmdFac.other);
 	}
-	handInfo = hand->getStateInfo();
 
 	pProfile = profileDesc->create(*controller); // throws
 

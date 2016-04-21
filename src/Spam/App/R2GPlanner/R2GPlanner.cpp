@@ -1566,6 +1566,7 @@ bool R2GPlanner::create(const Desc& desc) {
 						context.write("Optimisation\ndist %f size %d\n", dist, size);
 
 						golem::Real lik = REAL_ZERO;
+						Manipulator::Waypoint::Seq waypoints;
 						// test for collisions in the range (w0, w1) - not excluding w0 and w1
 						for (U32 i = 0; i <= size; ++i) {
 							p[0] = Real(i) / Real(size);
@@ -1580,9 +1581,10 @@ bool R2GPlanner::create(const Desc& desc) {
 							Bounds::Seq bounds = manipulator->getBounds(config1.config, config1.frame.toMat34());
 							renderHand(cend, bounds, false);
 							grasp::Contact::Likelihood likelihood;
-							if (false) {
-								grasp::Manipulator::Waypoint waypoint(w.cpos, config1.frame);								
-								//optimisation->evaluate(0, waypoint, likelihood);
+							if (true) {
+								grasp::Manipulator::Waypoint waypoint(w.cpos, config1.frame);	
+								waypoints.push_back(waypoint);
+								//optimisation->evaluate(waypoint, likelihood);
 							}
 							else {
 								Collision::FlannDesc waypointDesc;
@@ -1606,11 +1608,10 @@ bool R2GPlanner::create(const Desc& desc) {
 									(*g)->unlock();
 							}
 							// memorises the most likelihood configuration along the path
-							if (lik < abs(likelihood.value))
+							/*if (lik < abs(likelihood.value))
 								lik = abs(likelihood.value);
-							context.write("Iteration %d Loss %f -> lik.value = %f\n", i, lik, likelihood.value);
+							context.write("Iteration %d Loss %f -> lik.value = %f\n", i, lik, likelihood.value);*/
 						}
-
 						// computes the loss [1-lik/(desired grasp lik)]. low or negative values are good!
 						// dGraspLik (desired grasp lik) should never been zero!
 						// ISSUE: lik is always zero!

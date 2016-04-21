@@ -403,7 +403,7 @@ void FTDemo::create(const Desc& desc) {
 						continue;
 					}
 
-					if (contactOccured && grasp::to<Data>(dataCurrentPtr)->stratType != Strategy::ELEMENTARY) {
+					/*if (contactOccured && grasp::to<Data>(dataCurrentPtr)->stratType != Strategy::ELEMENTARY)*/ {
 						// decide if attempt to grasp if a contact occured
 						//cq->getData().configs[0]->getContact()->getOptimisation()->;
 						grasp::OptimisationSA::Desc optimisationDesc;
@@ -424,8 +424,8 @@ void FTDemo::create(const Desc& desc) {
 						grasp::RBCoord cc(manipulator->getBaseFrame(cend.cpos).p, q);
 						grasp::Manipulator::Waypoint waypoint(cend.cpos, cc);
 						grasp::Contact::Likelihood likelihood;
-						//optimisation->evaluate(0, waypoint, likelihood);
-						const Real loss = dGraspLik != REAL_ZERO ? 1 - abs(likelihood.value / dGraspLik) : REAL_ZERO;
+						optimisation->evaluate(waypoint, likelihood);
+						const Real loss = dGraspLik != REAL_ZERO ? 1 - likelihood.value / dGraspLik : REAL_ZERO;
 						context.write("Loss %f -> lik.value = %f\n", loss, likelihood.value);
 						// if loss is greater than 0.25, then we replan -> go for a grasp!
 						if (loss > 0.25) {

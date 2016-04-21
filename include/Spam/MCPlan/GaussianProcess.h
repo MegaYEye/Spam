@@ -115,39 +115,60 @@ public:
 	template <typename CovTypePtr, typename CovTypeDesc> void find(GaussianProcess<CovTypePtr, CovTypeDesc>* gp, bool verbose = true) {
 		clock_t t = clock();
 
+		golem::CriticalSection cs;
+		size_t k = 0;
+
 		int paramDim = gp->cf->getParamDim();
 		Eigen::VectorXd delta = Eigen::VectorXd::Ones(paramDim) * delta0;
-		Eigen::VectorXd gradOld = Eigen::VectorXd::Zero(paramDim);
-		Eigen::VectorXd params = gp->cf->getLogHyper();
-		Eigen::VectorXd bestParams = params;
+//		Eigen::VectorXd gradOld = Eigen::VectorXd::Zero(paramDim);
+//		Eigen::VectorXd params = gp->cf->getLogHyper();
+		Eigen::VectorXd bestParams = gp->cf->getLogHyper(); //params;
 		Real solutionEval = log(0);
-		bool limit = limits.size() >= paramDim;
-		for (size_t i = 0; i < maxIter; ++i) {
-			Eigen::VectorXd grad = -gp->logLikelihoodGradient();
-			gradOld = gradOld.cwiseProduct(grad);
-			for (int j = 0; j < gradOld.size(); ++j) {
-				if (gradOld(j) > 0) {
-					delta(j) = std::min(delta(j)*etaPlus, deltaMax);
+		grasp::ParallelsTask(context.getParallels(), [&](grasp::ParallelsTask*) {
+			const U32 jobId = context.getParallels()->getCurrentJob()->getJobId();
+			bool limit = limits.size() >= paramDim;
+			Eigen::VectorXd gradOld = Eigen::VectorXd::Zero(paramDim);
+			Eigen::VectorXd params = gp->cf->sampleParams();
+			double eval = log(0);
+			for (size_t i = 0; i < maxIter; ++i) {
+				{
+					CriticalSectionWrapper csw(cs);
+					if (solutionEval < eval) {
+						solutionEval = eval;
+						bestParams = params;
+						gp->cf->setLogHyper(bestParams);
+					}
+					//if (++k > desc.populationSize)
+					//	break;
 				}
-				else if (gradOld(j) < 0) {
-					delta(j) = std::max(delta(j)*etaMinus, deltaMin);
-					grad(j) = 0;
+				Eigen::VectorXd grad = -gp->logLikelihoodGradient();
+				//context.debug("gradO [%f %f] norm %f\n", grad(0), grad(1), grad.norm());
+				//context.debug("gradOld [%f %f] norm %f\n", gradOld(0), gradOld(1), gradOld.norm());
+				gradOld = gradOld.cwiseProduct(grad);
+				for (int j = 0; j < gradOld.size(); ++j) {
+					if (gradOld(j) > 0) {
+						delta(j) = std::min(delta(j)*etaPlus, deltaMax);
+				 	}
+					else if (gradOld(j) < 0) {
+						delta(j) = std::max(delta(j)*etaMinus, deltaMin);
+						grad(j) = 0;
+					}
+					params(j) += -sign(grad(j)) * delta(j);
+					// bound the parameters
+					if (abs(params(j)) > limits[j])
+						params(j) = sign(params(j)) * limits[j];
 				}
-				params(j) += -sign(grad(j)) * delta(j);
-				// bound the parameters
-				if (abs(params(j)) > limits[j])
-					params(j) = sign(params(j)) * limits[j];
+				gradOld = grad;
+				if (gradOld.norm() <= epsStop) break;
+				gp->cf->setLogHyper(params);
+				eval = gp->logLikelihood();
+				//context.debug("Thread[%d][%d] params=[%s] lik=%f grad_norm=%f [%f]\n", jobId, i, gp->cf->getHyper2str().c_str(), eval, gradOld.norm(), epsStop);
+				//if (solutionEval < eval) {
+				//	solutionEval = eval;
+				//	bestParams = params;
+				//}
 			}
-			gradOld = grad;
-			if (gradOld.norm() < epsStop) break;
-			gp->cf->setLogHyper(params);
-			double eval = gp->logLikelihood();
-			context.debug("Iter[%d] params=%s lik=%f\n", i, gp->cf->getHyper2str().c_str(), eval);
-			if (solutionEval < eval) {
-				solutionEval = eval;
-				bestParams = params;
-			}
-		}
+		});
 		gp->cf->setLogHyper(bestParams);
 
 		//----------------------------------------------------------------//
@@ -359,6 +380,9 @@ public:
 
 		/** Enable debug */
 		bool debug;
+		/** Enable debug */
+		bool verbose;
+
 
         /** C'tor */
         Desc() {
@@ -375,7 +399,7 @@ public:
 
 			atlas = true;
 			derivative = true;
-			debug = false;
+			debug = verbose = false;
         }
 
         /** Creates the object from the description. */
@@ -425,11 +449,76 @@ public:
         compute(true);
         update_alpha();
         update_k_star(xStar); //update_k_star(x_star);
+
+		// computes variance only on the estimated shape
         size_t n = sampleset->rows();
 		Eigen::VectorXd ks = k_star->block(0, 0, 1, n);
         Eigen::VectorXd v = L->topLeftCorner(n, n).triangularView<Eigen::Lower>().solve(ks);
 		return cf->get(xStar, xStar) - v.dot(v); //cf->get(x_star, x_star) - v.dot(v);
     }
+	/** Predict f_* ~ GP(x_*) for derived values too */
+	virtual Eigen::MatrixXd var2(const golem::Vec3& xStar) {
+		if (sampleset->empty()) return Eigen::MatrixXd();
+
+		//Eigen::Map<const Eigen::VectorXd> x_star(x.v, input_dim);
+		compute(true);
+		update_alpha();
+		update_k_star(xStar); //update_k_star(x_star);
+
+		size_t n = 4 * sampleset->rows();
+		Eigen::VectorXd vf = L->topLeftCorner(n, n).triangularView<Eigen::Lower>().solve(k_star->row(0));
+		Eigen::VectorXd vd0 = L->topLeftCorner(n, n).triangularView<Eigen::Lower>().solve(k_star->row(1));
+		Eigen::VectorXd vd1 = L->topLeftCorner(n, n).triangularView<Eigen::Lower>().solve(k_star->row(2));
+		Eigen::VectorXd vd2 = L->topLeftCorner(n, n).triangularView<Eigen::Lower>().solve(k_star->row(3));
+		//context.write("v rows %d cols %d\n", v.rows(), v.cols());
+		Eigen::MatrixXd kss; kss.resize(4, 4);
+
+		size_t i = 0;
+		for (size_t j = 0; j < 1; ++j) {
+			kss(i, j) = cf->get(xStar, xStar);
+			if (desc.debug) context.write("K**[%lu,%lu]=K**(x*,x*) = %f\n", i, j, kss(i, j));
+		}
+		for (size_t j = 0; j < 1; ++j) {
+			for (size_t d = 0; d < 3; ++d) {
+				kss(i, 1 + 3 * j + d) = cf->getDiff(xStar, xStar, d);
+				if (desc.debug) context.write("K**[%lu,%lu]=d%luK**(x*,x*) = %f\n", i, 1 + 3 * j + d, d, kss(i, 1 + 3 * j + d));
+			}
+		}
+
+		// 2nd row in K*
+		// -> [dx(x*x1), dx(x*x2), dx(x*x3), ..., dx(x*xn), ...
+		//    ... dxdx(x*x1), dxdy(x*x1), dxdz(x*x1), ..., dxdx(x*xn), dxdy(x*xn), dxdz(x*xn)] [1x4n]
+		// the loop goes for 3rd and 4th row as well -> [3x4n]
+		for (i = 1; i < 4; ++i) {
+			for (size_t j = 0; j < 1; ++j) {
+				kss(i, j) = cf->getDiff(xStar, xStar, i - 1);
+				if (desc.debug) context.write("K**[%lu,%lu]=d%luK**(x*,x*) = %f\n", i, j, i - 1, kss(i, j));
+			}
+			for (size_t j = 0; j < 1; ++j) {
+				for (size_t d = 0; d < 3; ++d) {
+					kss(i, 1 + j * 3 + d) = cf->getDiff2(xStar, xStar, i - 1, d);
+					if (desc.debug) context.write("K**[%lu,%lu]=d%lud%luK**(x*,x*) = %f\n", i, 1 + j * 3 + d, i - 1, d, kss(i, 1 + j * 3 + d));
+				}
+			}
+
+		}
+			
+		kss(0, 0) = kss(0, 0) - vf.dot(vf);
+		kss(0, 1) = kss(0, 1) - vd0.dot(vd0);
+		kss(1, 0) = kss(0, 1);
+		kss(0, 2) = kss(0, 2) - vd1.dot(vd1);
+		kss(2, 0) = kss(0, 2);
+		kss(0, 3) = kss(0, 3) - vd2.dot(vd2);
+		kss(3, 0) = kss(0, 3);
+
+		//context.write("Var[K**]:\n[%f %f %f %f]\n[%f %f %f %f]\n[%f %f %f %f]\n[%f %f %f %f]\n", kss(0, 0), kss(0, 1), kss(0, 2), kss(0, 3),
+		//	kss(1, 0), kss(1, 1), kss(1, 2), kss(1, 3),
+		//	kss(2, 0), kss(2, 1), kss(2, 2), kss(2, 3),
+		//	kss(3, 0), kss(3, 1), kss(3, 2), kss(3, 3));
+
+		return kss;
+	}
+
 
 	/** Predict f, var, N, Tx and Ty */
 	virtual void evaluate(const Vec3Seq& x, RealSeq& fx, RealSeq& varx, Eigen::MatrixXd& normals, Eigen::MatrixXd& tx, Eigen::MatrixXd& ty) {
@@ -544,7 +633,8 @@ public:
 	{
 		compute(false);
 		update_alpha();
-		size_t n = 4 * sampleset->rows();
+		size_t l = sampleset->rows();
+		size_t n = 4*l;
 		Eigen::VectorXd grad = Eigen::VectorXd::Zero(cf->getParamDim());
 		Eigen::VectorXd g(grad.size());
 		Eigen::MatrixXd W = Eigen::MatrixXd::Identity(n, n);
@@ -555,11 +645,27 @@ public:
 
 		W = (*alpha) * alpha->transpose() - W;
 
-		for (size_t i = 0; i < n; ++i) {
+		for (size_t i = 0; i < l; ++i) {
 			for (size_t j = 0; j <= i; ++j) {
 				cf->grad(sampleset->x(i), sampleset->x(j), g);
 				if (i == j) grad += W(i, j) * g * 0.5;
 				else grad += W(i, j) * g;
+			}
+		}
+		for (size_t i = 0; i < l; ++i) {
+			for (size_t d = 0; d < 3; ++d) {
+				for (size_t j = 0; j < l; ++j) {
+					cf->gradDiff(sampleset->x(i), sampleset->x(j), d, g);
+					if (i == j) grad += W(l + i * 3 + d, j) * g * 0.5;
+					else grad += W(l + i * 3 + d, j) * g;
+				}
+				size_t j = 0;
+				for (size_t z = 0; z < i * 3 + d + 1; ++z) {
+					cf->gradDiff2(sampleset->x(i), sampleset->x(j), d, z % 3, g);
+					if (i == j) grad += W(l + i * 3 + d, l + z) * g * 0.5;
+					else grad += W(l + i * 3 + d, l + z) * g;
+					if (z % 3 == 2) ++j;
+				}
 			}
 		}
 
@@ -876,7 +982,7 @@ protected:
 		//	}
 		//}
 
-		if (desc.debug) {
+		if (desc.verbose) {
 			context.write("L: [%d %d]\n", ndt, ndt);
 			for (size_t i = 0; i < ndt; ++i) {
 				for (size_t j = 0; j <= i; ++j) {

@@ -87,9 +87,6 @@ bool FTDrivenHeuristic::create(const Desc &desc) {
 //	context.debug("FTDrivenHeuristic::create()...\n");
 	Heuristic::create((Heuristic::Desc&)desc);
 
-	// printing of debug
-//	context.write("contact_fac=%f, max_points=%d, covariance=%f\n", desc.contactFac, desc.maxSurfacePoints, desc.covariance.p[0]);
-
 	ftDrivenDesc = desc;
 //	context.write("Heuristic params: dflt=%f limits=%f root=%f\n", desc.costDesc.distDfltFac, desc.costDesc.distLimitsFac, desc.costDesc.distRootFac);
 	//ftDrivenDesc.ftModelDesc.dim = 0;

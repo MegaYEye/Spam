@@ -685,7 +685,7 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	grasp::data::Handler::Map::const_iterator queryGraspHandlerPtr = handlerMap.find(desc.queryGraspHandler);
 	queryGraspHandler = queryGraspHandlerPtr != handlerMap.end() ? queryGraspHandlerPtr->second.get() : nullptr;
 	if (!queryGraspHandler)
-		throw Message(Message::LEVEL_CRIT, "spam::PosePlanner::create(): unknown model data handler: %s", desc.queryHandler.c_str());
+		throw Message(Message::LEVEL_CRIT, "spam::PosePlanner::create(): unknown query data handler: %s", desc.queryHandler.c_str());
 	queryGraspItem = desc.queryGraspItem;
 	queryItem = desc.queryItem;
 	queryItemObj = desc.queryItemObj;
