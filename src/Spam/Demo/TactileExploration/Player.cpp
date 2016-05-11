@@ -341,7 +341,7 @@ void RRTPlayer::create(const Desc& desc) {
 		// copy as a vector of points in 3D
 		const bool draw = true;
 		Vec3 modelFrame = Vec3::zero();
-		const size_t Nsur = 200, Next = 0, Nint = 0, Ncurv =  curvPoints.size();
+		const size_t Nsur = 10, Next = 0, Nint = 0, Ncurv =  curvPoints.size();
 		const size_t Ntot = Nsur + Next + Nint;
 		const Real extRadius = 1.2, intRho = 0.001;
 		Vec3Seq cloud, surCloud, surNormals, points, pclNormals, nns;
@@ -454,7 +454,7 @@ void RRTPlayer::create(const Desc& desc) {
 		covDesc.optimisationDescPtr->delta0 = 0.01;
 		covDesc.optimisationDescPtr->deltaMax = 2;
 		covDesc.optimisationDescPtr->deltaMin = 1e-6;
-		covDesc.optimisationDescPtr->epsStop = 1e-6;
+		covDesc.optimisationDescPtr->epsStop = 1e-2;
 		covDesc.optimisationDescPtr->etaMinus = 0.5;
 		covDesc.optimisationDescPtr->etaPlus = 1.2;
 		covDesc.optimisationDescPtr->maxIter = 500;
@@ -797,7 +797,7 @@ void RRTPlayer::create(const Desc& desc) {
 
 	menuCmdMap.insert(std::make_pair("Y", [=]() {
 		/*****  Global variables  ******************************************/
-		size_t N_sur = 10, N_ext = 0, N_int = 0, N_tot = N_sur + N_ext + N_int;
+		size_t N_sur = 25, N_ext = 0, N_int = 0, N_tot = N_sur + N_ext + N_int;
 		const Real surRho = 0.025, extRho = 0.05, intRho = 0.001;
 		golem::Real noise = 0.001; //
 

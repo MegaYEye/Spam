@@ -52,6 +52,10 @@ option(BUILD_SPAM_POSEPLANNER "Build Spam pose planner application" YES)
 option(BUILD_SPAM_R2GPLANNER "Build Spam RAG planner application" YES)
 
 ###############################################################################
+# Sensor interface
+option(BUILD_SPAM_SENSOR "Build Spam sensors library" YES)
+
+###############################################################################
 # Data Libraries
 option(BUILD_SPAM_DATA_BELIEF "Build Spam data belief library" YES)
 option(BUILD_SPAM_DATA_R2GTRAJECTORY "Build Spam data R2G trajectory library" YES)
@@ -397,6 +401,62 @@ ENDIF (BUILD_SPAM_CORE)
 
 ###############################################################################
 #
+# Data Sensor library
+#
+###############################################################################
+IF (BUILD_SPAM_SENSOR)
+	SET(SPAM_SENSOR_HEADERS
+		${PROJECT_ROOT}/include/Spam/Sensor/Sensor.h
+	)
+	SET(SPAM_SENSOR_SOURCES
+		${PROJECT_ROOT}/src/Spam/Sensor/Sensor.cpp
+	)
+	SET(SPAM_SENSOR_FILES
+		${PROJECT_ROOT}/resources/Spam/Core/SpamSensor.xml
+	)
+	
+	#if(BUILD_DYNAMIC_LIBS)
+		ADD_LIBRARY(SpamSensor SHARED ${SPAM_SENSOR_HEADERS} ${SPAM_SENSOR_SOURCES} ${SPAM_SENSOR_FILES})
+		SET_TARGET_PROPERTIES(SpamSensor PROPERTIES COMPILE_FLAGS ${CMAKE_DLL_EXPORT_FLAGS})
+	#else(BUILD_DYNAMIC_LIBS)
+	#	ADD_LIBRARY(SpamSensor STATIC ${DATA_BELIEF_HEADERS} ${DATA_BELIEF_SOURCES} ${DATA_BELIEF_FILES})
+	#endif(BUILD_DYNAMIC_LIBS)
+	if (WIN32)
+		TARGET_LINK_LIBRARIES(SpamSensor SpamCore
+			optimized GolemPlanner${CMAKE_RELEASE_POSTFIX} debug GolemPlanner${CMAKE_DEBUG_POSTFIX}
+			optimized GolemPlannerGraphPlanner${CMAKE_RELEASE_POSTFIX} debug GolemPlannerGraphPlanner${CMAKE_DEBUG_POSTFIX}
+		)
+	elseif (UNIX)
+		TARGET_LINK_LIBRARIES(SpamSensor SpamCore
+			optimized GolemPlanner${CMAKE_RELEASE_POSTFIX} debug GolemPlanner${CMAKE_DEBUG_POSTFIX}
+			optimized GolemPlannerGraphPlanner${CMAKE_RELEASE_POSTFIX} debug GolemPlannerGraphPlanner${CMAKE_DEBUG_POSTFIX}
+		)
+	endif()
+	
+	SET_PROPERTY(TARGET SpamSensor PROPERTY RELEASE_POSTFIX ${CMAKE_RELEASE_POSTFIX})
+	SET_PROPERTY(TARGET SpamSensor PROPERTY DEBUG_POSTFIX ${CMAKE_DEBUG_POSTFIX})
+	SET_PROPERTY(TARGET SpamSensor PROPERTY PROJECT_LABEL "Sensor")
+	SET_PROPERTY(TARGET SpamSensor PROPERTY FOLDER "Spam/Sensor")
+	
+	COPY_FILES(SpamSensor ${RUNTIME_OUTPUT_DIRECTORY} ${SPAM_SENSOR_FILES})
+	if(BUILD_DYNAMIC_LIBS)
+		if (WIN32)
+			INSTALL(TARGETS SpamSensor RUNTIME DESTINATION bin COMPONENT core_libs)
+		elseif (UNIX)
+			INSTALL(TARGETS SpamSensor LIBRARY DESTINATION bin COMPONENT core_libs)
+		endif()
+	else(BUILD_DYNAMIC_LIBS)
+		INSTALL(TARGETS SpamSensor ARCHIVE DESTINATION lib COMPONENT core_libs)
+	endif(BUILD_DYNAMIC_LIBS)
+	INSTALL(FILES ${DATA_BELIEF_HEADERS} DESTINATION include/Spam/Sensor/ COMPONENT core_headers)
+	INSTALL(FILES ${DATA_BELIEF_FILES} DESTINATION bin COMPONENT core_configs)
+	
+	SOURCE_GROUP("Include Files" FILES ${SPAM_SENSOR_HEADERS})
+	SOURCE_GROUP("Resource Files" FILES ${SPAM_SENSOR_FILES})
+ENDIF (BUILD_SPAM_SENSOR)
+
+###############################################################################
+#
 # HBPLAN library
 #
 ###############################################################################
@@ -548,7 +608,7 @@ IF (BUILD_SPAM_APP)
 		ADD_LIBRARY(SpamApp STATIC ${APP_POSEPLANNER_HEADERS} ${APP_R2GPlanner_HEADERS} ${APP_SOURCES})
 	endif(BUILD_DYNAMIC_LIBS)
 	if (WIN32)
-		TARGET_LINK_LIBRARIES(SpamApp SpamHBPlan
+		TARGET_LINK_LIBRARIES(SpamApp SpamHBPlan SpamSensor
 			optimized GraspApp${CMAKE_RELEASE_POSTFIX} debug GraspApp${CMAKE_DEBUG_POSTFIX}
 			optimized GraspActiveCtrl${CMAKE_RELEASE_POSTFIX} debug GraspActiveCtrl${CMAKE_DEBUG_POSTFIX}
             optimized GraspDataPointsCurv${CMAKE_RELEASE_POSTFIX} debug GraspDataPointsCurv${CMAKE_DEBUG_POSTFIX}
@@ -556,7 +616,7 @@ IF (BUILD_SPAM_APP)
 			optimized GraspArmHandForce${CMAKE_RELEASE_POSTFIX} debug GraspArmHandForce${CMAKE_DEBUG_POSTFIX}
 		)
 	elseif (UNIX)
-		TARGET_LINK_LIBRARIES(SpamApp SpamHBPlan
+		TARGET_LINK_LIBRARIES(SpamApp SpamHBPlan SpamSensor
 			optimized GraspApp${CMAKE_RELEASE_POSTFIX} debug GraspApp${CMAKE_DEBUG_POSTFIX}	
 			optimized GraspActiveCtrl${CMAKE_RELEASE_POSTFIX} debug GraspActiveCtrl${CMAKE_DEBUG_POSTFIX}
             optimized GraspDataPointsCurv${CMAKE_RELEASE_POSTFIX} debug GraspDataPointsCurv${CMAKE_DEBUG_POSTFIX}
@@ -701,7 +761,7 @@ ENDIF (BUILD_SPAM_DATA_BELIEF)
 
 ###############################################################################
 #
-# Data Belief library
+# Data R2G Trajectory library
 #
 ###############################################################################
 IF (BUILD_SPAM_DATA_R2GTRAJECTORY)

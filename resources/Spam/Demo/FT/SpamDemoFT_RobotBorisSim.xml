@@ -79,6 +79,8 @@
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
     </heuristic>-->
     <sensor_bundle>
+      <reader></reader>
+      <filter ></filter>
       <collision>
         <!-- collision with the ground truth -->
         <waypoint path_dist="0.0" points="100000" depth_stddev="1000.0" likelihood="1000.0"/>
@@ -339,7 +341,7 @@
     <!-- DLR Justin robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotJustin" -->
     <!-- DLR Justin robot (controller, planner): library_path="GolemDeviceRobotJustin" config_path="GolemDeviceRobotJustin" -->
 
-    <controller library_path="GolemCtrlMultiCtrl" config_path="GolemCtrlRobotBorisTactile">
+    <controller library_path="GolemCtrlMultiCtrl" config_path="GolemCtrlRobotBorisTactileSim">
       <renderer>
         <joint_appearance line_width="1.0">
           <solid_colour R="192" G="192" B="0" A="100"></solid_colour>
@@ -401,6 +403,16 @@
           <vertex_frame_size v1="0.02" v2="0.02" v3="0.02"></vertex_frame_size>
           <edge_colour R="0" G="0" B="0" A="255"></edge_colour>
         </optimised_path_rendererex>
+        <collision_bounds>
+          <chain show_solid="0" show_wire="1" wire_width="2">
+            <solid_colour R="0" G="0" B="255" A="255"/>
+            <wire_colour R="0" G="0" B="255" A="255"/>
+          </chain>
+          <joint show_solid="0" show_wire="1" wire_width="2">
+            <solid_colour R="0" G="0" B="255" A="255"/>
+            <wire_colour R="0" G="0" B="255" A="255"/>
+          </joint>
+        </collision_bounds>
       </renderer>
     </planner>
     <planner library_path="GolemPlannerGraphPlanner" config_path="GolemPlannerRobotBorisL">
@@ -445,6 +457,16 @@
           <vertex_frame_size v1="0.02" v2="0.02" v3="0.02"></vertex_frame_size>
           <edge_colour R="0" G="0" B="0" A="255"></edge_colour>
         </optimised_path_rendererex>
+        <collision_bounds>
+          <chain show_solid="0" show_wire="1" wire_width="2">
+            <solid_colour R="0" G="0" B="255" A="255"/>
+            <wire_colour R="0" G="0" B="255" A="255"/>
+          </chain>
+          <joint show_solid="0" show_wire="1" wire_width="2">
+            <solid_colour R="0" G="0" B="255" A="255"/>
+            <wire_colour R="0" G="0" B="255" A="255"/>
+          </joint>
+        </collision_bounds>
       </renderer>
     </planner>
 

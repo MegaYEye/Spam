@@ -434,6 +434,16 @@
           <vertex_frame_size v1="0.02" v2="0.02" v3="0.02"></vertex_frame_size>
           <edge_colour R="0" G="0" B="0" A="255"></edge_colour>
         </optimised_path_rendererex>
+        <collision_bounds>
+          <chain show_solid="0" show_wire="1" wire_width="2">
+            <solid_colour R="0" G="0" B="255" A="255"/>
+            <wire_colour R="0" G="0" B="255" A="255"/>
+          </chain>
+          <joint show_solid="0" show_wire="1" wire_width="2">
+            <solid_colour R="0" G="0" B="255" A="255"/>
+            <wire_colour R="0" G="0" B="255" A="255"/>
+          </joint>
+        </collision_bounds>
       </renderer>
     </planner>
 

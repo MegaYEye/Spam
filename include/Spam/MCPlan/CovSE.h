@@ -68,7 +68,7 @@ public:
         
 	/** Compute the kernel */
 	virtual double get(const Eigen::VectorXd& xi, const Eigen::VectorXd& xj, const bool dirac = false) const {
-		const double z = ((xi - xj) / ell).squaredNorm(); //((xi - xj) / ell).norm();
+		const double z = ((xi - xj) / ell).norm(); //((xi - xj) / ell).norm();
 		const double noise = dirac ? sn2 : .0;
 		return sf2*exp(-0.5*z) + noise;
 	}
@@ -76,7 +76,7 @@ public:
 	/** SE derivate = -1*invLenght*[sigma_f^2*exp(sqrt((p_1-p_2)'*(p_1-p_2))/(-leng))] */
 	virtual inline double getDiff(const Eigen::VectorXd& xi, const Eigen::VectorXd& xj, const int dx, const bool dirac = false) const {
 		//const double k = get(xi, xj, dirac); //sqrt(DD);
-		const double z = ((xi - xj) / ell).squaredNorm();
+		const double z = ((xi - xj) / ell).norm();
 		const double k = exp(-0.5*z);
 		// if dx < 0 then I compute the sum of the partial derivative
 //		return ((xi(dx) - xj(dx)) * k) / ell;
@@ -86,7 +86,7 @@ public:
 
 	virtual inline double getDiff2(const Eigen::VectorXd& xi, const Eigen::VectorXd& xj, const size_t dx1, const size_t dx2, const bool dirac = false) const {
 		//const double k = get(xi, xj, dirac); //sqrt(DD);
-		const double z = ((xi - xj) / ell).squaredNorm();
+		const double z = ((xi - xj) / ell).norm();
 		const double k = exp(-0.5*z);
 		
 		//const double noise = dirac ? sn2 : .0;
@@ -101,20 +101,20 @@ public:
 	*  @param x2 second input vector
 	*  @param grad covariance gradient */
 	virtual void grad(const Eigen::VectorXd& x1, const Eigen::VectorXd& x2, Eigen::VectorXd& g) const {
-		const double z = ((x1 - x2) / ell).squaredNorm();
+		const double z = ((x1 - x2) / ell).norm();
 		const double k = sf2*exp(-0.5*z);
 		g << k*z, 2 * k;// , 2 * loghyper(2);
 	};
 
 	virtual void gradDiff(const Eigen::VectorXd& x1, const Eigen::VectorXd& x2, const int dx, Eigen::VectorXd& g) const {
-		const double z = ((x1 - x2) / ell).squaredNorm();
+		const double z = ((x1 - x2) / ell).norm();
 		const double k = exp(-0.5*z);
 		g << -ell * (x1(dx) - x2(dx) * k), -2 * sf2 * (x1(dx) - x2(dx) * k);// , 2 * loghyper(2);
 //		g << -sf2*(x1(dx) - x2(dx))*k - sf2*ell*k*z, 4 * k;// , 2 * loghyper(2);
 	};
 
 	virtual void gradDiff2(const Eigen::VectorXd& x1, const Eigen::VectorXd& x2, const size_t dx1, const size_t dx2, Eigen::VectorXd& g) const {
-		const double z = ((x1 - x2) / ell).squaredNorm();
+		const double z = ((x1 - x2) / ell).norm();
 		const double k = exp(-0.5*z);
 		const double p = dx1 == dx2 ? sf2 : 0.0;
 		const double d = (x1[dx1] - x2[dx1]) * (x1[dx2] - x2[dx2]);

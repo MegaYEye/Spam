@@ -97,7 +97,7 @@ void FTDemo::create(const Desc& desc) {
 
 		// set the simulated object
 		if (!to<Data>(dataCurrentPtr)->simulateObjectPose.empty()) {
-			sensorBundlePtr->collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+			sensorBundlePtr->getCollisionPtr()->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
 			objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataCurrentPtr)->simulateObjectPose));
 		}
 		//executeCmd(trjPlayCmd);
@@ -313,7 +313,7 @@ void FTDemo::create(const Desc& desc) {
 					executeCmd(createQueryCmd);
 				// set the simulated object
 				if (!to<Data>(dataCurrentPtr)->simulateObjectPose.empty()) {
-					sensorBundlePtr->collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+					sensorBundlePtr->getCollisionPtr()->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
 					objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataCurrentPtr)->simulateObjectPose));
 				}
 				reset(); // move the robot to the home pose after scanning
@@ -411,7 +411,7 @@ void FTDemo::create(const Desc& desc) {
 						const OptimisationSA* optimisation = dynamic_cast<const OptimisationSA*>(cq->getData().configs[0]->getContact()->getOptimisation());
 						if (!optimisation)
 							continue;
-
+						
 						Controller::State cinit = lookupState(), cend = lookupState();
 						findTarget(grasp::to<Data>(dataCurrentPtr)->queryTransform, inp[2].state, cend);
 						grasp::Manipulator::Config config(cend.cpos, manipulator->getBaseFrame(cend.cpos));
@@ -419,17 +419,19 @@ void FTDemo::create(const Desc& desc) {
 						Bounds::Seq bounds = manipulator->getBounds(config.config, config.frame.toMat34());
 						renderHand(cend, bounds, true);
 
-
 						Quat q; manipulator->getBaseFrame(cend.cpos).R.toQuat(q);
 						grasp::RBCoord cc(manipulator->getBaseFrame(cend.cpos).p, q);
 						grasp::Manipulator::Waypoint waypoint(cend.cpos, cc);
 						grasp::Contact::Likelihood likelihood;
 						optimisation->evaluate(waypoint, likelihood);
+						grasp::Contact::Config::Seq queryConfigs = cq->getData().configs;
+						grasp::Contact::Config::Seq::iterator it = c.find(queryConfigs, queryConfigs.begin());
+						
 						const Real loss = dGraspLik != REAL_ZERO ? 1 - likelihood.value / dGraspLik : REAL_ZERO;
 						context.write("Loss %f -> lik.value = %f\n", loss, likelihood.value);
 						// if loss is greater than 0.25, then we replan -> go for a grasp!
 						if (loss > 0.25) {
-							//grasp::to<Data>(cdata->second\A0)->replanning = false;
+							//grasp::to<Data>(cdata->second)->replanning = false;
 							contactOccured = false;
 							updateAndResample(dataCurrentPtr);
 							enableForceReading = false;
@@ -566,7 +568,8 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	//TwistSeq rawThumbFT, rawIndexFT, rawWristFT;
 	//FT::Data thumbData, indexData, wristData;
 	//grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
-	sensorBundlePtr->start2read = true;
+	//sensorBundlePtr->start2read = true;
+	sensorBundlePtr->enable();
 	// repeat every send waypoint until trajectory end
 	for (U32 i = 0; controller->waitForBegin(); ++i) {
 		if (universe.interrupted())
@@ -576,7 +579,7 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 
 		Controller::State state = lookupState();
 		robotPoses.push_back(state);
-		sensorBundlePtr->increment();
+		//sensorBundlePtr->increment();
 
 		/*
 		//if (wristFTSensor) {
@@ -616,7 +619,8 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 		}
 	}
 	enableForceReading = false;
-	sensorBundlePtr->start2read = false;
+	sensorBundlePtr->disable();
+	//sensorBundlePtr->start2read = false;
 	/*
 	//std::string dir = makeString("%s%s/%s/trial0%d/", ftpath.c_str(), object.c_str(), item.c_str(), iteration++);
 	//golem::mkdir(dir.c_str());
