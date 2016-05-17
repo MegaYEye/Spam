@@ -50,6 +50,7 @@
 #include <Spam/App/R2GPlanner/Data.h>
 #include <Spam/Sensor/Sensor.h>
 #include <Grasp/ActiveCtrl/ArmHandForce/ArmHandForce.h>
+#include <Grasp/ActiveCtrl/Touch/ActiveTouchCtrl.h>
 
 //------------------------------------------------------------------------------
 
@@ -476,7 +477,8 @@ protected:
 	/** Sequence of FT sensors */
 	FTSensorSeq ftSensorSeq;
 	/** Pointer to the hand active controller */
-	grasp::ArmHandForce *armHandForce;
+	//grasp::ArmHandForce *armHandForce;
+	grasp::ActiveTouchCtrl *armHandForce;
 	/** Guards to retrieve a contact */
 	grasp::RealSeq fLimit;
 

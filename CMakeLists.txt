@@ -614,6 +614,7 @@ IF (BUILD_SPAM_APP)
             optimized GraspDataPointsCurv${CMAKE_RELEASE_POSTFIX} debug GraspDataPointsCurv${CMAKE_DEBUG_POSTFIX}
 			optimized GraspDataTrajectory${CMAKE_RELEASE_POSTFIX} debug GraspDataTrajectory${CMAKE_DEBUG_POSTFIX}
 			optimized GraspArmHandForce${CMAKE_RELEASE_POSTFIX} debug GraspArmHandForce${CMAKE_DEBUG_POSTFIX}
+			optimized GraspActiveTouchCtrl${CMAKE_RELEASE_POSTFIX} debug GraspActiveTouchCtrl${CMAKE_DEBUG_POSTFIX}
 		)
 	elseif (UNIX)
 		TARGET_LINK_LIBRARIES(SpamApp SpamHBPlan SpamSensor
@@ -622,7 +623,7 @@ IF (BUILD_SPAM_APP)
             optimized GraspDataPointsCurv${CMAKE_RELEASE_POSTFIX} debug GraspDataPointsCurv${CMAKE_DEBUG_POSTFIX}
 			optimized GraspDataTrajectory${CMAKE_RELEASE_POSTFIX} debug GraspDataTrajectory${CMAKE_DEBUG_POSTFIX}
 			optimized GraspArmHandForce${CMAKE_RELEASE_POSTFIX} debug GraspArmHandForce${CMAKE_DEBUG_POSTFIX}	 
-
+			optimized GraspActiveTouchCtrl${CMAKE_RELEASE_POSTFIX} debug GraspActiveTouchCtrl${CMAKE_DEBUG_POSTFIX}
 		)
 	endif()
 	

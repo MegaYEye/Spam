@@ -527,10 +527,12 @@ bool R2GPlanner::create(const Desc& desc) {
 	//dataSimContact << std::endl;
 
 	// ACTIVE CONTROLLER
-	const grasp::ActiveCtrl::Map::const_iterator armHandCtrlPtr = activectrlMap.find("ArmHandForce+ArmHandForce");
+//	const grasp::ActiveCtrl::Map::const_iterator armHandCtrlPtr = activectrlMap.find("ArmHandForce+ArmHandForce");
+	const grasp::ActiveCtrl::Map::const_iterator armHandCtrlPtr = activectrlMap.find("ActiveTouchCtrl+ActiveTouchCtrl");
 	if (armHandCtrlPtr == activectrlMap.end())
 		throw Message(Message::LEVEL_ERROR, "R2GPlanner::create(): armHandForce not found");
-	armHandForce = dynamic_cast<ArmHandForce*>(&*armHandCtrlPtr->second);
+//	armHandForce = dynamic_cast<ArmHandForce*>(&*armHandCtrlPtr->second);
+	armHandForce = dynamic_cast<ActiveTouchCtrl*>(&*armHandCtrlPtr->second);
 	if (!armHandForce)
 		throw Message(Message::LEVEL_ERROR, "R2GPlanner::create(): armHandForce is invalid");
 	armMode = armHandForce->getArmCtrl()->getMode();
@@ -742,7 +744,7 @@ bool R2GPlanner::create(const Desc& desc) {
 //
 //	};
 
-	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq&) { // throws
+	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws
 		//if (forceReaderHandler) forceReaderHandlerThread.start(forceReaderHandler);
 //		return;
 //		grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
@@ -796,7 +798,7 @@ bool R2GPlanner::create(const Desc& desc) {
 		static size_t indexkk = 0;
 		size_t k = 0;
 		U32 contacts = golem::numeric_const<U32>::ZERO;
-		handFilteredForce = sensorBundlePtr->getFilteredForces(); // sensorBundlePtr.get() ? sensorBundlePtr->getFilteredForces() : handFilteredForce;
+		handFilteredForce = force; // sensorBundlePtr->getFilteredForces(); // sensorBundlePtr.get() ? sensorBundlePtr->getFilteredForces() : handFilteredForce;
 		//if (indexkk++ % 10 == 0) {
 		//	context.write("FT Thumb [%f %f %f %f %f %f]\n",
 		//		handFilteredForce[0], handFilteredForce[1], handFilteredForce[2], handFilteredForce[3], handFilteredForce[4], handFilteredForce[5]);
