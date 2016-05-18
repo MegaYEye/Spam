@@ -419,6 +419,8 @@ public:
 		/** Sensor bundle desc file */
 		//SensorBundle::Desc sensorBundleDesc;
 		SensorBundle::Desc::Ptr sensorBundleDesc;
+		/** Active Ctrl */
+		std::string activeCtrlStr;
 
 		/** Constructs from description object */
 		Desc() {
@@ -448,6 +450,7 @@ public:
 			maxModelPoints = 5000;
 
 			sensorBundleDesc.reset(new SensorBundle::Desc);
+			activeCtrlStr = "ArmHandForce+ArmHandForce";
 //			objCollisionDescPtr.reset(new Collision::Desc());
 		}
 

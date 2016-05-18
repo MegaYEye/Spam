@@ -184,6 +184,7 @@ public:
 			virtual void assertValid(const grasp::Assert::Context &ac) const {
 				grasp::Assert::valid(dimensionality > golem::U32(0), ac, "Sensor Filter description: invalid dimensionality");
 				grasp::Assert::valid(windowSize > golem::U32(0), ac, "Sensor Filter description: invalid window size");
+				grasp::Assert::valid(delta > golem::REAL_ZERO, ac, "Sensor Filter description: invalid sigma");
 				grasp::Assert::valid(sigma > golem::REAL_ZERO, ac, "Sensor Filter description: invalid sigma");
 			}
 			/** Load descritpion from xml context. */

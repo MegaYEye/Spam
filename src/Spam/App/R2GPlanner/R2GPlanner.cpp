@@ -438,6 +438,12 @@ void R2GPlanner::Desc::load(golem::Context& context, const golem::XMLContext* xm
 	golem::XMLData(fLimit, xmlcontext->getContextFirst("limit"), false);
 
 	sensorBundleDesc->load(context, xmlcontext);
+	try {
+		golem::XMLData("active_ctrl", activeCtrlStr, const_cast<golem::XMLContext*>(xmlcontext));
+	}
+	catch (const Message& msg) {
+		context.info("Active control non selected. Used default %s", activeCtrlStr.c_str());
+	}
 	//sensorBundleDesc.load(context, xmlcontext);
 //	spam::XMLData(*objCollisionDescPtr, xmlcontext->getContextFirst("collision"));
 }
@@ -528,16 +534,16 @@ bool R2GPlanner::create(const Desc& desc) {
 
 	// ACTIVE CONTROLLER
 //	const grasp::ActiveCtrl::Map::const_iterator armHandCtrlPtr = activectrlMap.find("ArmHandForce+ArmHandForce");
-	const grasp::ActiveCtrl::Map::const_iterator armHandCtrlPtr = activectrlMap.find("ActiveTouchCtrl+ActiveTouchCtrl");
+	const grasp::ActiveCtrl::Map::const_iterator armHandCtrlPtr = activectrlMap.find(desc.activeCtrlStr);
 	if (armHandCtrlPtr == activectrlMap.end())
-		throw Message(Message::LEVEL_ERROR, "R2GPlanner::create(): armHandForce not found");
-//	armHandForce = dynamic_cast<ArmHandForce*>(&*armHandCtrlPtr->second);
+		throw Message(Message::LEVEL_ERROR, "R2GPlanner::create(): active ctrl %s not found", desc.activeCtrlStr.c_str());
+	//	armHandForce = dynamic_cast<ArmHandForce*>(&*armHandCtrlPtr->second);
 	armHandForce = dynamic_cast<ActiveTouchCtrl*>(&*armHandCtrlPtr->second);
 	if (!armHandForce)
-		throw Message(Message::LEVEL_ERROR, "R2GPlanner::create(): armHandForce is invalid");
+		throw Message(Message::LEVEL_ERROR, "R2GPlanner::create(): active ctrl %s is invalid", desc.activeCtrlStr.c_str());
 	armMode = armHandForce->getArmCtrl()->getMode();
 	handMode = armHandForce->getHandCtrl()->getMode();
-	context.write("Active control mode [arm/hand]: %s/%s\n", ActiveCtrlForce::ModeName[armMode], ActiveCtrlForce::ModeName[handMode]);
+	context.write("Active ctrl %s mode [arm/hand]: %s/%s\n", desc.activeCtrlStr.c_str(), ActiveCtrlForce::ModeName[armMode], ActiveCtrlForce::ModeName[handMode]);
 
 	// SET FT SENSORS AND GUARDS
 	fLimit = desc.fLimit;
