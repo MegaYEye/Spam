@@ -97,7 +97,8 @@ void FTDemo::create(const Desc& desc) {
 
 		// set the simulated object
 		if (!to<Data>(dataCurrentPtr)->simulateObjectPose.empty()) {
-			sensorBundlePtr->getCollisionPtr()->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+			//sensorBundlePtr->getCollisionPtr()->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+			collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
 			objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataCurrentPtr)->simulateObjectPose));
 		}
 		//executeCmd(trjPlayCmd);
@@ -313,7 +314,8 @@ void FTDemo::create(const Desc& desc) {
 					executeCmd(createQueryCmd);
 				// set the simulated object
 				if (!to<Data>(dataCurrentPtr)->simulateObjectPose.empty()) {
-					sensorBundlePtr->getCollisionPtr()->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+					//sensorBundlePtr->getCollisionPtr()->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+					collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
 					objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataCurrentPtr)->simulateObjectPose));
 				}
 				reset(); // move the robot to the home pose after scanning
@@ -569,7 +571,7 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	//FT::Data thumbData, indexData, wristData;
 	//grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
 	//sensorBundlePtr->start2read = true;
-	sensorBundlePtr->enable();
+//	sensorBundlePtr->enable();
 	// repeat every send waypoint until trajectory end
 	for (U32 i = 0; controller->waitForBegin(); ++i) {
 		if (universe.interrupted())
@@ -619,7 +621,7 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 		}
 	}
 	enableForceReading = false;
-	sensorBundlePtr->disable();
+//	sensorBundlePtr->disable();
 	//sensorBundlePtr->start2read = false;
 	/*
 	//std::string dir = makeString("%s%s/%s/trial0%d/", ftpath.c_str(), object.c_str(), item.c_str(), iteration++);

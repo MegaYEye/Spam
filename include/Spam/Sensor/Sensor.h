@@ -336,6 +336,10 @@ public:
 		debugRenderer.render();
 	}
 
+	inline Collision::FlannDesc getFlannDesc() {
+		return desc.objCollisionDescPtr->flannDesc;
+	}
+
 protected:
 	/** Context */
 	golem::Context context;

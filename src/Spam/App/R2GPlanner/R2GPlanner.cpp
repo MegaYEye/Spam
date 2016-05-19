@@ -437,7 +437,7 @@ void R2GPlanner::Desc::load(golem::Context& context, const golem::XMLContext* xm
 
 	golem::XMLData(fLimit, xmlcontext->getContextFirst("limit"), false);
 
-	sensorBundleDesc->load(context, xmlcontext);
+	//sensorBundleDesc->load(context, xmlcontext);
 	try {
 		golem::XMLData("active_ctrl", activeCtrlStr, const_cast<golem::XMLContext*>(xmlcontext));
 	}
@@ -445,7 +445,7 @@ void R2GPlanner::Desc::load(golem::Context& context, const golem::XMLContext* xm
 		context.info("Active control non selected. Used default %s", activeCtrlStr.c_str());
 	}
 	//sensorBundleDesc.load(context, xmlcontext);
-//	spam::XMLData(*objCollisionDescPtr, xmlcontext->getContextFirst("collision"));
+	spam::XMLData(*objCollisionDescPtr, xmlcontext->getContextFirst("sensor_bundle collision"));
 }
 
 //------------------------------------------------------------------------------
@@ -541,6 +541,8 @@ bool R2GPlanner::create(const Desc& desc) {
 	armHandForce = dynamic_cast<ActiveTouchCtrl*>(&*armHandCtrlPtr->second);
 	if (!armHandForce)
 		throw Message(Message::LEVEL_ERROR, "R2GPlanner::create(): active ctrl %s is invalid", desc.activeCtrlStr.c_str());
+	armHandForce->getArmCtrl()->setMode(ActiveCtrlForce::Mode::MODE_ENABLED);
+	armHandForce->getHandCtrl()->setMode(ActiveCtrlForce::Mode::MODE_ENABLED);
 	armMode = armHandForce->getArmCtrl()->getMode();
 	handMode = armHandForce->getHandCtrl()->getMode();
 	context.write("Active ctrl %s mode [arm/hand]: %s/%s\n", desc.activeCtrlStr.c_str(), ActiveCtrlForce::ModeName[armMode], ActiveCtrlForce::ModeName[handMode]);
@@ -554,7 +556,10 @@ bool R2GPlanner::create(const Desc& desc) {
 	context.write("Middle limits [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
 		fLimit[12], fLimit[13], fLimit[14], fLimit[15], fLimit[16], fLimit[17]);
 	
-	sensorBundlePtr = desc.sensorBundleDesc->create(*controller, *manipulator);
+	collisionPtr.reset();
+	collisionPtr = desc.objCollisionDescPtr->create(*this->manipulator.get());
+//	sensorBundlePtr = desc.sensorBundleDesc->create(*controller, *manipulator);
+
 	//SensorBundle::Desc sbDesc = desc.sensorBundleDesc;
 	//sbDesc.sensorSeq = armHandForce->getSensorSeq();
 	//sensorBundlePtr = sbDesc.create(*controller);
@@ -750,6 +755,33 @@ bool R2GPlanner::create(const Desc& desc) {
 //
 //	};
 
+	armHandForce->setSensorForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws
+		if (!enableForceReading)
+			return;
+
+		for (auto i = 0; i < force.size(); ++i)
+			force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
+
+		golem::Controller::State dflt = manipulator->getController().createState();
+		manipulator->getController().setToDefault(dflt);
+
+		manipulator->getController().lookupState(golem::SEC_TM_REAL_MAX, dflt);
+		dflt.cvel.setToDefault(manipulator->getController().getStateInfo().getJoints());
+		dflt.cacc.setToDefault(manipulator->getController().getStateInfo().getJoints());
+
+		(void)collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(dflt), force, false);
+		
+		//static size_t indexk = 0;
+		//if (indexk++ % 10 == 0) {
+		//context.write("Sim FT Thumb [%f %f %f %f %f %f]\n",
+		//		force[0], force[1], force[2], force[3], force[4], force[5]);
+		//	context.write("Sim FT Index [%f %f %f %f %f %f]\n",
+		//		force[6], force[7], force[8], force[9], force[10], force[11]);
+		//	context.write("Sim FT Middle [%f %f %f %f %f %f]\n",
+		//		force[12], force[13], force[14], force[15], force[16], force[17]);
+		//}
+	}); // end robot->setSimHandForceReader
+
 	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws
 		//if (forceReaderHandler) forceReaderHandlerThread.start(forceReaderHandler);
 //		return;
@@ -801,7 +833,7 @@ bool R2GPlanner::create(const Desc& desc) {
 
 		//context.write("Thumb [%.3f %.3f %.3f %.3f %.3f %.3f]\r",
 		//	handFilteredForce[0], handFilteredForce[1], handFilteredForce[2], handFilteredForce[3], handFilteredForce[4], handFilteredForce[5]);
-		static size_t indexkk = 0;
+//		static size_t indexkk = 0;
 		size_t k = 0;
 		U32 contacts = golem::numeric_const<U32>::ZERO;
 		handFilteredForce = force; // sensorBundlePtr->getFilteredForces(); // sensorBundlePtr.get() ? sensorBundlePtr->getFilteredForces() : handFilteredForce;
@@ -1156,7 +1188,8 @@ bool R2GPlanner::create(const Desc& desc) {
 		to<Data>(dataCurrentPtr)->createRender();
 		// set the simulated object
 		if (!to<Data>(dataCurrentPtr)->simulateObjectPose.empty()) {
-			sensorBundlePtr->getCollisionPtr()->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+			//sensorBundlePtr->getCollisionPtr()->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+			collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
 			objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataCurrentPtr)->simulateObjectPose));
 		}
 
@@ -1410,7 +1443,8 @@ bool R2GPlanner::create(const Desc& desc) {
 					executeCmd(createQueryCmd);
 				// set the simulated object
 				if (!to<Data>(dataCurrentPtr)->simulateObjectPose.empty()) {
-					sensorBundlePtr->getCollisionPtr()->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+					//sensorBundlePtr->getCollisionPtr()->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+					collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
 					objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataCurrentPtr)->simulateObjectPose));
 				}
 				reset(); // move the robot to the home pose after scanning
@@ -1777,7 +1811,8 @@ bool R2GPlanner::create(const Desc& desc) {
 		};
 
 		if (!to<Data>(dataCurrentPtr)->simulateObjectPose.empty()) {
-			sensorBundlePtr->getCollisionPtr()->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+			//sensorBundlePtr->getCollisionPtr()->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+			collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
 			objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataCurrentPtr)->simulateObjectPose));
 		}
 
@@ -1869,7 +1904,8 @@ bool R2GPlanner::create(const Desc& desc) {
 		points.resize(curvPoints.size());
 		Cloud::copy(curvPoints, points);
 
-		sensorBundlePtr->getCollisionPtr()->create(rand, points);
+		//sensorBundlePtr->getCollisionPtr()->create(rand, points);
+		collisionPtr->create(rand, points);
 		objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(points));
 
 		Collision::FlannDesc waypointDesc;
@@ -1981,7 +2017,7 @@ void R2GPlanner::render() const {
 		golem::CriticalSectionWrapper csw(getCS());
 		debugRenderer.render();
 		sampleRenderer.render();
-		sensorBundlePtr->render();
+		//sensorBundlePtr->render();
 	}
 }
 
@@ -2447,8 +2483,8 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 
 			if (!isGrasping && i > 500) {
 				enableForceReading = expectedCollisions(state);
-				if (enableForceReading)
-					sensorBundlePtr->enable();
+				//if (enableForceReading)
+				//	sensorBundlePtr->enable();
 				//enableForceReading = sensorBundlePtr->start2read = expectedCollisions(state);
 				//record = true;
 			}
@@ -2457,7 +2493,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 		}
 	}
 	enableForceReading = /*sensorBundlePtr->start2read =*/ false;
-	sensorBundlePtr->disable();
+	//sensorBundlePtr->disable();
 
 	std::stringstream prefixWrist;
 	prefixWrist << std::fixed << std::setprecision(3) << "./data/boris/experiments/ft_readings/wrist" << "-" << context.getTimer().elapsed();
@@ -2700,7 +2736,7 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 		std::string trjItemName("modelR2GTrj");
 		resetPlanning();
 		pHeuristic->enableUnc = grasp::to<Data>(dataPtr)->stratType == Strategy::IR3NE ? true : false;
-		pHeuristic->setPointCloudCollision(true);
+		pHeuristic->setPointCloudCollision(/*true*/false);
 		isGrasping = false;
 
 		Controller::State cend = lookupState();

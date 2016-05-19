@@ -509,7 +509,7 @@ size_t Collision::simulateFT(golem::DebugRenderer& renderer, const FlannDesc& de
 					//edepth = bounds.evaluate(seq.data(), seq.data() + seq.size(), (Bounds::RealEval)desc.depthStdDev, boundsCollisions);
 
 					if (debug) {
-						//manipulator.getContext().write("Simulate depth=%f (col=%d) seq=%d\n", depth, boundsCollisions, seq.size());
+						manipulator.getContext().write("Simulate depth=%f (col=%d) seq=%d\n", depth, boundsCollisions, seq.size());
 						draw(seq.begin(), seq.end(), this->desc.featureAppearence, renderer);
 						Mat34 m(Mat33::identity(), median);
 						renderer.addAxes(m, Vec3(0.005, 0.005, 0.005));
@@ -568,7 +568,7 @@ size_t Collision::simulateFT(golem::DebugRenderer& renderer, const FlannDesc& de
 #ifdef _COLLISION_PERFMON
 	SecTmReal t_end = t.elapsed();
 	tperfSimulate += t_end /*tperfEvalPoints < t_end ? t_end : tperfEvalPoints*/;
-	if (debug && false)
+	if (debug/* && false*/)
 		manipulator.getContext().write("Collision::simulate(kd-tree): neighbours=%u, , points=%u, collision=no\nforces=[%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f ]\n", 
 		desc.neighbours, desc.points, forces[0], forces[1], forces[2], forces[3], forces[4], forces[5], forces[6], forces[7], forces[8], forces[9], 
 		forces[10], forces[11], forces[12], forces[13], forces[14], forces[15], forces[16], forces[17]);

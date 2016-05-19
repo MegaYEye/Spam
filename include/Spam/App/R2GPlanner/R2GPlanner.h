@@ -394,7 +394,7 @@ public:
 		size_t maxModelPoints;
 
 		/** Collision description file. Used for collision with the ground truth */
-//		Collision::Desc::Ptr objCollisionDescPtr;
+		Collision::Desc::Ptr objCollisionDescPtr;
 
 		/** Guards to retrieve a contact */
 		grasp::RealSeq fLimit;
@@ -417,8 +417,7 @@ public:
 		grasp::RealSeq distance;
 
 		/** Sensor bundle desc file */
-		//SensorBundle::Desc sensorBundleDesc;
-		SensorBundle::Desc::Ptr sensorBundleDesc;
+//		SensorBundle::Desc::Ptr sensorBundleDesc;
 		/** Active Ctrl */
 		std::string activeCtrlStr;
 
@@ -449,9 +448,9 @@ public:
 
 			maxModelPoints = 5000;
 
-			sensorBundleDesc.reset(new SensorBundle::Desc);
+			//sensorBundleDesc.reset(new SensorBundle::Desc);
 			activeCtrlStr = "ArmHandForce+ArmHandForce";
-//			objCollisionDescPtr.reset(new Collision::Desc());
+			objCollisionDescPtr.reset(new Collision::Desc());
 		}
 
 		/** Checks if the description is valid. */
@@ -459,8 +458,8 @@ public:
 			PosePlanner::Desc::assertValid(ac);
 
 			grasp::Assert::valid(maxModelPoints > 0, ac, "Max model point is not positive");
-			sensorBundleDesc->assertValid(ac);
-			//grasp::Assert::valid(objCollisionDescPtr != nullptr, ac, "Collision description: invalid");
+			//sensorBundleDesc->assertValid(ac);
+			grasp::Assert::valid(objCollisionDescPtr != nullptr, ac, "Collision description: invalid");
 		}
 		/** Load descritpion from xml context. */
 		virtual void load(golem::Context& context, const golem::XMLContext* xmlcontext);
@@ -486,7 +485,9 @@ protected:
 	grasp::RealSeq fLimit;
 
 	/** Independent thread to read FT sensors */
-	SensorBundle::Ptr sensorBundlePtr;
+	//SensorBundle::Ptr sensorBundlePtr;
+	/** Collision used for collision with the ground truth */
+	Collision::Ptr collisionPtr;
 	/** Filtered forces for the hand */
 	grasp::RealSeq handFilteredForce;
 	// Return hand DOFs */
