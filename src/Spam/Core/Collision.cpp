@@ -119,7 +119,10 @@ Collision::Collision(const grasp::Manipulator& manipulator, const Desc& desc) : 
 	//faces = { Face::RIGHT, Face::RIGHT, Face::RIGHT, Face::RIGHT, Face::RIGHT, Face::LEFT, Face::LEFT, Face::LEFT, Face::LEFT, Face::LEFT, Face::TOP, Face::TOP, Face::BACK, Face::BACK,
 	//	Face::TIP, Face::TIP, Face::TIP, Face::TIP, Face::TIP, Face::FRONT, Face::FRONT, Face::FRONT, Face::FRONT};
 
-	faces = { Face::FRONT, Face::FRONT, Face::BACK, Face::BACK, Face::RIGHT, Face::RIGHT, Face::TOP, Face::TOP, Face::LEFT, Face::LEFT, Face::TIP, Face::TIP};
+	// ft has two bounds
+	//faces = { Face::FRONT, Face::FRONT, Face::BACK, Face::BACK, Face::RIGHT, Face::RIGHT, Face::TOP, Face::TOP, Face::LEFT, Face::LEFT, Face::TIP, Face::TIP};
+	// no fts
+	faces = { Face::FRONT, Face::FRONT, Face::TOP, Face::TOP, Face::RIGHT, Face::RIGHT, Face::LEFT, Face::LEFT, Face::TIP, Face::TIP, Face::BACK, Face::BACK };
 	for (golem::Chainspace::Index i = manipulator.getHandInfo().getChains().begin(); i != manipulator.getHandInfo().getChains().end(); ++i) {
 		const golem::Configspace::Index j = manipulator.getHandInfo().getJoints(i).end() - 1;
 		ftBounds[j].create(manipulator.getJointBounds(j));

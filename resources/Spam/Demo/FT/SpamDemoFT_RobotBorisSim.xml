@@ -341,7 +341,7 @@
     <!-- DLR Justin robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotJustin" -->
     <!-- DLR Justin robot (controller, planner): library_path="GolemDeviceRobotJustin" config_path="GolemDeviceRobotJustin" -->
 
-    <controller library_path="GolemCtrlMultiCtrl" config_path="GolemCtrlRobotBorisTactileSim">
+    <controller library_path="GolemCtrlMultiCtrl" config_path="GolemCtrlRobotBorisSim">
       <renderer>
         <joint_appearance line_width="1.0">
           <solid_colour R="192" G="192" B="0" A="100"></solid_colour>
@@ -361,9 +361,9 @@
         </state_renderer>
       </renderer>
     </controller>
-    <planner library_path="GolemPlannerGraphPlanner" config_path="GolemPlannerRobotBorisRTactile">
+    <planner library_path="GolemPlannerGraphPlanner" config_path="GolemPlannerRobotBorisR">
       <controller id="KukaLWRSim+KukaLWRBorisR" begin="0" end="1"/>
-      <controller id="DLRHitHandIISim+DLRHitHandIITactile" begin="1" end="6"/>
+      <controller id="DLRHitHandIISim+DLRHitHandIIBorisR" begin="1" end="6"/>
 
       <trajectory name="trajectory" handler="Trajectory+TrajectoryDemoR2G" idle_begin="0.5" idle_end="2.0" idle_perf="5.0" duration="5.0" trials="5"/>
 

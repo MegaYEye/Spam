@@ -755,22 +755,33 @@ bool R2GPlanner::create(const Desc& desc) {
 //
 //	};
 
+	bool simulatedForces = true;
 	armHandForce->setSensorForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws
 		if (!enableForceReading)
 			return;
+		if (simulatedForces) {
+			for (auto i = 0; i < force.size(); ++i)
+				force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
 
-		for (auto i = 0; i < force.size(); ++i)
-			force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
+			golem::Controller::State dflt = manipulator->getController().createState();
+			manipulator->getController().setToDefault(dflt);
 
-		golem::Controller::State dflt = manipulator->getController().createState();
-		manipulator->getController().setToDefault(dflt);
+			manipulator->getController().lookupState(golem::SEC_TM_REAL_MAX, dflt);
+			dflt.cvel.setToDefault(manipulator->getController().getStateInfo().getJoints());
+			dflt.cacc.setToDefault(manipulator->getController().getStateInfo().getJoints());
 
-		manipulator->getController().lookupState(golem::SEC_TM_REAL_MAX, dflt);
-		dflt.cvel.setToDefault(manipulator->getController().getStateInfo().getJoints());
-		dflt.cacc.setToDefault(manipulator->getController().getStateInfo().getJoints());
-
-		(void)collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(dflt), force, false);
-		
+			(void)collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(dflt), force, false);
+		}
+		// read from the state variable (if supported)
+		else {
+			const ptrdiff_t forceOffset = armHandForce->getHand()->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
+			if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
+				for (Configspace::Index j = state.getInfo().getJoints().begin(); j < state.getInfo().getJoints().end(); ++j) {
+					const size_t k = j - state.getInfo().getJoints().begin();
+					force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
+				}
+			}
+		}
 		//static size_t indexk = 0;
 		//if (indexk++ % 10 == 0) {
 		//context.write("Sim FT Thumb [%f %f %f %f %f %f]\n",

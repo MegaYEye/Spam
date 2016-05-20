@@ -405,34 +405,34 @@ void FTDemo::create(const Desc& desc) {
 						continue;
 					}
 
-					/*if (contactOccured && grasp::to<Data>(dataCurrentPtr)->stratType != Strategy::ELEMENTARY)*/ {
+					if (contactOccured && grasp::to<Data>(dataCurrentPtr)->stratType != Strategy::ELEMENTARY) {
 						// decide if attempt to grasp if a contact occured
 						//cq->getData().configs[0]->getContact()->getOptimisation()->;
-						grasp::OptimisationSA::Desc optimisationDesc;
-						grasp::Contact c = *cq->getData().configs[0]->getContact();
-						const OptimisationSA* optimisation = dynamic_cast<const OptimisationSA*>(cq->getData().configs[0]->getContact()->getOptimisation());
-						if (!optimisation)
-							continue;
-						
-						Controller::State cinit = lookupState(), cend = lookupState();
-						findTarget(grasp::to<Data>(dataCurrentPtr)->queryTransform, inp[2].state, cend);
-						grasp::Manipulator::Config config(cend.cpos, manipulator->getBaseFrame(cend.cpos));
+						//grasp::OptimisationSA::Desc optimisationDesc;
+						//grasp::Contact c = *cq->getData().configs[0]->getContact();
+						//const OptimisationSA* optimisation = dynamic_cast<const OptimisationSA*>(cq->getData().configs[0]->getContact()->getOptimisation());
+						//if (!optimisation)
+						//	continue;
+						//
+						//Controller::State cinit = lookupState(), cend = lookupState();
+						//findTarget(grasp::to<Data>(dataCurrentPtr)->queryTransform, inp[2].state, cend);
+						//grasp::Manipulator::Config config(cend.cpos, manipulator->getBaseFrame(cend.cpos));
 
-						Bounds::Seq bounds = manipulator->getBounds(config.config, config.frame.toMat34());
-						renderHand(cend, bounds, true);
+						//Bounds::Seq bounds = manipulator->getBounds(config.config, config.frame.toMat34());
+						//renderHand(cend, bounds, true);
 
-						Quat q; manipulator->getBaseFrame(cend.cpos).R.toQuat(q);
-						grasp::RBCoord cc(manipulator->getBaseFrame(cend.cpos).p, q);
-						grasp::Manipulator::Waypoint waypoint(cend.cpos, cc);
-						grasp::Contact::Likelihood likelihood;
-						optimisation->evaluate(waypoint, likelihood);
-						grasp::Contact::Config::Seq queryConfigs = cq->getData().configs;
-						grasp::Contact::Config::Seq::iterator it = c.find(queryConfigs, queryConfigs.begin());
-						
-						const Real loss = dGraspLik != REAL_ZERO ? 1 - likelihood.value / dGraspLik : REAL_ZERO;
-						context.write("Loss %f -> lik.value = %f\n", loss, likelihood.value);
+						//Quat q; manipulator->getBaseFrame(cend.cpos).R.toQuat(q);
+						//grasp::RBCoord cc(manipulator->getBaseFrame(cend.cpos).p, q);
+						//grasp::Manipulator::Waypoint waypoint(cend.cpos, cc);
+						//grasp::Contact::Likelihood likelihood;
+						//optimisation->evaluate(waypoint, likelihood);
+						//grasp::Contact::Config::Seq queryConfigs = cq->getData().configs;
+						//grasp::Contact::Config::Seq::iterator it = c.find(queryConfigs, queryConfigs.begin());
+						//
+						//const Real loss = dGraspLik != REAL_ZERO ? 1 - likelihood.value / dGraspLik : REAL_ZERO;
+						//context.write("Loss %f -> lik.value = %f\n", loss, likelihood.value);
 						// if loss is greater than 0.25, then we replan -> go for a grasp!
-						if (loss > 0.25) {
+						//if (loss > 0.25) {
 							//grasp::to<Data>(cdata->second)->replanning = false;
 							contactOccured = false;
 							updateAndResample(dataCurrentPtr);
@@ -441,7 +441,7 @@ void FTDemo::create(const Desc& desc) {
 							//bool r = unlockContact();
 							//context.write("unlock contact %s\n", r ? "TRUE" : "FALSE");
 							continue;
-						}
+						//}
 					}
 					grasp::to<Data>(dataCurrentPtr)->actionType = action::GRASP;
 					context.write("Iteration %u: execute trajectory (%s)\n", iteration, actionToString(grasp::to<Data>(dataCurrentPtr)->actionType).c_str());
