@@ -297,7 +297,7 @@
     <!-- DLR Justin robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotJustin" -->
     <!-- DLR Justin robot (controller, planner): library_path="GolemDeviceRobotJustin" config_path="GolemDeviceRobotJustin" -->
 
-    <controller library_path="GolemCtrlMultiCtrl" config_path="GolemCtrlRobotBorisSim">
+    <controller library_path="GolemCtrlMultiCtrl" config_path="GolemCtrlRobotBorisTactileSim">
       <renderer>
         <joint_appearance line_width="1.0">
           <solid_colour R="192" G="192" B="0" A="100"></solid_colour>
@@ -317,15 +317,19 @@
         </state_renderer>
       </renderer>
     </controller>
-    <planner library_path="GolemPlannerGraphPlanner" config_path="GolemPlannerRobotBorisR">
+    <planner library_path="GolemPlannerGraphPlanner" config_path="GolemPlannerRobotBorisRTactile">
       <!--<controller id="KukaLWR+KukaLWRBorisR" begin="0" end="1"/>
       <controller id="DLRHitHandII+DLRHitHandIIBorisR" begin="1" end="6"/>-->
       <controller id="KukaLWRSim+KukaLWRBorisR" begin="0" end="1"/>
-      <controller id="DLRHitHandIISim+DLRHitHandIIBorisR" begin="1" end="6"/>
+      <controller id="DLRHitHandIISim+DLRHitHandIITactile" begin="1" end="6"/>
 
       <!--<sensor id="FTClient+FTClientDemoDR55"/>-->
       <!--<sensor id="FTDAQ+FTDAQ"/>-->
-
+      <sensor id="FTDAQ+FTDAQWrist"/>
+      <sensor id="FTDAQ+FTDAQThumb"/>
+      <sensor id="FTDAQ+FTDAQIndex"/>
+      <sensor id="FTDAQ+FTDAQMiddle"/>
+      
       <trajectory handler="Trajectory+TrajectoryDemoDR55" idle_begin="0.5" idle_end="1.0" idle_perf="5.0" duration="5.0" trials="10"/>
 
       <renderer show_duration="600.0">
@@ -438,151 +442,12 @@
     </planner>
 
 
-    <!--<controller library_path="GolemDeviceMultiCtrl" config_path="GolemCtrlRobotBoris">
-      <renderer>
-        <joint_appearance line_width="1.0">
-          <solid_colour R="192" G="192" B="0" A="100"></solid_colour>
-          <wire_colour R="127" G="127" B="127" A="255"></wire_colour>
-          <shadow_colour R="12" G="25" B="37" A="255"></shadow_colour>
-        </joint_appearance>
-        <path_renderer show="1" vertex_position_show="0" vertex_frame_show="0" edge_show="1" path_time_past="0" path_time_future="1e10" path_segments="5000" path_segment_duration="0.1">
-          <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
-          <vertex_frame_size v1="0.02" v2="0.02" v3="0.02"></vertex_frame_size>
-          <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
-        </path_renderer>
-        <state_renderer show="1" vertex_position_show="1" vertex_frame_show="1" edge_show="0" state_use_commands="0" state_joint_frames_show="0">
-          <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
-          <vertex_frame_size v1="0.02" v2="0.02" v3="0.02"></vertex_frame_size>
-          <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
-          <state_joint_frames_size v1="0.03" v2="0.03" v3="0.03"/>
-        </state_renderer>
-      </renderer>
-    </controller>
-    <planner library_path="GolemPlannerGraphPlanner" config_path="GolemPlannerRobotBorisR">
-      <controller id="KukaLWR+KukaLWRBorisR" begin="0" end="1"/>
-      <controller id="DLRHitHandII+DLRHitHandIIBorisR" begin="1" end="6"/>
-
-      --><!--<sensor id="FTClient+FTClient"/>--><!--
-      --><!--<sensor id="FTDAQ+FTDAQWrist"/>
-      <sensor id="FTDAQ+FTDAQThumb"/>
-      <sensor id="FTDAQ+FTDAQIndex"/>
-      <sensor id="FTDAQ+FTDAQMiddle"/>--><!--
-
-      <trajectory name="trajectory" handler="Trajectory+TrajectoryDemoR2G" idle_begin="0.5" idle_end="2.0" idle_perf="5.0" duration="5.0" trials="5"/>
-
-      <renderer show_duration="600.0">
-        <goal_renderer show="1" vertex_position_show="0" vertex_frame_show="1" edge_show="0">
-          <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
-          <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
-          <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
-        </goal_renderer>
-        <goal_population_renderer show="1" vertex_position_show="1" vertex_frame_show="0" edge_show="0">
-          <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
-          <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
-          <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
-        </goal_population_renderer>
-        <global_graph_renderer show="0" vertex_position_show="1" vertex_frame_show="0" edge_show="0">
-          <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
-          <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
-          <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
-        </global_graph_renderer>
-        <global_path_renderer show="0" vertex_position_show="0" vertex_frame_show="0" edge_show="1">
-          <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
-          <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
-          <edge_colour R="0" G="255" B="255" A="255"></edge_colour>
-        </global_path_renderer>
-        <local_graph_renderer show="0" vertex_position_show="1" vertex_frame_show="0" edge_show="0">
-          <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
-          <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
-          <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
-        </local_graph_renderer>
-        <local_path_renderer show="0" vertex_position_show="0" vertex_frame_show="0" edge_show="1">
-          <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
-          <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
-          <edge_colour R="255" G="0" B="255" A="255"></edge_colour>
-        </local_path_renderer>
-        <optimised_path_rendererex show="0" vertex_position_show="0" vertex_frame_show="1" edge_show="1">
-          <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
-          <vertex_frame_size v1="0.02" v2="0.02" v3="0.02"></vertex_frame_size>
-          <edge_colour R="0" G="0" B="0" A="255"></edge_colour>
-        </optimised_path_rendererex>
-        <collision_bounds>
-          <chain show_solid="0" show_wire="1" wire_width="2">
-            <solid_colour R="0" G="0" B="255" A="255"/>
-            <wire_colour R="0" G="0" B="255" A="255"/>
-          </chain>
-          <joint show_solid="0" show_wire="1" wire_width="2">
-            <solid_colour R="0" G="0" B="255" A="255"/>
-            <wire_colour R="0" G="0" B="255" A="255"/>
-          </joint>
-        </collision_bounds>
-      </renderer>
-    </planner>
-    <planner library_path="GolemPlannerGraphPlanner" config_path="GolemPlannerRobotBorisL">
-      <controller id="KukaLWRSim+KukaLWRBorisL" begin="6" end="7"/>
-      <controller id="DLRHitHandIISim+DLRHitHandIIBorisL" begin="7" end="12"/>
-      --><!--<sensor id="FTClient+FTClient"/>--><!--
-      --><!--<sensor id="FTDAQ+FTDAQ"/>--><!--
-
-      <trajectory handler="Trajectory+TrajectoryDemoR2G" idle_begin="0.5" idle_end="2.0" idle_perf="5.0" duration="5.0" trials="10"/>
-
-      <renderer show_duration="600.0">
-        <goal_renderer show="1" vertex_position_show="0" vertex_frame_show="1" edge_show="0">
-          <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
-          <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
-          <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
-        </goal_renderer>
-        <goal_population_renderer show="1" vertex_position_show="1" vertex_frame_show="0" edge_show="0">
-          <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
-          <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
-          <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
-        </goal_population_renderer>
-        <global_graph_renderer show="0" vertex_position_show="1" vertex_frame_show="0" edge_show="0">
-          <vertex_position_colour R="0" G="0" B="0" A="255"></vertex_position_colour>
-          <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
-          <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
-        </global_graph_renderer>
-        <global_path_renderer show="0" vertex_position_show="0" vertex_frame_show="0" edge_show="1">
-          <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
-          <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
-          <edge_colour R="0" G="255" B="255" A="255"></edge_colour>
-        </global_path_renderer>
-        <local_graph_renderer show="0" vertex_position_show="1" vertex_frame_show="0" edge_show="0">
-          <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
-          <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
-          <edge_colour R="127" G="127" B="127" A="255"></edge_colour>
-        </local_graph_renderer>
-        <local_path_renderer show="0" vertex_position_show="0" vertex_frame_show="0" edge_show="1">
-          <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
-          <vertex_frame_size v1="0.05" v2="0.05" v3="0.05"></vertex_frame_size>
-          <edge_colour R="255" G="0" B="255" A="255"></edge_colour>
-        </local_path_renderer>
-        <optimised_path_rendererex show="0" vertex_position_show="0" vertex_frame_show="1" edge_show="1">
-          <vertex_position_colour R="255" G="255" B="0" A="255"></vertex_position_colour>
-          <vertex_frame_size v1="0.02" v2="0.02" v3="0.02"></vertex_frame_size>
-          <edge_colour R="0" G="0" B="0" A="255"></edge_colour>
-        </optimised_path_rendererex>
-        <collision_bounds>
-          <chain show_solid="0" show_wire="1" wire_width="2">
-            <solid_colour R="0" G="0" B="255" A="255"/>
-            <wire_colour R="0" G="0" B="255" A="255"/>
-          </chain>
-          <joint show_solid="0" show_wire="1" wire_width="2">
-            <solid_colour R="0" G="0" B="255" A="255"/>
-            <wire_colour R="0" G="0" B="255" A="255"/>
-          </joint>
-        </collision_bounds>
-      </renderer>
-    </planner>-->
-
-    <!--<controller id="KukaLWR+KukaLWRBorisR"/>
-    <controller id="DLRHitHandII+DLRHitHandIIBorisR"/>-->
 
     <!--<sensor id="FTClient+FTClient"/>-->
-    <!--<sensor id="FTDAQ+FTDAQWrist"/>
+    <sensor id="FTDAQ+FTDAQWrist"/>
     <sensor id="FTDAQ+FTDAQThumb"/>
     <sensor id="FTDAQ+FTDAQIndex"/>
-    <sensor id="FTDAQ+FTDAQMiddle"/>-->
+    <sensor id="FTDAQ+FTDAQMiddle"/>
 
     <activectrl library_path="GraspJointCtrl" config_path="GraspJointCtrl"/>
     <!--<activectrl library_path="GraspArmHandForce" config_path="GraspArmHandForce"/>-->
@@ -656,8 +521,8 @@
 
   <pose name="zero" dim="70" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="0.0" c8="0.0" c9="0.0" c10="0.0" c11="0.0" c12="0.0" c13="0.0" c14="0.0" c15="0.0" c16="0.0" c17="0.0" c18="0.0" c19="0.0" c20="0.0" c21="0.0" c22="0.0" c23="0.0" c24="0.0" c25="0.0" c26="0.0" c27="0.0" c28="0.0" c29="0.0" c30="0.0" c31="0.0" c32="0.0" c33="0.0" c34="0.0" c35="0.0" c36="0.0" c37="0.0" c38="0.0" c39="0.0" c40="0.0" c41="0.0" c42="0.0" c43="0.0" c44="0.0" c45="0.0" c46="0.0" c47="0.0" c48="0.0" c49="0.0" c50="0.0" c51="0.0" c52="0.0" c53="0.0" c54="0.0" c55="0.0" c56="0.0" c57="0.0" c58="0.0" c59="0.0" c60="0.0" c61="0.0" c62="0.0" c63="0.0" c64="0.0" c65="0.0" c66="0.0" c67="0.0" c68="0.0" c69="0.0" c70="0.0"/>
 
-  <pose name="home" dim="70" c1="1.37019" c2="-0.298179" c3="-0.110428" c4="1.19817" c5="0.362895" c6="-0.448772" c7="-1.4312" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0" c62="0.0" c63="0.0" c64="0.0" c65="0.0" c66="0.0" c67="0.0" c68="0.0" c69="0.0" c70="0.0"/>
-  <pose name="home_closed_fingers" dim="70" c1="1.37019" c2="-0.298179" c3="-0.110428" c4="1.19817" c5="0.362895" c6="-0.448772" c7="-1.4312" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="1.2" c22="1.0" c23="1.0" c24="0" c25="1.2" c26="1.0" c27="1.0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"  c62="0.0" c63="0.0" c64="0.0" c65="0.0" c66="0.0" c67="0.0" c68="0.0" c69="0.0" c70="0.0"/>
+  <pose planner_index="0" name="home" dim="70" c1="1.37019" c2="-0.298179" c3="-0.110428" c4="1.19817" c5="0.362895" c6="-0.448772" c7="-1.4312" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0" c62="0.0" c63="0.0" c64="0.0" c65="0.0" c66="0.0" c67="0.0" c68="0.0" c69="0.0" c70="0.0"/>
+  <pose planner_index="0" name="home_closed_fingers" dim="70" c1="1.37019" c2="-0.298179" c3="-0.110428" c4="1.19817" c5="0.362895" c6="-0.448772" c7="-1.4312" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="1.2" c22="1.0" c23="1.0" c24="0" c25="1.2" c26="1.0" c27="1.0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"  c62="0.0" c63="0.0" c64="0.0" c65="0.0" c66="0.0" c67="0.0" c68="0.0" c69="0.0" c70="0.0"/>
   <pose name="home" dim="61" c1="2.14917" c2="-1.20416" c3="-1.18641" c4="1.54021" c5="0.0525828" c6="-0.677515" c7="1.95049" c8="0.017009" c9="0.271418" c10="0.156946" c11="0.156946" c12="0.000934353" c13="0.210059" c14="0.091638" c15="0.091638" c16="-0.0150555" c17="0.780453" c18="0.919076" c19="0.840536" c20="0.0359084" c21="1.24275" c22="1.01214" c23="1.01214" c24="-0.0201831" c25="1.13154" c26="0.917222" c27="0.980054" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
   <pose name="camera calib" dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
   <pose name="camera calib" dim="61" c1="2.15357" c2="-1.44173" c3="2.41636" c4="-1.23597" c5="0.526307" c6="0.0401937" c7="-1.15166" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
@@ -687,23 +552,23 @@
   <pose name="f/t sensor calib" dim="61"  c1="1.5707963267949" c2="-1.5707963267949" c3="0.2618" c4="0.0" c5="0.0" c6="0.0" c7="-0.3927" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
   <!-- Offset calibration points end-->
 
-  <pose name="f/t sensor calib" dim="61"  c1="1.5707963267949" c2="-1.5707963267949" c3="0.2618" c4="0.0" c5="0.0" c6="0.0" c7="-0.3927" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
-  <pose name="f/t sensor calib" dim="61"  c1="1.5707963267949" c2="-1.5707963267949" c3="0.2618" c4="0.0" c5="0.0" c6="0.0" c7="1.1781" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
-  <pose name="f/t sensor calib" dim="61" c1="0.852144" c2="-1.30045" c3="1.00197" c4="1.30222" c5="0.0996473" c6="-1.31975" c7="-0.0976072" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
-  <pose name="f/t sensor calib" dim="61" c1="1.09131" c2="-1.19123" c3="0.406603" c4="1.0304" c5="0.454392" c6="-1.27477" c7="0.407437" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
-  <pose name="f/t sensor calib" dim="61" c1="1.13584" c2="-0.988016" c3="0.47152" c4="1.09615" c5="-0.666784" c6="-1.08227" c7="-0.40794" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
-  <pose name="f/t sensor calib" dim="61" c1="0.925698" c2="-0.591254" c3="0.617655" c4="1.60022" c5="-1.31389" c6="-0.207623" c7="-0.407265" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>-->
-  <pose name="f/t sensor calib" dim="61" c1="0.959443" c2="-0.495088" c3="0.907602" c4="1.77567" c5="-2.31607" c6="-1.53935" c7="-0.35797" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
-  <pose name="f/t sensor calib" dim="61" c1="0.473599" c2="-0.549839" c3="0.913706" c4="1.65676" c5="-0.359258" c6="-1.00031" c7="-0.357973" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
-  <pose name="f/t sensor calib" dim="61"  c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="-0.0" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+  <pose planner_index="0" name="f/t sensor calib" dim="61"  c1="1.5707963267949" c2="-1.5707963267949" c3="0.2618" c4="0.0" c5="0.0" c6="0.0" c7="-0.3927" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+  <pose planner_index="0" name="f/t sensor calib" dim="61"  c1="1.5707963267949" c2="-1.5707963267949" c3="0.2618" c4="0.0" c5="0.0" c6="0.0" c7="1.1781" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+  <pose planner_index="0" name="f/t sensor calib" dim="61" c1="0.852144" c2="-1.30045" c3="1.00197" c4="1.30222" c5="0.0996473" c6="-1.31975" c7="-0.0976072" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+  <pose planner_index="0" name="f/t sensor calib" dim="61" c1="1.09131" c2="-1.19123" c3="0.406603" c4="1.0304" c5="0.454392" c6="-1.27477" c7="0.407437" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+  <pose planner_index="0" name="f/t sensor calib" dim="61" c1="1.13584" c2="-0.988016" c3="0.47152" c4="1.09615" c5="-0.666784" c6="-1.08227" c7="-0.40794" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+  <pose planner_index="0" name="f/t sensor calib" dim="61" c1="0.925698" c2="-0.591254" c3="0.617655" c4="1.60022" c5="-1.31389" c6="-0.207623" c7="-0.407265" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>-->
+  <pose planner_index="0" name="f/t sensor calib" dim="61" c1="0.959443" c2="-0.495088" c3="0.907602" c4="1.77567" c5="-2.31607" c6="-1.53935" c7="-0.35797" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+  <pose planner_index="0" name="f/t sensor calib" dim="61" c1="0.473599" c2="-0.549839" c3="0.913706" c4="1.65676" c5="-0.359258" c6="-1.00031" c7="-0.357973" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+  <pose planner_index="0" name="f/t sensor calib" dim="61"  c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="-0.0" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
 
-  <pose name="scan" dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
-  <pose name="scan" dim="61" c1="1.98703" c2="-1.82022" c3="2.68371" c4="-0.993679" c5="-0.472118" c6="0.701058" c7="-0.601755" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
-  <pose name="scan" dim="61" c1="1.60132" c2="-1.8583" c3="1.77602" c4="-0.0109462" c5="0.450068" c6="1.04633" c7="-0.639206" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
-  <pose name="scan" dim="61" c1="1.65994" c2="-1.53044" c3="1.68963" c4="-0.361575" c5="0.208216" c6="0.61754" c7="-0.0829202" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
-  <pose name="scan" dim="61" c1="1.64565" c2="-1.20667" c3="1.61824" c4="-0.496629" c5="-0.143018" c6="0.587833" c7="0.634178" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
-  <pose name="scan" dim="61" c1="1.7097" c2="-0.944053" c3="1.20653" c4="-0.707639" c5="0.126298" c6="0.751986" c7="0.84115" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
-  <pose name="scan" dim="61" c1="2.05575" c2="-0.926678" c3="0.688772" c4="-1.6953" c5="0.721298" c6="0.410064" c7="0.531536" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+  <pose planner_index="0" name="scan" dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+  <pose planner_index="0" name="scan" dim="61" c1="1.98703" c2="-1.82022" c3="2.68371" c4="-0.993679" c5="-0.472118" c6="0.701058" c7="-0.601755" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+  <pose planner_index="0" name="scan" dim="61" c1="1.60132" c2="-1.8583" c3="1.77602" c4="-0.0109462" c5="0.450068" c6="1.04633" c7="-0.639206" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+  <pose planner_index="0" name="scan" dim="61" c1="1.65994" c2="-1.53044" c3="1.68963" c4="-0.361575" c5="0.208216" c6="0.61754" c7="-0.0829202" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+  <pose planner_index="0" name="scan" dim="61" c1="1.64565" c2="-1.20667" c3="1.61824" c4="-0.496629" c5="-0.143018" c6="0.587833" c7="0.634178" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+  <pose planner_index="0" name="scan" dim="61" c1="1.7097" c2="-0.944053" c3="1.20653" c4="-0.707639" c5="0.126298" c6="0.751986" c7="0.84115" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
+  <pose planner_index="0" name="scan" dim="61" c1="2.05575" c2="-0.926678" c3="0.688772" c4="-1.6953" c5="0.721298" c6="0.410064" c7="0.531536" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
 
   <!--<pose name="scan" dim="61" c1="2.95783" c2="-1.37913" c3="-1.62936" c4="2.03815" c5="0.16207" c6="-0.981502" c7="-0.231029" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
   <pose name="scan" dim="61" c1="2.37398" c2="-1.72785" c3="-0.686556" c4="1.42491" c5="-0.849379" c6="-1.66039" c7="-0.462826" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>

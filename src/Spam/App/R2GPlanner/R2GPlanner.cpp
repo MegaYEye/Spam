@@ -541,7 +541,7 @@ bool R2GPlanner::create(const Desc& desc) {
 	armHandForce = dynamic_cast<ActiveTouchCtrl*>(&*armHandCtrlPtr->second);
 	if (!armHandForce)
 		throw Message(Message::LEVEL_ERROR, "R2GPlanner::create(): active ctrl %s is invalid", desc.activeCtrlStr.c_str());
-	armHandForce->getArmCtrl()->setMode(ActiveCtrlForce::Mode::MODE_ENABLED);
+	armHandForce->getArmCtrl()->setMode(ActiveCtrlForce::Mode::MODE_DISABLED);
 	armHandForce->getHandCtrl()->setMode(ActiveCtrlForce::Mode::MODE_ENABLED);
 	armMode = armHandForce->getArmCtrl()->getMode();
 	handMode = armHandForce->getHandCtrl()->getMode();
@@ -755,7 +755,19 @@ bool R2GPlanner::create(const Desc& desc) {
 //
 //	};
 
-	bool simulatedForces = true;
+	//armHandForce->setArmForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws
+	//	static size_t indexkk = 0;
+	//	if (indexkk++ % 50 == 0)
+	//		context.debug("W [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
+	//		force[0], force[1], force[2], force[3], force[4], force[5]);
+	//		//context.debug("T [%.3f %.3f %.3f %.3f %.3f %.3f]\nI [%.3f %.3f %.3f %.3f %.3f %.3f]\nM [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
+	//		//force[0], force[1], force[2], force[3], force[4], force[5],
+	//		//force[6], force[7], force[8], force[9], force[10], force[11],
+	//		//force[12], force[13], force[14], force[15], force[16], force[17]
+	//		//);
+
+	//});
+	bool simulatedForces = false, ftsensors = true;
 	armHandForce->setSensorForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws
 		if (!enableForceReading)
 			return;
@@ -774,11 +786,24 @@ bool R2GPlanner::create(const Desc& desc) {
 		}
 		// read from the state variable (if supported)
 		else {
-			const ptrdiff_t forceOffset = armHandForce->getHand()->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
-			if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
-				for (Configspace::Index j = state.getInfo().getJoints().begin(); j < state.getInfo().getJoints().end(); ++j) {
-					const size_t k = j - state.getInfo().getJoints().begin();
-					force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
+			if (ftsensors) {
+				size_t k = 0;
+				for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
+					grasp::FT::Data data;
+					(*i)->read(data);
+					data.wrench.v.getColumn3(&force[k]);
+					data.wrench.w.getColumn3(&force[k + 3]);
+					k += 6;
+				}
+
+			}
+			else {
+				const ptrdiff_t forceOffset = armHandForce->getHand()->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
+				if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
+					for (Configspace::Index j = state.getInfo().getJoints().begin(); j < state.getInfo().getJoints().end(); ++j) {
+						const size_t k = j - state.getInfo().getJoints().begin();
+						force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
+					}
 				}
 			}
 		}
@@ -882,7 +907,6 @@ bool R2GPlanner::create(const Desc& desc) {
 			throw Message(Message::LEVEL_NOTICE, "handForceReader(): Triggered guard(s) %d.\n%s", contacts, ss.str().c_str());
 		}
 	}); // end robot->setHandForceReader
-
 
 //	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws		
 //		// associate random noise [-0.1, 0.1]
@@ -2747,7 +2771,7 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 		std::string trjItemName("modelR2GTrj");
 		resetPlanning();
 		pHeuristic->enableUnc = grasp::to<Data>(dataPtr)->stratType == Strategy::IR3NE ? true : false;
-		pHeuristic->setPointCloudCollision(/*true*/false);
+		pHeuristic->setPointCloudCollision(true);
 		isGrasping = false;
 
 		Controller::State cend = lookupState();
