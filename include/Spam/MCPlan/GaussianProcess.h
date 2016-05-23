@@ -26,6 +26,7 @@
 #include <Spam/MCPlan/CovSE.h>
 #include <omp.h>
 #include <Grasp/Core/Defs.h>
+#include <Grasp/Core/RB.h>
 
 //------------------------------------------------------------------------------
 #if EIGEN_FAST_MATH > 0
@@ -74,6 +75,7 @@ public:
 		/** Pointer to the descriptor */
 		typedef boost::shared_ptr<Desc> Ptr;
 
+		golem::U32 minPopulation;
 		golem::U32 populationSize;
 
 		golem::Real delta0;
@@ -89,6 +91,7 @@ public:
 			setToDefault();
 		}
 		void setToDefault() {
+			minPopulation = 50;
 			populationSize = 250;
 
 			delta0 = 0.1;
@@ -116,22 +119,23 @@ public:
 		clock_t t = clock();
 
 		golem::CriticalSection cs;
-		size_t k = 0;
+		size_t k = 0, population = 0;
+		U32 jumps = 0;
 
 		int paramDim = gp->cf->getParamDim();
 		Eigen::VectorXd delta = Eigen::VectorXd::Ones(paramDim) * delta0;
-//		Eigen::VectorXd gradOld = Eigen::VectorXd::Zero(paramDim);
-//		Eigen::VectorXd params = gp->cf->getLogHyper();
 		Eigen::VectorXd bestParams = gp->cf->getLogHyper(); //params;
 		Real solutionEval = log(0);
-		grasp::ParallelsTask(context.getParallels(), [&](grasp::ParallelsTask*) {
-			const U32 jobId = context.getParallels()->getCurrentJob()->getJobId();
+		//grasp::ParallelsTask(context.getParallels(), [&](grasp::ParallelsTask*) {
+		for (;jumps < desc.minPopulation;) {
+			const U32 jobId = ++jumps;// context.getParallels()->getCurrentJob()->getJobId();
 			bool limit = limits.size() >= paramDim;
 			Eigen::VectorXd gradOld = Eigen::VectorXd::Zero(paramDim);
-			Eigen::VectorXd params = gp->cf->sampleParams();
-			context.debug("Thread[%d] population=%d params=[%f %f] best sol=%f\n", jobId, k, params(0), params(1), solutionEval);
-			double eval = log(0);
+			Eigen::VectorXd params = bestParams = gp->cf->sampleParams();
+			gp->cf->setLogHyper(bestParams);
+			double eval = gp->logLikelihood();
 			for (size_t i = 0; i < maxIter; ++i) {
+				context.debug("Thread[%d] population=%d params=[%f %f] eval=%f best=%d\n", jobId, k, params(0), params(1), eval, solutionEval < eval);
 				{
 					CriticalSectionWrapper csw(cs);
 					if (solutionEval < eval) {
@@ -139,18 +143,19 @@ public:
 						bestParams = params;
 						gp->cf->setLogHyper(bestParams);
 					}
-					if (++k > desc.populationSize)
-						break;
+					++k;
+					//if (++k > desc.populationSize)
+					//	break;
 				}
 				Eigen::VectorXd grad = -gp->logLikelihoodGradient();
-				context.debug("thread[%d] grad [%f %f] norm %f\n", jobId, grad(0), grad(1), grad.norm());
-				context.debug("thread[%d] gradOld [%f %f] norm %f\n", jobId, gradOld(0), gradOld(1), gradOld.norm());
+				//context.debug("thread[%d] grad [%f %f] norm %f\n", jobId, grad(0), grad(1), grad.norm());
+				//context.debug("thread[%d] gradOld [%f %f] norm %f\n", jobId, gradOld(0), gradOld(1), gradOld.norm());
 				gradOld = gradOld.cwiseProduct(grad);
 				for (int j = 0; j < gradOld.size(); ++j) {
 					bool update = true;
 					if (gradOld(j) > 0) {
 						delta(j) = std::min(delta(j)*etaPlus, deltaMax);
-				 	}
+					}
 					else if (gradOld(j) < 0) {
 						delta(j) = std::max(delta(j)*etaMinus, deltaMin);
 						if (grad(j) <= gradOld(j)) update = false;
@@ -158,8 +163,8 @@ public:
 					}
 					params(j) += update ? -sign(grad(j)) * delta(j) : golem::REAL_ZERO;
 					// bound the parameters
-					//if (abs(params(j)) > limits[j])
-					//	params(j) = sign(params(j)) * limits[j];
+					if (abs(params(j)) > limits[j])
+						params(j) = sign(params(j)) * limits[j];
 				}
 				gradOld = grad;
 				if (gradOld.norm() <= epsStop) break;
@@ -171,64 +176,9 @@ public:
 				//	bestParams = params;
 				//}
 			}
-		});
+		}
+	//	});
 		gp->cf->setLogHyper(bestParams);
-
-		//----------------------------------------------------------------//
-		/*golem::CriticalSection cs;
-		size_t k = 0;
-		int paramDim = gp->cf->getParamDim();
-		Real solutionEval = log(0);
-		Eigen::VectorXd bestParams = gp->cf->getLogHyper();
-
-		grasp::ParallelsTask(context.getParallels(), [&](grasp::ParallelsTask*) {
-			const U32 jobId = context.getParallels()->getCurrentJob()->getJobId();
-			Real testEval = log(0);
-			Eigen::VectorXd delta = Eigen::VectorXd::Ones(paramDim) * delta0;
-			Eigen::VectorXd gradOld = Eigen::VectorXd::Zero(paramDim);
-			Eigen::VectorXd testParams = bestParams;
-
-			Eigen::VectorXd params = gp->cf->sampleParams();
-			gp->cf->setLogHyper(params);
-			for (;;) {
-				{
-					CriticalSectionWrapper csw(cs);
-					if (solutionEval < testEval) {
-						solutionEval = testEval;
-						bestParams = testParams;
-						gp->cf->setLogHyper(bestParams);
-					}
-					if (++k > desc.populationSize)
-						break;
-				}
-
-				//Eigen::VectorXd params = gp->cf->sampleParams();
-				context.debug("Thread[%d] Iter %d solution=[%f %f] log=[%f / %f]\n", jobId, k, params(0), params(1), testEval, solutionEval);
-				for (size_t i = 0; i < maxIter; ++i) {
-					Eigen::VectorXd grad = -gp->logLikelihoodGradient();
-					gradOld = gradOld.cwiseProduct(grad);
-					for (int j = 0; j < gradOld.size(); ++j) {
-						if (gradOld(j) > 0) {
-							delta(j) = std::min(delta(j)*etaPlus, deltaMax);
-						}
-						else if (gradOld(j) < 0) {
-							delta(j) = std::max(delta(j)*etaMinus, deltaMin);
-							grad(j) = 0;
-						}
-						params(j) += -sign(grad(j)) * delta(j);
-					}
-					gradOld = grad;
-					if (gradOld.norm() < epsStop) break;
-					double eval = gp->logLikelihood();
-					if (testEval < eval) {
-						testEval = eval;
-						testParams = params;
-					}
-					CriticalSectionWrapper csw(cs);
-					gp->cf->setLogHyper(params);
-				}
-			}
-		});*/
 
 		context.write("Optimisation::find(): Elapsed time: %.4fs\n", (float)(clock() - t) / CLOCKS_PER_SEC);
 		context.write("Optimisation::find(): best solutionEval=%f params size=%d\n", solutionEval, bestParams.size());
@@ -659,7 +609,7 @@ public:
 		for (size_t i = 0; i < l; ++i) {
 			for (size_t j = 0; j <= i; ++j) {
 				cf->grad(sampleset->x(i), sampleset->x(j), g);
-				context.debug("x_%d x_%d g=[%f %f]\n", i, j, g(0), g(1));
+				//context.debug("x_%d x_%d g=[%f %f]\n", i, j, g(0), g(1));
 				if (i == j) grad += W(i, j) * g * 0.5;
 				else grad += W(i, j) * g;
 			}
@@ -669,14 +619,14 @@ public:
 				for (size_t d = 0; d < 3; ++d) {
 					for (size_t j = 0; j < l; ++j) {
 						cf->gradDiff(sampleset->x(i), sampleset->x(j), d, g);
-						context.debug("d1(%d) x_%d x_%d g=[%f %f]\n", d, i, j, g(0), g(1));
+						//context.debug("d1(%d) x_%d x_%d g=[%f %f]\n", d, i, j, g(0), g(1));
 						if (i == j) grad += W(l + i * 3 + d, j) * g * 0.5;
 						else grad += W(l + i * 3 + d, j) * g;
 					}
 					size_t j = 0;
 					for (size_t z = 0; z < i * 3 + d + 1; ++z) {
 						cf->gradDiff2(sampleset->x(i), sampleset->x(j), d, z % 3, g);
-						context.debug("d1(%d) d2(%d) x_%d x_%d g=[%f %f]\n", d, z % 3, i, j, g(0), g(1));
+						//context.debug("d1(%d) d2(%d) x_%d x_%d g=[%f %f]\n", d, z % 3, i, j, g(0), g(1));
 						if (i == j) grad += W(l + i * 3 + d, l + z) * g * 0.5;
 						else grad += W(l + i * 3 + d, l + z) * g;
 						if (z % 3 == 2) ++j;
@@ -687,6 +637,22 @@ public:
 
 		return grad;
 	}
+
+	//grasp::RBDist crossValidation(const Vec3Seq& x, const RealSeq& fx, const Vec3Seq& normals) {
+	//	if (x.size() != fx.size || x.size() != normals.size())
+	//		throw Message("Cross validation invalid input length.")
+	//	const size_t size = x.size();
+	//	grasp::RBDist error;
+	//	for (size_t i = 0; i < size; i++) {
+	//		const eigen::VectorXd estimate = f(x[i]);
+	//		error.lin = sqr(fx[i] - estimate(0));
+	//		const Vec3 n(estimate(1), estimate(2), estimate(3));
+	//		error.ang = sqr((1 - n.dot(normals[i]) * 90 * golem::REAL_PI/180);
+	//	}
+	//	error.lin /= size;
+	//	error.ang /= size;
+	//	return error;
+	//}
 
 	inline Eigen::MatrixXd getNormals() const { return N; }
 

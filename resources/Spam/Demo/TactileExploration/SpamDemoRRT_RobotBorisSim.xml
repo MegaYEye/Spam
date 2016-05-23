@@ -79,7 +79,7 @@
     </rrt_planner>-->
   </demo>
 
-  <rag_planner planning_uncertainty="1" single_grasp_attempt="0" withdraw_to_home_pose="1">
+  <rag_planner planning_uncertainty="1" single_grasp_attempt="0" withdraw_to_home_pose="1"  active_ctrl="ActiveTouchCtrl+ActiveTouchCtrl">
     <trajectory scan_idle="1.0" duration="20.0" idle="2.0" extrapol_fac="0.5" perf_off="1.0" average="0.2">
       <velocity dim="61"
              c1="0.2" c2="0.2" c3="0.2" c4="0.2" c5="0.2" c6="0.2" c7="0.2" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5" c21="0.5" c22="0.5" c23="0.5" c24="0.5" c25="0.5" c26="0.5" c27="0.5"
@@ -453,9 +453,10 @@
     <!--<sensor id="FTClient+FTClient"/>-->
 
     <activectrl library_path="GraspJointCtrl" config_path="GraspJointCtrl"/>
-    <activectrl library_path="GraspArmHandForce" config_path="GraspArmHandForce"/>
+    <!--<activectrl library_path="GraspArmHandForce" config_path="GraspArmHandForce"/>-->
     <activectrl library_path="GraspWorkspaceCtrl" config_path="GraspWorkspaceCtrl"/>
     <activectrl library_path="GraspOspaceCtrl" config_path="GraspOspaceCtrl"/>
+    <activectrl library_path="GraspActiveTouchCtrl" config_path="GraspActiveTouchCtrl"/>
 
     <trajectory name="trajectory" handler="Trajectory+TrajectoryDemoR2G" idle_begin="0.5" idle_end="2.0" idle_perf="5.0" duration="5.0" trials="5"/>
 

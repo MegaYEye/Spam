@@ -457,7 +457,8 @@ void RRTPlayer::create(const Desc& desc) {
 		covDesc.optimisationDescPtr->epsStop = 1e-2;
 		covDesc.optimisationDescPtr->etaMinus = 0.5;
 		covDesc.optimisationDescPtr->etaPlus = 1.2;
-		covDesc.optimisationDescPtr->maxIter = 500;
+		covDesc.optimisationDescPtr->maxIter = 150;
+		covDesc.optimisationDescPtr->minPopulation = 50;
 		RealSeq limit; limit.assign(covDesc.covTypeDesc.inputDim + 1, 10.0);
 		//limit[covDesc.covTypeDesc.inputDim] = 1.5;
 		covDesc.optimisationDescPtr->limits = limit;
