@@ -771,42 +771,52 @@ bool R2GPlanner::create(const Desc& desc) {
 	armHandForce->setSensorForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws
 		if (!enableForceReading)
 			return;
-		if (simulatedForces) {
-			for (auto i = 0; i < force.size(); ++i)
-				force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
 
-			golem::Controller::State dflt = manipulator->getController().createState();
-			manipulator->getController().setToDefault(dflt);
-
-			manipulator->getController().lookupState(golem::SEC_TM_REAL_MAX, dflt);
-			dflt.cvel.setToDefault(manipulator->getController().getStateInfo().getJoints());
-			dflt.cacc.setToDefault(manipulator->getController().getStateInfo().getJoints());
-
-			(void)collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(dflt), force, false);
+		size_t k = 0;
+		for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
+			grasp::FT::Data data;
+			(*i)->read(data);
+			data.wrench.v.getColumn3(&force[k]);
+			data.wrench.w.getColumn3(&force[k + 3]);
+			k += 6;
 		}
-		// read from the state variable (if supported)
-		else {
-			if (ftsensors) {
-				size_t k = 0;
-				for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
-					grasp::FT::Data data;
-					(*i)->read(data);
-					data.wrench.v.getColumn3(&force[k]);
-					data.wrench.w.getColumn3(&force[k + 3]);
-					k += 6;
-				}
 
-			}
-			else {
-				const ptrdiff_t forceOffset = armHandForce->getHand()->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
-				if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
-					for (Configspace::Index j = state.getInfo().getJoints().begin(); j < state.getInfo().getJoints().end(); ++j) {
-						const size_t k = j - state.getInfo().getJoints().begin();
-						force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
-					}
-				}
-			}
-		}
+		//if (simulatedForces) {
+		//	for (auto i = 0; i < force.size(); ++i)
+		//		force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
+
+		//	golem::Controller::State dflt = manipulator->getController().createState();
+		//	manipulator->getController().setToDefault(dflt);
+
+		//	manipulator->getController().lookupState(golem::SEC_TM_REAL_MAX, dflt);
+		//	dflt.cvel.setToDefault(manipulator->getController().getStateInfo().getJoints());
+		//	dflt.cacc.setToDefault(manipulator->getController().getStateInfo().getJoints());
+
+		//	(void)collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(dflt), force, false);
+		//}
+		//// read from the state variable (if supported)
+		//else {
+		//	if (ftsensors) {
+		//		size_t k = 0;
+		//		for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
+		//			grasp::FT::Data data;
+		//			(*i)->read(data);
+		//			data.wrench.v.getColumn3(&force[k]);
+		//			data.wrench.w.getColumn3(&force[k + 3]);
+		//			k += 6;
+		//		}
+
+		//	}
+		//	else {
+		//		const ptrdiff_t forceOffset = armHandForce->getHand()->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
+		//		if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
+		//			for (Configspace::Index j = state.getInfo().getJoints().begin(); j < state.getInfo().getJoints().end(); ++j) {
+		//				const size_t k = j - state.getInfo().getJoints().begin();
+		//				force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
+		//			}
+		//		}
+		//	}
+		//}
 		//static size_t indexk = 0;
 		//if (indexk++ % 10 == 0) {
 		//context.write("Sim FT Thumb [%f %f %f %f %f %f]\n",
@@ -1604,110 +1614,111 @@ bool R2GPlanner::create(const Desc& desc) {
 						contactOccured = false;
 						updateAndResample(dataCurrentPtr);
 						enableForceReading = false;
+						continue;
 						// decides if attempts to grasp anyway or to re-plan
 						//cq->getData().configs[0]->getContact()->getOptimisation()->;
 						
-						grasp::OptimisationSA::Desc optimisationDesc;
-						grasp::Contact c = *cq->getData().configs[0]->getContact();
-						const OptimisationSA* optimisation = dynamic_cast<const OptimisationSA*>(cq->getData().configs[0]->getContact()->getOptimisation());
-						if (!optimisation)
-							continue;
-
-						// cinit is the current robot pose (open fingers)
-						// cend is the final pose of the robot (close fingers)
-						Controller::State cinit = lookupState(), cend = lookupState();
-
-						// The contact query is build on the model's point cloud.
-						// Transforms the robot pose w.r.t model's point cloud
-						Mat34 poseFrameInv;
-						poseFrameInv.setInverse(grasp::to<Data>(dataCurrentPtr)->queryTransform);
-						findTarget(poseFrameInv, grasp::to<Data>(dataCurrentPtr)->queryFrame, cend, cend);
-						cinit = cend;
-						for (auto i = getPlanner().handInfo.getJoints().begin(); i != getPlanner().handInfo.getJoints().end(); ++i)
-							cend.cpos[i] = inp[2].state.cpos[i];
-
-						// debug: draws model's point cloud and the robot pose w.r.t it
-						showModelPointCloud = true;
-						to<Data>(dataCurrentPtr)->createRender();
-
-						// interpolates the fingers' pose
-						golem::Waypoint w, w0, w1;
-						w0.setup(*controller, cinit.cpos, false, true);
-						w1.setup(*controller, cend.cpos, false, true);
-
-						Real dist = REAL_ZERO;
-						for (Configspace::Index j = getPlanner().handInfo.getJoints().begin(); j < getPlanner().handInfo.getJoints().end(); ++j)
-							dist += Math::sqr(w1.cpos[j] - w0.cpos[j]);
-						dist = Math::sqrt(dist) / getPlanner().handInfo.getJoints().size();
-
-						const U32 size = (U32)Math::round(dist / 0.01) + 1;
-						Real p[2];
-						context.write("Optimisation\ndist %f size %d\n", dist, size);
-
-						golem::Real lik = REAL_ZERO;
-						Manipulator::Waypoint::Seq waypoints;
-						// test for collisions in the range (w0, w1) - not excluding w0 and w1
-						for (U32 i = 0; i <= size; ++i) {
-							p[0] = Real(i) / Real(size);
-							p[1] = REAL_ONE - p[0];
-
-							// lineary interpolate coordinates
-							w = w1;
-							for (Configspace::Index j = getPlanner().handInfo.getJoints().begin(); j < getPlanner().handInfo.getJoints().end(); ++j)
-								w.cpos[j] = p[0] * w0.cpos[j] + p[1] * w1.cpos[j];
-
-							grasp::Manipulator::Config config1(w.cpos, manipulator->getBaseFrame(w.cpos));
-							Bounds::Seq bounds = manipulator->getBounds(config1.config, config1.frame.toMat34());
-							renderHand(cend, bounds, false);
-							grasp::Contact::Likelihood likelihood;
-							if (true) {
-								grasp::Manipulator::Waypoint waypoint(w.cpos, config1.frame);	
-								waypoints.push_back(waypoint);
-								//optimisation->evaluate(waypoint, likelihood);
-							}
-							else {
-								Collision::FlannDesc waypointDesc;
-								Collision::Desc::Ptr cloudDesc;
-								cloudDesc.reset(new Collision::Desc());
-								Collision::Ptr cloud = cloudDesc->create(*manipulator);
-								waypointDesc.depthStdDev = 0.0001/*0.0005*/; waypointDesc.likelihood = 10.0; waypointDesc.points = 10000; waypointDesc.neighbours = 100;
-								waypointDesc.radius = REAL_ZERO;
-
-								grasp::Manipulator::Config config2(w.cpos, manipulator->getBaseFrame(w.cpos));
-								debugRenderer.reset();
-								//		debugAppearance.draw(points, debugRenderer);
-								RealSeq ff = {0., 0., -0.1, 0., 0., 0.};
-								for (size_t i = 0; i < 3; ++i) {
-									ftGuards[i]->setColumn6(&ff[0]);
-									ftGuards[i]->checkContacts();
-								}
-								cloud->create(rand, modelPoints);
-								likelihood.value = cloud->evaluateFT(debugRenderer, waypointDesc, config2, ftGuards);
-								for (auto g = ftGuards.begin(); g != ftGuards.end(); ++g)
-									(*g)->unlock();
-							}
-							// memorises the most likelihood configuration along the path
-							/*if (lik < abs(likelihood.value))
-								lik = abs(likelihood.value);
-							context.write("Iteration %d Loss %f -> lik.value = %f\n", i, lik, likelihood.value);*/
-						}
-						// computes the loss [1-lik/(desired grasp lik)]. low or negative values are good!
-						// dGraspLik (desired grasp lik) should never been zero!
-						// ISSUE: lik is always zero!
-						const Real loss = dGraspLik != REAL_ZERO ? 1 - abs(lik / dGraspLik) : REAL_ZERO;
-						
-
-						// if loss is greater than 0.25, then we replan, otherwise go for a grasp!
-						if (loss > 0.25) {
-							//grasp::to<Data>(cdata->second\A0)->replanning = false;
-//							contactOccured = false;
-//							updateAndResample(dataCurrentPtr);
-//							enableForceReading = false;
-							++iteration;
-							//bool r = unlockContact();
-							//context.write("unlock contact %s\n", r ? "TRUE" : "FALSE");
-							continue;
-						}
+//						grasp::OptimisationSA::Desc optimisationDesc;
+//						grasp::Contact c = *cq->getData().configs[0]->getContact();
+//						const OptimisationSA* optimisation = dynamic_cast<const OptimisationSA*>(cq->getData().configs[0]->getContact()->getOptimisation());
+//						if (!optimisation)
+//							continue;
+//
+//						// cinit is the current robot pose (open fingers)
+//						// cend is the final pose of the robot (close fingers)
+//						Controller::State cinit = lookupState(), cend = lookupState();
+//
+//						// The contact query is build on the model's point cloud.
+//						// Transforms the robot pose w.r.t model's point cloud
+//						Mat34 poseFrameInv;
+//						poseFrameInv.setInverse(grasp::to<Data>(dataCurrentPtr)->queryTransform);
+//						findTarget(poseFrameInv, grasp::to<Data>(dataCurrentPtr)->queryFrame, cend, cend);
+//						cinit = cend;
+//						for (auto i = getPlanner().handInfo.getJoints().begin(); i != getPlanner().handInfo.getJoints().end(); ++i)
+//							cend.cpos[i] = inp[2].state.cpos[i];
+//
+//						// debug: draws model's point cloud and the robot pose w.r.t it
+//						showModelPointCloud = true;
+//						to<Data>(dataCurrentPtr)->createRender();
+//
+//						// interpolates the fingers' pose
+//						golem::Waypoint w, w0, w1;
+//						w0.setup(*controller, cinit.cpos, false, true);
+//						w1.setup(*controller, cend.cpos, false, true);
+//
+//						Real dist = REAL_ZERO;
+//						for (Configspace::Index j = getPlanner().handInfo.getJoints().begin(); j < getPlanner().handInfo.getJoints().end(); ++j)
+//							dist += Math::sqr(w1.cpos[j] - w0.cpos[j]);
+//						dist = Math::sqrt(dist) / getPlanner().handInfo.getJoints().size();
+//
+//						const U32 size = (U32)Math::round(dist / 0.01) + 1;
+//						Real p[2];
+//						context.write("Optimisation\ndist %f size %d\n", dist, size);
+//
+//						golem::Real lik = REAL_ZERO;
+//						Manipulator::Waypoint::Seq waypoints;
+//						// test for collisions in the range (w0, w1) - not excluding w0 and w1
+//						for (U32 i = 0; i <= size; ++i) {
+//							p[0] = Real(i) / Real(size);
+//							p[1] = REAL_ONE - p[0];
+//
+//							// lineary interpolate coordinates
+//							w = w1;
+//							for (Configspace::Index j = getPlanner().handInfo.getJoints().begin(); j < getPlanner().handInfo.getJoints().end(); ++j)
+//								w.cpos[j] = p[0] * w0.cpos[j] + p[1] * w1.cpos[j];
+//
+//							grasp::Manipulator::Config config1(w.cpos, manipulator->getBaseFrame(w.cpos));
+//							Bounds::Seq bounds = manipulator->getBounds(config1.config, config1.frame.toMat34());
+//							renderHand(cend, bounds, false);
+//							grasp::Contact::Likelihood likelihood;
+//							if (true) {
+//								grasp::Manipulator::Waypoint waypoint(w.cpos, config1.frame);	
+//								waypoints.push_back(waypoint);
+//								//optimisation->evaluate(waypoint, likelihood);
+//							}
+//							else {
+//								Collision::FlannDesc waypointDesc;
+//								Collision::Desc::Ptr cloudDesc;
+//								cloudDesc.reset(new Collision::Desc());
+//								Collision::Ptr cloud = cloudDesc->create(*manipulator);
+//								waypointDesc.depthStdDev = 0.0001/*0.0005*/; waypointDesc.likelihood = 10.0; waypointDesc.points = 10000; waypointDesc.neighbours = 100;
+//								waypointDesc.radius = REAL_ZERO;
+//
+//								grasp::Manipulator::Config config2(w.cpos, manipulator->getBaseFrame(w.cpos));
+//								debugRenderer.reset();
+//								//		debugAppearance.draw(points, debugRenderer);
+//								RealSeq ff = {0., 0., -0.1, 0., 0., 0.};
+//								for (size_t i = 0; i < 3; ++i) {
+//									ftGuards[i]->setColumn6(&ff[0]);
+//									ftGuards[i]->checkContacts();
+//								}
+//								cloud->create(rand, modelPoints);
+//								likelihood.value = cloud->evaluateFT(debugRenderer, waypointDesc, config2, ftGuards);
+//								for (auto g = ftGuards.begin(); g != ftGuards.end(); ++g)
+//									(*g)->unlock();
+//							}
+//							// memorises the most likelihood configuration along the path
+//							/*if (lik < abs(likelihood.value))
+//								lik = abs(likelihood.value);
+//							context.write("Iteration %d Loss %f -> lik.value = %f\n", i, lik, likelihood.value);*/
+//						}
+//						// computes the loss [1-lik/(desired grasp lik)]. low or negative values are good!
+//						// dGraspLik (desired grasp lik) should never been zero!
+//						// ISSUE: lik is always zero!
+//						const Real loss = dGraspLik != REAL_ZERO ? 1 - abs(lik / dGraspLik) : REAL_ZERO;
+//						
+//
+//						// if loss is greater than 0.25, then we replan, otherwise go for a grasp!
+//						if (loss > 0.25) {
+//							//grasp::to<Data>(cdata->second\A0)->replanning = false;
+////							contactOccured = false;
+////							updateAndResample(dataCurrentPtr);
+////							enableForceReading = false;
+//							++iteration;
+//							//bool r = unlockContact();
+//							//context.write("unlock contact %s\n", r ? "TRUE" : "FALSE");
+//							continue;
+//						}
 					}
 					// grasp
 					//if (error.lin < 0.01) {

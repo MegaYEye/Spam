@@ -456,9 +456,9 @@ void FTDemo::create(const Desc& desc) {
 						continue;
 					}
 					if (option("YN", "Success? (Y/N)") == 'Y')
-						to<TrialData>(trialPtr)->grasped = true;
+						context.write("Grasped!\n");// to<TrialData>(trialPtr)->grasped = true;
 					else
-						to<TrialData>(trialPtr)->grasped = false;
+						context.write("Not grasped!\n"); //to<TrialData>(trialPtr)->grasped = false;
 
 					break;
 				}
