@@ -95,11 +95,12 @@ bool FTGuard::checkContacts() {
 	faces.clear();
 	Real force = REAL_ZERO;
 	for (size_t i = 0; i < 3; ++i) {
-		if ((Math::abs(wrench.getV()[i]) > limits[i]) || (Math::abs(wrench.getW()[i]) > limits[i+3])) {
+		if ((Math::abs(wrench.getV()[i]) > limits[i]) || (Math::abs(wrench.getW()[i]) > limits[i + 3])) {
 			mode = Mode::INCONTACT;
 			const Real f = std::max<Real>(Math::abs(wrench.getV()[i]), Math::abs(wrench.getW()[i]));
-			const Face face = i == 0 ? Face::TIP : (i == 1 && (wrench.getV()[i] < REAL_ZERO || Math::abs(wrench.getW()[i]) > limits[i + 3])) ? Face::LEFT :
-				(i == 1 && (wrench.getV()[i] > REAL_ZERO || Math::abs(wrench.getW()[i]) > limits[i + 3])) ? Face::RIGHT :
+			const Face face = (i == 0 && (wrench.getV()[i] < REAL_ZERO || Math::abs(wrench.getW()[i]) > limits[i + 3])) ? Face::RIGHT :
+				(i == 0 && (wrench.getV()[i] > REAL_ZERO || Math::abs(wrench.getW()[i]) < limits[i + 3])) ? Face::LEFT :
+				(i == 1 && (wrench.getV()[i] > REAL_ZERO || Math::abs(wrench.getW()[i]) > limits[i + 3])) ? Face::TIP :
 				(i == 2 && (wrench.getV()[i] < REAL_ZERO || Math::abs(wrench.getW()[i]) > limits[i + 3])) ? Face::FRONT : Face::BACK;
 			if (f > force) {
 				faces.insert(faces.begin(), face);
@@ -108,6 +109,20 @@ bool FTGuard::checkContacts() {
 			else
 				faces.push_back(face);
 		}
+
+		//if ((Math::abs(wrench.getV()[i]) > limits[i]) || (Math::abs(wrench.getW()[i]) > limits[i+3])) {
+		//	mode = Mode::INCONTACT;
+		//	const Real f = std::max<Real>(Math::abs(wrench.getV()[i]), Math::abs(wrench.getW()[i]));
+		//	const Face face = i == 0 ? Face::TIP : (i == 1 && (wrench.getV()[i] < REAL_ZERO || Math::abs(wrench.getW()[i]) > limits[i + 3])) ? Face::LEFT :
+		//		(i == 1 && (wrench.getV()[i] > REAL_ZERO || Math::abs(wrench.getW()[i]) > limits[i + 3])) ? Face::RIGHT :
+		//		(i == 2 && (wrench.getV()[i] < REAL_ZERO || Math::abs(wrench.getW()[i]) > limits[i + 3])) ? Face::FRONT : Face::BACK;
+		//	if (f > force) {
+		//		faces.insert(faces.begin(), face);
+		//		force = f;
+		//	}
+		//	else
+		//		faces.push_back(face);
+		//}
 	}
 	return false;
 }
