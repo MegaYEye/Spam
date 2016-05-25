@@ -149,34 +149,12 @@ void FTDemo::create(const Desc& desc) {
 			}
 		};
 		auto select = [&](Strategy &strat) {
-			//switch (option("NEMI", "Press a key to select (N)one/(E)lementary/(M)ycroft/(I)r3ne...")) {
-			//case 'N':
-			//{
-			//	strat = Strategy::NONE_STRATEGY;
-			//	return;
-			//}
-			//case 'E':
-			//{
-			//	strat = Strategy::ELEMENTARY;
-			//	return;
-			//}
-			//case 'M':
-			//{
-			//	strat = Strategy::MYCROFT;
-			//	return;
-			//}
-			//case 'I':
-			//{
-			//	strat = Strategy::IR3NE;
-			//	return;
-			//}
-			//}
 			switch (strat) {
 			case NONE_STRATEGY:
 				//	strat = Strategy::ELEMENTARY;
 				//	break;
 				//case ELEMENTARY:
-				strat = Strategy::IR3NE;
+				strat = Strategy::MYCROFT;
 				break;
 			case MYCROFT:
 				strat = Strategy::IR3NE;
@@ -194,19 +172,6 @@ void FTDemo::create(const Desc& desc) {
 			pHeuristic->enableUnc = false;
 			pHeuristic->setPointCloudCollision(false);
 			gotoConfig(home);
-			//Controller::State::Seq seq, out;
-			//findTrajectory(lookupState(), &home, nullptr, 0, seq);
-			//profile(this->trjDuration, seq, out, true);
-			//sendTrajectory(out);
-			//controller->waitForBegin();
-			//controller->waitForEnd();
-			//// repeat every send waypoint until trajectory end
-			//for (U32 i = 0; controller->waitForBegin(); ++i) {
-			//	if (universe.interrupted())
-			//		throw Exit();
-			//	if (controller->waitForEnd(0))
-			//		break;
-			//}
 		};
 		auto resetDataPtr = [&](Data::Map::iterator& dataPtr) {
 			to<Data>(dataPtr)->queryPoints.clear();
@@ -221,8 +186,9 @@ void FTDemo::create(const Desc& desc) {
 		grasp::to<Data>(dataCurrentPtr)->actionType = action::NONE_ACTION;
 		grasp::data::Item::Map::iterator modelContact, modelPtr, queryContactPtr, queryTrjPtr;
 		grasp::data::Item::Ptr queryGraspTrj;
-		U32 modelViews = modelScanPoseSeq.size(), queryViews = queryScanPoseSeq.size(), trials = 5;
+		U32 modelViews = modelScanPoseSeq.size(), /*queryViews = queryScanPoseSeq.size(),*/ trials = 5;
 		const U32 maxFailures = 2, maxIterations = 5;
+		bool grasped = false;
 
 		// command keys
 		std::string createModelCmd("PM");
@@ -263,20 +229,23 @@ void FTDemo::create(const Desc& desc) {
 		std::string dirLog = makeString("./data/boris/experiments/%s/", object.c_str());
 		golem::mkdir(dirLog.c_str());
 		std::stringstream prefixLog;
-		prefixLog << std::fixed << std::setprecision(3) << dirLog << "output" << "-" << context.getTimer().elapsed();
+		prefixLog << std::fixed << std::setprecision(3) << dirLog << "output";// << "-" << context.getTimer().elapsed();
 		const std::string outputLog = makeString("%s.log", prefixLog.str().c_str());
 		std::ofstream logFile(outputLog);
 		std::stringstream prefixMicroft;
-		prefixMicroft << std::fixed << std::setprecision(3) << dirLog << "MICROFT" << "-" << context.getTimer().elapsed();
-		const std::string outputMicroft = makeString("%s.log", prefixLog.str().c_str());
+		prefixMicroft << std::fixed << std::setprecision(3) << dirLog << "MICROFT";// << "-" << context.getTimer().elapsed();
+		const std::string outputMicroft = makeString("%s.log", prefixMicroft.str().c_str());
 		std::ofstream logMicroft(outputMicroft);
 		std::stringstream prefixIrene;
-		prefixIrene << std::fixed << std::setprecision(3) << dirLog << "IRENE" << "-" << context.getTimer().elapsed();
-		const std::string outputIrene = makeString("%s.log", prefixLog.str().c_str());
+		prefixIrene << std::fixed << std::setprecision(3) << dirLog << "IRENE";// << "-" << context.getTimer().elapsed();
+		const std::string outputIrene = makeString("%s.log", prefixIrene.str().c_str());
 		std::ofstream logIrene(outputIrene);
+		// collects results as string
+		std::string results;
 
-		Data::Ptr data = createData();
-		data.reset(to<Data>(dataCurrentPtr));
+		// copy original data
+		Data::Ptr testData = createData();
+		testData.reset(to<Data>(dataCurrentPtr)->clone());
 
 		//--------------------------------------------------------------------//
 		// TRIALS
@@ -288,13 +257,17 @@ void FTDemo::create(const Desc& desc) {
 				// stop internal loop if all the strategies have been executed. increase trial
 				if (to<Data>(dataCurrentPtr)->stratType == Strategy::NONE_STRATEGY)
 					break;
+				context.write("TRIAL: %d Strategy: %s\n", trial, strategy(grasp::to<Data>(dataCurrentPtr)->stratType).c_str());
 
 				//--------------------------------------------------------------------//
 				// CREATE DATA TRIAL
 				//--------------------------------------------------------------------//
 				std::string dataTrialPath = makeString("./data/boris/experiments/%s/trial0%d/%s/data.xml", object.c_str(), trial, strategy(grasp::to<Data>(dataCurrentPtr)->stratType).c_str());
+				const Strategy tmp = grasp::to<Data>(dataCurrentPtr)->stratType;
 				Data::Ptr dataTrial = createData();
-				dataTrial.reset(to<Data>(data));
+				dataTrial.reset(to<Data>(testData)->clone());
+				// overwrite strategy
+				to<Data>(dataTrial)->stratType = tmp;
 				RenderBlock renderBlock(*this);
 				scene.getOpenGL(to<Data>(dataCurrentPtr)->getView().openGL); // set current view
 				scene.getOpenGL(to<Data>(dataTrial)->getView().openGL); // set view of the new data
@@ -320,6 +293,9 @@ void FTDemo::create(const Desc& desc) {
 				}
 				reset(); // move the robot to the home pose after scanning
 				context.write("done.\n");
+
+				// write results
+				results = grasp::makeString("%u\t%u\t%u", modelViews, queryViews, trial + 1);
 
 				//--------------------------------------------------------------------//
 				// CREATE A PREDICTIVE QUERY FOR THE GRASP
@@ -400,46 +376,26 @@ void FTDemo::create(const Desc& desc) {
 				const RBCoord obj(simQueryFrame * to<Data>(dataCurrentPtr)->modelFrame);
 				for (; failures < maxFailures && iteration < maxIterations;) {
 					grasp::to<Data>(dataCurrentPtr)->actionType = action::IG_PLAN_M2Q;
+
+					// compute misalignment
+					grasp::RBCoord queryPose(grasp::to<Data>(dataCurrentPtr)->queryFrame);
+					grasp::RBDist error;
+					error.lin = obj.p.distance(queryPose.p);
+					error.ang = obj.q.distance(queryPose.q);
+
+					if (iteration == 1 && failures == 0)
+						results = grasp::makeString("%s\t%.2f\t%.6f\t%.6f", results.c_str(), ((Real)grasp::to<Data>(dataCurrentPtr)->queryPoints.size() / (Real)modelPoints.size()) * (Real)100, error.lin, error.ang);
+
 					if (!execute(dataCurrentPtr, inp)) { // if it fails to find a trajectory repeat 
 						++failures;
 						continue;
 					}
 
 					if (contactOccured && grasp::to<Data>(dataCurrentPtr)->stratType != Strategy::ELEMENTARY) {
-						// decide if attempt to grasp if a contact occured
-						//cq->getData().configs[0]->getContact()->getOptimisation()->;
-						//grasp::OptimisationSA::Desc optimisationDesc;
-						//grasp::Contact c = *cq->getData().configs[0]->getContact();
-						//const OptimisationSA* optimisation = dynamic_cast<const OptimisationSA*>(cq->getData().configs[0]->getContact()->getOptimisation());
-						//if (!optimisation)
-						//	continue;
-						//
-						//Controller::State cinit = lookupState(), cend = lookupState();
-						//findTarget(grasp::to<Data>(dataCurrentPtr)->queryTransform, inp[2].state, cend);
-						//grasp::Manipulator::Config config(cend.cpos, manipulator->getBaseFrame(cend.cpos));
-
-						//Bounds::Seq bounds = manipulator->getBounds(config.config, config.frame.toMat34());
-						//renderHand(cend, bounds, true);
-
-						//Quat q; manipulator->getBaseFrame(cend.cpos).R.toQuat(q);
-						//grasp::RBCoord cc(manipulator->getBaseFrame(cend.cpos).p, q);
-						//grasp::Manipulator::Waypoint waypoint(cend.cpos, cc);
-						//grasp::Contact::Likelihood likelihood;
-						//optimisation->evaluate(waypoint, likelihood);
-						//grasp::Contact::Config::Seq queryConfigs = cq->getData().configs;
-						//grasp::Contact::Config::Seq::iterator it = c.find(queryConfigs, queryConfigs.begin());
-						//
-						//const Real loss = dGraspLik != REAL_ZERO ? 1 - likelihood.value / dGraspLik : REAL_ZERO;
-						//context.write("Loss %f -> lik.value = %f\n", loss, likelihood.value);
-						// if loss is greater than 0.25, then we replan -> go for a grasp!
-						//if (loss > 0.25) {
-							//grasp::to<Data>(cdata->second)->replanning = false;
 							contactOccured = false;
 							updateAndResample(dataCurrentPtr);
 							enableForceReading = false;
 							++iteration;
-							//bool r = unlockContact();
-							//context.write("unlock contact %s\n", r ? "TRUE" : "FALSE");
 							continue;
 						//}
 					}
@@ -456,12 +412,31 @@ void FTDemo::create(const Desc& desc) {
 						continue;
 					}
 					if (option("YN", "Success? (Y/N)") == 'Y')
-						context.write("Grasped!\n");// to<TrialData>(trialPtr)->grasped = true;
+						/*context.write("Grasped!\n");// to<TrialData>(trialPtr)->*/grasped = true;
 					else
-						context.write("Not grasped!\n"); //to<TrialData>(trialPtr)->grasped = false;
+						/*context.write("Not grasped!\n"); //to<TrialData>(trialPtr)->*/grasped = false;
 
+					results = grasp::makeString("%s\t%.6f\t%.6f\t%u\t%u\n", results.c_str(), error.lin, error.ang, grasped ? 1 : 0, iteration);
 					break;
 				}
+				// save results
+				switch (grasp::to<Data>(dataCurrentPtr)->stratType){
+					case Strategy::MYCROFT:
+						context.write("strategy: %s\n%s", strategy(grasp::to<Data>(dataCurrentPtr)->stratType).c_str(), results.c_str());
+						logMicroft << grasp::makeString("%s", results.c_str());
+						logMicroft.flush();
+						break;
+					case Strategy::IR3NE:
+						context.write("strategy: %s\n%s", strategy(grasp::to<Data>(dataCurrentPtr)->stratType).c_str(), results.c_str());
+						logIrene << grasp::makeString("%s", results.c_str());
+						logIrene.flush();
+						break;
+				}
+				results = "";
+				readPath("Enter data path to save: ", dataTrialPath, dataExt.c_str());
+				if (getExt(dataTrialPath).empty())
+					dataTrialPath += dataExt;
+				to<Manager::Data>(dataCurrentPtr)->save(dataTrialPath);
 				// reset robot
 				reset();
 			} // end strategy

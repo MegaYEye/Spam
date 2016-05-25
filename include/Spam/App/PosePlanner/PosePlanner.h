@@ -947,6 +947,9 @@ protected:
 	/** Distribution num of samples */
 	size_t distribSamples;
 
+	/** Query views (random selected) */
+	size_t queryViews;
+
 	/** Model data */
 	Data::Map::iterator modelDataPtr;
 	/** Model frame */

@@ -360,6 +360,9 @@ public:
 		/** Creates render buffer of the bundle without items */
 		virtual void createRender();
 
+		/** Clone data */
+		virtual Data* clone() const;
+
 	protected:
 		/** Demo */
 		R2GPlanner* owner;

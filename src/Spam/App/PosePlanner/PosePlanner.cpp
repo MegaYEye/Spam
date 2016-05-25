@@ -754,6 +754,8 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	resetDataPointers();
 	screenCapture = desc.screenCapture;
 
+	queryViews = 3;
+
 	myDesc = desc;
 
 	//numPoses = desc.numPoses;
@@ -1049,6 +1051,16 @@ grasp::data::Item::Map::iterator spam::PosePlanner::objectCapture(const Data::Mo
 	if (camera && camera->getCurrentCalibration()->hasDeformationMap())
 		camera->getCurrentCalibration()->enableDeformationMap(true);
 
+	if (mode != Data::MODE_MODEL) {
+		scanPoseSeq.clear();
+		queryViews = size_t(rand.next() % 3) + size_t(1);
+		context.write("Query scan %d poses\n", queryViews);
+		grasp::ConfigMat34::Seq seq = modelScanPoseSeq;
+		std::random_shuffle(seq.begin(), seq.end(), rand);
+		for (size_t i = 0; i < queryViews; ++i) {
+			scanPoseSeq.push_back(seq[i]);
+		}
+	}
 	ConfigMat34::Seq::const_iterator pose = scanPoseSeq.begin();
 	size_t index = 0, size = scanPoseSeq.size();
 	auto scanPoseCommand = [&]() -> bool {

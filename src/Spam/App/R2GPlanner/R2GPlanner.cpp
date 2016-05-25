@@ -39,340 +39,6 @@ using namespace spam;
 
 //------------------------------------------------------------------------------
 
-//SensorBundle::SensorBundle(Controller& ctrl) : controller(&ctrl), context(ctrl.getContext()), rand(ctrl.getContext().getRandSeed()) {};
-//
-//void SensorBundle::Desc::load(golem::Context& context, const golem::XMLContext* xmlcontext) {
-//	xmlcontext = xmlcontext->getContextFirst("sensor_bundle");
-//
-//	spam::XMLData(*objCollisionDescPtr, xmlcontext->getContextFirst("collision"));
-//}
-//
-//void SensorBundle::create(const Desc& desc) {
-//	strFT = desc.strFT;
-//	strFTDesc = desc.strFTDesc;
-//
-//	collisionPtr.reset();
-//
-//	std::vector<std::string> /*ftDataFilteredPath, ftDataRawPath, */lowpass;
-//	for (auto i = desc.sensorSeq.begin(); i != desc.sensorSeq.end(); ++i) {
-//		if (i == desc.sensorSeq.begin()) continue;
-//		FT* sensor = grasp::is<FT>(*i);
-//		if (sensor) {
-//			ftSensorSeq.push_back(sensor);
-//			if (desc.write) {
-//				std::stringstream prefix;
-//				prefix << std::fixed << std::setprecision(3) << desc.path << sensor->getID() << desc.sepField << context.getTimer().elapsed();
-//				//ftDataFilteredPath.push_back(makeString("%s_filtered%s", prefix.str().c_str(), desc.ext.c_str()));
-//				//ftDataRawPath.push_back(makeString("%s_raw%s", prefix.str().c_str(), desc.ext.c_str()));
-//				lowpass.push_back(makeString("%s_lowpass%s", prefix.str().c_str(), desc.ext.c_str()));
-//				//golem::mkdir(ftDataFilteredPath.back().c_str()); // make sure the directory exists
-//				//std::ofstream oDataFiletered;
-//				//oDataFiletered.open(ftDataFilteredPath.back());
-//				//strFTDesc(oDataFiletered);
-//				//dataFTFilteredSeq.push_back(oDataFiletered);
-//
-//				//golem::mkdir(ftDataRawPath.back().c_str()); // make sure the directory exists
-//				//std::ofstream oDataRaw;
-//				//oDataRaw.open(ftDataRawPath.back());
-//				//strFTDesc(oDataRaw);
-//				//dataFTFilteredSeq.push_back(oDataRaw);
-//
-//				golem::mkdir(lowpass.back().c_str()); // make sure the directory exists
-//				//std::ofstream olowpass;
-//				//olowpass.open(lowpass.back());
-//				//strFTDesc(olowpass);
-//				//lowpassSeq.push_back(olowpass);
-//			}
-//		}
-//		else
-//			context.write("FT sensor is not available\n");
-//	}
-//	write = desc.write  && !lowpass.empty();
-//	if (write) {
-//		thumbSS.open(lowpass[0]);
-//		strFTDesc(thumbSS);
-//		indexSS.open(lowpass[1]);
-//		strFTDesc(indexSS);
-//		middleSS.open(lowpass[2]);
-//		strFTDesc(middleSS);
-//	}
-//	read = desc.read;
-//	start2read = false;
-//	simulate = desc.simulate;
-//	idx = 0;
-//	forceSS.open("./data/ft_data/forces.txt");
-//	if (read) {
-//		ft.resize(1074);
-//		for (auto ii = ft.begin(); ii != ft.end(); ++ii)
-//			ii->assign(18, REAL_ZERO);
-//		std::string ftWPrefix = makeString("C:/Users/wmemnone/Development/Projects/bin/data/ft_data/bowl/wrist.txt");
-//		std::string ftTPrefix = makeString("C:/Users/wmemnone/Development/Projects/bin/data/ft_data/bowl/thumb.txt");
-//		std::string ftIPrefix = makeString("C:/Users/wmemnone/Development/Projects/bin/data/ft_data/bowl/index.txt");
-//		ftWristFile.open(ftWPrefix, std::ios_base::in);
-//		ftThumbFile.open(ftTPrefix, std::ios_base::in);
-//		ftIndexFile.open(ftIPrefix, std::ios_base::in);
-//		if (!ftWristFile.good() || !ftThumbFile.good() || !ftIndexFile.good())
-//			context.write("Error: Cannot open the ft files\n");
-//		size_t i = 0, j = 0;
-//		std::string wline, tline, iline;
-//		while (std::getline(ftWristFile, wline) && std::getline(ftThumbFile, tline) && std::getline(ftIndexFile, iline)) {
-//			boost::char_separator<char> sep("\t");
-//			boost::tokenizer<boost::char_separator<char> > wtokens(wline, sep), ttokens(tline, sep), itokens(iline, sep);
-//			auto wll = wtokens.begin(); wll++; wll++;
-//			auto tll = ttokens.begin(); tll++; tll++;
-//			auto ill = itokens.begin(); ill++; ill++;
-//			while (wll != wtokens.end() && tll != ttokens.end() && ill != itokens.end()) {
-//				if (j < 6) {
-//					ft[i][j] = std::stod(*tll);// std::stod(*wll);
-//					ft[i][j + 6] = std::stod(*ill); // std::stod(*tll);
-//					ft[i][j + 12] = REAL_ZERO; // std::stod(*ill);
-//					j++;
-//				}
-//				else {
-//					j = 0;
-//					i++;
-//					if (i > ftWrist.size())
-//						break;
-//				}
-//				wll++;
-//				tll++;
-//				ill++;
-//			}
-//		}
-//		context.write("FT Wrist size=%d\n", ft.size());
-//		RealSeq seq = ft[0];
-//		context.write("[%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f]\n", 
-//			seq[0], seq[1], seq[2], seq[3], seq[4], seq[5],
-//			seq[6], seq[7], seq[8], seq[9], seq[10], seq[11],
-//			seq[12], seq[13], seq[14], seq[15], seq[16], seq[17]);
-//		seq = ft[1];
-//		context.write("[%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f]\n",
-//			seq[0], seq[1], seq[2], seq[3], seq[4], seq[5],
-//			seq[6], seq[7], seq[8], seq[9], seq[10], seq[11],
-//			seq[12], seq[13], seq[14], seq[15], seq[16], seq[17]);
-//
-//		//for (auto ii = ftWrist.begin(); ii != ftWrist.end(); ++ii) {
-//		//	context.write("[");
-//		//	for (auto jj = ii->begin(); jj != ii->end(); ++jj)
-//		//		context.write("%.3f ", *jj);
-//		//	context.write("]\n");
-//		//}
-//		
-//	}
-//
-//	dimensionality = desc.dimensionality;
-//
-//	steps = desc.steps;
-//	windowSize = desc.windowSize;
-//	grasp::RealSeq v;
-//	v.assign(windowSize + 1, REAL_ZERO);
-//	delta = desc.delta;
-//	sigma = desc.sigma;
-//	Real i = -2;
-//	for (I32 j = 0; j < windowSize + 1; j++) {
-//		v[j] = N(i, sigma);
-//		i += delta;
-//	}
-//
-//	// compute the derivative mask=diff(v)
-//	mask.assign(windowSize, REAL_ZERO);
-//	for (I32 i = 0; i < windowSize; ++i)
-//		mask[i] = v[i + 1] - v[i];
-//	handFilteredForce.assign(dimensions(), REAL_ZERO);
-//	// initialise table to memorise read forces size: dimensions() x windowSize
-//	forceInpSensorSeq.resize(dimensions());
-//	for (std::vector<RealSeq>::iterator i = forceInpSensorSeq.begin(); i != forceInpSensorSeq.end(); ++i)
-//		i->assign(windowSize, REAL_ZERO);
-//	// Forcereader utilities
-//	collectInp = [&](grasp::RealSeq& force) {
-//		//		golem::CriticalSectionWrapper csw(csHandForce);
-//		for (I32 i = 0; i < dimensions(); ++i)
-//			forceInpSensorSeq[i][steps] = force[i];
-//		steps = (I32)(++steps % windowSize);
-//		forceFilter(handFilteredForce);
-//	};
-//
-//	forceFilter = [&](grasp::RealSeq& filteredforce) {
-//		// find index as for circular buffer
-//		auto findIndex = [&](const I32 idx) -> I32 {
-//			return (I32)((steps + idx) % windowSize);
-//		};
-//		// high pass filter implementation
-//		auto hpFilter = [&]() {
-//			Real b = 1 / windowSize;
-//
-//		};
-//		// gaussian filter
-//		auto conv = [&]() -> grasp::RealSeq {
-//			grasp::RealSeq output;
-//			output.assign(dimensions(), REAL_ZERO);
-//			{
-//				golem::CriticalSectionWrapper csw(cs);
-//				for (I32 i = 0; i < dimensions(); ++i) {
-//					Real tmp = REAL_ZERO;
-//					grasp::RealSeq& seq = forceInpSensorSeq[i];
-//					// conv y[k] = x[k]h[0] + x[k-1]h[1] + ... + x[0]h[k]
-//					for (I32 j = 0; j < windowSize; ++j) {
-//						tmp += seq[findIndex(windowSize - j - 1)] * mask[j];
-//					}
-//					output[i] = tmp;
-//				}
-//			}
-//			return output;
-//		};
-//
-//		filteredforce = conv();
-//	};
-//
-//	//setForceReaderHandler([=]() {
-//	//	RealSeq force;
-//	//	force.assign(dimensions(), REAL_ZERO);
-//	//	size_t k = 0;
-//	//	for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
-//	//		FT::Data data;
-//	//		(*i)->read(data);
-//	//	
-//	//		data.wrench.v.getColumn3(&force[k]);
-//	//		data.wrench.w.getColumn3(&force[k+3]);
-//	//		k += 6;
-//	//	}
-//	//	collectInp(force);
-//	//});
-//
-//	bTerminate = false;
-//	tCycle = desc.tCycle;
-//	tIdle = desc.tIdle;
-//	tRead = context.getTimer().elapsed();
-//
-//	this->desc = desc;
-//	// user create
-//	userCreate();
-//
-//	// launch thread
-//	if (!thread.start(this))
-//		throw MsgControllerThreadLaunch(Message::LEVEL_CRIT, "SensorBundle::create(): Unable to launch ft thread");
-//	if (!thread.setPriority(desc.threadPriority))
-//		throw MsgControllerThreadLaunch(Message::LEVEL_CRIT, "SensorBundle::create(): Unable to change SensorBundle thread priority");
-//}
-//
-////void SensorBundle::setForceReaderHandler(ThreadTask::Function forceReaderHandler) {
-////	golem::CriticalSectionWrapper csw(cs);
-////	this->forceReaderHandler = forceReaderHandler;
-////}
-//
-//void SensorBundle::run() {
-//	//if (ftSensorSeq.empty())
-//	//	return;
-//	auto strTorques = [=](std::ostream& ostr, const grasp::RealSeq& forces, const SecTmReal t) {
-//		ostr << t << "\t";
-//		for (auto i = 0; i < forces.size(); ++i)
-//			ostr << forces[i] << "\t";
-//		ostr << std::endl;
-//	};
-//
-//	sleep.reset(new golem::Sleep);
-//
-//	while (!bTerminate) {
-//		SecTmReal t = context.getTimer().elapsed();
-//		if (t - tRead > tCycle) {
-//			RealSeq force;
-//			{
-//				golem::CriticalSectionWrapper csw(cs);
-//				force = handFilteredForce;
-//			}
-//			if (!read) {
-//				if (simulate && start2read && collisionPtr.get()) {
-//					for (auto i = 0; i < force.size(); ++i)
-//						force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
-//
-//					golem::Controller::State dflt = controller->createState();
-//					controller->setToDefault(dflt);
-//
-//					controller->lookupState(golem::SEC_TM_REAL_MAX, dflt);
-//					dflt.cvel.setToDefault(controller->getStateInfo().getJoints());
-//					dflt.cacc.setToDefault(controller->getStateInfo().getJoints());
-//					(void)collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(dflt), force, false);
-//				}
-//				else {
-//					size_t k = 0;
-//					for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
-//						FT::Data data;
-//						(*i)->read(data);
-//						data.wrench.v.getColumn3(&force[k]);
-//						data.wrench.w.getColumn3(&force[k + 3]);
-//						k += 6;
-//					}
-//				}
-//			}
-//			else {
-//				if (start2read)
-//					force = ft[idx];
-//			}
-//			//		collectInp(force);
-//			for (I32 i = 0; i < dimensions(); ++i)
-//				forceInpSensorSeq[i][steps] = force[i];
-//			steps = (I32)(++steps % windowSize);
-//			auto findIndex = [&](const I32 idx) -> I32 {
-//				return (I32)((steps + idx) % windowSize);
-//			};
-//			// high pass filter implementation
-//			auto hpFilter = [&]() {
-//				Real b = 1 / windowSize;
-//
-//			};
-//			// gaussian filter
-//			grasp::RealSeq output;
-//			output.assign(dimensions(), REAL_ZERO);
-//			for (I32 i = 0; i < dimensions(); ++i) {
-//				Real tmp = REAL_ZERO;
-//				grasp::RealSeq& seq = forceInpSensorSeq[i];
-//				// conv y[k] = x[k]h[0] + x[k-1]h[1] + ... + x[0]h[k]
-//				for (I32 j = 0; j < windowSize; ++j) {
-//					tmp += seq[findIndex(windowSize - j - 1)] * mask[j];
-//				}
-//				output[i] = tmp;
-//			}
-//			{
-//				golem::CriticalSectionWrapper csw(cs);
-//				handFilteredForce = output;
-//			}
-//			if (start2read) strTorques(forceSS, output, t);
-//			if (write) {
-//				Twist wrench;
-//				size_t k = 0;
-//				for (size_t i = 0; i < 3; ++i) {
-//					wrench.v.setColumn3(&handFilteredForce[k]);
-//					wrench.w.setColumn3(&handFilteredForce[k + 3]);
-//					strFT(i == 0 ? thumbSS : i == 1 ? indexSS : middleSS, wrench, t);
-//					k += 6;
-//				}
-//			}
-//			tRead = t;
-//			//			context.write("SensorBundle::run(): Reading forces at time %f\n", t);
-//		}
-//		else
-//			sleep->sleep(tIdle);
-//	}
-//}
-//
-//void SensorBundle::setSensorSeq(const Sensor::Seq& sensorSeq) {
-//	for (auto i = sensorSeq.begin(); i != sensorSeq.end(); ++i) {
-//		if (i == sensorSeq.begin()) continue;
-//		FT* sensor = grasp::is<FT>(*i);
-//		if (sensor)
-//			ftSensorSeq.push_back(sensor);
-//		else
-//			context.write("FT sensor is not available\n");
-//	}
-//
-//}
-//
-//void SensorBundle::release() {
-//}
-
-
-//------------------------------------------------------------------------------
-
 grasp::data::Data::Ptr spam::R2GPlanner::Data::Desc::create(golem::Context &context) const {
 	grasp::data::Data::Ptr data(new R2GPlanner::Data(context));
 	static_cast<R2GPlanner::Data*>(data.get())->create(*this);
@@ -389,6 +55,11 @@ void spam::R2GPlanner::Data::create(const Desc& desc) {
 	replanning = false;
 	release = false;
 }
+
+spam::R2GPlanner::Data* spam::R2GPlanner::Data::clone() const {
+	return new Data(*this);
+}
+
 
 void spam::R2GPlanner::Data::setOwner(grasp::Manager* owner) {
 	PosePlanner::Data::setOwner(owner);
@@ -453,11 +124,6 @@ void R2GPlanner::Desc::load(golem::Context& context, const golem::XMLContext* xm
 R2GPlanner::R2GPlanner(Scene &scene) : PosePlanner(scene) {
 }
 
-//R2GPlanner::~R2GPlanner() {
-//	if (sensorBundlePtr.get())
-//		sensorBundlePtr->stop();
-//}
-
 bool R2GPlanner::create(const Desc& desc) {
 	PosePlanner::create(desc); // throws
 
@@ -492,45 +158,11 @@ bool R2GPlanner::create(const Desc& desc) {
 	forcereadersilent = true;
 	objectPointCloudPtr.reset(new grasp::Cloud::PointSeq());
 	printing = false;
-	//	w.setToDefault();
-	//	w.points = 20000;// desc.maxModelPoints;
-	//	collision.reset(new Collision(context, *manipulator));
 	contactOccured = false;
 
-	//std::stringstream prefix;
-	//prefix << std::fixed << std::setprecision(3) << "./data/boris/experiments/ftsensors/ftsensors" << "-" << context.getTimer().elapsed();
 	contact = false;
 	record = false;
 	brecord = false;
-	//sepField = "\t";
-	//// writing data into a text file, open file
-	//auto strTorquesDesc = [=](std::ostream& ostr) {
-	//	ostr << "idx" << "\t" <<  "timestamp" << "\t" << "contact" << "\t" << "thumb_0" << "\t" << "thumb_1" << "\t" << "thumb_2" << "\t" << "thumb_3" << "\t" <<
-	//		"index_0" << "\t" << "index_1" << "\t" << "index_2" << "\t" << "index_3" << "\t" <<
-	//		"middle_0" << "\t" << "middle_1" << "\t" << "middle_2" << "\t" << "middle_3" << "\t" <<
-	//		"ring_0" << "\t" << "ring_1" << "\t" << "ring_2" << "\t" << "ring_3" << "\t" <<
-	//		"pinky_0" << "\t" << "pinky_1" << "\t" << "pinky_2" << "\t" << "pinky_3" << "\t";/* <<
-	//		"cthumb_0" << "\t" << "cthumb_1" << "\t" << "cthumb_2" << "\t" << "cthumb_3" << "\t" <<
-	//		"cindex_0" << "\t" << "cindex_1" << "\t" << "cindex_2" << "\t" << "cindex_3" << "\t" <<
-	//		"cmiddle_0" << "\t" << "cmiddle_1" << "\t" << "cmiddle_2" << "\t" << "cmiddle_3" << "\t" <<
-	//		"cring_0" << "\t" << "cring_1" << "\t" << "cring_2" << "\t" << "cring_3" << "\t" <<
-	//		"cpinky_0" << "\t" << "cpinky_1" << "\t" << "cpinky_2" << "\t" << "cpinky_3" << "\t";*/
-	//};
-	////const std::string dataFTRawPath = makeString("%s_raw.txt", prefix.str().c_str());
-	////dataFTRaw.open(dataFTRawPath);
-	////strTorquesDesc(dataFTRaw);
-	////dataFTRaw << std::endl;
-
-	//const std::string dataFTFilteredPath = makeString("%s_filtered.txt", prefix.str().c_str());
-	//golem::mkdir(dataFTFilteredPath.c_str()); // make sure the directory exists
-	//dataFTFiltered.open(dataFTFilteredPath);
-	//strTorquesDesc(dataFTFiltered);
-	//dataFTFiltered << std::endl;
-
-	//const std::string dataSimContactPath = makeString("%s_contact.txt", prefix.str().c_str());
-	//dataSimContact.open(dataSimContactPath);
-	//strTorquesDesc(dataSimContact);
-	//dataSimContact << std::endl;
 
 	// ACTIVE CONTROLLER
 //	const grasp::ActiveCtrl::Map::const_iterator armHandCtrlPtr = activectrlMap.find("ArmHandForce+ArmHandForce");
@@ -558,12 +190,6 @@ bool R2GPlanner::create(const Desc& desc) {
 	
 	collisionPtr.reset();
 	collisionPtr = desc.objCollisionDescPtr->create(*this->manipulator.get());
-//	sensorBundlePtr = desc.sensorBundleDesc->create(*controller, *manipulator);
-
-	//SensorBundle::Desc sbDesc = desc.sensorBundleDesc;
-	//sbDesc.sensorSeq = armHandForce->getSensorSeq();
-	//sensorBundlePtr = sbDesc.create(*controller);
-	//sensorBundlePtr->setManipulator(manipulator.get());
 
 	Sensor::Seq sensorSeq = armHandForce->getSensorSeq();
 	// NOTE: skips the sensor at the wrist
@@ -597,300 +223,58 @@ bool R2GPlanner::create(const Desc& desc) {
 	middleFTDesc.jointIdx = getPlanner().handInfo.getJoints(chain++).end() - 1;
 	middleFTDesc.setLimits(&fLimit[12]);
 	ftGuards.push_back(middleFTDesc.create());
-	//handForces.assign(getPlanner().handInfo.getChains().size(), Vec3::zero());
 
-	// FT FILTER
-//	steps = 0;
-//	windowSize = 40;
-//	grasp::RealSeq v;
-//	v.assign(windowSize + 1, REAL_ZERO);
-//	const Real delta(.1);
-//	Real i = -2;
-//	for (I32 j = 0; j < windowSize + 1; j++) {
-//		v[j] = N(i, REAL_ONE);
-//		i += delta;
-//	}
-//
-//	// compute the derivative mask=diff(v)
-//	mask.assign(windowSize, REAL_ZERO);
-//	for (I32 i = 0; i < windowSize; ++i)
-//		mask[i] = v[i + 1] - v[i];
-//	handFilteredForce.assign(dimensions(), REAL_ZERO);
-//	// initialise table to memorise read forces size: dimensions() x windowSize
-//	forceInpSensorSeq.resize(dimensions());
-//	for (std::vector<RealSeq>::iterator i = forceInpSensorSeq.begin(); i != forceInpSensorSeq.end(); ++i)
-//		i->assign(windowSize, REAL_ZERO);
-//	// Forcereader utilities
-//	collectFTInp = [&](const Controller::State& state, grasp::RealSeq& force) {
-////		golem::CriticalSectionWrapper csw(csHandForce);
-//		for (I32 i = 0; i < dimensions(); ++i)
-//			forceInpSensorSeq[i][steps] = force[i];
-//		steps = (I32)(++steps % windowSize);
-//		ftFilter(state, handFilteredForce);
-//	};
-//
-//	ftFilter = [&](const Controller::State&, grasp::RealSeq& filteredforce) {
-//		// find index as for circular buffer
-//		auto findIndex = [&](const I32 idx) -> I32 {
-//			return (I32)((steps + idx) % windowSize);
-//		};
-//		// high pass filter implementation
-//		auto hpFilter = [&]() {
-//			Real b = 1 / windowSize;
-//
-//		};
-//		// gaussian filter
-//		auto conv = [&]() -> grasp::RealSeq {
-//			grasp::RealSeq output;
-//			output.assign(dimensions(), REAL_ZERO);
-//			{
-//				golem::CriticalSectionWrapper csw(csHandForce);
-//				for (I32 i = 0; i < dimensions(); ++i) {
-//					Real tmp = REAL_ZERO;
-//					grasp::RealSeq& seq = forceInpSensorSeq[i];
-//					// conv y[k] = x[k]h[0] + x[k-1]h[1] + ... + x[0]h[k]
-//					for (I32 j = 0; j < windowSize; ++j) {
-//						tmp += seq[findIndex(windowSize - j - 1)] * mask[j];
-//					}
-//					output[i] = tmp;
-//				}
-//			}
-//			return output;
-//		};
-//
-//		filteredforce = conv();
-//	};
-//
-//	guardsReader = [=](const Controller::State &state, grasp::RealSeq& force, std::vector<golem::Configspace::Index> &joints) {
-//		joints.clear();
-//		joints.reserve(getPlanner().handInfo.getJoints().size());
-//		// the loop skips the last joint because it's coupled with the 3rd joint.
-//		for (Configspace::Index i = getPlanner().handInfo.getJoints().begin(); i != getPlanner().handInfo.getJoints().end(); ++i) {
-//			const size_t k = i - getPlanner().handInfo.getJoints().begin();
-//			if (Math::abs(handFilteredForce[k]) > fLimit[k])
-//				joints.push_back(i);
-//		}
-//		//for (size_t i = 0; i < size; ++i)
-//		//	if (Math::abs(force[i]) > fLimit[i])
-//		//		throw Message(Message::LEVEL_NOTICE, "Robot::handForceReaderDflt(): F[%u/%u] = (%3.3lf)", i, size, force[i]);
-//	};
-//
-//	guardsFTReader = [&](const Controller::State &, grasp::RealSeq& force) -> std::vector<size_t> {
-//		// find index of the 6 dimension force
-//		auto getWrench = [&](const U32 idx, const grasp::RealSeq& force) -> grasp::RealSeq {
-//			RealSeq seq; seq.assign(6, REAL_ZERO);
-//			for (size_t i = 0; i < 6; ++i)
-//				seq[i] = force[idx * 6 + i];
-//			return seq;
-//		};
-//
-//		std::vector<size_t> indeces;
-//		context.write("Filtered [%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f]\n", 
-//			handFilteredForce[0], handFilteredForce[1], handFilteredForce[2],
-//			handFilteredForce[6], handFilteredForce[7], handFilteredForce[8], 
-//			handFilteredForce[12], handFilteredForce[13], handFilteredForce[14]);
-//		context.write("Limits [%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f]\n",
-//			fLimit[0], fLimit[1], fLimit[2],
-//			fLimit[6], fLimit[7], fLimit[8],
-//			fLimit[12], fLimit[13], fLimit[14]);
-//		grasp::RealSeq& seq = handFilteredForce;
-//		for (size_t i = 0; i < seq.size(); ++i) {
-//			if (Math::abs(handFilteredForce[i]) > fLimit[i]) {
-//				const size_t k = (size_t)(i % 6);
-//				ftGuards[k]->wrench = *reinterpret_cast<Twist*>(getWrench(i, handFilteredForce).data());
-//				ftGuards[k]->mode = Mode::INCONTACT;
-//				indeces.push_back(k);
-//			}
-//		}
-////		for (size_t i = 0; i < ftGuards.size(); ++i) {
-////			RealSeq seq = getWrench(i, force);
-////			context.write("seq size %d\n", seq.size());
-////			for (size_t j = 0; j < seq.size(); ++j) {
-////				const size_t k = i * 6 + j;
-////				context.write("seq[%d] = %.3f, filtered[%d] = %.3f, limits[%d] = %.3f\n", k, seq[k], k, handFilteredForce[k], k, fLimit[k]);
-////				if (Math::abs(handFilteredForce[k]) > fLimit[k]) {
-//////					ftGuards[i].wrench = *reinterpret_cast<const Twist*>(getWrench(i, handFilteredForce).data());
-////					ftGuards[i].mode = Mode::INCONTACT;
-////					indeces.push_back(i);
-////				}
-////			}
-////		}
-//		return indeces;
-//	};
-//
-//	tRead = context.getTimer().elapsed();
-//	forceReaderHandler = [&]() {
-//		auto strTorques = [=](std::ostream& ostr, const SecTmReal t, const grasp::RealSeq& forces) {
-//			ostr << t << "\t";
-//			for (auto i = 0; i < forces.size(); ++i)
-//				ostr << forces[i] << "\t";
-//			ostr << std::endl;
-//		};
-//
-//		//if (ftSensorSeq.empty())
-//		//	return;
-//
-//		sleep.reset(new golem::Sleep);
-//
-//		SecTmReal t = context.getTimer().elapsed();
-//		if (t - tRead > tCycle) {
-//			RealSeq force;
-//			force.assign(dimensions(), REAL_ZERO);
-//			//size_t k = 0;
-//			//for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
-//			//	FT::Data data;
-//			//	(*i)->read(data);
-//
-//			//	data.wrench.v.getColumn3(&force[k]);
-//			//	data.wrench.w.getColumn3(&force[k + 3]);
-//			//	k += 6;
-//			//}
-//			collectFTInp(lookupState(), force);
-//			strTorques(dataFTFiltered, t, handFilteredForce);
-//			tRead = t;
-//			context.write("Reading forces at time %f\n", t);
-//		}
-//		else
-//			sleep->sleep(tIdle);
-//
-//	};
-
-	//armHandForce->setArmForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws
-	//	static size_t indexkk = 0;
-	//	if (indexkk++ % 50 == 0)
-	//		context.debug("W [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
-	//		force[0], force[1], force[2], force[3], force[4], force[5]);
-	//		//context.debug("T [%.3f %.3f %.3f %.3f %.3f %.3f]\nI [%.3f %.3f %.3f %.3f %.3f %.3f]\nM [%.3f %.3f %.3f %.3f %.3f %.3f]\n",
-	//		//force[0], force[1], force[2], force[3], force[4], force[5],
-	//		//force[6], force[7], force[8], force[9], force[10], force[11],
-	//		//force[12], force[13], force[14], force[15], force[16], force[17]
-	//		//);
-
-	//});
 	bool simulatedForces = false, ftsensors = true;
 	armHandForce->setSensorForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws
 		if (!enableForceReading)
 			return;
 
-		size_t k = 0;
-		for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
-			grasp::FT::Data data;
-			(*i)->read(data);
-			data.wrench.v.getColumn3(&force[k]);
-			data.wrench.w.getColumn3(&force[k + 3]);
-			k += 6;
+		if (simulatedForces) {
+			for (auto i = 0; i < force.size(); ++i)
+				force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
+
+			golem::Controller::State dflt = manipulator->getController().createState();
+			manipulator->getController().setToDefault(dflt);
+
+			manipulator->getController().lookupState(golem::SEC_TM_REAL_MAX, dflt);
+			dflt.cvel.setToDefault(manipulator->getController().getStateInfo().getJoints());
+			dflt.cacc.setToDefault(manipulator->getController().getStateInfo().getJoints());
+
+			(void)collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(dflt), force, false);
 		}
+		// read from the state variable (if supported)
+		else {
+			if (ftsensors) {
+				size_t k = 0;
+				for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
+					grasp::FT::Data data;
+					(*i)->read(data);
+					data.wrench.v.getColumn3(&force[k]);
+					data.wrench.w.getColumn3(&force[k + 3]);
+					k += 6;
+				}
 
-		//if (simulatedForces) {
-		//	for (auto i = 0; i < force.size(); ++i)
-		//		force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
-
-		//	golem::Controller::State dflt = manipulator->getController().createState();
-		//	manipulator->getController().setToDefault(dflt);
-
-		//	manipulator->getController().lookupState(golem::SEC_TM_REAL_MAX, dflt);
-		//	dflt.cvel.setToDefault(manipulator->getController().getStateInfo().getJoints());
-		//	dflt.cacc.setToDefault(manipulator->getController().getStateInfo().getJoints());
-
-		//	(void)collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(dflt), force, false);
-		//}
-		//// read from the state variable (if supported)
-		//else {
-		//	if (ftsensors) {
-		//		size_t k = 0;
-		//		for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
-		//			grasp::FT::Data data;
-		//			(*i)->read(data);
-		//			data.wrench.v.getColumn3(&force[k]);
-		//			data.wrench.w.getColumn3(&force[k + 3]);
-		//			k += 6;
-		//		}
-
-		//	}
-		//	else {
-		//		const ptrdiff_t forceOffset = armHandForce->getHand()->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
-		//		if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
-		//			for (Configspace::Index j = state.getInfo().getJoints().begin(); j < state.getInfo().getJoints().end(); ++j) {
-		//				const size_t k = j - state.getInfo().getJoints().begin();
-		//				force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
-		//			}
-		//		}
-		//	}
-		//}
-		//static size_t indexk = 0;
-		//if (indexk++ % 10 == 0) {
-		//context.write("Sim FT Thumb [%f %f %f %f %f %f]\n",
-		//		force[0], force[1], force[2], force[3], force[4], force[5]);
-		//	context.write("Sim FT Index [%f %f %f %f %f %f]\n",
-		//		force[6], force[7], force[8], force[9], force[10], force[11]);
-		//	context.write("Sim FT Middle [%f %f %f %f %f %f]\n",
-		//		force[12], force[13], force[14], force[15], force[16], force[17]);
-		//}
+			}
+			else {
+				const ptrdiff_t forceOffset = armHandForce->getHand()->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
+				if (forceOffset != Controller::ReservedOffset::UNAVAILABLE) {
+					for (Configspace::Index j = state.getInfo().getJoints().begin(); j < state.getInfo().getJoints().end(); ++j) {
+						const size_t k = j - state.getInfo().getJoints().begin();
+						force[k] = state.get<ConfigspaceCoord>(forceOffset)[j];
+					}
+				}
+			}
+		}
 	}); // end robot->setSimHandForceReader
 
 	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws
-		//if (forceReaderHandler) forceReaderHandlerThread.start(forceReaderHandler);
-//		return;
-//		grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
-//
-//		// associate random noise [-0.1, 0.1]
-//		//for (auto i = 0; i < force.size(); ++i)
-//		//	force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
-//		static int indexjj = 0;
-//		if (indexjj++ % 10 == 0) {
-//			if (enableSimContact) {
-//				if (!objectPointCloudPtr->empty()) 
-//					collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), force, enableForceReading);
-//			}
-//			else {
-//				size_t k = 0;
-//				for (auto i = ftSensorSeq.begin(); i < ftSensorSeq.end(); ++i) {
-//					//FT::Data data;
-//					//(*i)->read(data);
-//					Twist wrench; 
-//					SecTmReal t;
-//					(*i)->readSensor(wrench, t);
-//					//if (!data.wrench.isFinite())
-//					//	throw Message(Message::LEVEL_ERROR, "handForceReader(): FT sensor %s is not finite.\ndata.wrench [% 8.4f, % 8.4f, % 8.4f % 8.4f, % 8.4f, % 8.4f]\nwrench [% 8.4f, % 8.4f, % 8.4f % 8.4f, % 8.4f, % 8.4f]", 
-//					//		(*i)->getID().c_str(),
-//					//		data.wrench.v.x, data.wrench.v.y, data.wrench.v.z, data.wrench.w.x, data.wrench.w.y, data.wrench.w.z,
-//					//		wrench.v.x, wrench.v.y, wrench.v.z, wrench.w.x, wrench.w.y, wrench.w.z);
-//
-//					wrench.v.getColumn3(&force[k]);
-//					wrench.w.getColumn3(&force[k+3]);
-//					k += 6;
-//				}
-//			}
-//
-////		debugRenderer.reset();
-////		size_t jointInCollision = enableSimContact && !objectPointCloudPtr->empty() ? collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), force, false) : 0;
-//
-//			//if (indexjj++ % 10 == 0) {
-//			collectFTInp(state, force);
-//
-//			//context.write("1 [%.3f %.3f %.3f %.3f %.3f %.3f] 2 [%.3f %.3f %.3f %.3f %.3f %.3f] 3 [%.3f %.3f %.3f %.3f %.3f %.3f]\r",
-//			//	force[0], force[1], force[2], force[3], force[4], force[5],
-//			//	force[6], force[7], force[8], force[9], force[10], force[11],
-//			//	force[12], force[13], force[14], force[15], force[16], force[17]);
-//		}
-
 		if (!enableForceReading)
 			return;
 
-		//context.write("Thumb [%.3f %.3f %.3f %.3f %.3f %.3f]\r",
-		//	handFilteredForce[0], handFilteredForce[1], handFilteredForce[2], handFilteredForce[3], handFilteredForce[4], handFilteredForce[5]);
-//		static size_t indexkk = 0;
 		size_t k = 0;
 		U32 contacts = golem::numeric_const<U32>::ZERO;
 		handFilteredForce = force; // sensorBundlePtr->getFilteredForces(); // sensorBundlePtr.get() ? sensorBundlePtr->getFilteredForces() : handFilteredForce;
-		//if (indexkk++ % 10 == 0) {
-		//	context.write("FT Thumb [%f %f %f %f %f %f]\n",
-		//		handFilteredForce[0], handFilteredForce[1], handFilteredForce[2], handFilteredForce[3], handFilteredForce[4], handFilteredForce[5]);
-		//	context.write("FT Index [%f %f %f %f %f %f]\n",
-		//		handFilteredForce[6], handFilteredForce[7], handFilteredForce[8], handFilteredForce[9], handFilteredForce[10], handFilteredForce[11]);
-		//	context.write("FT Middle [%f %f %f %f %f %f]\n",
-		//		handFilteredForce[12], handFilteredForce[13], handFilteredForce[14], handFilteredForce[15], handFilteredForce[16], handFilteredForce[17]);
-		//}
+
 		for (auto i = ftGuards.begin(); i < ftGuards.end(); ++i) {
 			(*i)->setColumn6(&handFilteredForce[k]);
 			if ((*i)->checkContacts())
@@ -918,81 +302,6 @@ bool R2GPlanner::create(const Desc& desc) {
 		}
 	}); // end robot->setHandForceReader
 
-//	armHandForce->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws		
-//		// associate random noise [-0.1, 0.1]
-//		static int indexjj = 0;
-//		if (enableSimContact)
-//			for (auto i = 0; i < force.size(); ++i)
-//				force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
-//		
-//		RealSeq links; links.assign(dimensions(), REAL_ZERO);
-//		size_t jointInCollision = enableSimContact && !objectPointCloudPtr->empty() ? collisionPtr->simulate(desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(lookupState()), /*links*/force, true) : 0;
-//		RealSeq filteredForces; filteredForces.assign(dimensions(), REAL_ZERO);
-//		auto strTorques = [=](std::ostream& ostr, const Controller::State& state, const grasp::RealSeq& forces, const RealSeq& guardSeq/*const bool contact*/) {
-//			ostr << state.t << "\t";
-//			std::string c = jointInCollision > 0 ? "y" : "n"; //contact ? "y" : "n";
-//			ostr << c.c_str() << "\t";
-//			//grasp::RealSeq torques;
-//			//torques.assign((size_t)robot->getStateHandInfo().getJoints().size(), REAL_ZERO);
-//			//robot->readFT(state, torques);
-//			for (auto i = 0; i < forces.size(); ++i)
-//				ostr << forces[i] << "\t";
-//			//for (auto i = 0; i < guardSeq.size(); ++i)
-//			//	ostr << guardSeq[i] << "\t";
-//		};
-//		if (++indexjj % 10 == 0) 	{
-//			collectFTInp(state, force);
-//			filteredForces = getFilterForce();
-//			if (record) {
-//				//breakPoint();
-//				dataFTRaw << indexjj << "\t";
-//				strTorques(dataFTRaw, state, force, links/*contact*/);
-//				dataFTRaw << std::endl;
-//				dataFTFiltered << indexjj << "\t";
-//				strTorques(dataFTFiltered, state, filteredForces, links/*contact*/);
-//				dataFTFiltered << std::endl;
-//			}
-//		}
-//
-//		if (!enableForceReading)
-//			return;
-//		
-//		FTGuard::Seq triggeredGuards;
-//		std::vector<Configspace::Index> joints;
-//		guardsFTReader(state, force, joints);
-//		//for (U32 i = 0; i != joints.size(); ++i) {
-//		//	FTGuard guard(*manipulator);
-//		//	guard.create(joints[i]);
-//		//	const size_t k = joints[i] - getPlanner().handInfo.getJoints().begin();
-//		//	guard.force = filteredForces[k]; //force[k];
-//		//	guard.threshold = fLimit[k];
-//		//	triggeredGuards.push_back(guard);
-//		//}
-//		if (FTGuard::trigguered(ftGuards)) {//(!triggeredGuards.empty()) {
-////			std::stringstream str;
-//			for (FTGuard::Seq::const_iterator g = ftGuards.begin(); g != ftGuards.end(); ++g)
-//				g->str();
-//
-//			if (force.size() >= 20) {
-//				context.write("Forces: Thumb: [%3.3lf %3.3lf %3.3lf %3.3lf] Index [%3.3lf %3.3lf %3.3lf %3.3lf] Middle [%3.3lf %3.3lf %3.3lf %3.3lf] Ring [%3.3lf %3.3lf %3.3lf %3.3lf] Pinky [%3.3lf %3.3lf %3.3lf %3.3lf]\n",
-//					force[0], force[1], force[2], force[3],
-//					force[4], force[5], force[6], force[7], 
-//					force[8], force[9], force[10], force[11], 
-//					force[12], force[13], force[14], force[15],
-//					force[16], force[17], force[18], force[19]);
-//				grasp::RealSeq f = getFilterForce();
-//				context.write("filter: Thumb: [%3.3lf %3.3lf %3.3lf %3.3lf] Index [%3.3lf %3.3lf %3.3lf %3.3lf] Middle [%3.3lf %3.3lf %3.3lf %3.3lf] Ring [%3.3lf %3.3lf %3.3lf %3.3lf] Pinky [%3.3lf %3.3lf %3.3lf %3.3lf]\n",
-//					f[0], f[1], f[2], f[3],
-//					f[4], f[5], f[6], f[7],
-//					f[8], f[9], f[10], f[11],
-//					f[12], f[13], f[14], f[15],
-//					f[16], f[17], f[18], f[19]);
-//			}
-//		
-//			throw Message(Message::LEVEL_NOTICE, "spam::Robot::handForceReader(): Triggered %d guard(s).\n", triggeredGuards.size());
-//		}
-//	}); // end robot->setHandForceReader
-
 	armHandForce->setEmergencyModeHandler([=]() {
 //		handForces = getHandForceVec();
 		enableForceReading = false;
@@ -1001,175 +310,10 @@ bool R2GPlanner::create(const Desc& desc) {
 		armHandForce->getHandCtrl()->setMode(handMode);
 	}); // end robot->setEmergencyModeHandler
 
-	//	auto strTorquesDesc = [=](std::ostream& ostr) {
-//		ostr << "timestamp" << grasp::to<Data>(data)->sepField << "contact" << grasp::to<Data>(data)->sepField << "thumb_0" << grasp::to<Data>(data)->sepField << "thumb_1" << grasp::to<Data>(data)->sepField << "thumb_2" << grasp::to<Data>(data)->sepField << "thumb_3" << grasp::to<Data>(data)->sepField <<
-//			"index_0" << grasp::to<Data>(data)->sepField << "index_1" << grasp::to<Data>(data)->sepField << "index_2" << grasp::to<Data>(data)->sepField << "index_3" << grasp::to<Data>(data)->sepField <<
-//			"middle_0" << grasp::to<Data>(data)->sepField << "middle_1" << grasp::to<Data>(data)->sepField << "middle_2" << grasp::to<Data>(data)->sepField << "middle_3" << grasp::to<Data>(data)->sepField <<
-//			"ring_0" << grasp::to<Data>(data)->sepField << "ring_1" << grasp::to<Data>(data)->sepField << "ring_2" << grasp::to<Data>(data)->sepField << "ring_3" << grasp::to<Data>(data)->sepField <<
-//			"pinky_0" << grasp::to<Data>(data)->sepField << "pinky_1" << grasp::to<Data>(data)->sepField << "pinky_2" << grasp::to<Data>(data)->sepField << "pinky_3" << grasp::to<Data>(data)->sepField;
-//	};
-//
-//	// writing data into a text file, open file
-//	const std::string dataIndexPathRaw = grasp::makeString("%s_raw.txt", prefix.str().c_str());
-//	const std::string dataIndexPathFiltered = grasp::makeString("%s_filtered.txt", prefix.str().c_str());
-//
-////	if (enableSimContact) {
-//	// raw data from drl hand FT
-//		dataFTRaw.open(dataIndexPathRaw);
-//		// writing data into a text file, prepare headers
-//		dataFTRaw << "#index" << grasp::to<Data>(data)->sepField;
-//		strTorquesDesc(dataFTRaw);
-//		dataFTRaw << std::endl;
-//		// filtered data from DLR hand FT
-//		dataFTFiltered.open(dataIndexPathFiltered);
-//		// writing data into a text file, prepare headers
-//		dataFTFiltered << "#index" << grasp::to<Data>(data)->sepField;
-//		strTorquesDesc(dataFTFiltered);
-//		dataFTFiltered << std::endl;
-////	}
-//
-//	// simulates contacts between robot's hand and the object's point cloud
-//	robot->setHandForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws		
-//		// associate random noise [-0.1, 0.1]
-//		static int indexjj = 0;
-//		if (enableSimContact)
-//			for (auto i = 0; i < force.size(); ++i)
-//				force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
-//
-//		size_t jointInCollision = enableSimContact && !objectPointCloudPtr->empty() ? collisionPtr->simulate(desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(robot->recvState().config), force) : 0;
-//
-//		//// writing data into a text file
-//		auto strTorques = [=](std::ostream& ostr, const Controller::State& state, const grasp::RealSeq& forces, const bool contact) {
-//			ostr << state.t << grasp::to<Data>(data)->sepField;
-//			std::string c = contact ? "y" : "n";
-//			ostr << c.c_str() << grasp::to<Data>(data)->sepField;
-//			//grasp::RealSeq torques;
-//			//torques.assign((size_t)robot->getStateHandInfo().getJoints().size(), REAL_ZERO);
-//			//robot->readFT(state, torques);
-//			for (auto i = 0; i < forces.size(); ++i)
-//				ostr << forces[i] << grasp::to<Data>(data)->sepField;
-//		};
-//		if (++indexjj % 10 == 0) 	{
-//			robot->collectFTInp(state, force);
-//			if (record) {
-//				//breakPoint();
-//				dataFTRaw << indexjj << grasp::to<Data>(data)->sepField;
-//				strTorques(dataFTRaw, state, force, contact);
-//				dataFTRaw << std::endl;
-//				grasp::RealSeq f = robot->getFilterForce();
-//				dataFTFiltered << indexjj << grasp::to<Data>(data)->sepField;
-//				strTorques(dataFTFiltered, state, f, contact);
-//				dataFTFiltered << std::endl;
-//			}
-//		}
-//
-//		if (!enableForceReading)
-//			return;
-//
-//		triggeredGuards.clear();
-//		std::vector<Configspace::Index> joints;
-//		robot->guardsReader(robot->recvState().command, force, joints);
-//		for (U32 i = 0; i != joints.size(); ++i) {
-//			FTGuard guard(*manipulator);
-//			guard.create(joints[i]);
-//			const size_t k = joints[i] - robot->getStateHandInfo().getJoints().begin();
-//			guard.force = force[k];
-//			guard.threshold = robot->getFlimit(k);
-//			triggeredGuards.push_back(guard);
-//		}
-//		if (!triggeredGuards.empty()) {
-////			std::stringstream str;
-//			for (FTGuard::Seq::const_iterator g = triggeredGuards.begin(); g != triggeredGuards.end(); ++g)
-//				g->str();
-//			if (force.size() >= 20) {
-//				context.write("Forces: Thumb: [%3.3lf %3.3lf %3.3lf %3.3lf] Index [%3.3lf %3.3lf %3.3lf %3.3lf] Middle [%3.3lf %3.3lf %3.3lf %3.3lf] Ring [%3.3lf %3.3lf %3.3lf %3.3lf] Pinky [%3.3lf %3.3lf %3.3lf %3.3lf]\n",
-//					force[0], force[1], force[2], force[3],
-//					force[4], force[5], force[6], force[7], 
-//					force[8], force[9], force[10], force[11], 
-//					force[12], force[13], force[14], force[15],
-//					force[16], force[17], force[18], force[19]);
-//				grasp::RealSeq f = robot->getFilterForce();
-//				context.write("filter: Thumb: [%3.3lf %3.3lf %3.3lf %3.3lf] Index [%3.3lf %3.3lf %3.3lf %3.3lf] Middle [%3.3lf %3.3lf %3.3lf %3.3lf] Ring [%3.3lf %3.3lf %3.3lf %3.3lf] Pinky [%3.3lf %3.3lf %3.3lf %3.3lf]\n",
-//					f[0], f[1], f[2], f[3],
-//					f[4], f[5], f[6], f[7],
-//					f[8], f[9], f[10], f[11],
-//					f[12], f[13], f[14], f[15],
-//					f[16], f[17], f[18], f[19]);
-//			}
-//
-//			throw Message(Message::LEVEL_NOTICE, "spam::Robot::handForceReader(): Triggered %d guard(s).\n", triggeredGuards.size());
-//		}
-//	}); // end robot->setHandForceReader
-//
-//	//robot->setHandContactDetector([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws
-//	//	// writing data into a text file
-//	//	auto strTorques = [=](std::ostream& ostr, const Controller::State& state, const grasp::RealSeq& forces, const bool contact) {
-//	//		ostr << state.t << grasp::to<Data>(data)->sepField;
-//	//		std::string c = contact ? "y" : "n";
-//	//		ostr << c.c_str() << grasp::to<Data>(data)->sepField;
-//	//		//grasp::RealSeq torques;
-//	//		//torques.assign((size_t)robot->getStateHandInfo().getJoints().size(), REAL_ZERO);
-//	//		//robot->readFT(state, torques);
-//	//		for (auto i = 0; i < forces.size(); ++i)
-//	//			ostr << forces[i] << grasp::to<Data>(data)->sepField;
-//	//	};
-//	//	static int indexjj = 0;
-//	//	//auto breakPoint = [&]() { if (waitKey(10) == ' ') contact = !contact; };
-//	//	//auto recording = [&]() { if (waitKey(10) == 27) record = !record; };
-//	//	//recording();
-//	//	if (record && ++indexjj % 10 == 0) {
-//	//		//breakPoint();
-//	//		dataFTFiltered << indexjj << grasp::to<Data>(data)->sepField;
-//	//		strTorques(dataFTFiltered, state, force, contact);
-//	//		dataFTFiltered << std::endl;
-//	//	}
-//	//	if (!enableForceReading)
-//	//		return;
-//	//	std::vector<Configspace::Index> joints;
-//	//	robot->guardsReader(robot->recvState().command, force, joints);
-//	//	for (U32 i = 0; i != joints.size(); ++i) {
-//	//		FTGuard guard(*manipulator);
-//	//		guard.create(joints[i]);
-//	//		guard.force = force[i];
-//	//		guard.threshold = robot->getFlimit(i);
-//	//		triggeredGuards.push_back(guard);
-//	//	}
-//	//	if (!triggeredGuards.empty()) {
-//	//		for (FTGuard::Seq::const_iterator g = triggeredGuards.begin(); g != triggeredGuards.end(); ++g)
-//	//			g->str();
-//	//		if (force.size() >= 20) {
-//	//			context.write("Forces: Thumb: [%3.3lf %3.3lf %3.3lf %3.3lf] Index [%3.3lf %3.3lf %3.3lf %3.3lf] Middle [%3.3lf %3.3lf %3.3lf %3.3lf] Ring [%3.3lf %3.3lf %3.3lf %3.3lf] Pinky [%3.3lf %3.3lf %3.3lf %3.3lf]\n",
-//	//				force[0], force[1], force[2], force[3],
-//	//				force[4], force[5], force[6], force[7],
-//	//				force[8], force[9], force[10], force[11],
-//	//				force[12], force[13], force[14], force[15],
-//	//				force[16], force[17], force[18], force[19]);
-//	//		}
-//	//		throw Message(Message::LEVEL_NOTICE, "spam::Robot::handForceReader(): Triggered %d guard(s).\n", triggeredGuards.size());
-//	//	}
-//	//});
-//
-//	enableControllers = false;
-//	// called after guards are triggered
-//	robot->setEmergencyModeHandler([=]() {
-////		context.debug("Emergency mode handler\n");
-//		enableForceReading = false;
-//		contactOccured = true;
-//		//grasp::to<Data>(currentDataPtr)->replanning = true;
-//		robot->getArmCtrl()->setMode(grasp::ActiveCtrl::MODE_DISABLED);
-//		robot->getHandCtrl()->setMode(grasp::ActiveCtrl::MODE_DISABLED);
-////		updateAndResample(currentDataPtr);
-////		triggeredGuards.clear();
-//		//robot->getArmCtrl()->setMode(grasp::ActiveCtrl::MODE_ENABLED);
-//		//robot->getHandCtrl()->setMode(grasp::ActiveCtrl::MODE_ENABLED);
-//	}); // end robot->setEmergencyModeHandler
-
 	uncEnable = desc.uncEnable;
 	singleGrasp = desc.singleGrasp;
 	withdrawToHomePose = desc.withdrawToHomePose;
 	posterior = true;
-
-//	triggeredGuards.clear();
 
 	ragDesc = desc;
 
@@ -1177,9 +321,6 @@ bool R2GPlanner::create(const Desc& desc) {
 	robotStates.clear();
 
 	isGrasping = false;
-
-	//	collisionPtr->create(rand, grasp::to<Data>(dataPtr)->simulateObjectPose);
-	//	objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataPtr)->simulateObjectPose));
 
 	auto executeCmd = [&](const std::string command) {
 		MenuCmdMap::const_iterator cmd = menuCmdMap.find(command);
@@ -1212,23 +353,6 @@ bool R2GPlanner::create(const Desc& desc) {
 				return;
 			}
 			}
-			//switch (strat) {
-			//case NONE_STRATEGY:
-			//	strat = Strategy::ELEMENTARY;
-			//	break;
-			//case ELEMENTARY:
-			//	strat = Strategy::MYCROFT;
-			//	break;
-			//case MYCROFT:
-			//	strat = Strategy::IR3NE;
-			//	break;
-			//case IR3NE:
-			//	strat = Strategy::NONE_STRATEGY;
-			//	break;
-			//default:
-			//	strat = Strategy::NONE_STRATEGY;
-			//	break;
-			//}
 		};
 		to<Data>(dataCurrentPtr)->createRender();
 		// set the simulated object
@@ -1308,28 +432,6 @@ bool R2GPlanner::create(const Desc& desc) {
 			}
 		};
 		auto select = [&](Strategy &strat) {
-			//switch (option("NEMI", "Press a key to select (N)one/(E)lementary/(M)ycroft/(I)r3ne...")) {
-			//case 'N':
-			//{
-			//	strat = Strategy::NONE_STRATEGY;
-			//	return;
-			//}
-			//case 'E':
-			//{
-			//	strat = Strategy::ELEMENTARY;
-			//	return;
-			//}
-			//case 'M':
-			//{
-			//	strat = Strategy::MYCROFT;
-			//	return;
-			//}
-			//case 'I':
-			//{
-			//	strat = Strategy::IR3NE;
-			//	return;
-			//}
-			//}
 			switch (strat) {
 			case NONE_STRATEGY:
 			//	strat = Strategy::ELEMENTARY;
@@ -1353,19 +455,6 @@ bool R2GPlanner::create(const Desc& desc) {
 			pHeuristic->enableUnc = false;
 			pHeuristic->setPointCloudCollision(false);
 			gotoConfig(home);
-			//Controller::State::Seq seq, out;
-			//findTrajectory(lookupState(), &home, nullptr, 0, seq);
-			//profile(this->trjDuration, seq, out, true);
-			//sendTrajectory(out);
-			//controller->waitForBegin();
-			//controller->waitForEnd();
-			//// repeat every send waypoint until trajectory end
-			//for (U32 i = 0; controller->waitForBegin(); ++i) {
-			//	if (universe.interrupted())
-			//		throw Exit();
-			//	if (controller->waitForEnd(0))
-			//		break;
-			//}
 		};
 		auto resetDataPtr = [&](Data::Map::iterator& dataPtr) {
 			to<Data>(dataPtr)->queryPoints.clear();
@@ -1423,27 +512,6 @@ bool R2GPlanner::create(const Desc& desc) {
 			modelGraspItem = dataItemLabel;
 		}
 		context.write("done.\n");
-		/*
-		// create a grasp
-		context.write("Create a predictive contact model for the grasp...\n");
-		std::vector<std::string> modelGraspItemSeq; modelGraspItemSeq.clear();
-		//modelGraspItemSeq.push_back("grasp-handle");
-		//modelGraspItemSeq.push_back("grasp-pinch");
-		//modelGraspItemSeq.push_back("grasp-pinchsupp");
-		//modelGraspItemSeq.push_back("grasp-power");
-		//modelGraspItemSeq.push_back("grasp-powertube");
-		//modelGraspItemSeq.push_back("grasp-rim");
-		//for (;;) {
-			dataItemLabel = modelGraspItem;
-			executeCmd(itemTransCmd);
-			modelGraspItem = dataItemLabel;
-			modelGraspItemSeq.push_back(modelGraspItem);
-		//	if (option("YN", "Add another grasp type? (Y/N)") == 'Y')
-		//		continue;
-		//	break;
-			context.write("done.\n");
-		//}*/
-
 		//--------------------------------------------------------------------//
 		// TRIALS
 		//--------------------------------------------------------------------//
@@ -1501,11 +569,6 @@ bool R2GPlanner::create(const Desc& desc) {
 				//--------------------------------------------------------------------//
 				// CREATE A PREDICTIVE QUERY FOR THE GRASP
 				//--------------------------------------------------------------------//
-				// create a grasp
-				// retrieve model contact
-				//if (modelGraspItemSeq.empty())
-				//	throw Message(Message::LEVEL_ERROR, "R2GPlanner::demo(): No model grasp have been created.");
-
 				// generate features
 				grasp::data::Transform* transform = is<grasp::data::Transform>(queryGraspHandler);
 				if (!transform)
@@ -1615,113 +678,8 @@ bool R2GPlanner::create(const Desc& desc) {
 						updateAndResample(dataCurrentPtr);
 						enableForceReading = false;
 						continue;
-						// decides if attempts to grasp anyway or to re-plan
-						//cq->getData().configs[0]->getContact()->getOptimisation()->;
-						
-//						grasp::OptimisationSA::Desc optimisationDesc;
-//						grasp::Contact c = *cq->getData().configs[0]->getContact();
-//						const OptimisationSA* optimisation = dynamic_cast<const OptimisationSA*>(cq->getData().configs[0]->getContact()->getOptimisation());
-//						if (!optimisation)
-//							continue;
-//
-//						// cinit is the current robot pose (open fingers)
-//						// cend is the final pose of the robot (close fingers)
-//						Controller::State cinit = lookupState(), cend = lookupState();
-//
-//						// The contact query is build on the model's point cloud.
-//						// Transforms the robot pose w.r.t model's point cloud
-//						Mat34 poseFrameInv;
-//						poseFrameInv.setInverse(grasp::to<Data>(dataCurrentPtr)->queryTransform);
-//						findTarget(poseFrameInv, grasp::to<Data>(dataCurrentPtr)->queryFrame, cend, cend);
-//						cinit = cend;
-//						for (auto i = getPlanner().handInfo.getJoints().begin(); i != getPlanner().handInfo.getJoints().end(); ++i)
-//							cend.cpos[i] = inp[2].state.cpos[i];
-//
-//						// debug: draws model's point cloud and the robot pose w.r.t it
-//						showModelPointCloud = true;
-//						to<Data>(dataCurrentPtr)->createRender();
-//
-//						// interpolates the fingers' pose
-//						golem::Waypoint w, w0, w1;
-//						w0.setup(*controller, cinit.cpos, false, true);
-//						w1.setup(*controller, cend.cpos, false, true);
-//
-//						Real dist = REAL_ZERO;
-//						for (Configspace::Index j = getPlanner().handInfo.getJoints().begin(); j < getPlanner().handInfo.getJoints().end(); ++j)
-//							dist += Math::sqr(w1.cpos[j] - w0.cpos[j]);
-//						dist = Math::sqrt(dist) / getPlanner().handInfo.getJoints().size();
-//
-//						const U32 size = (U32)Math::round(dist / 0.01) + 1;
-//						Real p[2];
-//						context.write("Optimisation\ndist %f size %d\n", dist, size);
-//
-//						golem::Real lik = REAL_ZERO;
-//						Manipulator::Waypoint::Seq waypoints;
-//						// test for collisions in the range (w0, w1) - not excluding w0 and w1
-//						for (U32 i = 0; i <= size; ++i) {
-//							p[0] = Real(i) / Real(size);
-//							p[1] = REAL_ONE - p[0];
-//
-//							// lineary interpolate coordinates
-//							w = w1;
-//							for (Configspace::Index j = getPlanner().handInfo.getJoints().begin(); j < getPlanner().handInfo.getJoints().end(); ++j)
-//								w.cpos[j] = p[0] * w0.cpos[j] + p[1] * w1.cpos[j];
-//
-//							grasp::Manipulator::Config config1(w.cpos, manipulator->getBaseFrame(w.cpos));
-//							Bounds::Seq bounds = manipulator->getBounds(config1.config, config1.frame.toMat34());
-//							renderHand(cend, bounds, false);
-//							grasp::Contact::Likelihood likelihood;
-//							if (true) {
-//								grasp::Manipulator::Waypoint waypoint(w.cpos, config1.frame);	
-//								waypoints.push_back(waypoint);
-//								//optimisation->evaluate(waypoint, likelihood);
-//							}
-//							else {
-//								Collision::FlannDesc waypointDesc;
-//								Collision::Desc::Ptr cloudDesc;
-//								cloudDesc.reset(new Collision::Desc());
-//								Collision::Ptr cloud = cloudDesc->create(*manipulator);
-//								waypointDesc.depthStdDev = 0.0001/*0.0005*/; waypointDesc.likelihood = 10.0; waypointDesc.points = 10000; waypointDesc.neighbours = 100;
-//								waypointDesc.radius = REAL_ZERO;
-//
-//								grasp::Manipulator::Config config2(w.cpos, manipulator->getBaseFrame(w.cpos));
-//								debugRenderer.reset();
-//								//		debugAppearance.draw(points, debugRenderer);
-//								RealSeq ff = {0., 0., -0.1, 0., 0., 0.};
-//								for (size_t i = 0; i < 3; ++i) {
-//									ftGuards[i]->setColumn6(&ff[0]);
-//									ftGuards[i]->checkContacts();
-//								}
-//								cloud->create(rand, modelPoints);
-//								likelihood.value = cloud->evaluateFT(debugRenderer, waypointDesc, config2, ftGuards);
-//								for (auto g = ftGuards.begin(); g != ftGuards.end(); ++g)
-//									(*g)->unlock();
-//							}
-//							// memorises the most likelihood configuration along the path
-//							/*if (lik < abs(likelihood.value))
-//								lik = abs(likelihood.value);
-//							context.write("Iteration %d Loss %f -> lik.value = %f\n", i, lik, likelihood.value);*/
-//						}
-//						// computes the loss [1-lik/(desired grasp lik)]. low or negative values are good!
-//						// dGraspLik (desired grasp lik) should never been zero!
-//						// ISSUE: lik is always zero!
-//						const Real loss = dGraspLik != REAL_ZERO ? 1 - abs(lik / dGraspLik) : REAL_ZERO;
-//						
-//
-//						// if loss is greater than 0.25, then we replan, otherwise go for a grasp!
-//						if (loss > 0.25) {
-//							//grasp::to<Data>(cdata->second\A0)->replanning = false;
-////							contactOccured = false;
-////							updateAndResample(dataCurrentPtr);
-////							enableForceReading = false;
-//							++iteration;
-//							//bool r = unlockContact();
-//							//context.write("unlock contact %s\n", r ? "TRUE" : "FALSE");
-//							continue;
-//						}
 					}
-					// grasp
-					//if (error.lin < 0.01) {
+
 					grasp::to<Data>(dataCurrentPtr)->actionType = action::GRASP;
 					context.write("Iteration %u: execute trajectory (%s)\n", iteration, actionToString(grasp::to<Data>(dataCurrentPtr)->actionType).c_str());
 					logFile << grasp::makeString("Iteration %u: execute trajectory (%s)\n", iteration, actionToString(grasp::to<Data>(dataCurrentPtr)->actionType).c_str());
@@ -1791,30 +749,6 @@ bool R2GPlanner::create(const Desc& desc) {
 				reset();
 			} // end strategy
 			//----------------------------------
-			//if (!execute(dataCurrentPtr, inp))
-			//	return;
-			//if (contactOccured) {
-			//	//grasp::to<Data>(cdata->second)->replanning = false;
-			//	contactOccured = false;
-			//	updateAndResample(dataCurrentPtr);
-			//	enableForceReading = false;
-			//	continue;
-			//}
-			//// grasp
-			//enableForceReading = false;
-			////grasp::to<Data>(dataPtr)->actionType = action::GRASP;
-			//context.write("execute trajectory (%s)\n", actionToString(grasp::to<Data>(dataCurrentPtr)->actionType));
-			//if (!execute(dataCurrentPtr, inp))
-			//	return;
-
-			//// lifting
-			//enableForceReading = false;
-			////grasp::to<Data>(dataPtr)->actionType = action::IG_PLAN_LIFT;
-			//context.write("execute trajectory (%s)\n", actionToString(grasp::to<Data>(dataCurrentPtr)->actionType));
-			//if (execute(dataCurrentPtr, inp))
-			//	return;
-
-			//break;
 		} // end trial
 		context.write("================================================================================================================================\n");
 		logFile << "================================================================================================================================\n";
@@ -2023,28 +957,6 @@ bool R2GPlanner::create(const Desc& desc) {
 				}
 			}
 		}
-		//		cloudImport.generate(rand, vertices, triangles, [&](const Vec3& p, const Vec3& n) {
-//			points.push_back(Cloud::Import::make<Point>(p, n, RGBA::WHITE));
-//		});
-//		Cloud::setSensorFrame(Mat34::identity(), points);
-//
-//		BoundingConvexMesh::Desc *pBoundingConvexMeshDesc;
-//		pBoundingConvexMeshDesc->triangles = triangles;
-//		pBoundingConvexMeshDesc->vertices = vertices;
-//		pBoundingConvexMeshDesc->pose = Mat34::identity();
-////		NxShapeDesc *pNxShapeDesc = getScene().createNxShapeDesc(pBoundingConvexMeshDesc);
-//		// object body
-//		BoundingCylinder::Desc pDesc = BoundingCylinder::Desc();
-//		pDesc.radius = 0.1;
-//		pDesc.length = 0.3;
-//		Actor::Desc cylinderDesc;
-//		cylinderDesc.setToDefault();
-//		cylinderDesc.pose.p = Vec3(.49, -.37, .3);
-//		// create object
-//		Actor *pCylinder = dynamic_cast<Actor*>(getScene().createObject(cylinderDesc));
-//		if (pCylinder == NULL)
-//			throw Message(Message::LEVEL_CRIT, "Unable to create object");
-//		to<Data>(dataCurrentPtr)->createRender();
 		context.write("done.\n");
 		return;
 	}));
@@ -2212,14 +1124,6 @@ grasp::RBDist R2GPlanner::trnTrajectory(const golem::Mat34& actionFrame, const g
 	const golem::Configspace::Range armJoints = getPlanner().armInfo.getJoints();
 	// Compute a sequence of targets corresponding to the transformed arm end-effector
 	GenWorkspaceChainState::Seq seq;
-	//for (Controller::State::Seq::iterator i = trajectory.begin(); i != trajectory.end(); ++i) {
-	//	GenWorkspaceChainState gwcs;
-	//	controller->chainForwardTransform(i->cpos, gwcs.wpos);
-	//	gwcs.wpos[armChain].multiply(gwcs.wpos[armChain], controller->getChains()[armChain]->getReferencePose()); // 1:1
-	//	gwcs.t = i->t;
-	//	seq.push_back(gwcs);
-	//}
-	//trajectory.clear();
 
 	for (Controller::State::Seq::const_iterator i = begin; i != end; ++i) {
 		GenWorkspaceChainState gwcs;
@@ -2757,23 +1661,6 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 		pregrasp.cpos[j] = trajectory[initIdx].state.cpos[j];
 	// grasp pose
 	Controller::State grasp = trajectory[graspIdx].state;
-	//grasp::RealSeq vl;
-	//vl.assign(20, REAL_ZERO);
-	//vl[0] = Real(0.22); vl[1] = Real(0.6); vl[2] = Real(0.1); vl[3] = Real(0.1);
-	//vl[4] = Real(0.0); vl[5] = Real(0.85); vl[6] = Real(0.2); vl[7] = Real(0.2);
-	//vl[8] = Real(0.0); vl[9] = Real(0.85); vl[10] = Real(0.2); vl[11] = Real(0.2);
-	//vl[12] = Real(0.0); vl[13] = Real(1.2); vl[14] = Real(1.0); vl[15] = Real(1.0);
-	//vl[16] = Real(0.0); vl[17] = Real(1.2); vl[18] = Real(1.0); vl[19] = Real(1.0);
-	//grasp::RealSeq vv;
-	//vv.assign(20, REAL_ZERO);
-	//vv[0] = Real(0.0432042); vv[1] = Real(0.25618); vv[2] = Real(0.116704); vv[3] = Real(0.116704);
-	//vv[12] = Real(0.0); vv[13] = Real(1.2); vv[14] = Real(1.0); vv[15] = Real(1.0);
-	//vv[16] = Real(0.0); vv[17] = Real(1.2); vv[18] = Real(1.0); vv[19] = Real(1.0);
-
-//	collisionPtr->create(rand, grasp::to<Data>(dataPtr)->simulateObjectPose);
-//	objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataPtr)->simulateObjectPose));
-//	PosePlanner::TrialData::Iteration::Ptr iteration;
-//	iteration.reset(new PosePlanner::TrialData::Iteration("", pBelief));
 
 	switch (key){
 	case 'M':
@@ -3161,169 +2048,8 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 //------------------------------------------------------------------------------
 
 Real R2GPlanner::simContacts(const golem::Bounds::Seq::const_iterator &begin, const golem::Bounds::Seq::const_iterator &end, const golem::Mat34 pose) {
-	// if the point cloud is empty simContacts return the default behavior of force reader.
-	//if (objectPointCloudPtr->empty())
-	//	return REAL_ZERO;
-
-	//Rand rand;
-	//bool intersect = false;
-	//for (Bounds::Seq::const_iterator b = begin; b != end; ++b) {
-	//	const size_t size = objectPointCloudPtr->size() < ragDesc.maxModelPoints ? objectPointCloudPtr->size() : ragDesc.maxModelPoints;
-	//	for (size_t i = 0; i < size; ++i) {
-	//		const Vec3 point = grasp::Cloud::getPoint(objectPointCloudPtr->at(objectPointCloudPtr->size() < ragDesc.maxModelPoints ? i : size_t(rand.next()) % size));
-	//		//context.write("force reader\n");
-	//		//context.write("bound pose <%f %f %f>\n", (*b)->getPose().p.x, (*b)->getPose().p.y, (*b)->getPose().p.z);
-	//		if ((*b)->intersect(point)) {
-	//			context.write("bound pose <%f %f %f>\n", (*b)->getPose().p.x, (*b)->getPose().p.y, (*b)->getPose().p.z);
-	//			Vec3 v;
-	//			Mat34 jointFrameInv;
-	//			jointFrameInv.setInverse(pose);
-	//			jointFrameInv.multiply(v, point);
-	//			v.normalise();
-	//			return v.z > REAL_ZERO ? -REAL_ONE : REAL_ONE;
-	//		}
-	//	}
-	//}
 	return REAL_ZERO;
 }
-
-//grasp::Vec3Seq R2GPlanner::getHandForceVec(golem::SecTmReal time, golem::SecTmReal delta) const {
-//	golem::Controller::State next = lookupState(time);
-//	golem::Controller::State prev = lookupState(time - delta);
-//
-//	golem::Waypoint w1(*controller, next.cpos), w0(*controller, prev.cpos);
-//
-//	grasp::Vec3Seq force;
-//	force.assign(getPlanner().handInfo.getChains().size(), Vec3::zero());
-//	for (Chainspace::Index i = getPlanner().handInfo.getChains().begin(); i != getPlanner().handInfo.getChains().end(); ++i) {
-//		const U32 k = (U32)(i - getPlanner().handInfo.getChains().begin());
-//		force[k] = w1.wpos[i].p - w0.wpos[i].p;
-//	}
-//	return force;
-//}
-//------------------------------------------------------------------------------
-
-//void R2GPlanner::renderData(Data::Map::const_iterator dataPtr) {
-//	ShapePlanner::renderData(dataPtr);
-//	{
-//		golem::CriticalSectionWrapper csw(csDataRenderer);
-//		debugRenderer.reset();
-//		//if (!objectPointCloudPtr->empty()) {
-//		//	grasp::Cloud::Point p = *objectPointCloudPtr->begin();
-//		//	Mat34 m(Mat33::identity(), Vec3(p.x, p.y, p.z));
-//		//	debugRenderer.addAxes(m, featureFrameSize * 10);
-//		//}
-//	}
-//}
-//
-//void R2GPlanner::renderContacts() {
-//	context.write("render contacts...\n");
-//	GenWorkspaceChainState gwcs;
-//	robot->getController()->chainForwardTransform(robot->recvState().config.cpos, gwcs.wpos);
-//	const size_t size = 10000;
-//	for (grasp::Cloud::PointSeq::iterator i = grasp::to<Data>(currentDataPtr)->queryPoints.begin(); i != grasp::to<Data>(currentDataPtr)->queryPoints.end(); ++i) {
-//		Real maxDist = REAL_MAX;
-//		for (Chainspace::Index j = robot->getStateHandInfo().getChains().begin(); j != robot->getStateHandInfo().getChains().end(); ++j) {
-//			const Real d = grasp::Cloud::getPoint(*i).distance(gwcs.wpos[j].p);
-//			if (d < maxDist)
-//				maxDist = d;
-//		}
-//		const Real lhd = pBelief->density(maxDist);
-//		//context.write("lhd %f\n", lhd);
-//		grasp::Cloud::setColour((lhd < 0.15) ? RGBA::BLUE : (lhd < 0.20) ? RGBA::YELLOW : (lhd < 0.25) ? RGBA::MAGENTA : RGBA::RED, *i);//RGBA(lhd*255, 0, 0, 0);
-//	}
-//	{
-//		golem::CriticalSectionWrapper csw(csDataRenderer);
-//		pointRenderer.reset();
-//		data->appearance.draw(grasp::to<Data>(currentDataPtr)->queryPoints, pointRenderer);
-//	}
-//	context.write("Done.\n");
-//}
-//
-//void R2GPlanner::renderPose(const Mat34 &pose) {
-////	testPose.reset();
-//	testPose.addAxes(pose, featureFrameSize*10);
-//}
-//
-//void R2GPlanner::renderUpdate(const golem::Mat34 &pose, const grasp::RBPose::Sample::Seq &samples) {
-//	testUpdate.reset();
-//	renderPose(pose);
-//	for (grasp::RBPose::Sample::Seq::const_iterator i = samples.begin(); i != samples.end(); ++i)
-//		testUpdate.addAxes(Mat34(i->q, i->p), featureFrameSize*i->weight*10);
-//}
-//
-//void R2GPlanner::renderHand(const golem::Controller::State &state, const Bounds::Seq &bounds, bool clear) {
-//	{		
-//		golem::CriticalSectionWrapper csw(csDataRenderer);
-//		debugRenderer.reset();
-//		if (clear)
-//			handBounds.clear();
-//		if (!bounds.empty())
-//			handBounds.insert(handBounds.end(), bounds.begin(), bounds.end());
-//		debugRenderer.setColour(RGBA::BLACK);
-//		debugRenderer.setLineWidth(Real(2.0));
-//		debugRenderer.addWire(handBounds.begin(), handBounds.end());
-//
-//		Collision::Waypoint w;
-//		w.points = 1000;
-//		if (showIndices) {
-//			//collision->draw(manipulator->getConfig(state), debugRenderer);
-//			//(*pBelief->getHypotheses().begin())->draw(debugRenderer, rand, manipulator->getConfig(state));
-//			Collision::FlannDesc flann;
-//			flann.neighbours = 100;
-//			flann.points = 1000;
-//			flann.depthStdDev = Real(10);
-//			flann.likelihood = Real(100);
-//			std::vector<Configspace::Index> joints;
-//			grasp::RealSeq forces;
-//			(*pBelief->getHypotheses().begin())->draw(debugRenderer, manipulator->getConfig(state), joints, forces, flann);
-//		}
-//			//(*pBelief->getHypotheses().begin())->draw(w, manipulator->getConfig(state), debugRenderer);
-//			//		handRenderer.renderWire(handBounds.begin(), handBounds.end());
-//		//context.write("Hand bounds (size=%d)\n", handBounds.size());
-//		//for (Bounds::Seq::const_iterator i = handBounds.begin(); i != handBounds.end(); ++i)
-//		//	context.write("%s pose <%f %f %f>\n", (*i)->getName(), (*i)->getPose().p.x, (*i)->getPose().p.y, (*i)->getPose().p.z);
-//	}
-//
-////	WorkspaceJointCoord jointPoses;
-////	robot->getController()->jointForwardTransform(state.cpos, jointPoses);
-////	{
-////		golem::CriticalSectionWrapper csw(csDataRenderer);
-////		handRenderer.reset();
-////		Bounds::Desc::SeqPtr jointBounds;
-////		Bounds::SeqPtr boundsSeq;
-////		for (Configspace::Index i = robot->getStateHandInfo().getJoints().begin(); i != robot->getStateHandInfo().getJoints().end(); ++i) {
-////			Bounds::Desc::SeqPtr boundDescSeq = robot->getController()->getJoints()[i]->getBoundsDescSeq();
-////			for (Bounds::Desc::Seq::iterator boundDesc = boundDescSeq->begin(); boundDesc != boundDescSeq->end(); ++boundDesc)
-////				if ((*boundDesc) != NULL) { 
-////					(*boundDesc)->pose = jointPoses[i];
-////					jointBounds->push_back(*boundDesc);
-////				}
-//////			handRenderer.renderWire(boundDescSeq->begin(), boundDescSeq->end());
-////		}
-////		for (Bounds::Desc::Seq::iterator boundDesc = jointBounds->begin(); boundDesc != jointBounds->end(); ++boundDesc)
-////			boundsSeq->push_back(boundDesc->get()->create());
-////		handRenderer.renderWire(boundsSeq->begin(), boundsSeq->end());
-////	}
-//}
-//
-//void R2GPlanner::renderWaypoints(const Bounds::Seq &bounds, bool clear) {
-//		{
-//			golem::CriticalSectionWrapper csw(csDataRenderer);
-//			debugRenderer.reset();
-//			if (clear)
-//				waypointBounds.clear();
-//			if (!bounds.empty())
-//				waypointBounds.insert(waypointBounds.end(), bounds.begin(), bounds.end());
-//			debugRenderer.setColour(RGBA::RED);
-//			debugRenderer.setLineWidth(Real(2.0));
-//			debugRenderer.addWire(waypointBounds.begin(), waypointBounds.end());
-//			//		handRenderer.renderWire(handBounds.begin(), handBounds.end());
-//			//context.write("Hand bounds (size=%d)\n", handBounds.size());
-//			//for (Bounds::Seq::const_iterator i = handBounds.begin(); i != handBounds.end(); ++i)
-//			//	context.write("%s pose <%f %f %f>\n", (*i)->getName(), (*i)->getPose().p.x, (*i)->getPose().p.y, (*i)->getPose().p.z);
-//		}
-//}
 
 //------------------------------------------------------------------------------
 
@@ -3434,7 +2160,6 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 //	context.write("spam::Belief::createResample(): covariance mfse = {(%f, %f, %f), (%f, %f, %f, %f)}\n", 
 //		pBelief->pose.covariance[0], pBelief->pose.covariance[1], pBelief->pose.covariance[2], 
 //		pBelief->pose.covariance[3], pBelief->pose.covariance[4], pBelief->pose.covariance[5], pBelief->pose.covariance[6]);
-
 
 	// update the query frame
 	context.debug("create hypotheses and update query frame...\n");
