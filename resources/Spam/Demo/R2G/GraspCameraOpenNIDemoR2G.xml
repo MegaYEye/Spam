@@ -19,8 +19,8 @@
     </calibration>
 
     <appearance>
-      <frame show="0" v1="0.05" v2="0.05" v3="0.1"/>
-      <shape show="0" R="127" G="127" B="127" A="255">
+      <frame show="1" v1="0.05" v2="0.05" v3="0.1"/>
+      <shape show="1" R="127" G="127" B="127" A="255">
         <bounds type="box" group="1">
           <dimensions v1="0.025" v2="0.025" v3="0.025"/>
           <pose v1="0.0" v2="0.0" v3="-0.025" roll="0.0" pitch="0.0" yaw="0.0"/>
