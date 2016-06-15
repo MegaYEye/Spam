@@ -224,12 +224,12 @@ bool R2GPlanner::create(const Desc& desc) {
 	middleFTDesc.setLimits(&fLimit[12]);
 	ftGuards.push_back(middleFTDesc.create());
 
-	bool simulatedForces = false, ftsensors = true;
+	bool simulatedForces = true, ftsensors = false;
 	armHandForce->setSensorForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws
-		//if (!enableForceReading)
-		//	return;
+		if (!enableForceReading)
+			return;
 
-		if (simulatedForces) {
+		if (simulatedForces && !collisionPtr->getPoints().empty()) {
 			for (auto i = 0; i < force.size(); ++i)
 				force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
 
@@ -1045,7 +1045,7 @@ void R2GPlanner::findTarget(const golem::Mat34& queryTrn, const golem::Mat34& mo
 	gwcs.wpos[armChain].multiply(modelFrame, graspFrameInv);
 	gwcs.wpos[armChain].multiply(queryTrn, gwcs.wpos[armChain]);
 	gwcs.t = target.t;
-	gwcs.wpos[armChain].p.z -= 0.007;
+//	gwcs.wpos[armChain].p.z -= 0.007;
 	if (lifting) gwcs.wpos[armChain].p.z += 0.07;
 
 	cend = target;
@@ -1675,7 +1675,7 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 		Controller::State cend = lookupState();
 		// transform w.r.t. query frame
 		try {
-			findTarget(grasp::to<Data>(dataPtr)->queryTransform, grasp::to<Data>(dataPtr)->modelFrame, pregrasp, cend);
+			findTarget(grasp::to<Data>(dataPtr)->queryTransform, grasp::to<Data>(dataPtr)->modelFrame, trajectory.front().command, cend);
 		}
 		catch (const Message& msg) {
 			context.write("%s\n", msg.str().c_str());
@@ -1688,7 +1688,7 @@ bool R2GPlanner::execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoi
 
 		Controller::State::Seq approach;
 		try {
-			(void)findTrajectory(lookupState(), &cend, nullptr, 0, approach);
+			(void)findTrajectory(grasp::Waypoint::lookup(*controller).command, &cend, nullptr, 0, approach);
 		}
 		catch (const Message& msg) {
 			context.write("%s\n", msg.str().c_str());

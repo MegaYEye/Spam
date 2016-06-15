@@ -295,7 +295,7 @@
     <!-- DLR Justin robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotJustin" -->
     <!-- DLR Justin robot (controller, planner): library_path="GolemDeviceRobotJustin" config_path="GolemDeviceRobotJustin" -->
 
-    <controller library_path="GolemCtrlMultiCtrl" config_path="GolemCtrlRobotBorisTactile">
+    <controller library_path="GolemCtrlMultiCtrl" config_path="GolemCtrlRobotBorisTactileSim">
       <renderer>
         <joint_appearance line_width="1.0">
           <solid_colour R="192" G="192" B="0" A="100"></solid_colour>
@@ -316,13 +316,14 @@
       </renderer>
     </controller>
     <planner library_path="GolemPlannerGraphPlanner" config_path="GolemPlannerRobotBorisRTactile">
-      <controller id="KukaLWR+KukaLWRBorisR" begin="0" end="1"/>
-      <controller id="DLRHitHandII+DLRHitHandIITactile" begin="1" end="6"/>
+      <controller id="KukaLWRSim+KukaLWRBorisR" begin="0" end="1"/>
+      <controller id="DLRHitHandIISim+DLRHitHandIITactile" begin="1" end="6"/>
 
-      <sensor id="FTDAQ+FTDAQWrist"/>
+      <!--<sensor id="FTClient+FTClient"/>-->
+      <!--<sensor id="FTDAQ+FTDAQWrist"/>
       <sensor id="FTDAQ+FTDAQThumb"/>
       <sensor id="FTDAQ+FTDAQIndex"/>
-      <sensor id="FTDAQ+FTDAQMiddle"/>
+      <sensor id="FTDAQ+FTDAQMiddle"/>-->
 
       <trajectory name="trajectory" handler="Trajectory+TrajectoryDemoR2G" idle_begin="0.5" idle_end="2.0" idle_perf="5.0" duration="5.0" trials="5"/>
 
@@ -430,10 +431,10 @@
     </planner>
 
     <!--<sensor id="FTClient+FTClient"/>-->
-    <sensor id="FTDAQ+FTDAQWrist"/>
+    <!--<sensor id="FTDAQ+FTDAQWrist"/>
     <sensor id="FTDAQ+FTDAQThumb"/>
     <sensor id="FTDAQ+FTDAQIndex"/>
-    <sensor id="FTDAQ+FTDAQMiddle"/>
+    <sensor id="FTDAQ+FTDAQMiddle"/>-->
 
     <activectrl library_path="GraspJointCtrl" config_path="GraspJointCtrl"/>
     <!--<activectrl library_path="GraspArmHandForce" config_path="GraspArmHandForce"/>-->

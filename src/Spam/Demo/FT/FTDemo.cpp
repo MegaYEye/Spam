@@ -401,16 +401,25 @@ void FTDemo::create(const Desc& desc) {
 					}
 					grasp::to<Data>(dataCurrentPtr)->actionType = action::GRASP;
 					context.write("Iteration %u: execute trajectory (%s)\n", iteration, actionToString(grasp::to<Data>(dataCurrentPtr)->actionType).c_str());
-					if (!execute(dataCurrentPtr, inp)) {// not successfully close fingers
-						++failures;
-						continue;
+					Controller::State::Seq seq, trnSeq;
+					{
+						InputBlock inputBlock(*this);
+						trajectory->createTrajectory(seq);
 					}
-					grasp::to<Data>(dataCurrentPtr)->actionType = action::IG_PLAN_LIFT;
-					context.write("Iteration %u: execute trajectory (%s)\n", iteration, actionToString(grasp::to<Data>(dataCurrentPtr)->actionType).c_str());
-					if (!execute(dataCurrentPtr, inp)) {// not successfully close fingers
-						++failures;
-						continue;
-					}
+					//(void)transformTrajectory(grasp::to<Data>(dataCurrentPtr)->queryTransform, seq.begin(), seq.end(), trnSeq);
+					(void)trnTrajectory(Mat34::identity(), grasp::to<Data>(dataCurrentPtr)->modelFrame, grasp::to<Data>(dataCurrentPtr)->queryTransform, seq.begin(), seq.end(), trnSeq);
+					// find global trajectory & perform
+					perform(dataCurrentPtr->first, "graspingTrj", trnSeq, true);
+					//if (!execute(dataCurrentPtr, inp)) {// not successfully close fingers
+					//	++failures;
+					//	continue;
+					//}
+					//grasp::to<Data>(dataCurrentPtr)->actionType = action::IG_PLAN_LIFT;
+					//context.write("Iteration %u: execute trajectory (%s)\n", iteration, actionToString(grasp::to<Data>(dataCurrentPtr)->actionType).c_str());
+					//if (!execute(dataCurrentPtr, inp)) {// not successfully close fingers
+					//	++failures;
+					//	continue;
+					//}
 					if (option("YN", "Success? (Y/N)") == 'Y')
 						/*context.write("Grasped!\n");// to<TrialData>(trialPtr)->*/grasped = true;
 					else
@@ -489,6 +498,12 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	if (trajectory.size() < 2)
 		throw Message(Message::LEVEL_ERROR, "Player::perform(): At least two waypoints required");
 
+	golem::Controller::State::Seq initTrajectory;
+	findTrajectory(grasp::Waypoint::lookup(*controller).command, &trajectory.front(), nullptr, SEC_TM_REAL_ZERO, initTrajectory);
+
+	golem::Controller::State::Seq completeTrajectory = initTrajectory;
+	completeTrajectory.insert(completeTrajectory.end(), trajectory.begin(), trajectory.end());
+
 	// create trajectory item
 	grasp::data::Item::Ptr itemTrajectory;
 	grasp::data::Handler::Map::const_iterator handlerPtr = handlerMap.find(getPlanner().trajectoryHandler);
@@ -501,7 +516,7 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	grasp::data::Trajectory* trajectoryIf = is<grasp::data::Trajectory>(itemTrajectory.get());
 	if (!trajectoryIf)
 		throw Message(Message::LEVEL_ERROR, "Player::perform(): unable to create trajectory using handler %s", getPlanner().trajectoryHandler.c_str());
-	trajectoryIf->setWaypoints(grasp::Waypoint::make(trajectory, trajectory)/*grasp::Waypoint::make(trajectory, trajectory)*/);
+	trajectoryIf->setWaypoints(grasp::Waypoint::make(completeTrajectory, completeTrajectory)/*grasp::Waypoint::make(trajectory, trajectory)*/);
 
 	// block displaying the current item
 	RenderBlock renderBlock(*this);
@@ -531,68 +546,80 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 		option("\x0D", "Press <Enter> to accept trajectory...");
 	}
 
-	// start recording
-	recordingStart(data, item, true);
-	recordingWaitToStart();
+	// go to initial state
+	sendTrajectory(initTrajectory);
+	// wait until the last trajectory segment is sent
+	controller->waitForEnd();
 
-	// send trajectory
-	sendTrajectory(trajectory);
+	{
+		// start recording
+		recordingStart(data, item, true);
+		recordingWaitToStart();
+		ScopeGuard recordingGuard([&]() {
+			// stop recording
+			recordingStop(getPlanner().trajectoryIdlePerf);
+			recordingWaitToStop();
+		});
 
-	Controller::State::Seq robotPoses; robotPoses.clear();
-	//TwistSeq ftSeq; ftSeq.clear();
-	//std::vector<grasp::RealSeq> forceInpSensorSeq;
-	//TwistSeq thumbFT, indexFT, wristFT;
-	//TwistSeq rawThumbFT, rawIndexFT, rawWristFT;
-	//FT::Data thumbData, indexData, wristData;
-	//grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
-	//sensorBundlePtr->start2read = true;
-//	sensorBundlePtr->enable();
-	// repeat every send waypoint until trajectory end
-	for (U32 i = 0; controller->waitForBegin(); ++i) {
-		if (universe.interrupted())
-			throw Exit();
-		if (controller->waitForEnd(0))
-			break;
+		// send trajectory
+		sendTrajectory(trajectory);
 
-		Controller::State state = lookupState();
-		robotPoses.push_back(state);
-		//sensorBundlePtr->increment();
+		Controller::State::Seq robotPoses; robotPoses.clear();
+		//TwistSeq ftSeq; ftSeq.clear();
+		//std::vector<grasp::RealSeq> forceInpSensorSeq;
+		//TwistSeq thumbFT, indexFT, wristFT;
+		//TwistSeq rawThumbFT, rawIndexFT, rawWristFT;
+		//FT::Data thumbData, indexData, wristData;
+		//grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
+		//sensorBundlePtr->start2read = true;
+		//	sensorBundlePtr->enable();
+		// repeat every send waypoint until trajectory end
+		for (U32 i = 0; controller->waitForBegin(); ++i) {
+			if (universe.interrupted())
+				throw Exit();
+			if (controller->waitForEnd(0))
+				break;
 
-		/*
-		//if (wristFTSensor) {
-		//	wristFTSensor->read(wristData);
-		//	wristFT.push_back(wristData.wrench);
-		//	Twist wwrench; SecTmReal wt;
-		//	wristFTSensor->readSensor(wwrench, wt);
-		//	rawWristFT.push_back(wwrench);
+			Controller::State state = lookupState();
+			robotPoses.push_back(state);
+			//sensorBundlePtr->increment();
 
-		//	wristData.wrench.v.getColumn3(&force[0]);
-		//	wristData.wrench.w.getColumn3(&force[3]);
+			/*
+			//if (wristFTSensor) {
+			//	wristFTSensor->read(wristData);
+			//	wristFT.push_back(wristData.wrench);
+			//	Twist wwrench; SecTmReal wt;
+			//	wristFTSensor->readSensor(wwrench, wt);
+			//	rawWristFT.push_back(wwrench);
 
-		//	ftSensorSeq[0]->read(thumbData);
-		//	thumbFT.push_back(thumbData.wrench);
-		//	Twist wthumb; SecTmReal tt;
-		//	ftSensorSeq[0]->readSensor(wthumb, tt);
-		//	rawThumbFT.push_back(wthumb);
+			//	wristData.wrench.v.getColumn3(&force[0]);
+			//	wristData.wrench.w.getColumn3(&force[3]);
 
-		//	thumbData.wrench.v.getColumn3(&force[6]);
-		//	thumbData.wrench.w.getColumn3(&force[9]);
+			//	ftSensorSeq[0]->read(thumbData);
+			//	thumbFT.push_back(thumbData.wrench);
+			//	Twist wthumb; SecTmReal tt;
+			//	ftSensorSeq[0]->readSensor(wthumb, tt);
+			//	rawThumbFT.push_back(wthumb);
 
-		//	ftSensorSeq[1]->read(indexData);
-		//	indexFT.push_back(indexData.wrench);
-		//	Twist iwrench; SecTmReal it;
-		//	ftSensorSeq[1]->readSensor(iwrench, it);
-		//	rawIndexFT.push_back(iwrench);
+			//	thumbData.wrench.v.getColumn3(&force[6]);
+			//	thumbData.wrench.w.getColumn3(&force[9]);
 
-		//	indexData.wrench.v.getColumn3(&force[12]);
-		//	indexData.wrench.w.getColumn3(&force[15]);
-		//}*/
+			//	ftSensorSeq[1]->read(indexData);
+			//	indexFT.push_back(indexData.wrench);
+			//	Twist iwrench; SecTmReal it;
+			//	ftSensorSeq[1]->readSensor(iwrench, it);
+			//	rawIndexFT.push_back(iwrench);
 
-		// print every 10th robot state
-		if (i % 10 == 0)
-			context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
-		if (!isGrasping && i > 600) {
-			enableForceReading = expectedCollisions(state);
+			//	indexData.wrench.v.getColumn3(&force[12]);
+			//	indexData.wrench.w.getColumn3(&force[15]);
+			//}*/
+
+			// print every 10th robot state
+			if (i % 10 == 0)
+				context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
+			if (!isGrasping && i > 600) {
+				enableForceReading = expectedCollisions(state);
+			}
 		}
 	}
 	enableForceReading = false;
@@ -659,10 +686,6 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	//	strFT(indexSS, indexFT[indexjj], robotPoses[indexjj].t, t);
 	//	strFT(rawIndexSS, rawIndexFT[indexjj], robotPoses[indexjj].t, t);
 	//}*/
-
-	// stop recording
-	recordingStop(getPlanner().trajectoryIdlePerf);
-	recordingWaitToStop();
 
 	// insert trajectory
 	{
