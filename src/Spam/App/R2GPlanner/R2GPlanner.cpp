@@ -763,7 +763,7 @@ bool R2GPlanner::create(const Desc& desc) {
 
 	menuCmdMap.insert(std::make_pair("H", [=]() {
 		// setup initial variables
-		const Controller::State home = lookupState();
+		const Controller::State home = grasp::Waypoint::lookup(*controller).command;
 		//		std::ofstream logFile("./data/boris/trajectory/experiments.log");
 		auto resetPlanning = [&]() {
 			pHeuristic->testCollision = false; // debug collissions with point clouds
@@ -778,7 +778,7 @@ bool R2GPlanner::create(const Desc& desc) {
 			pHeuristic->enableUnc = false;
 			pHeuristic->setPointCloudCollision(false);
 			Controller::State::Seq seq, out;
-			findTrajectory(lookupState(), &home, nullptr, 0, seq);
+			findTrajectory(grasp::Waypoint::lookup(*controller).command, &home, nullptr, 0, seq);
 			profile(this->trjDuration, seq, out, true);
 			sendTrajectory(out);
 			// repeat every send waypoint until trajectory end

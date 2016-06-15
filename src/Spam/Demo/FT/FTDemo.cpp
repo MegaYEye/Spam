@@ -129,7 +129,7 @@ void FTDemo::create(const Desc& desc) {
 	}));
 	menuCmdMap.insert(std::make_pair("ZX", [=]() {
 		// setup initial variables
-		const Controller::State home = lookupState();
+		const Controller::State home = grasp::Waypoint::lookup(*controller).command;
 
 		//--------------------------------------------------------------------//
 		// UTILITY FUNCTIONS
@@ -409,7 +409,7 @@ void FTDemo::create(const Desc& desc) {
 					//(void)transformTrajectory(grasp::to<Data>(dataCurrentPtr)->queryTransform, seq.begin(), seq.end(), trnSeq);
 					(void)trnTrajectory(Mat34::identity(), grasp::to<Data>(dataCurrentPtr)->modelFrame, grasp::to<Data>(dataCurrentPtr)->queryTransform, seq.begin(), seq.end(), trnSeq);
 					// find global trajectory & perform
-					perform(dataCurrentPtr->first, "graspingTrj", trnSeq, true);
+					perform(dataCurrentPtr->first, "graspingTrj", trnSeq, false);
 					//if (!execute(dataCurrentPtr, inp)) {// not successfully close fingers
 					//	++failures;
 					//	continue;
@@ -455,7 +455,7 @@ void FTDemo::create(const Desc& desc) {
 	}));
 	menuCmdMap.insert(std::make_pair("ZP", [=]() {
 		grasp::data::Item::Map::const_iterator item = to<Data>(dataCurrentPtr)->getItem<grasp::data::Item::Map::const_iterator>(true);
-		data::R2GTrajectory* trajectory = is<data::R2GTrajectory>(item->second.get());
+		grasp::data::Trajectory* trajectory = is<grasp::data::Trajectory>(item->second.get());
 		if (!trajectory)
 			throw Cancel("Error: no trajectory selected.");
 		// play
@@ -551,6 +551,14 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	// wait until the last trajectory segment is sent
 	controller->waitForEnd();
 
+	Controller::State::Seq robotPoses; robotPoses.clear();
+	TwistSeq ftSeq; ftSeq.clear();
+	std::vector<grasp::RealSeq> forceInpSensorSeq;
+	TwistSeq thumbFT, indexFT, wristFT;
+	TwistSeq rawThumbFT, rawIndexFT, rawWristFT;
+	FT::Data thumbData, indexData, wristData;
+	grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
+
 	{
 		// start recording
 		recordingStart(data, item, true);
@@ -564,13 +572,6 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 		// send trajectory
 		sendTrajectory(trajectory);
 
-		Controller::State::Seq robotPoses; robotPoses.clear();
-		//TwistSeq ftSeq; ftSeq.clear();
-		//std::vector<grasp::RealSeq> forceInpSensorSeq;
-		//TwistSeq thumbFT, indexFT, wristFT;
-		//TwistSeq rawThumbFT, rawIndexFT, rawWristFT;
-		//FT::Data thumbData, indexData, wristData;
-		//grasp::RealSeq force; force.assign(18, golem::REAL_ZERO);
 		//sensorBundlePtr->start2read = true;
 		//	sensorBundlePtr->enable();
 		// repeat every send waypoint until trajectory end
@@ -584,35 +585,35 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 			robotPoses.push_back(state);
 			//sensorBundlePtr->increment();
 
-			/*
-			//if (wristFTSensor) {
-			//	wristFTSensor->read(wristData);
-			//	wristFT.push_back(wristData.wrench);
-			//	Twist wwrench; SecTmReal wt;
-			//	wristFTSensor->readSensor(wwrench, wt);
-			//	rawWristFT.push_back(wwrench);
+			
+			if (wristFTSensor) {
+				wristFTSensor->read(wristData);
+				wristFT.push_back(wristData.wrench);
+				Twist wwrench; SecTmReal wt;
+				wristFTSensor->readSensor(wwrench, wt);
+				rawWristFT.push_back(wwrench);
 
-			//	wristData.wrench.v.getColumn3(&force[0]);
-			//	wristData.wrench.w.getColumn3(&force[3]);
+				wristData.wrench.v.getColumn3(&force[0]);
+				wristData.wrench.w.getColumn3(&force[3]);
 
-			//	ftSensorSeq[0]->read(thumbData);
-			//	thumbFT.push_back(thumbData.wrench);
-			//	Twist wthumb; SecTmReal tt;
-			//	ftSensorSeq[0]->readSensor(wthumb, tt);
-			//	rawThumbFT.push_back(wthumb);
+				ftSensorSeq[0]->read(thumbData);
+				thumbFT.push_back(thumbData.wrench);
+				Twist wthumb; SecTmReal tt;
+				ftSensorSeq[0]->readSensor(wthumb, tt);
+				rawThumbFT.push_back(wthumb);
 
-			//	thumbData.wrench.v.getColumn3(&force[6]);
-			//	thumbData.wrench.w.getColumn3(&force[9]);
+				thumbData.wrench.v.getColumn3(&force[6]);
+				thumbData.wrench.w.getColumn3(&force[9]);
 
-			//	ftSensorSeq[1]->read(indexData);
-			//	indexFT.push_back(indexData.wrench);
-			//	Twist iwrench; SecTmReal it;
-			//	ftSensorSeq[1]->readSensor(iwrench, it);
-			//	rawIndexFT.push_back(iwrench);
+				ftSensorSeq[1]->read(indexData);
+				indexFT.push_back(indexData.wrench);
+				Twist iwrench; SecTmReal it;
+				ftSensorSeq[1]->readSensor(iwrench, it);
+				rawIndexFT.push_back(iwrench);
 
-			//	indexData.wrench.v.getColumn3(&force[12]);
-			//	indexData.wrench.w.getColumn3(&force[15]);
-			//}*/
+				indexData.wrench.v.getColumn3(&force[12]);
+				indexData.wrench.w.getColumn3(&force[15]);
+			}
 
 			// print every 10th robot state
 			if (i % 10 == 0)
@@ -625,67 +626,67 @@ void FTDemo::perform(const std::string& data, const std::string& item, const gol
 	enableForceReading = false;
 //	sensorBundlePtr->disable();
 	//sensorBundlePtr->start2read = false;
-	/*
-	//std::string dir = makeString("%s%s/%s/trial0%d/", ftpath.c_str(), object.c_str(), item.c_str(), iteration++);
-	//golem::mkdir(dir.c_str());
-	//std::stringstream prefixWrist;
-	//prefixWrist << std::fixed << std::setprecision(3) << dir << "wrist" << "-" << context.getTimer().elapsed();
-	//std::stringstream prefixThumb;
-	//prefixThumb << std::fixed << std::setprecision(3) << dir << "thumb" << " - " << context.getTimer().elapsed();
-	//std::stringstream prefixIndex;
-	//prefixIndex << std::fixed << std::setprecision(3) << dir << "index" << " - " << context.getTimer().elapsed();
+	
+	std::string dir = makeString("%s%s/%s/trial0%d/", ftpath.c_str(), object.c_str(), item.c_str(), iteration++);
+	golem::mkdir(dir.c_str());
+	std::stringstream prefixWrist;
+	prefixWrist << std::fixed << std::setprecision(3) << dir << "wrist" << "-" << context.getTimer().elapsed();
+	std::stringstream prefixThumb;
+	prefixThumb << std::fixed << std::setprecision(3) << dir << "thumb" << " - " << context.getTimer().elapsed();
+	std::stringstream prefixIndex;
+	prefixIndex << std::fixed << std::setprecision(3) << dir << "index" << " - " << context.getTimer().elapsed();
 
-	//std::stringstream prefixRawWrist;
-	//prefixRawWrist << std::fixed << std::setprecision(3) << dir << "raw_wrist" << " - " << context.getTimer().elapsed();
-	//std::stringstream prefixRawThumb;
-	//prefixRawThumb << std::fixed << std::setprecision(3) << dir << "raw_thumb" << "-" << context.getTimer().elapsed();
-	//std::stringstream prefixRawIndex;
-	//prefixRawIndex << std::fixed << std::setprecision(3) << dir << "raw_index" << "-" << context.getTimer().elapsed();
+	std::stringstream prefixRawWrist;
+	prefixRawWrist << std::fixed << std::setprecision(3) << dir << "raw_wrist" << " - " << context.getTimer().elapsed();
+	std::stringstream prefixRawThumb;
+	prefixRawThumb << std::fixed << std::setprecision(3) << dir << "raw_thumb" << "-" << context.getTimer().elapsed();
+	std::stringstream prefixRawIndex;
+	prefixRawIndex << std::fixed << std::setprecision(3) << dir << "raw_index" << "-" << context.getTimer().elapsed();
 
-	//auto strFT = [=](std::ostream& ostr, const Twist& twist, const golem::SecTmReal tAbs, const golem::SecTmReal tRel) {
-	//	ostr << tAbs << "\t" << tRel << "\t" << twist.v.x << "\t" << twist.v.y << "\t" << twist.v.z << "\t" << twist.w.x << "\t" << twist.w.y << "\t" << twist.w.z << std::endl;
-	//};
-	//auto strFTDesc = [=](std::ostream& ostr, const std::string& prefix) {
-	//	ostr << "tAbs" << "tRel" << prefix << "vx" << "\t" << prefix << "vy" << "\t" << prefix << "vz" << "\t" << prefix << "wx" << "\t" << prefix << "wy" << "\t" << prefix << "wz" << std::endl;
-	//};
+	auto strFT = [=](std::ostream& ostr, const Twist& twist, const golem::SecTmReal tAbs, const golem::SecTmReal tRel) {
+		ostr << tAbs << "\t" << tRel << "\t" << twist.v.x << "\t" << twist.v.y << "\t" << twist.v.z << "\t" << twist.w.x << "\t" << twist.w.y << "\t" << twist.w.z << std::endl;
+	};
+	auto strFTDesc = [=](std::ostream& ostr, const std::string& prefix) {
+		ostr << "tAbs" << "tRel" << prefix << "vx" << "\t" << prefix << "vy" << "\t" << prefix << "vz" << "\t" << prefix << "wx" << "\t" << prefix << "wy" << "\t" << prefix << "wz" << std::endl;
+	};
 
-	//// writing data into a text file, open file
-	//const std::string wristPath = grasp::makeString("%s.txt", prefixWrist.str().c_str());
-	//golem::mkdir(wristPath.c_str()); // make sure the directory exists
-	//std::ofstream wristSS(wristPath);
-	//const std::string rawWristPath = grasp::makeString("%s.txt", prefixRawWrist.str().c_str());
-	//golem::mkdir(rawWristPath.c_str()); // make sure the directory exists
-	//std::ofstream rawWristSS(rawWristPath);
-	//const std::string thumbPath = grasp::makeString("%s.txt", prefixThumb.str().c_str());
-	//golem::mkdir(thumbPath.c_str()); // make sure the directory exists
-	//std::ofstream thumbSS(thumbPath);
-	//const std::string rawThumbPath = grasp::makeString("%s.txt", prefixRawThumb.str().c_str());
-	//golem::mkdir(rawThumbPath.c_str()); // make sure the directory exists
-	//std::ofstream rawThumbSS(rawThumbPath);
-	//const std::string indexPath = grasp::makeString("%s.txt", prefixIndex.str().c_str());
-	//golem::mkdir(indexPath.c_str()); // make sure the directory exists
-	//std::ofstream indexSS(indexPath);
-	//const std::string rawIndexPath = grasp::makeString("%s.txt", prefixRawIndex.str().c_str());
-	//golem::mkdir(rawIndexPath.c_str()); // make sure the directory exists
-	//std::ofstream rawIndexSS(rawIndexPath);
+	// writing data into a text file, open file
+	const std::string wristPath = grasp::makeString("%s.txt", prefixWrist.str().c_str());
+	golem::mkdir(wristPath.c_str()); // make sure the directory exists
+	std::ofstream wristSS(wristPath);
+	const std::string rawWristPath = grasp::makeString("%s.txt", prefixRawWrist.str().c_str());
+	golem::mkdir(rawWristPath.c_str()); // make sure the directory exists
+	std::ofstream rawWristSS(rawWristPath);
+	const std::string thumbPath = grasp::makeString("%s.txt", prefixThumb.str().c_str());
+	golem::mkdir(thumbPath.c_str()); // make sure the directory exists
+	std::ofstream thumbSS(thumbPath);
+	const std::string rawThumbPath = grasp::makeString("%s.txt", prefixRawThumb.str().c_str());
+	golem::mkdir(rawThumbPath.c_str()); // make sure the directory exists
+	std::ofstream rawThumbSS(rawThumbPath);
+	const std::string indexPath = grasp::makeString("%s.txt", prefixIndex.str().c_str());
+	golem::mkdir(indexPath.c_str()); // make sure the directory exists
+	std::ofstream indexSS(indexPath);
+	const std::string rawIndexPath = grasp::makeString("%s.txt", prefixRawIndex.str().c_str());
+	golem::mkdir(rawIndexPath.c_str()); // make sure the directory exists
+	std::ofstream rawIndexSS(rawIndexPath);
 
-	////// writing data into a text file, prepare headers
-	//strFTDesc(wristSS, std::string("ft_"));
-	//strFTDesc(rawWristSS, std::string("ft_"));
-	//strFTDesc(thumbSS, std::string("ft_"));
-	//strFTDesc(rawThumbSS, std::string("ft_"));
-	//strFTDesc(indexSS, std::string("ft_"));
-	//strFTDesc(rawIndexSS, std::string("ft_"));
+	// writing data into a text file, prepare headers
+	strFTDesc(wristSS, std::string("ft_"));
+	strFTDesc(rawWristSS, std::string("ft_"));
+	strFTDesc(thumbSS, std::string("ft_"));
+	strFTDesc(rawThumbSS, std::string("ft_"));
+	strFTDesc(indexSS, std::string("ft_"));
+	strFTDesc(rawIndexSS, std::string("ft_"));
 
-	//for (U32 indexjj = 0; indexjj < thumbFT.size(); ++indexjj) {
-	//	const SecTmReal t = robotPoses[indexjj].t - recorderStart;
-	//	strFT(wristSS, wristFT[indexjj], robotPoses[indexjj].t, t);
-	//	strFT(rawWristSS, rawWristFT[indexjj], robotPoses[indexjj].t, t);
-	//	strFT(thumbSS, thumbFT[indexjj], robotPoses[indexjj].t, t);
-	//	strFT(rawThumbSS, rawThumbFT[indexjj], robotPoses[indexjj].t, t);
-	//	strFT(indexSS, indexFT[indexjj], robotPoses[indexjj].t, t);
-	//	strFT(rawIndexSS, rawIndexFT[indexjj], robotPoses[indexjj].t, t);
-	//}*/
+	for (U32 indexjj = 0; indexjj < thumbFT.size(); ++indexjj) {
+		const SecTmReal t = robotPoses[indexjj].t - recorderStart;
+		strFT(wristSS, wristFT[indexjj], robotPoses[indexjj].t, t);
+		strFT(rawWristSS, rawWristFT[indexjj], robotPoses[indexjj].t, t);
+		strFT(thumbSS, thumbFT[indexjj], robotPoses[indexjj].t, t);
+		strFT(rawThumbSS, rawThumbFT[indexjj], robotPoses[indexjj].t, t);
+		strFT(indexSS, indexFT[indexjj], robotPoses[indexjj].t, t);
+		strFT(rawIndexSS, rawIndexFT[indexjj], robotPoses[indexjj].t, t);
+	}
 
 	// insert trajectory
 	{

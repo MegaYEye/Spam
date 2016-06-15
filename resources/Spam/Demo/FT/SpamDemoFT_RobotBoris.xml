@@ -99,7 +99,7 @@
         </ft_contact>
       </collision>
     </sensor_bundle>
-    <limit dim="18" c1="0.003" c2="0.003" c3="0.003" c4="0.003" c5="0.003" c6="0.003" c7="0.003" c8="0.003" c9="0.003" c10="0.003" c11="0.003" c12="0.003" c13="0.003" c14="0.003" c15="0.003" c16="0.003" c17="0.003" c18="0.003"/>
+    <limit dim="18" c1="0.025" c2="0.025" c3="0.025" c4="0.025" c5="0.025" c6="0.025" c7="0.025" c8="0.025" c9="0.025" c10="0.025" c11="0.025" c12="0.025" c13="0.025" c14="0.025" c15="0.025" c16="0.025" c17="0.025" c18="0.025"/>
     <!--<limit dim="20" c1="0.004" c2="0.004" c3="0.003" c4="0.003" c5="0.004" c6="0.004" c7="0.003" c8="0.003" c9="0.007" c10="0.007" c11="0.3" c12="0.3" c13="0.3" c14="0.3" c15="0.3" c16="0.3" c17="0.3" c18="0.3" c19="0.3" c20="0.3"/>-->
   </rag_planner>
 
@@ -114,7 +114,7 @@
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.001" c4="0.0001" c5="0.0001" c6="0.0001" c7="0.0001"/>
     </heuristic>
 
-  <model camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="model-curv-6_views" item_obj="modelObj" item_grasp="grasp-bowl-rim" handler_grasp="ContactModel+ContactModelDemoR2G" handler_trj="SpamDataR2GTrajectory+SpamDataR2GTrajectoryDemoR2G" item_trj="grasp_model_trj_trial">
+  <model camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="model-curv-6_views" item_obj="modelObj" item_grasp="grasp-bowl-rim" handler_grasp="ContactModel+ContactModelDemoR2G" handler_trj="Trajectory+Trajectory" item_trj="grasp_model_trj_trial">
       <scan_pose dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <scan_pose dim="61" c1="1.98703" c2="-1.82022" c3="2.68371" c4="-0.993679" c5="-0.472118" c6="0.701058" c7="-0.601755" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <scan_pose dim="61" c1="1.60132" c2="-1.8583" c3="1.77602" c4="-0.0109462" c5="0.450068" c6="1.04633" c7="-0.639206" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
@@ -144,7 +144,7 @@
       </appearance>
     </model>
 
-   <query camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="query-curv-3_views" item_obj="queryObj" item_grasp="grasp-jug-5_views-rim" handler_grasp="ContactQuery+ContactQueryDemoR2G" handler_trj="SpamDataR2GTrajectory+SpamDataR2GTrajectoryDemoR2G" item_trj="grasp_query_trj_trial">
+   <query camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="query-curv-3_views" item_obj="queryObj" item_grasp="grasp-jug-5_views-rim" handler_grasp="ContactQuery+ContactQueryDemoR2G" handler_trj="Trajectory+Trajectory" item_trj="grasp_query_trj_trial">
       <scan_pose dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <!--<scan_pose dim="61" c1="1.98703" c2="-1.82022" c3="2.68371" c4="-0.993679" c5="-0.472118" c6="0.701058" c7="-0.601755" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>-->
       <scan_pose dim="61" c1="1.60132" c2="-1.8583" c3="1.77602" c4="-0.0109462" c5="0.450068" c6="1.04633" c7="-0.639206" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
@@ -295,7 +295,7 @@
     <!-- DLR Justin robot simulation (controller, planner): library_path="GolemDeviceMultiCtrl" config_path="GolemDeviceRobotJustin" -->
     <!-- DLR Justin robot (controller, planner): library_path="GolemDeviceRobotJustin" config_path="GolemDeviceRobotJustin" -->
 
-    <controller library_path="GolemCtrlMultiCtrl" config_path="GolemCtrlRobotBorisTactileSim">
+    <controller library_path="GolemCtrlMultiCtrl" config_path="GolemCtrlRobotBorisTactile">
       <renderer>
         <joint_appearance line_width="1.0">
           <solid_colour R="192" G="192" B="0" A="100"></solid_colour>
@@ -316,14 +316,14 @@
       </renderer>
     </controller>
     <planner library_path="GolemPlannerGraphPlanner" config_path="GolemPlannerRobotBorisRTactile">
-      <controller id="KukaLWRSim+KukaLWRBorisR" begin="0" end="1"/>
-      <controller id="DLRHitHandIISim+DLRHitHandIITactile" begin="1" end="6"/>
+      <controller id="KukaLWR+KukaLWRBorisR" begin="0" end="1"/>
+      <controller id="DLRHitHandII+DLRHitHandIITactile" begin="1" end="6"/>
 
       <!--<sensor id="FTClient+FTClient"/>-->
-      <!--<sensor id="FTDAQ+FTDAQWrist"/>
+      <sensor id="FTDAQ+FTDAQWrist"/>
       <sensor id="FTDAQ+FTDAQThumb"/>
       <sensor id="FTDAQ+FTDAQIndex"/>
-      <sensor id="FTDAQ+FTDAQMiddle"/>-->
+      <sensor id="FTDAQ+FTDAQMiddle"/>
 
       <trajectory name="trajectory" handler="Trajectory+TrajectoryDemoR2G" idle_begin="0.5" idle_end="2.0" idle_perf="5.0" duration="5.0" trials="5"/>
 
@@ -431,10 +431,10 @@
     </planner>
 
     <!--<sensor id="FTClient+FTClient"/>-->
-    <!--<sensor id="FTDAQ+FTDAQWrist"/>
+    <sensor id="FTDAQ+FTDAQWrist"/>
     <sensor id="FTDAQ+FTDAQThumb"/>
     <sensor id="FTDAQ+FTDAQIndex"/>
-    <sensor id="FTDAQ+FTDAQMiddle"/>-->
+    <sensor id="FTDAQ+FTDAQMiddle"/>
 
     <activectrl library_path="GraspJointCtrl" config_path="GraspJointCtrl"/>
     <!--<activectrl library_path="GraspArmHandForce" config_path="GraspArmHandForce"/>-->
@@ -523,7 +523,7 @@
     <handler library_path="GraspDataContactModel" config_path="GraspDataContactModelDemoR2G"/>
     <handler library_path="GraspDataContactQuery" config_path="GraspDataContactQueryDemoR2G"/>
     <handler library_path="SpamDataBelief" config_path="SpamDataBeliefDemoR2G"/>
-    <handler library_path="SpamDataR2GTrajectory" config_path="SpamDataR2GTrajectoryDemoR2G"/>
+    <!--<handler library_path="SpamDataR2GTrajectory" config_path="SpamDataR2GTrajectoryDemoR2G"/>-->
 
     <data path="./data/boris/jug/spam.xml"></data>
     <!--<data path="./data/ft_data/test.xml"></data>-->
