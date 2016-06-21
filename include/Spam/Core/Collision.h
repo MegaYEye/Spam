@@ -200,16 +200,6 @@ public:
 
 	};
 
-	/** Face */
-	//enum Face {
-	//	UNKNOWN = 0,
-	//	FRONT, // FT sensor face
-	//	RIGHT, // from the nail
-	//	LEFT,
-	//	BACK,
-	//	TIP,
-	//	TOP,
-	//};
 	/** Face name */
 	static const char* FaceName[];
 

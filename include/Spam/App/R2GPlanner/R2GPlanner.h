@@ -325,7 +325,7 @@ namespace spam {
 	Based on Platt R. et al. "A hypothesis-based algorithm for planning and
 	control in non-Gaussian belief spaces", 2011.
 */
-class R2GPlanner : public PosePlanner, protected golem::Profile::CallbackDist {
+class R2GPlanner : public PosePlanner {
 public:
 	/** Force reader. Overwrite the ActiveCtrl reader. this retrieves the triggered joints */
 	typedef std::function<void(const golem::Controller::State&, grasp::RealSeq&, std::vector<golem::Configspace::Index>&)> GuardsReader;
@@ -402,25 +402,6 @@ public:
 		/** Guards to retrieve a contact */
 		grasp::RealSeq fLimit;
 
-		/** Trajectory duration */
-		golem::SecTmReal trjDuration;
-		/** Initial trajectory in perform */
-		golem::SecTmReal initTrjDur;
-		/** Trajectory idle time */
-		golem::SecTmReal trjIdle;
-		/** Trajectory extrapolation */
-		grasp::RealSeq trjExtrapol;
-		/** Trajectory extrapolation factor */
-		golem::Real trjExtrapolFac;
-		/** Performance duration offset */
-		golem::SecTmReal trjPerfOff;
-		/** Trajectory profile description */
-		golem::Profile::Desc::Ptr pProfileDesc;
-		/** Trajectory profile configspace distance multiplier */
-		grasp::RealSeq distance;
-
-		/** Sensor bundle desc file */
-//		SensorBundle::Desc::Ptr sensorBundleDesc;
 		/** Active Ctrl */
 		std::string activeCtrlStr;
 
@@ -433,15 +414,6 @@ public:
 			PosePlanner::Desc::setToDefault();
 
 			dataDesc.reset(new Data::Desc);
-
-			trjDuration = golem::SecTmReal(2.0);
-			initTrjDur = golem::SecTmReal(1.0);
-			trjIdle = golem::SecTmReal(1.0);
-			trjExtrapolFac = golem::Real(1.0);
-			trjExtrapol.assign(golem::Configspace::DIM, golem::REAL_ONE);
-			trjPerfOff = golem::SecTmReal(0.0);
-			pProfileDesc.reset(new golem::Profile::Desc);
-			distance.assign(golem::Configspace::DIM, golem::REAL_ONE);
 
 			uncEnable = true;
 			singleGrasp = false;
@@ -482,13 +454,10 @@ protected:
 	/** Sequence of FT sensors */
 	FTSensorSeq ftSensorSeq;
 	/** Pointer to the hand active controller */
-	//grasp::ArmHandForce *armHandForce;
 	grasp::ActiveTouchCtrl *armHandForce;
 	/** Guards to retrieve a contact */
 	grasp::RealSeq fLimit;
 
-	/** Independent thread to read FT sensors */
-	//SensorBundle::Ptr sensorBundlePtr;
 	/** Collision used for collision with the ground truth */
 	Collision::Ptr collisionPtr;
 	/** Filtered forces for the hand */
@@ -505,8 +474,6 @@ protected:
 	golem::DebugRenderer sampleRenderer;
 	/** ground truth renderer */
 	golem::DebugRenderer gtRenderer;
-	/** Debug renderer */
-//	golem::DebugRenderer debugRenderer;
 
 	/** Object pose data */
 	Data::Map::iterator poseDataPtr;
@@ -532,8 +499,6 @@ protected:
 	bool withdrawToHomePose;
 	/** Shows the posterior distribution */
 	bool posterior;
-	/** Avoid to activate the force reader if moving from the pre-grasp to the grasp */
-	bool isGrasping;
 
 	/** Select index */
 	template <typename _Seq, typename _Index> void selectIndex(const _Seq& seq, _Index& index, const std::string& name) {
@@ -562,20 +527,12 @@ protected:
 	bool forcereadersilent;
 	bool contactOccured;
 	
-	bool record, contact, brecord;
-	/** Query transformation */
-	grasp::RBCoord queryPointsTrn;
-
-	/** Combined action waypoints */
-	golem::Controller::State::Seq robotStates;
 	/** Structure for FT sensors */
 	FTGuard::SeqPtr ftGuards;
 
 	/** Iterations counter */
 	size_t iterations;
 
-	/** Simulates contacts between the robot's hand and object's partial point cloud */
-	golem::Real simContacts(const golem::Bounds::Seq::const_iterator &begin, const golem::Bounds::Seq::const_iterator &end, const golem::Mat34 pose);
 	/** Object real point cloud (testing purposes) */
 	golem::shared_ptr<grasp::Cloud::PointSeq> objectPointCloudPtr;
 
@@ -594,36 +551,8 @@ protected:
 	/** (Local search) trajectory of the arm only from a sequence of configuration space targets in a new reference frame */
 	grasp::RBDist findTrnTrajectory(const golem::Mat34& trn, const golem::Controller::State& startPose, golem::Controller::State::Seq::const_iterator begin, golem::Controller::State::Seq::const_iterator end, golem::Controller::State::Seq& trajectory);
 
-	/** Trajectory profile configspace distance multiplier */
-	golem::ConfigspaceCoord distance;
-	/** Trajectory duration */
-	golem::SecTmReal trjDuration;
-	/** Trajectory idle time */
-	golem::SecTmReal trjIdle;
-	/** Trajectory extrapolation */
-	golem::ConfigspaceCoord trjExtrapol;
-	/** Trajectory extrapolation factor */
-	golem::Real trjExtrapolFac;
-	/** Performance duration offset */
-	golem::SecTmReal trjPerfOff;
-	/** Trajectory profile */
-	golem::Profile::Ptr pProfile;
-
-	std::string sepField;
-	/** golem::Profile::CallbackDist: Configuration space coordinate distance metric */
-	virtual golem::Real distConfigspaceCoord(const golem::ConfigspaceCoord& prev, const golem::ConfigspaceCoord& next) const;
-	/** golem::Profile::CallbackDist: Coordinate distance metric */
-	virtual golem::Real distCoord(golem::Real prev, golem::Real next) const;
-	/** golem::Profile::CallbackDist: Coordinate enabled state */
-	virtual bool distCoordEnabled(const golem::Configspace::Index& index) const;
-
-	/** initial trajectory in perform */
-	golem::SecTmReal initTrjDur;
-	/** Trajectory profile */
-	void profile(golem::SecTmReal duration, const golem::Controller::State::Seq& inp, golem::Controller::State::Seq& out, const bool silent = false) const;
 	/** Perform trajectory */
 	virtual void perform(const std::string& data, const std::string& item, const golem::Controller::State::Seq& trajectory, bool testTrajectory = true);
-
 	/** Plan and execute r2g, grasp, lift operations */
 	bool execute(grasp::data::Data::Map::iterator dataPtr, grasp::Waypoint::Seq& trajectory);
 

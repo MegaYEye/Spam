@@ -668,7 +668,7 @@ golem::Real Belief::density(const grasp::RBCoord &c) const {
 	return sum;// up to scaling factor
 }
 
-void Belief::createUpdate(golem::DebugRenderer& renderer, const golem::Waypoint &w, FTGuard::SeqPtr& triggeredGuards, const grasp::RBCoord &rbPose) {
+void Belief::createUpdate(golem::DebugRenderer& renderer, const golem::Waypoint &w, FTGuard::SeqPtr& triggeredGuards) {
 	Collision::FlannDesc waypointDesc;
 	Collision::Desc::Ptr cloudDesc;
 	cloudDesc.reset(new Collision::Desc());
@@ -686,12 +686,6 @@ void Belief::createUpdate(golem::DebugRenderer& renderer, const golem::Waypoint 
 		//debugAppearance.draw(points, renderer);
 		cloud->create(rand, points);
 		sampledPose->weight = cloud->evaluateFT(renderer, waypointDesc, config, triggeredGuards, false);
-		grasp::RBDist error;
-		error.lin = rbPose.p.distance(sampledPose->p);
-		error.ang = rbPose.q.distance(sampledPose->q);
-		//context.write("sample.weight = %f, Error {lin, ang} = {%f, %f}\n", sampledPose->weight, error.lin, error.ang);
-		//Mat34 p; p.multiply(sampledPose->toMat34(), modelFrame);
-//		context.write("%.2f\t%.2f\t%.2f\t%.2f\n", p.p.x, p.p.y, p.p.z, sampledPose->weight);
 
 		// sum weights
 		golem::kahanSum(normaliseFac/*norm*/, c, sampledPose->weight/*sampledPose->weight > 0 ? sampledPose->weight : Math::log10(REAL_EPS)*/);
@@ -700,8 +694,6 @@ void Belief::createUpdate(golem::DebugRenderer& renderer, const golem::Waypoint 
 	// normalise weights
 	c = golem::REAL_ZERO;
 	for (grasp::RBPose::Sample::Seq::iterator sampledPose = poses.begin(); sampledPose != poses.end(); ++sampledPose) {
-//		sampledPose->weight /= norm;
-//		context.write("normilised sample.weight = %f\n", sampledPose->weight);
 		golem::kahanSum(cdf, c, sampledPose->weight);
 		sampledPose->cdf = cdf;
 	}

@@ -59,8 +59,10 @@ namespace data {
 
 class BeliefState {
 public:
+	virtual const golem::Mat34& getModelFrame() const = 0;
+	virtual const golem::Mat34& getQueryTransform() const = 0;
 	virtual Belief::Desc::Ptr getBeliefDesc() const = 0;
-	virtual void set(const grasp::RBPose::Sample::Seq& poses, const grasp::RBPose::Sample::Seq& hypotheses) = 0;
+	virtual void set(const golem::Mat34 modelFrame, const golem::Mat34 queryTransform, const grasp::RBPose::Sample::Seq& poses, const grasp::RBPose::Sample::Seq& hypotheses) = 0;
 };
 
 //------------------------------------------------------------------------------

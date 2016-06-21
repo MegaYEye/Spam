@@ -47,6 +47,7 @@
 //------------------------------------------------------------------------------
 
 #include <Spam/App/R2GPlanner/Data.h>
+#include <Spam/HBPlan/Heuristic.h>
 #include <Grasp/App/Manager/Data.h>
 #include <Grasp/App/Player/Data.h>
 #include <Golem/UI/Renderer.h>
@@ -70,12 +71,9 @@ namespace data {
 class ItemR2GTrajectory;
 class HandlerR2GTrajectory;
 
-/** Map of pose sequences */
-typedef std::map<std::string, grasp::Mat34Seq> Mat34MapSeq;
-
 /** Data item representing trajectory.
 */
-class GOLEM_LIBRARY_DECLDIR ItemR2GTrajectory : public grasp::data::Item, public R2GTrajectory, public grasp::data::Trajectory, public grasp::data::Convert {
+class GOLEM_LIBRARY_DECLDIR ItemR2GTrajectory : public grasp::data::Item, public R2GTrajectory {
 public:
 	friend class HandlerR2GTrajectory;
 
@@ -121,19 +119,14 @@ public:
 
 	/** Trajectory: Returns waypoints with velocity profile. */
 	virtual void createTrajectory(golem::Controller::State::Seq& trajectory);
-	/** Trajectory: Returns waypoints with velocity profile. */
-	virtual void createAction(golem::Controller::State::Seq& trajectory);
+	/** (Mycroft) Compute approaching trajectory: Returns waypoints with velocity profile. */
+	virtual void createTrajectory(const golem::Controller::State& begin, golem::Controller::State::Seq& trajectory);
+	/** (IR3ne) Compute approaching trajectory: Returns waypoints with velocity profile. */
+	virtual void createIGTrajectory(const golem::Controller::State& begin, golem::Controller::State::Seq& trajectory);
 
 protected:
 	/** Data handler */
 	HandlerR2GTrajectory& handler;
-
-	/** Convert: Convert current item */
-	virtual grasp::data::Item::Ptr convert(const grasp::data::Handler& handler);
-	/** Convert: return available interfaces */
-	virtual const grasp::StringSeq& getConvertInterfaces() const;
-	/** Convert: is supported by the interface */
-	virtual bool isConvertSupported(const grasp::data::Handler& handler) const;
 
 	/** Load item from xml context, accessible only by Data. */
 	virtual void load(const std::string& prefix, const golem::XMLContext* xmlcontext);
@@ -146,7 +139,7 @@ protected:
 
 /** Data handler is associated with a particular item type, it knows how to create items, it can hold shared buffer.
 */
-class GOLEM_LIBRARY_DECLDIR HandlerR2GTrajectory : public grasp::data::Handler, public grasp::UI, public HandlerR2GPlan, public grasp::data::HandlerPlanner, public grasp::data::Import, public golem::Profile::CallbackDist/*, public grasp::data::Transform*/ {
+class GOLEM_LIBRARY_DECLDIR HandlerR2GTrajectory : public grasp::data::Handler, public grasp::UI, public HandlerR2GPlan, public grasp::data::Import, public grasp::data::Transform, public golem::Profile::CallbackDist {
 public:
 	friend class ItemR2GTrajectory;
 
@@ -388,6 +381,8 @@ public:
 		golem::Real trjExtrapolation;
 		/** Trajectory duration */
 		golem::Real trjDuration;
+		/** IG Trajectory duration */
+		golem::Real trjIGDuration;
 		/** Trajectory idle */
 		golem::Real trjIdle;
 
@@ -444,6 +439,7 @@ public:
 
 			trjExtrapolation = golem::Real(0.0);
 			trjDuration = golem::Real(5.0);
+			trjIGDuration = golem::Real(20.0);
 			trjIdle = golem::Real(1.0);
 
 			action.clear();
@@ -553,7 +549,9 @@ protected:
 	golem::U32 plannerIndex;
 
 	/** Planner */
-	const golem::Planner* planner;
+	golem::Planner* planner;
+	/** Pointer to IG heuristic */
+	FTDrivenHeuristic* pHeuristic;
 	/** Controller */
 	const golem::Controller* controller;
 	/** Arm controller */
@@ -595,6 +593,9 @@ protected:
 	golem::Real trjExtrapolation;
 	/** Trajectory duration */
 	golem::Real trjDuration;
+	/** IG Trajectory duration */
+	golem::Real trjIGDuration;
+
 	/** Trajectory idle */
 	golem::Real trjIdle;
 
@@ -665,39 +666,34 @@ protected:
 	/** HandlerPlanner: Planner index. */
 	virtual golem::U32 getPlannerIndex() const;
 	/** HandlerPlan: Sets planner and controllers. */
-	virtual void set(const golem::Planner& planner, const grasp::ControllerId::Seq& controllerIDSeq);
+	virtual void set(golem::Planner& planner, const grasp::ControllerId::Seq& controllerIDSeq);
 
 	/** Trajectory: Returns waypoints with velocity profile. */
 	virtual void createTrajectory(const ItemR2GTrajectory& item, golem::Controller::State::Seq& trajectory);
-	/** Trajectory: Returns waypoints with velocity profile. */
-	virtual void createAction(const ItemR2GTrajectory& item, golem::Controller::State::Seq& trajectory);
-
-	/** Transform interfaces */
-//	grasp::StringSeq transformInterfaces;
-	/** Convert interfaces */
-	grasp::StringSeq convertInterfaces;
+	/** (Mycroft) Compute approaching trajectory: Returns waypoints with velocity profile. */
+	virtual void createTrajectory(const ItemR2GTrajectory& item, const golem::Controller::State& begin, golem::Controller::State::Seq& trajectory);
+	/** (IR3ne) Compute approaching trajectory: Returns waypoints with velocity profile. */
+	virtual void createIGTrajectory(const ItemR2GTrajectory& item, const golem::Controller::State& begin, golem::Controller::State::Seq& trajectory);
 
 	/** Pregrasp hand pose */
 	grasp::RealSeq handPregraspPose;
 	/** Grasp hand pose */
 	grasp::RealSeq handGraspPose;
 
-	///** Transform: Transform input items */
-	//virtual grasp::data::Item::Ptr transform(const grasp::data::Item::List& input);
-	///** Transform: return available interfaces */
-	//virtual const grasp::StringSeq& getTransformInterfaces() const;
-	///** Transform: is supported by the interface */
-	//virtual bool isTransformSupported(const grasp::data::Item& item) const;
-
-	/** Convert: Convert current item */
-	virtual grasp::data::Item::Ptr convert(ItemR2GTrajectory& item, const grasp::data::Handler& handler);
-	/** Convert: is supported by the interface */
-	virtual bool isConvertSupported(const grasp::data::Handler& handler) const;
-
 	/** Import: Import from file */
 	virtual grasp::data::Item::Ptr import(const std::string& path);
 	/** Import: Available file types */
 	virtual const grasp::StringSeq& getImportFileTypes() const;
+
+	/** Transform interfaces */
+	grasp::StringSeq transformInterfaces;
+
+	/** Transform: Transform input items */
+	virtual grasp::data::Item::Ptr transform(const grasp::data::Item::List& input);
+	/** Transform: return available interfaces */
+	virtual const grasp::StringSeq& getTransformInterfaces() const;
+	/** Transform: is supported by the interface */
+	virtual bool isTransformSupported(const grasp::data::Item& item) const;
 
 	/** Initialise handler */
 	void create(const Desc& desc);

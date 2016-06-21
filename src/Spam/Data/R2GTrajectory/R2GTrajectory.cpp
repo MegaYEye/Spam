@@ -7,6 +7,8 @@
  */
 
 #include <Spam/Data/R2GTrajectory/R2GTrajectory.h>
+#include <Spam/Data/Belief/Belief.h>
+#include <Spam/App/PosePlanner/Data.h>
 #include <Grasp/App/Player/Data.h>
 #include <Golem/Tools/XMLData.h>
 #include <Golem/Planner/GraphPlanner/Data.h>
@@ -281,28 +283,16 @@ const grasp::Waypoint::Seq& spam::data::ItemR2GTrajectory::getWaypoints(const R2
 }
 
 void spam::data::ItemR2GTrajectory::createTrajectory(golem::Controller::State::Seq& trajectory) {
-	handler.convert(*this, handler);
 	handler.createTrajectory(*this, trajectory);
 }
 
-void spam::data::ItemR2GTrajectory::createAction(golem::Controller::State::Seq& trajectory) {
-	handler.createTrajectory(*this, trajectory);
+void spam::data::ItemR2GTrajectory::createTrajectory(const golem::Controller::State& begin, golem::Controller::State::Seq& trajectory) {
+	handler.createTrajectory(*this, begin, trajectory);
 }
 
-//------------------------------------------------------------------------------
-
-grasp::data::Item::Ptr spam::data::ItemR2GTrajectory::convert(const grasp::data::Handler& handler) {
-	return this->handler.convert(*this, handler);
+void spam::data::ItemR2GTrajectory::createIGTrajectory(const golem::Controller::State& begin, golem::Controller::State::Seq& trajectory) {
+	handler.createIGTrajectory(*this, begin, trajectory);
 }
-
-const grasp::StringSeq& spam::data::ItemR2GTrajectory::getConvertInterfaces() const {
-	return this->handler.convertInterfaces;
-}
-
-bool spam::data::ItemR2GTrajectory::isConvertSupported(const grasp::data::Handler& handler) const {
-	return this->handler.isConvertSupported(handler);
-}
-
 
 //------------------------------------------------------------------------------
 
@@ -344,6 +334,10 @@ void spam::data::HandlerR2GTrajectory::Desc::load(golem::Context& context, const
 
 	golem::XMLData("extrapolation", trjExtrapolation, pxmlcontext->getContextFirst("profile"), false);
 	golem::XMLData("duration", trjDuration, pxmlcontext->getContextFirst("profile"), false);
+	try {
+		golem::XMLData("ig_duration", trjIGDuration, pxmlcontext->getContextFirst("profile"), false);
+	}
+	catch (const golem::MsgXMLParser&) {}
 	golem::XMLData("idle", trjIdle, pxmlcontext->getContextFirst("profile"), false);
 
 	action.clear();
@@ -413,6 +407,8 @@ void spam::data::HandlerR2GTrajectory::create(const Desc& desc) {
 
 	trjExtrapolation = desc.trjExtrapolation;
 	trjDuration = desc.trjDuration;
+	trjIGDuration = desc.trjIGDuration;
+
 	trjIdle = desc.trjIdle;
 
 	action = desc.action;
@@ -437,9 +433,8 @@ void spam::data::HandlerR2GTrajectory::create(const Desc& desc) {
 	importTypes = {
 		importHDF5FileExt,
 	};
-
-	// convert from
-	convertInterfaces = {
+	transformInterfaces = {
+		"Belief",
 		"Trajectory",
 	};
 
@@ -459,12 +454,93 @@ grasp::data::Item::Ptr spam::data::HandlerR2GTrajectory::create() const {
 
 //------------------------------------------------------------------------------
 
+grasp::data::Item::Ptr spam::data::HandlerR2GTrajectory::transform(const grasp::data::Item::List& input) {
+	grasp::data::Item::Ptr item(create());
+	ItemR2GTrajectory* itemR2GTrajectory = grasp::to<ItemR2GTrajectory>(item.get());
+
+	// block item rendering (hasRenderBlock()=true)
+	RenderBlock renderBlock(*this);
+
+	const BeliefState* bstate = nullptr;
+	const grasp::data::Trajectory* trajectory = nullptr;
+	// collect data
+	for (grasp::data::Item::List::const_iterator i = input.begin(); i != input.end(); ++i) {
+		const BeliefState* ptr = is<const data::BeliefState>(*i);
+		if (!ptr)
+			trajectory = is<const grasp::data::Trajectory>(*i);
+		else
+			bstate = ptr;
+	}
+	if (!bstate)
+		throw Message(Message::LEVEL_ERROR, "HandlerR2GTrajectory::transform(): no belief state specified");
+	if (!trajectory)
+		throw Message(Message::LEVEL_ERROR, "HandlerR2GTrajectory::transform(): no grasping trajectory specified");
+
+	// arm chain and joints pointers
+	const golem::Chainspace::Index armChain = armInfo.getChains().begin();
+	const golem::Configspace::Range armJoints = armInfo.getJoints();
+
+	grasp::Waypoint::Seq waypoints = trajectory->getWaypoints(), seq;
+	const golem::Mat34 modelFrame = bstate->getModelFrame();
+	const golem::Mat34 queryTransform = bstate->getQueryTransform();
+	for (grasp::Waypoint::Seq::const_iterator i = waypoints.begin(); i != waypoints.end(); ++i) {
+		// Compute a sequence of targets corresponding to the transformed arm end-effector
+		GenWorkspaceChainState gwcs;
+		controller->chainForwardTransform(i->command.cpos, gwcs.wpos);
+		gwcs.wpos[armChain].multiply(gwcs.wpos[armChain], controller->getChains()[armChain]->getReferencePose()); // 1:1
+
+		// compute transformation over the query mean pose
+		Mat34 poseFrameInv, graspFrame, graspFrameInv;
+		poseFrameInv.setInverse(gwcs.wpos[armChain]);
+		graspFrame.multiply(poseFrameInv, modelFrame);
+		graspFrameInv.setInverse(graspFrame);
+		gwcs.wpos[armChain].multiply(modelFrame, graspFrameInv);
+		gwcs.wpos[armChain].multiply(queryTransform, gwcs.wpos[armChain]);
+		gwcs.t = i->command.t;
+
+		golem::Controller::State cend = i->command;
+		// Find target position
+		if (!planner->findTarget(i->command, gwcs, cend))
+			throw Message(Message::LEVEL_ERROR, "HandlerR2GTrajectory::transform(): Unable to find initial target configuration");
+		// update configspace coords of the hand
+		cend.cpos.set(handInfo.getJoints(), i->command.cpos);
+		seq.push_back(grasp::Waypoint(cend, cend));
+
+		// update arm configurations and compute average error
+		grasp::RBDist err;
+		WorkspaceChainCoord wcc;
+		controller->chainForwardTransform(cend.cpos, wcc);
+		wcc[armChain].multiply(wcc[armChain], controller->getChains()[armChain]->getReferencePose());
+		err.add(err, grasp::RBDist(grasp::RBCoord(wcc[armChain]), grasp::RBCoord(gwcs.wpos[armChain])));
+		context.write("HandlerR2GTrajectory::transform(): Pose error: lin=%.9f, ang=%.9f\n", err.lin, err.ang);
+	}
+
+	// set tranformed waypoint to the R2G trajectory
+	itemR2GTrajectory->setWaypoints(seq);
+
+	return item;
+}
+
+const grasp::StringSeq& spam::data::HandlerR2GTrajectory::getTransformInterfaces() const {
+	return transformInterfaces;
+}
+
+bool spam::data::HandlerR2GTrajectory::isTransformSupported(const grasp::data::Item& item) const {
+	return grasp::is<const spam::data::BeliefState>(&item) || grasp::is<const grasp::data::Trajectory>(&item);
+}
+
+//------------------------------------------------------------------------------
+
 golem::U32 spam::data::HandlerR2GTrajectory::getPlannerIndex() const {
 	return plannerIndex;
 }
 
-void spam::data::HandlerR2GTrajectory::set(const golem::Planner& planner, const grasp::ControllerId::Seq& controllerIDSeq) {
+void spam::data::HandlerR2GTrajectory::set(golem::Planner& planner, const grasp::ControllerId::Seq& controllerIDSeq) {
 	this->planner = &planner;
+	this->pHeuristic = dynamic_cast<FTDrivenHeuristic*>(&planner.getHeuristic());
+	if (!pHeuristic)
+		throw Message(Message::LEVEL_CRIT, "HandlerR2GTrajectory(): Not IG heuristic is implemented.");
+
 	this->controller = &planner.getController();
 
 	if (controllerIDSeq.size() < 2)
@@ -549,98 +625,30 @@ void spam::data::HandlerR2GTrajectory::profile(golem::SecTmReal duration, golem:
 
 void spam::data::HandlerR2GTrajectory::createTrajectory(const ItemR2GTrajectory& item, golem::Controller::State::Seq& trajectory) {
 	if (!planner || !controller)
-		throw Message(Message::LEVEL_ERROR, "HandlerR2GTrajectory::createTrajectory(): planner and controller are not set");
+		throw Message(Message::LEVEL_ERROR, "HandlerTrajectory::createTrajectory(): planner and controller are not set");
 	if (item.getWaypoints().size() < 2)
-		throw Message(Message::LEVEL_ERROR, "HandlerR2GTrajectory::createTrajectory(): At least two waypoints required");
+		throw Message(Message::LEVEL_ERROR, "HandlerTrajectory::createTrajectory(): At least two waypoints required");
+
+	// disable IG for grasping
+	this->pHeuristic->enableUnc = false;
+	this->pHeuristic->setPointCloudCollision(false);
 
 	Real trjExtrapolation = this->trjExtrapolation;
 	Real trjDuration = this->trjDuration;
 	bool inverse = false;
-
-	if (getUICallback() && getUICallback()->hasInputEnabled()) {
-		Menu menu(context, *getUICallback());
-		//inverse = menu.option("FI", "Use (F)orward/(I)nverse trajectory... ") == 'I';
-		menu.readNumber("Trajectory duration: ", trjDuration);
-//		menu.readNumber("Trajectory extrapolation: ", trjExtrapolation);
-	}
-
-	// make trajectory
-	golem::Controller::State::Seq states, commands;
-	try {
-		states = grasp::Waypoint::make(item.getWaypoints(R2GTrajectory::Type::APPROACH), false);
-		commands = grasp::Waypoint::make(item.getWaypoints(R2GTrajectory::Type::APPROACH), true);
-	}
-	catch (const Message& msg) {
-		context.write("%s\n", msg.what());
-		return;
-	}
-	// extrapolation delta
-	//golem::ConfigspaceCoord delta;
-	//for (Configspace::Index i = info.getJoints().begin(); i != info.getJoints().end(); ++i)
-	//	delta[i] = trjExtrapolation*extrapolation[i];
-
-	// extrapolation
-	//const bool extrapol = trjExtrapolation > REAL_EPS;
-	//if (extrapol) {
-	//	create(delta, states);
-	//	create(delta, commands);
-	//}
-
-	// don't process the last waypoint (used for grasping)
-	const size_t size = commands.size();
-	
-	// trajectory profiling
-	trajectory = commands;
-	for (Configspace::Index i = info.getJoints().begin(); i != info.getJoints().end(); ++i)
-	if (Math::abs(command[i]) > REAL_EPS) { // no impedance control
-		// replace with states
-		for (size_t j = 0; j < trajectory.size(); ++j) {
-			trajectory[j].cpos[i] = states[j].cpos[i];
-			trajectory[j].cvel[i] = states[j].cvel[i];
-			trajectory[j].cacc[i] = states[j].cacc[i];
-		}
-	}
-	profile(trjDuration, trajectory);
-
-	// assign if command[i] > 0
-	for (Configspace::Index i = info.getJoints().begin(); i != info.getJoints().end(); ++i)
-	if (Math::abs(command[i]) > REAL_EPS) { // no impedance control
-		// replace with commands
-		for (size_t j = 0; j < trajectory.size(); ++j) {
-			trajectory[j].cpos[i] = commands[j].cpos[i];
-			trajectory[j].cvel[i] = commands[j].cvel[i];
-			trajectory[j].cacc[i] = commands[j].cacc[i];
-		}
-		//if (extrapol)
-		//	trajectory.back().cpos[i] = command[i];
-	}
-
-	// debug
-	context.debug("HandlerR2GTrajectory::createTrajectory(): Trajectory size %u -> %u\n", (U32)size, (U32)trajectory.size());
-
-	// stationary waypoint in the end
-	trajectory.push_back(Controller::State(trajectory.back(), trajectory.back().t + this->trjIdle));
-}
-
-void spam::data::HandlerR2GTrajectory::createAction(const ItemR2GTrajectory& item, golem::Controller::State::Seq& trajectory) {
-	if (!planner || !controller)
-		throw Message(Message::LEVEL_ERROR, "HandlerR2GTrajectory::createTrajectory(): planner and controller are not set");
-	if (item.getWaypoints().size() < 2)
-		throw Message(Message::LEVEL_ERROR, "HandlerR2GTrajectory::createTrajectory(): At least two waypoints required");
-
-	Real trjExtrapolation = this->trjExtrapolation;
-	Real trjDuration = this->trjDuration;
-	bool inverse = false;
+	bool createAction = !action.empty();
 
 	if (getUICallback() && getUICallback()->hasInputEnabled()) {
 		Menu menu(context, *getUICallback());
 		//inverse = menu.option("FI", "Use (F)orward/(I)nverse trajectory... ") == 'I';
 		menu.readNumber("Trajectory duration: ", trjDuration);
 		menu.readNumber("Trajectory extrapolation: ", trjExtrapolation);
+		if (createAction) createAction = menu.option("YN", "Create action (Y/N)... ") == 'Y';
 	}
 
 	// make trajectory
-	golem::Controller::State::Seq states = grasp::Waypoint::make(item.getWaypoints(R2GTrajectory::Type::ACTION), false), commands = grasp::Waypoint::make(item.getWaypoints(R2GTrajectory::Type::ACTION), true);
+	golem::Controller::State::Seq states = grasp::Waypoint::make(item.getWaypoints(), false), commands = grasp::Waypoint::make(item.getWaypoints(), true);
+
 	// extrapolation delta
 	golem::ConfigspaceCoord delta;
 	for (Configspace::Index i = info.getJoints().begin(); i != info.getJoints().end(); ++i)
@@ -653,21 +661,28 @@ void spam::data::HandlerR2GTrajectory::createAction(const ItemR2GTrajectory& ite
 		create(delta, commands);
 	}
 
-	// don't process the last waypoint (used for grasping)
 	const size_t size = commands.size();
-	// trajectory profiling
-
-	trajectory = commands;
-	for (Configspace::Index i = info.getJoints().begin(); i != info.getJoints().end(); ++i)
-	if (Math::abs(command[i]) > REAL_EPS) { // no impedance control
-		// replace with states
-		for (size_t j = 0; j < trajectory.size(); ++j) {
-			trajectory[j].cpos[i] = states[j].cpos[i];
-			trajectory[j].cvel[i] = states[j].cvel[i];
-			trajectory[j].cacc[i] = states[j].cacc[i];
+	{
+		// waypoint pruning
+		ScopeGuard guard([&]() {distRemovedCallback = nullptr; });
+		distRemovedCallback = [&](size_t index) {
+			//context.debug("data::HandlerTrajectory::import(): removing index #%u/%u\n", U32(index + 1), states.size());
+			states.erase(states.begin() + index);
+			commands.erase(commands.begin() + index);
+		};
+		// trajectory profiling
+		trajectory = commands;
+		for (Configspace::Index i = info.getJoints().begin(); i != info.getJoints().end(); ++i)
+		if (Math::abs(command[i]) > REAL_EPS) { // no impedance control
+			// replace with states
+			for (size_t j = 0; j < trajectory.size(); ++j) {
+				trajectory[j].cpos[i] = states[j].cpos[i];
+				trajectory[j].cvel[i] = states[j].cvel[i];
+				trajectory[j].cacc[i] = states[j].cacc[i];
+			}
 		}
+		profile(trjDuration, trajectory);
 	}
-	profile(trjDuration, trajectory);
 
 	// assign if command[i] > 0
 	for (Configspace::Index i = info.getJoints().begin(); i != info.getJoints().end(); ++i)
@@ -683,235 +698,113 @@ void spam::data::HandlerR2GTrajectory::createAction(const ItemR2GTrajectory& ite
 	}
 
 	// debug
-	context.debug("HandlerR2GTrajectory::createTrajectory(): Trajectory size %u -> %u\n", (U32)size, (U32)trajectory.size());
+	context.debug("HandlerTrajectory::createTrajectory(): Trajectory size %u -> %u\n", (U32)size, (U32)trajectory.size());
 
 	// stationary waypoint in the end
 	trajectory.push_back(Controller::State(trajectory.back(), trajectory.back().t + this->trjIdle));
 
-	// liftin up action
-	GenWorkspaceChainState gwcc;
-	controller->chainForwardTransform(trajectory.back().cpos, gwcc.wpos);
-	for (Chainspace::Index i = info.getChains().begin(); i < info.getChains().end(); ++i)
-		gwcc.wpos[i].multiply(gwcc.wpos[i], controller->getChains()[i]->getReferencePose()); // reference pose
-	gwcc.t = trajectory.back().t;
+	// action
+	if (createAction) {
+		GenWorkspaceChainState gwcc;
+		controller->chainForwardTransform(trajectory.back().cpos, gwcc.wpos);
+		for (Chainspace::Index i = info.getChains().begin(); i < info.getChains().end(); ++i)
+			gwcc.wpos[i].multiply(gwcc.wpos[i], controller->getChains()[i]->getReferencePose()); // reference pose
+		gwcc.t = trajectory.back().t;
 
-	const Controller::State::Info armInfo = arm->getStateInfo();
-	GenWorkspaceChainState::Seq wAction;
-	wAction.push_back(gwcc);
-	for (Mat34Seq::const_iterator i = action.begin(); i != action.end(); ++i) {
-		GenWorkspaceChainState gwccTrn = gwcc;
-		gwccTrn.wpos[armInfo.getChains().begin()].multiply(*i, gwcc.wpos[armInfo.getChains().begin()]);
-		gwccTrn.t += trjDuration;
-		wAction.push_back(gwccTrn);
+		GenWorkspaceChainState::Seq wAction;
+		wAction.push_back(gwcc);
+		for (Mat34Seq::const_iterator i = action.begin(); i != action.end(); ++i) {
+			GenWorkspaceChainState gwccTrn = gwcc;
+			gwccTrn.wpos[armInfo.getChains().begin()].multiply(*i, gwcc.wpos[armInfo.getChains().begin()]);
+			gwccTrn.t += trjDuration;
+			wAction.push_back(gwccTrn);
+		}
+		// find trajectory
+		golem::Controller::State::Seq cAction;
+		if (!const_cast<Planner*>(planner)->findLocalTrajectory(trajectory.back(), wAction.begin(), wAction.end(), cAction, cAction.end()))
+			throw Message(Message::LEVEL_ERROR, "HandlerTrajectory::createTrajectory(): Unable to find action trajectory");
+		// add
+		trajectory.insert(trajectory.end(), ++cAction.begin(), cAction.end());
+		trajectory.push_back(Controller::State(trajectory.back(), trajectory.back().t + this->trjIdle));
 	}
-	// find trajectory
-	golem::Controller::State::Seq cAction;
-	if (!const_cast<Planner*>(planner)->findLocalTrajectory(trajectory.back(), wAction.begin(), wAction.end(), cAction, cAction.end()))
-		throw Message(Message::LEVEL_ERROR, "HandlerR2GTrajectory::createTrajectory(): Unable to find action trajectory");
-	// add
-	trajectory.insert(trajectory.end(), ++cAction.begin(), cAction.end());
+}
+
+void spam::data::HandlerR2GTrajectory::createTrajectory(const ItemR2GTrajectory& item, const golem::Controller::State& begin, golem::Controller::State::Seq& trajectory) {
+	if (!planner || !controller)
+		throw Message(Message::LEVEL_ERROR, "HandlerTrajectory::createTrajectory(): planner and controller are not set");
+	if (item.getWaypoints().size() < 2)
+		throw Message(Message::LEVEL_ERROR, "HandlerTrajectory::createTrajectory(): At least two waypoints required");
+
+	// Enable IG for reach-to-grasp trajectories and collisions with target object
+	this->pHeuristic->enableUnc = false;
+	this->pHeuristic->setPointCloudCollision(true);
+
+	Real trjDuration = this->trjDuration;
+
+	// make trajectory
+	golem::Controller::State::Seq states = grasp::Waypoint::make(item.getWaypoints(), false), commands = grasp::Waypoint::make(item.getWaypoints(), true);
+
+	if (getUICallback() && getUICallback()->hasInputEnabled()) {
+		Menu menu(context, *getUICallback());
+		//inverse = menu.option("FI", "Use (F)orward/(I)nverse trajectory... ") == 'I';
+		menu.readNumber("Trajectory duration: ", trjIGDuration);
+	}
+
+	grasp::RBDist err = planner->findGlobalTrajectory(begin, commands.front(), trajectory, trajectory.begin());
+	for (Controller::State::Seq::iterator i = trajectory.begin(); i != trajectory.end(); ++i)
+		i->cpos.set(handInfo.getJoints(), commands.front().cpos);
+
+	profile(trjDuration, trajectory);
+
+	// debug
+	context.debug("HandlerTrajectory::createTrajectory(): Pose error: lin=%.9f, ang=%.9f\n", err.lin, err.ang);
+	context.debug("HandlerTrajectory::createTrajectory(): Trajectory size %u\n", (U32)trajectory.size());
+
+	// stationary waypoint in the end
 	trajectory.push_back(Controller::State(trajectory.back(), trajectory.back().t + this->trjIdle));
+
+	// disable IG for grasping and collisions with target object
+	this->pHeuristic->enableUnc = false;
+	this->pHeuristic->setPointCloudCollision(false);
 }
 
-//void spam::data::HandlerR2GTrajectory::createTrajectory(ItemR2GTrajectory& item, golem::Controller::State::Seq& trajectory) {
-//	if (!planner || !controller)
-//		throw Message(Message::LEVEL_ERROR, "HandlerR2GTrajectory::createTrajectory(): planner and controller are not set");
-//	if (item.getWaypoints().size() < 2)
-//		throw Message(Message::LEVEL_ERROR, "HandlerR2GTrajectory::createTrajectory(): At least two waypoints required");
-//
-//	Real trjExtrapolation = this->trjExtrapolation;
-//	Real trjDuration = this->trjDuration;
-//	bool inverse = false;
-//	bool createAction = arm && !action.empty();
-//
-//	if (getUICallback() && getUICallback()->hasInputEnabled()) {
-//		Menu menu(context, *getUICallback());
-//		//inverse = menu.option("FI", "Use (F)orward/(I)nverse trajectory... ") == 'I';
-//		menu.readNumber("Trajectory duration: ", trjDuration);
-//		menu.readNumber("Trajectory extrapolation: ", trjExtrapolation);
-//	}
-//
-//	// make trajectory
-//	golem::Controller::State::Seq states = grasp::Waypoint::make(item.getWaypoints(R2GTrajectory::Type::APPROACH), false), commands = grasp::Waypoint::make(item.getWaypoints(R2GTrajectory::Type::APPROACH), true);
-//	// extrapolation delta
-//	golem::ConfigspaceCoord delta;
-//	for (Configspace::Index i = info.getJoints().begin(); i != info.getJoints().end(); ++i)
-//		delta[i] = trjExtrapolation*extrapolation[i];
-//
-//	// extrapolation
-//	const bool extrapol = trjExtrapolation > REAL_EPS;
-//	if (extrapol) {
-//		create(delta, states);
-//		create(delta, commands);
-//	}
-//
-//	// don't process the last waypoint (used for grasping)
-//	const size_t size = commands.size();
-//	// trajectory profiling
-//
-//	trajectory = commands;
-//	for (Configspace::Index i = info.getJoints().begin(); i != info.getJoints().end(); ++i)
-//	if (Math::abs(command[i]) > REAL_EPS) { // no impedance control
-//		// replace with states
-//		for (size_t j = 0; j < trajectory.size(); ++j) {
-//			trajectory[j].cpos[i] = states[j].cpos[i];
-//			trajectory[j].cvel[i] = states[j].cvel[i];
-//			trajectory[j].cacc[i] = states[j].cacc[i];
-//		}
-//	}
-//	profile(trjDuration, trajectory);
-//
-//	// assign if command[i] > 0
-//	for (Configspace::Index i = info.getJoints().begin(); i != info.getJoints().end(); ++i)
-//	if (Math::abs(command[i]) > REAL_EPS) { // no impedance control
-//		// replace with commands
-//		for (size_t j = 0; j < trajectory.size(); ++j) {
-//			trajectory[j].cpos[i] = commands[j].cpos[i];
-//			trajectory[j].cvel[i] = commands[j].cvel[i];
-//			trajectory[j].cacc[i] = commands[j].cacc[i];
-//		}
-//		if (extrapol)
-//			trajectory.back().cpos[i] = command[i];
-//	}
-//
-//	// debug
-//	context.debug("HandlerR2GTrajectory::createTrajectory(): Trajectory size %u -> %u\n", (U32)size, (U32)trajectory.size());
-//
-//	// stationary waypoint in the end
-//	trajectory.push_back(Controller::State(trajectory.back(), trajectory.back().t + this->trjIdle));
-//	item.pregraspIdx = size - 1;
-//
-//	// grasp
-//
-//
-//	// liftin up action
-//	GenWorkspaceChainState gwcc;
-//	controller->chainForwardTransform(trajectory.back().cpos, gwcc.wpos);
-//	for (Chainspace::Index i = info.getChains().begin(); i < info.getChains().end(); ++i)
-//		gwcc.wpos[i].multiply(gwcc.wpos[i], controller->getChains()[i]->getReferencePose()); // reference pose
-//	gwcc.t = trajectory.back().t;
-//
-//	const Controller::State::Info armInfo = arm->getStateInfo();
-//	GenWorkspaceChainState::Seq wAction;
-//	wAction.push_back(gwcc);
-//	for (Mat34Seq::const_iterator i = action.begin(); i != action.end(); ++i) {
-//		GenWorkspaceChainState gwccTrn = gwcc;
-//		gwccTrn.wpos[armInfo.getChains().begin()].multiply(*i, gwcc.wpos[armInfo.getChains().begin()]);
-//		gwccTrn.t += trjDuration;
-//		wAction.push_back(gwccTrn);
-//	}
-//	// find trajectory
-//	golem::Controller::State::Seq cAction;
-//	if (!const_cast<Planner*>(planner)->findLocalTrajectory(trajectory.back(), wAction.begin(), wAction.end(), cAction, cAction.end()))
-//		throw Message(Message::LEVEL_ERROR, "HandlerR2GTrajectory::createTrajectory(): Unable to find action trajectory");
-//	// add
-//	trajectory.insert(trajectory.end(), ++cAction.begin(), cAction.end());
-//	trajectory.push_back(Controller::State(trajectory.back(), trajectory.back().t + this->trjIdle));
-//}
+void spam::data::HandlerR2GTrajectory::createIGTrajectory(const ItemR2GTrajectory& item, const golem::Controller::State& begin, golem::Controller::State::Seq& trajectory) {
+	if (!planner || !controller)
+		throw Message(Message::LEVEL_ERROR, "HandlerTrajectory::createTrajectory(): planner and controller are not set");
+	if (item.getWaypoints().size() < 2)
+		throw Message(Message::LEVEL_ERROR, "HandlerTrajectory::createTrajectory(): At least two waypoints required");
 
-//------------------------------------------------------------------------------
+	// Enable IG for reach-to-grasp trajectories and collisions with target object
+	this->pHeuristic->enableUnc = true;
+	this->pHeuristic->setPointCloudCollision(true);
 
-//grasp::data::Item::Ptr spam::data::HandlerR2GTrajectory::transform(const grasp::data::Item::List& input) {
-//	grasp::data::Item::Ptr item(create());
-//	ItemR2GTrajectory* itemR2GTrajectory = to<ItemR2GTrajectory>(item.get());
-//
-//	// block item rendering (hasRenderBlock()=true)
-//	RenderBlock renderBlock(*this);
-//
-//	const spam::data::R2GTrajectory* trajectory = nullptr;
-//	grasp::Waypoint::Seq seq;
-//
-//	// collect data
-//	for (grasp::data::Item::List::const_iterator i = input.begin(); i != input.end(); ++i) {
-//		trajectory = is<const spam::data::R2GTrajectory>(*i);
-//		if (!trajectory)
-//			continue;
-//		seq.insert(seq.end, trajectory->getWaypoints().begin(), trajectory->getWaypoints().end());
-//	}
-//	if (seq.empty())
-//		throw Message(Message::LEVEL_ERROR, "HandlerR2GTrajectory::transform(): the trajectory has no waypoint");
-//	if (seq.size() < 3)
-//		throw Message(Message::LEVEL_ERROR, "HandlerR2GTrajectory::transform(): the trajectory has no enough waypoint");
-//
-//	// seq[0] = initial pose; seq[1] = pregrasp pose; seq[2] = grasp pose
-//	grasp::Waypoint* seq0 = &seq[0];
-//	grasp::Waypoint* seq1 = &seq[1];
-//	grasp::Waypoint* seq2 = &seq[2];
-//
-//	for (auto j = handInfo.getJoints().begin(); j != handInfo.getJoints().end(); ++j) {
-//		const size_t k = j - handInfo.getJoints().begin();
-//		seq0->command.cpos[j] = handPregraspPose[k];
-//		seq1->command.cpos[j] = handPregraspPose[k];
-//		seq2->command.cpos[j] = handGraspPose[k];
-//	}
-//	seq0->state.cpos = seq0->command.cpos;
-//	seq1->state.cpos = seq1->command.cpos;
-//	seq2->state.cpos = seq2->command.cpos;
-//
-//	itemR2GTrajectory->setWaypoints(seq);
-//
-//	return item;
-//}
+	Real trjDuration = this->trjDuration;
 
-//const grasp::StringSeq& spam::data::HandlerR2GTrajectory::getTransformInterfaces() const {
-//	return transformInterfaces;
-//}
-//
-//bool spam::data::HandlerR2GTrajectory::isTransformSupported(const grasp::data::Item& item) const {
-//	return is<const spam::data::ItemR2GTrajectory>(&item);
-//}
+	// make trajectory
+	golem::Controller::State::Seq states = grasp::Waypoint::make(item.getWaypoints(), false), commands = grasp::Waypoint::make(item.getWaypoints(), true);
 
-//------------------------------------------------------------------------------
-
-grasp::data::Item::Ptr spam::data::HandlerR2GTrajectory::convert(ItemR2GTrajectory& item, const grasp::data::Handler& handler) {
-	// only one type of output
-	grasp::data::Item::Ptr pItem(handler.create());
-	//R2GTrajectory* trajectory = is<R2GTrajectory>(pItem.get());
-	//if (!trajectory)
-	//	throw Message(Message::LEVEL_ERROR, "HandlerR2GTrajectory::convert(): Item %s does not support %s interface", handler.getType().c_str(), pItem.get()->getHandler().getID().c_str());
-
-	grasp::Waypoint::Seq seq;
-
-	seq.insert(seq.end(), item.getWaypoints().begin(), item.getWaypoints().end());
-
-	if (seq.empty())
-		throw Message(Message::LEVEL_ERROR, "HandlerR2GTrajectory::convert(): the trajectory has no waypoint");
-	if (seq.size() < 3)
-		throw Message(Message::LEVEL_ERROR, "HandlerR2GTrajectory::convert(): the trajectory has no enough waypoint");
-
-	// seq[0] = initial pose; seq[1] = pregrasp pose; seq[2] = grasp pose
-	grasp::Waypoint* seq0 = &seq[0];
-	grasp::Waypoint* seq1 = &seq[1];
-	grasp::Waypoint* seq2 = &seq[2];
-
-	for (auto j = handInfo.getJoints().begin(); j != handInfo.getJoints().end(); ++j) {
-		seq1->command.cpos[j] = seq0->command.cpos[j];
-		//const size_t k = j - handInfo.getJoints().begin();
-		//seq0->command.cpos[j] = handPregraspPose[k];
-		//seq1->command.cpos[j] = handPregraspPose[k];
-		//seq2->command.cpos[j] = handGraspPose[k];
+	if (getUICallback() && getUICallback()->hasInputEnabled()) {
+		Menu menu(context, *getUICallback());
+		//inverse = menu.option("FI", "Use (F)orward/(I)nverse trajectory... ") == 'I';
+		menu.readNumber("Trajectory duration: ", trjIGDuration);
 	}
-	seq0->state.cpos = seq0->command.cpos;
-	seq1->state.cpos = seq1->command.cpos;
-	seq2->state.cpos = seq2->command.cpos;
 
-	grasp::Waypoint::Seq approach, action;
-	approach.push_back(seq[0]);
-	approach.push_back(seq[1]);
-	approach.push_back(seq[1]);
-	action.push_back(seq[1]);
-	action.push_back(seq[2]);
-	action.push_back(seq[2]);
-	item.setWaypoints(approach, R2GTrajectory::Type::APPROACH);
-	item.setWaypoints(action, R2GTrajectory::Type::ACTION);
+	grasp::RBDist err = planner->findGlobalTrajectory(begin, commands.front(), trajectory, trajectory.begin());
+	for (Controller::State::Seq::iterator i = trajectory.begin(); i != trajectory.end(); ++i)
+		i->cpos.set(handInfo.getJoints(), commands.front().cpos);
 
-	item.setWaypoints(seq);
+	profile(trjDuration, trajectory);
 
-	return pItem;
-}
+	// debug
+	context.debug("HandlerTrajectory::createTrajectory(): Pose error: lin=%.9f, ang=%.9f\n", err.lin, err.ang);
+	context.debug("HandlerTrajectory::createTrajectory(): Trajectory size %u\n", (U32)trajectory.size());
 
-bool spam::data::HandlerR2GTrajectory::isConvertSupported(const grasp::data::Handler& handler) const {
-	return handler.isItem<const spam::data::ItemR2GTrajectory>();
+	// stationary waypoint in the end
+	trajectory.push_back(Controller::State(trajectory.back(), trajectory.back().t + this->trjIdle));
+
+	// disable IG for grasping and collisions with target object
+	this->pHeuristic->enableUnc = false;
+	this->pHeuristic->setPointCloudCollision(false);
 }
 
 //------------------------------------------------------------------------------

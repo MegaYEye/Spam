@@ -75,7 +75,9 @@ Belief::Desc::Ptr spam::data::ItemBelief::getBeliefDesc() const {
 	return handler.desc.pBeliefDescPtr;
 }
 
-void spam::data::ItemBelief::set(const grasp::RBPose::Sample::Seq& poses, const grasp::RBPose::Sample::Seq& hypotheses) {
+void spam::data::ItemBelief::set(const golem::Mat34 modelFrame, const golem::Mat34 queryTransform, const grasp::RBPose::Sample::Seq& poses, const grasp::RBPose::Sample::Seq& hypotheses) {
+	this->modelFrame = modelFrame;
+	this->queryTransform = queryTransform;
 	this->poses = poses;
 	this->hypotheses = hypotheses;
 }
@@ -98,9 +100,8 @@ grasp::data::Handler::Ptr spam::data::HandlerBelief::Desc::create(golem::Context
 
 //------------------------------------------------------------------------------
 
-spam::data::HandlerBelief::HandlerBelief(golem::Context &context) :
-Handler(context)
-{}
+spam::data::HandlerBelief::HandlerBelief(golem::Context &context) : Handler(context) {
+}
 
 void spam::data::HandlerBelief::create(const Desc& desc) {
 	grasp::data::Handler::create(desc);

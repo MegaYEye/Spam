@@ -52,6 +52,7 @@
 #include <Grasp/Core/Data.h>
 #include <Grasp/Core/UI.h>
 #include <Spam/App/PosePlanner/Data.h>
+#include <Spam/App/R2GPlanner/Data.h>
 
 //------------------------------------------------------------------------------
 
@@ -78,13 +79,15 @@ public:
 	/** Query file */
 	mutable grasp::data::File dataFile;
 
-	/** Transformation samples */
-	grasp::RBPose::Sample::Seq poses;
-	/** Transformation sub-samples */
-	grasp::RBPose::Sample::Seq hypotheses;
+	virtual const golem::Mat34& getModelFrame() const {
+		return modelFrame;
+	}
+	virtual const golem::Mat34& getQueryTransform() const {
+		return queryTransform;
+	}
 
 	Belief::Desc::Ptr getBeliefDesc() const;
-	void set(const grasp::RBPose::Sample::Seq& poses, const grasp::RBPose::Sample::Seq& hypotheses);
+	void set(const golem::Mat34 modelFrame, const golem::Mat34 queryTransform, const grasp::RBPose::Sample::Seq& poses, const grasp::RBPose::Sample::Seq& hypotheses);
 
 	/** Clones item. */
 	virtual Item::Ptr clone() const;
@@ -95,6 +98,16 @@ public:
 protected:
 	/** Data handler */
 	HandlerBelief& handler;
+
+	/** Query frame */
+	golem::Mat34 modelFrame;
+	/** Query transformation */
+	golem::Mat34 queryTransform;
+
+	/** Transformation samples */
+	grasp::RBPose::Sample::Seq poses;
+	/** Transformation sub-samples */
+	grasp::RBPose::Sample::Seq hypotheses;
 
 	/** Load item from xml context, accessible only by Data. */
 	virtual void load(const std::string& prefix, const golem::XMLContext* xmlcontext);
@@ -151,6 +164,8 @@ public:
 protected:
 	/** Belief suffix */
 	std::string beliefSuffix;
+	/** Planner index */
+	golem::U32 plannerIndex;
 
 	/** Pointer to the descriptor file */
 	HandlerBelief::Desc desc;

@@ -67,7 +67,7 @@ public:
 	/** Planner index. */
 	virtual golem::U32 getPlannerIndex() const = 0;
 	/** Sets planner and controllers. */
-	virtual void set(const golem::Planner& planner, const grasp::ControllerId::Seq& controllerIDSeq) = 0;
+	virtual void set(golem::Planner& planner, const grasp::ControllerId::Seq& controllerIDSeq) = 0;
 };
 
 /** Trajectory collection and tools.
@@ -92,8 +92,10 @@ public:
 
 	/** Returns command trajectory with velocity profile. */
 	virtual void createTrajectory(golem::Controller::State::Seq& trajectory) = 0;
-	/** Returns command trajectory with velocity profile. */
-	virtual void createAction(golem::Controller::State::Seq& trajectory) = 0;
+	/** (Mycroft) Compute approaching trajectory: Returns waypoints with velocity profile. */
+	virtual void createTrajectory(const golem::Controller::State& begin, golem::Controller::State::Seq& trajectory) = 0;
+	/** (IR3ne) Compute approaching trajectory: Returns waypoints with velocity profile. */
+	virtual void createIGTrajectory(const golem::Controller::State& begin, golem::Controller::State::Seq& trajectory) = 0;
 
 
 	/** Last waypoint of the reach-to-grasp trajectory */

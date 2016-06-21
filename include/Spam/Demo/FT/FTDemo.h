@@ -97,9 +97,6 @@ protected:
 	/** Perform trajectory */
 	virtual void perform(const std::string& data, const std::string& item, const golem::Controller::State::Seq& trajectory, bool testTrajectory = true);
 
-	/** Plan and execute r2g, grasp, lift operations */
-	bool execute2(grasp::data::Data::Map::iterator dataPtr, spam::data::R2GTrajectory& trajectory);
-
 	void create(const Desc& desc);
 	FTDemo(golem::Scene& scene);
 	~FTDemo();

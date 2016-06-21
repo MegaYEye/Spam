@@ -42,69 +42,34 @@
   </scene>
 
   <rag_planner planning_uncertainty="1" single_grasp_attempt="0" withdraw_to_home_pose="1" active_ctrl="ActiveTouchCtrl+ActiveTouchCtrl">
-    <trajectory scan_idle="1.0" duration="20.0" idle="2.0" extrapol_fac="0.5" perf_off="1.0" average="0.2">
-      <velocity dim="61"
-             c1="0.2" c2="0.2" c3="0.2" c4="0.2" c5="0.2" c6="0.2" c7="0.2" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5" c21="0.5" c22="0.5" c23="0.5" c24="0.5" c25="0.5" c26="0.5" c27="0.5"
-             c28="0.1" c29="0.1" c30="0.1" c31="0.1" c32="0.1" c33="0.1" c34="0.1" c35="0.5" c36="0.5" c37="0.5" c38="0.5" c39="0.5" c40="0.5" c41="0.5" c42="0.5" c43="0.5" c44="0.5" c45="0.5" c46="0.5" c47="0.5" c48="0.5" c49="0.5" c50="0.5" c51="0.5" c52="0.5" c53="0.5" c54="0.5"
-             c55="0.5" c56="0.5" c57="0.5" c58="0.5" c59="0.5" c60="0.5" c61="0.5"
-      />
-      <acceleration dim="61"
-             c1="0.1" c2="0.1" c3="0.1" c4="0.1" c5="0.1" c6="0.1" c7="0.1" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5" c21="0.5" c22="0.5" c23="0.5" c24="0.5" c25="0.5" c26="0.5" c27="0.5"
-             c28="0.05" c29="0.05" c30="0.05" c31="0.05" c32="0.05" c33="0.05" c34="0.05" c35="0.5" c36="0.5" c37="0.5" c38="0.5" c39="0.5" c40="0.5" c41="0.5" c42="0.5" c43="0.5" c44="0.5" c45="0.5" c46="0.5" c47="0.5" c48="0.5" c49="0.5" c50="0.5" c51="0.5" c52="0.5" c53="0.5" c54="0.5"
-             c55="0.5" c56="0.5" c57="0.5" c58="0.5" c59="0.5" c60="0.5" c61="0.5"
-      />
-      <distance dim="61"
-             c1="10.0" c2="10.0" c3="10.0" c4="10.0" c5="10.0" c6="10.0" c7="10.0" c8="1.0" c9="1.0" c10="1.0" c11="1.0" c12="1.0" c13="1.0" c14="1.0" c15="1.0" c16="1.0" c17="1.0" c18="1.0" c19="1.0" c20="1.0" c21="1.0" c22="1.0" c23="1.0" c24="1.0" c25="1.0" c26="1.0" c27="1.0"
-             c28="10.0" c29="10.0" c30="10.0" c31="10.0" c32="10.0" c33="10.0" c34="10.0" c35="1.0" c36="1.0" c37="1.0" c38="1.0" c39="1.0" c40="1.0" c41="1.0" c42="1.0" c43="1.0" c44="1.0" c45="1.0" c46="1.0" c47="1.0" c48="1.0" c49="1.0" c50="1.0" c51="1.0" c52="1.0" c53="1.0" c54="1.0"
-             c55="1.0" c56="1.0" c57="1.0" c58="1.0" c59="1.0" c60="1.0" c61="1.0"
-      />
-      <extrapol dim="61"
-             c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0" c6="0.0" c7="0.0" c8="1.0" c9="1.0" c10="1.0" c11="1.0" c12="1.0" c13="1.0" c14="1.0" c15="1.0" c16="1.0" c17="1.0" c18="1.0" c19="1.0" c20="1.0" c21="1.0" c22="1.0" c23="1.0" c24="1.0" c25="1.0" c26="1.0" c27="1.0"
-             c28="1.0" c29="1.0" c30="1.0" c31="1.0" c32="1.0" c33="1.0" c34="1.0" c35="1.0" c36="1.0" c37="1.0" c38="1.0" c39="1.0" c40="1.0" c41="1.0" c42="1.0" c43="1.0" c44="1.0" c45="1.0" c46="1.0" c47="1.0" c48="1.0" c49="1.0" c50="1.0" c51="1.0" c52="1.0" c53="1.0" c54="1.0"
-             c55="1.0" c56="1.0" c57="1.0" c58="1.0" c59="1.0" c60="1.0" c61="1.0"
-      />
-    </trajectory>
     <point_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="10" camera_frame="0" camera_frame_size="0.05">
       <frame_size v1="5e-1" v2="5e-1" v3="1e-2"/>
       <colour override="0" R="127" G="127" B="127" A="255"/>
     </point_appearance>
     <!--<model_points_trn dim="7" c1="-0.05" c2="-0.05" c3="0.05" c4="1" c5="-0.0001" c6="-0.0001" c7="0.0001"/>-->
     <query_points_trn v1="-0.001" v2="-0.05" v3="0.01" q0="0.75" q1="0.0" q2="0.0" q3="-0.2"/>
-    <!--<heuristic contact_fac="1000.0" non_contact_fac="1000.0" max_surface_points_inkd="5000">
-      <evaluation_model neighbours="50" points="250" depth_stddev="1.0" likelihood="1.0"/>
-      <check_model neighbours="100" points="10000" depth_stddev="1000.0" likelihood="1000.0"/>
-      <ftmodel dist_max="0.8" cone_theta_orizontal_axis="0.5" cone_theta_vertical_axis="0.785" num_nearest_points="5" num_points="5000" mahalanobis_fac="0.05" enabled_likelihood="1" intrinsic_exp_parameter="1">
-        <joint_fac dim="16" c1="0.01" c2="0.01" c3="0.38" c4="0.60" c5="0.01" c6="0.01" c7="0.38" c8="0.60" c9="0.01" c10="0.01" c11="0.38" c12="0.60" c13="0.01" c14="0.01" c15="0.38" c16="0.60"/>
-      </ftmodel>
-      <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
-    </heuristic>-->
-    <sensor_bundle>
-      <reader></reader>
-      <filter ></filter>
-      <collision>
-        <!-- collision with the ground truth -->
-        <waypoint path_dist="0.0" points="100000" depth_stddev="1000.0" likelihood="1000.0"/>
-        <kdtree neighbours="100" points="1000" depth_stddev="1000.0" likelihood="1000.0"/>
-        <ft_base>
-          <ft_median dim="18" c1=".0" c2=".0" c3=".0" c4=".0" c5=".0" c6=".0" c7=".0" c8=".0" c9=".0" c10=".0" c11=".0" c12=".0" c13=".0" c14=".0" c15=".0" c16=".0" c17=".0" c18=".0"/>
-          <ft_std  dim="18" c1="0.003" c2="0.003" c3="0.003" c4="0.003" c5="0.003" c6="0.003" c7="0.003" c8="0.003" c9="0.003" c10="0.003" c11="0.003" c12="0.003" c13="0.003" c14="0.003" c15="0.003" c16="0.003" c17="0.003" c18="0.003"/>
-          <!--<ft_median dim="20" c1="-0.069" c2="-0.0126" c3="-0.0221" c4="-0.0221" c5="0.0285" c6="-0.009" c7="0.0391" c8="0.0391" c9="0.0705" c10="0" c11="0.0017" c12="0.0017" c13="0.0195" c14="-0.0108" c15="-0.0085" c16="-0.0085" c17="0.0165" c18="0.027" c19="-0.0153" c20="-0.0153"/>
-          <ft_std dim="20" c1="0.003811178" c2="0.011151169" c3="0.000619817" c4="0.000619817" c5="0.006098929" c6="0.009658709" c7="0.002112924" c8="0.002112924" c9="0.005659508" c10="0.010557872" c11="0.001047325" c12="0.001047325" c13="0.005527137" c14="0.010945394" c15="0.000901849" c16="0.000901849" c17="0.006291048" c18="0.008031151" c19="0.000963786" c20="0.000963786"/>-->
-        </ft_base>
-        <ft_contact>
-          <ft_median dim="18" c1="15.0" c2="15.0" c3="15.0" c4="15.0" c5="15.0" c6="15.0" c7="15.0" c8="15.0" c9="15.0" c10="15.0" c11="15.0" c12="15.0" c13="15.0" c14="15.0" c15="15.0" c16="15.0" c17="15.0" c18="15.0"/>
-          <ft_std  dim="18" c1="0.003" c2="0.003" c3="0.003" c4="0.003" c5="0.003" c6="0.003" c7="0.003" c8="0.003" c9="0.003" c10="0.003" c11="0.003" c12="0.003" c13="0.003" c14="0.003" c15="0.003" c16="0.003" c17="0.003" c18="0.003"/>
-          <!--<ft_median dim="20" c1="-0.5" c2="0.5" c3="-0.5" c4="-0.5" c5="0.5" c6="0.5" c7="0.5" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="-0.5" c20="-0.5"/>
-          <ft_std dim="20" c1="0.5" c2="0.5" c3="0.015307701" c4="0.5" c5="0.5" c6="0.5" c7="0.5" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5"/>-->
-        </ft_contact>
-      </collision>
-    </sensor_bundle>
-    <limit dim="18" c1="0.025" c2="0.025" c3="0.025" c4="0.025" c5="0.025" c6="0.025" c7="0.025" c8="0.025" c9="0.025" c10="0.025" c11="0.025" c12="0.025" c13="0.025" c14="0.025" c15="0.025" c16="0.025" c17="0.025" c18="0.025"/>
+    <collision>
+      <!-- collision with the ground truth -->
+      <waypoint path_dist="0.0" points="100000" depth_stddev="1000.0" likelihood="1000.0"/>
+      <kdtree neighbours="100" points="1000" depth_stddev="1000.0" likelihood="1000.0"/>
+      <ft_base>
+        <ft_median dim="18" c1=".0" c2=".0" c3=".0" c4=".0" c5=".0" c6=".0" c7=".0" c8=".0" c9=".0" c10=".0" c11=".0" c12=".0" c13=".0" c14=".0" c15=".0" c16=".0" c17=".0" c18=".0"/>
+        <ft_std  dim="18" c1="0.003" c2="0.003" c3="0.003" c4="0.003" c5="0.003" c6="0.003" c7="0.003" c8="0.003" c9="0.003" c10="0.003" c11="0.003" c12="0.003" c13="0.003" c14="0.003" c15="0.003" c16="0.003" c17="0.003" c18="0.003"/>
+        <!--<ft_median dim="20" c1="-0.069" c2="-0.0126" c3="-0.0221" c4="-0.0221" c5="0.0285" c6="-0.009" c7="0.0391" c8="0.0391" c9="0.0705" c10="0" c11="0.0017" c12="0.0017" c13="0.0195" c14="-0.0108" c15="-0.0085" c16="-0.0085" c17="0.0165" c18="0.027" c19="-0.0153" c20="-0.0153"/>
+        <ft_std dim="20" c1="0.003811178" c2="0.011151169" c3="0.000619817" c4="0.000619817" c5="0.006098929" c6="0.009658709" c7="0.002112924" c8="0.002112924" c9="0.005659508" c10="0.010557872" c11="0.001047325" c12="0.001047325" c13="0.005527137" c14="0.010945394" c15="0.000901849" c16="0.000901849" c17="0.006291048" c18="0.008031151" c19="0.000963786" c20="0.000963786"/>-->
+      </ft_base>
+      <ft_contact>
+        <ft_median dim="18" c1="15.0" c2="15.0" c3="15.0" c4="15.0" c5="15.0" c6="15.0" c7="15.0" c8="15.0" c9="15.0" c10="15.0" c11="15.0" c12="15.0" c13="15.0" c14="15.0" c15="15.0" c16="15.0" c17="15.0" c18="15.0"/>
+        <ft_std  dim="18" c1="0.003" c2="0.003" c3="0.003" c4="0.003" c5="0.003" c6="0.003" c7="0.003" c8="0.003" c9="0.003" c10="0.003" c11="0.003" c12="0.003" c13="0.003" c14="0.003" c15="0.003" c16="0.003" c17="0.003" c18="0.003"/>
+        <!--<ft_median dim="20" c1="-0.5" c2="0.5" c3="-0.5" c4="-0.5" c5="0.5" c6="0.5" c7="0.5" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="-0.5" c20="-0.5"/>
+        <ft_std dim="20" c1="0.5" c2="0.5" c3="0.015307701" c4="0.5" c5="0.5" c6="0.5" c7="0.5" c8="0.5" c9="0.5" c10="0.5" c11="0.5" c12="0.5" c13="0.5" c14="0.5" c15="0.5" c16="0.5" c17="0.5" c18="0.5" c19="0.5" c20="0.5"/>-->
+      </ft_contact>
+    </collision>
+    <limit dim="18" c1="0.005" c2="0.005" c3="0.005" c4="0.005" c5="0.005" c6="0.005" c7="0.005" c8="0.005" c9="0.005" c10="0.005" c11="0.005" c12="0.005" c13="0.005" c14="0.005" c15="0.005" c16="0.005" c17="0.005" c18="0.005"/>
     <!--<limit dim="20" c1="0.004" c2="0.004" c3="0.003" c4="0.003" c5="0.004" c6="0.004" c7="0.003" c8="0.003" c9="0.007" c10="0.007" c11="0.3" c12="0.3" c13="0.3" c14="0.3" c15="0.3" c16="0.3" c17="0.3" c18="0.3" c19="0.3" c20="0.3"/>-->
   </rag_planner>
 
   <pose_planner data_name="data.ragplanner" screen_capture="1">
-
     <heuristic contact_fac="1000.0" non_contact_fac="1000.0" max_surface_points_inkd="5000">
       <evaluation_model neighbours="1" points="250" depth_stddev="1.0" likelihood="1.0"/>
       <check_model neighbours="50" points="10000" depth_stddev="0.10" likelihood="1000.0" radius="0.01"/>
@@ -114,7 +79,9 @@
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.001" c4="0.0001" c5="0.0001" c6="0.0001" c7="0.0001"/>
     </heuristic>
 
-  <model camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="model-curv-6_views" item_obj="modelObj" item_grasp="grasp-bowl-rim" handler_grasp="ContactModel+ContactModelDemoR2G" handler_trj="Trajectory+Trajectory" item_trj="grasp_model_trj_trial">
+    <model camera="DepthSim+DepthSimDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="model-curv-6_views" item_obj="modelObj" item_grasp="grasp-bowl-rim" handler_grasp="ContactModel+ContactModelDemoR2G" handler_trj="Trajectory+Trajectory" item_trj="grasp_model_trj_trial">
+      <!--<model camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="model-curv-6_views" item_obj="modelObj" item_grasp="grasp-bowl-rim" handler_grasp="ContactModel+ContactModelDemoR2G" handler_trj="SpamDataR2GTrajectory+SpamDataR2GTrajectoryDemoR2G" item_trj="grasp_model_trj_trial">-->
+      <!--<model camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="model-curv-6_views" item_obj="modelObj" item_grasp="grasp-bowl-rim" handler_grasp="ContactModel+ContactModelDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_model_trj_trial">-->
       <scan_pose dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <scan_pose dim="61" c1="1.98703" c2="-1.82022" c3="2.68371" c4="-0.993679" c5="-0.472118" c6="0.701058" c7="-0.601755" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <scan_pose dim="61" c1="1.60132" c2="-1.8583" c3="1.77602" c4="-0.0109462" c5="0.450068" c6="1.04633" c7="-0.639206" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
@@ -144,7 +111,9 @@
       </appearance>
     </model>
 
-   <query camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="query-curv-3_views" item_obj="queryObj" item_grasp="grasp-jug-5_views-rim" handler_grasp="ContactQuery+ContactQueryDemoR2G" handler_trj="Trajectory+Trajectory" item_trj="grasp_query_trj_trial">
+    <query camera="DepthSim+DepthSimDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="query-curv-3_views" item_obj="queryObj" item_grasp="grasp-jug-5_views-rim" handler_grasp="ContactQuery+ContactQueryDemoR2G" handler_trj="Trajectory+Trajectory" item_trj="grasp_query_trj_trial">
+      <!--<query camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="query-curv-3_views" item_obj="queryObj" item_grasp="grasp-jug-5_views-rim" handler_grasp="ContactQuery+ContactQueryDemoR2G" handler_trj="SpamDataR2GTrajectory+SpamDataR2GTrajectoryDemoR2G" item_trj="grasp_query_trj_trial">-->
+      <!--<query camera="OpenNI+OpenNIDemoR2G" handler_scan="Image+ImageDemoR2G"  handler="PointsCurv+PointsCurvDemoR2G" item="query-curv-3_views" item_obj="queryObj" item_grasp="grasp-model-6_views-RIM" handler_grasp="ContactQuery+ContactQueryDemoR2G" handler_trj="Trajectory+TrajectoryDemoR2G" item_trj="grasp_query_trj_trial">-->
       <scan_pose dim="61" c1="2.24194" c2="-0.780102" c3="2.56493" c4="-1.99426" c5="0.489691" c6="-1.03589" c7="-1.15272" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
       <!--<scan_pose dim="61" c1="1.98703" c2="-1.82022" c3="2.68371" c4="-0.993679" c5="-0.472118" c6="0.701058" c7="-0.601755" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>-->
       <scan_pose dim="61" c1="1.60132" c2="-1.8583" c3="1.77602" c4="-0.0109462" c5="0.450068" c6="1.04633" c7="-0.639206" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
@@ -174,21 +143,6 @@
       <cluster_map type="cup" slot="2"/>
     </query>
 
-    <pose_estimation_sim points="100000" features="500000" attempts="10" kernels="50000" neighbours="20000" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7" search_checks="32" search_kdtrees="4">
-      <nn_search neighbours="0" search_checks="32" search_kdtrees="4" search_leaf_max_size="10"/>
-      <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.1" c5="0.1" c6="0.1" c7="0.1"/>
-      <!--<covariance dim="7" c1="10" c2="10" c3="1" c4="1" c5="1" c6="1" c7="1"/>-->
-      <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
-      <pose_stddev lin="0.001" ang="500.0"/>
-      <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
-      <optimisation minimum="1" population_size="20" generations_num="2000" de_diff_fac="0.5" de_cross_prob="0.1" test_generations="100" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest"/>
-      <!--<covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.01" c5="0.01" c6="0.01" c7="0.01"/>
-      <mean_shift population_size="100" generations_min="20" generations_max="200" distance_diff="1e-4"/>
-      <pose_stddev lin="0.001" ang="500.0"/>
-      <dist prod="0" lin="1.0" ang="1.0" feature="0"/>
-      <optimisation minimum="1" population_size="20" generations_num="2000" de_diff_fac="0.5" de_cross_prob="0.1" test_generations="100" test_pairs="100" test_variance="1e-6" num_of_threads="-1" thread_priority="lowest"/>-->
-    </pose_estimation_sim>
-
     <object camera="DepthSim+DepthSimDemoR2G" handler_scan="Image+ImageDemoR2G" handler="PointsCurv+PointsCurvDemoR2G" item_scan="ObjectScan" item="Object">
       <scan_pose dim="61" c1="2.47067" c2="-0.850383" c3="2.35997" c4="-1.65389" c5="2.47979" c6="-1.14518" c7="1" c8="0.22" c9="0.6" c10="0.1" c11="0.1" c12="0.05" c13="0.8" c14="0.2" c15="0.2" c16="0.05" c17="0.8" c18="0.2" c19="0.2" c20="0" c21="0.8" c22="0.2" c23="0.2" c24="0" c25="0.8" c26="0.2" c27="0.2" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
 
@@ -201,12 +155,6 @@
         </colour>
       </frame_adjustment>
     </object>
-
-    <!--<grasp sensor="FTClient+FTClient" event_time_wait="2.0" close_duration="2.0">
-      <threshold v1="0.5" v2="0.5" v3="0.5" w1="0.1" w2="0.1" w3="0.1"/>
-      <pose_open dim="61" c1="2.5" c2="0.0262055" c3="2.67101" c4="-1.23526" c5="1.51494" c6="-1.84566" c7="-2.95382" c8="0" c9="0" c10="0" c11="0" c12="0" c13="0" c14="0" c15="0" c16="0" c17="0" c18="0" c19="0" c20="0" c21="0" c22="0" c23="0" c24="0" c25="0" c26="0" c27="0" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
-      <pose_closed dim="61" c1="2.5" c2="0.0262055" c3="2.67101" c4="-1.23526" c5="1.51494" c6="-1.84566" c7="-2.95382" c8="0.22" c9="0.6" c10="0.1" c11="0.1" c12="0.05" c13="0.8" c14="0.2" c15="0.2" c16="0.05" c17="0.8" c18="0.2" c19="0.2" c20="0" c21="0.8" c22="0.2" c23="0.2" c24="0" c25="0.8" c26="0.2" c27="0.2" c28="0" c29="0" c30="0" c31="0" c32="0" c33="0" c34="0" c35="0" c36="0" c37="0" c38="0" c39="0" c40="0" c41="0" c42="0" c43="0" c44="0" c45="0" c46="0" c47="0" c48="0" c49="0" c50="0" c51="0" c52="0" c53="0" c54="0" c55="0" c56="0" c57="0" c58="0" c59="0" c60="0" c61="0"/>
-    </grasp>-->
 
     <manipulator item_trj="TrajectoryManip">
       <config_map i1="0" i2="0" i3="0" i4="0" i5="0" i6="0" i7="0" i8="0" i9="0" i10="0" i11="10" i12="0" i13="0" i14="0" i15="14" i16="0" i17="0" i18="0" i19="18" i20="0" i21="0" i22="0" i23="22" i24="0" i25="0" i26="0" i27="26"/>
@@ -230,8 +178,6 @@
       </appearance>
     </manipulator>
 
-    <model_trn_frame v1="0.0" v2="0.0" v3="0.0" q0="1.0" q1="0.0" q2="0.0" q3="0.0"/>
-    <object_points_trn v1="-0.01" v2="-0.01" v3="0.01" q0="0.5" q1="0.0" q2="0.0" q3="0.001"/>
     <appearance distrib_samples="100">
       <model>
         <line show="1" R="255" G="255" B="0" A="255"/>
@@ -268,10 +214,6 @@
     </groundtruth_appearance>
 
     <belief_state item="beliefState" handler="SpamDataBelief+SpamDataBeliefDemoR2G"></belief_state>
-    <trial_data enable="1" silent="0" name="default" path="./data/boris/experiments/" ext_trial=".xml" ext_trj=".trj">
-      <meta_query_transformation lin="0.1" ang="0.01"/>
-      <meta_obj_pose_transformation lin="0.005" ang="0.01"/>
-    </trial_data>
   </pose_planner>
 
   <player planner_index="0" trajectory_name="trajectory">
