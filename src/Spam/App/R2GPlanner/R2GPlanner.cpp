@@ -1243,21 +1243,18 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 		return;
 	context.debug("R2GPlanner::updateAndResample(): %d triggered guards:\n", /*grasp::to<Data>(dataPtr)->*/ftGuards.size());
 	
-	// update samples' weights
-//	golem::Real norm = golem::REAL_ZERO, c = golem::REAL_ZERO;
 	golem::Waypoint w(*controller, lookupState().cpos/*grasp::to<Data>(dataPtr)->triggeredStates.begin()->cpos*/);
 	context.write("update weights, triggered guards size = %u\n", ftGuards.size());
 
-	for (auto g = ftGuards.begin(); g != ftGuards.end(); ++g)
-		(*g)->str(context);
+	//for (auto g = ftGuards.begin(); g != ftGuards.end(); ++g)
+	//	(*g)->str(context);
 	// render uncertainty before belief update
 	resetDataPointers();
-	showQueryDistribPointClouds = false;
 	showGroundTruth = false;
 	to<Data>(dataCurrentPtr)->createRender();
 
-	const std::string itemName = "belief-" + makeString("%f", context.getTimer().elapsed());
-	recordingStart(dataPtr->first, itemName, true);
+	const std::string updateItem = makeString("belief-update-%.3f", beliefItem.c_str(), context.getTimer().elapsed());
+	recordingStart(dataPtr->first, updateItem, true);
 	recordingWaitToStart();
 
 	//::sleep(1000);
@@ -1293,7 +1290,6 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	
 	// render the mismatch between estimate and ground truth before resampling
 	to<Data>(dataCurrentPtr)->createRender();
-	//::sleep(5000);
 
 
 	context.write("resample (wheel algorithm)...\n");
@@ -1354,24 +1350,10 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 
 	// update query settings
 	grasp::to<Data>(dataPtr)->queryFrame.multiply(grasp::to<Data>(dataPtr)->queryTransform, modelFrame);
-	//grasp::RBPose::Sample cc(grasp::to<Data>(dataPtr)->queryFrame);
-	//context.write("%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t\n", cc.p.x, cc.p.y, cc.p.z, cc.q.w, cc.q.x, cc.q.y, cc.q.z);
 
-	context.debug("render...\n");
-	showQueryDistribPointClouds = false;
 	showGroundTruth = true;
-	showMeanHypothesisPointClouds = true;
-	showHypothesesPointClouds = true;
 	createRender();
 
-//	showSamplePoints = true;
-	//if (screenCapture) universe.postScreenCaptureFrames(-1);
-	//::Sleep(50);
-//	renderUncertainty(pBelief->getSamples());
-	//showSamplePoints = true; // shows hypotheses and mean pose
-	//showMeanHypothesis = false;
-	//showDistrPoints = true;
-//	if (screenCapture) universe.postScreenCaptureFrames(-1);
 	pHeuristic->setHypothesisBounds();
 	for (auto g = ftGuards.begin(); g != ftGuards.end(); ++g)
 		(*g)->unlock();
@@ -1380,32 +1362,25 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	recordingStop(getPlanner().trajectoryIdlePerf);
 	recordingWaitToStop();
 
-	currentBeliefItem = makeString("%s%.3f", beliefItem.c_str(), recorderStart);
+	currentBeliefItem = makeString("%s-%.3f", beliefItem.c_str(), recorderStart);
 	// save belief
 	RenderBlock renderBlock(*this);
 	{
 		golem::CriticalSectionWrapper cswData(getCS());
 		grasp::data::Item::Map::iterator beliefPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(currentBeliefItem, beliefHandler->create()));
-		//to<Data>(dataCurrentPtr)->itemMap.find(beliefItem); 
-		//to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(trjItemName, beliefHandler->create()));
 		spam::data::BeliefState* beliefState = is<spam::data::BeliefState>(beliefPtr->second.get());
 		beliefState = beliefPtr != to<Data>(dataCurrentPtr)->itemMap.end() ? beliefState : nullptr;
 		if (!beliefState)
 			throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): beliefState handler does not implement data::beliefState");
 		// add current states
+		beliefState->set(pBelief.get());
 		beliefState->set(modelFrame, grasp::to<Data>(dataPtr)->queryTransform, pBelief->getSamples(), pBelief->getHypothesesToSample());
+		beliefState->setModelPoints(modelItem, modelPoints);
+		beliefState->setQueryPoints(queryItem, grasp::to<Data>(dataPtr)->queryPoints);
+		beliefState->showMeanPose(true);
 		Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, beliefPtr, to<Data>(dataCurrentPtr)->getView());
 		context.write("Save: handler %s, inputs %s, %s...\n", beliefHandler->getID().c_str(), beliefPtr->first.c_str(), beliefItem.c_str());
 	}
-
-	// render the mismatch between estimate and ground truth after resempling
-//	createRender();
-	//::Sleep(100);
-//	if (screenCapture) universe.postScreenCaptureFrames(0);
-
-	//::Sleep(100);
-	//if (screenCapture) universe.postScreenCaptureFrames(0);	
-//	std::cout << "spam:update&resample 15\n";
 }
 
 //------------------------------------------------------------------------------

@@ -191,29 +191,12 @@
       </query>
     </appearance>
 
-    <model_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="100" camera_frame="1" camera_frame_size="0.05" feature_curv_pow="1.0">
-      <frame_size v1="0.1" v2="0.1" v3="0.1"/>
-      <colour override="1" R="127" G="127" B="127" A="255"/>
-    </model_appearance>
-    <query_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="100" camera_frame="1" camera_frame_size="0.05" feature_curv_pow="1.0">
-      <frame_size v1="0.1" v2="0.1" v3="0.1"/>
-      <!--<colour override="1" R="127" G="127" B="127" A="255"/>-->
-      <colour override="1" R="255" G="0" B="0" A="255"/>
-    </query_appearance>
-    <hypothesis_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="100" camera_frame="1" camera_frame_size="0.05" feature_curv_pow="1.0">
-      <frame_size v1="0.1" v2="0.1" v3="0.1"/>
-      <colour override="1" R="127" G="127" B="127" A="255"/>
-    </hypothesis_appearance>
-    <debug_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="100" camera_frame="1" camera_frame_size="0.05" feature_curv_pow="1.0">
-      <frame_size v1="0.1" v2="0.1" v3="0.1"/>
-      <colour override="1" R="0" G="0" B="0" A="255"/>
-    </debug_appearance>
     <groundtruth_appearance mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="100" camera_frame="1" camera_frame_size="0.05" feature_curv_pow="1.0">
       <frame_size v1="0.1" v2="0.1" v3="0.1"/>
       <colour override="1" R="0" G="0" B="0" A="255"/>
     </groundtruth_appearance>
 
-    <belief_state item="beliefState" handler="SpamDataBelief+SpamDataBeliefDemoR2G"></belief_state>
+    <belief_state item="belief_state" handler="SpamDataBelief+SpamDataBeliefDemoR2G"></belief_state>
   </pose_planner>
 
   <player planner_index="0" trajectory_name="trajectory">

@@ -136,20 +136,10 @@ public:
 		/** Current Mode */
 		Mode mode;
 
-		/** Model triangles */
-		grasp::Vec3Seq modelVertices;
-		/** Model triangles */
-		grasp::TriangleSeq modelTriangles;
-
 		/** Query frame */
 		golem::Mat34 modelFrame;
 		/** Model points */
 		grasp::Cloud::PointSeq modelPoints;
-
-		/** Query triangles */
-		grasp::Vec3Seq queryVertices;
-		/** Query triangles */
-		grasp::TriangleSeq queryTriangles;
 
 		/** Query transformation */
 		golem::Mat34 queryTransform;
@@ -159,11 +149,6 @@ public:
 		grasp::Cloud::PointSeq queryPoints;
 		/** Simulated location of the object */
 		grasp::Cloud::PointSeq simulateObjectPose;
-
-		/** High dim rep pose distribution **/
-		grasp::RBPose::Sample::Seq poses;
-		/** Low dim rep pose distribution **/
-		grasp::RBPose::Sample::Seq hypotheses;
 
 		/** Belief file name extension */
 		std::string extSamples;
@@ -183,11 +168,6 @@ public:
 	protected:
 		/** Demo */
 		PosePlanner* owner;
-
-		/** Load from xml context */
-		virtual void load(const std::string& prefix, const golem::XMLContext* xmlcontext, const grasp::data::Handler::Map& handlerMap);
-		/** Save to xml context */
-		virtual void save(const std::string& prefix, golem::XMLContext* xmlcontext) const;
 
 		/** Creates data bundle */
 		void create(const Desc& desc);
@@ -227,10 +207,6 @@ public:
 
 		/** Model scan pose */
 		grasp::ConfigMat34::Seq modelScanPoseSeq;
-		/** Model colour solid */
-		golem::RGBA modelColourSolid;
-		/** Model colour wireframe */
-		golem::RGBA modelColourWire;
 
 		/** Model trajectory handler */
 		std::string modelHandlerTrj;
@@ -254,30 +230,16 @@ public:
 
 		/** Object scan pose */
 		grasp::ConfigMat34::Seq queryScanPoseSeq;
-		/** Query colour solid */
-		golem::RGBA queryColourSolid;
-		/** Query colour wireframe */
-		golem::RGBA queryColourWire;
 
 		/** Query trajectory handler */
 		std::string queryHandlerTrj;
 		/** Query trajectory item */
 		std::string queryItemTrj;
 
-		/** Object capture camera */
-		std::string objectCamera;
-		/** Object data handler (scan) */
-		std::string objectHandlerScan;
-		/** Object data handler (processed) */
-		std::string objectHandler;
-		/** Object data item (scan) */
-		std::string objectItemScan;
-		/** Object data item (processed) */
-		std::string objectItem;
-		/** Object scan pose */
-		grasp::ConfigMat34::Seq objectScanPoseSeq;
-		/** Object manual frame adjustment */
-		grasp::RBAdjust objectFrameAdjustment;
+		/** Appereance for point clouds: ground truth point clouds */
+		grasp::Cloud::Appearance groundTruthAppearance;
+		/** Show simulated pose of the object */
+		bool showGroundTruth;
 		/** Pose estimation for simulated object */
 		grasp::RBPose::Desc::Ptr simRBPoseDesc;
 
@@ -307,30 +269,6 @@ public:
 		/** Grasp pose closed (grasp) */
 		grasp::ConfigMat34 graspPoseClosed;
 
-		/** Model feature appearance */
-		grasp::Cloud::Appearance modelAppearance;
-		/** Query feature appearance */
-		grasp::Cloud::Appearance queryAppearance;
-		/** Appereance for point clouds: hypothesis point clouds */
-		grasp::Cloud::Appearance hypothesisAppearance;
-		/** Appereance for point clouds: debug point clouds */
-		grasp::Cloud::Appearance debugAppearance;
-		/** Appereance for point clouds: ground truth point clouds */
-		grasp::Cloud::Appearance groundTruthAppearance;
-		///** Feature frame size */
-		//golem::Vec3 featureFrameSize;
-		///** Distribution frame size */
-		//golem::Vec3 distribFrameSize;
-
-		/** Distribution num of samples */
-		size_t distribSamples;
-
-		/** Model point transformation **/
-		golem::Mat34 modelTrn;
-
-		/** Enables/disable screen capture from simulation */
-		bool screenCapture;
-
 		/** Manipulator description */
 		grasp::Manipulator::Desc::Ptr manipulatorDesc;
 		/** Manipulator Appearance */
@@ -358,8 +296,6 @@ public:
 			modelGraspItem.clear();
 
 			modelScanPoseSeq.clear();
-			modelColourSolid.set(golem::RGBA::RED._U8[0], golem::RGBA::RED._U8[1], golem::RGBA::RED._U8[2], golem::numeric_const<golem::U8>::MAX / 8);
-			modelColourWire.set(golem::RGBA::RED);
 
 			modelHandlerTrj.clear();
 			modelItemTrj.clear();
@@ -373,19 +309,12 @@ public:
 			queryGraspItem.clear();
 
 			queryScanPoseSeq.clear();
-			queryColourSolid.set(golem::RGBA::GREEN._U8[0], golem::RGBA::GREEN._U8[1], golem::RGBA::GREEN._U8[2], golem::numeric_const<golem::U8>::MAX / 8);
-			queryColourWire.set(golem::RGBA::GREEN);
 
 			queryHandlerTrj.clear();
 			queryItemTrj.clear();
 
-			objectCamera.clear();
-			objectHandlerScan.clear();
-			objectHandler.clear();
-			objectItemScan.clear();
-			objectItem.clear();
-			objectScanPoseSeq.clear();
-			objectFrameAdjustment.setToDefault();
+			groundTruthAppearance.setToDefault();
+			showGroundTruth = false;
 			simRBPoseDesc.reset(new grasp::RBPose::Desc);
 
 			beliefHandler.clear();
@@ -402,17 +331,6 @@ public:
 			graspCloseDuration = golem::SecTmReal(2.0);
 			graspPoseOpen.setToDefault();
 			graspPoseClosed.setToDefault();
-
-			modelAppearance.setToDefault();
-			queryAppearance.setToDefault();
-			hypothesisAppearance.setToDefault();
-			debugAppearance.setToDefault();
-			groundTruthAppearance.setToDefault();
-			distribSamples = 100;
-
-			modelTrn.setToDefault();
-
-			screenCapture = false;
 
 			manipulatorDesc.reset(new grasp::Manipulator::Desc);
 			manipulatorAppearance.setToDefault();
@@ -433,14 +351,6 @@ public:
 		/** Load descritpion from xml context. */
 		virtual void load(golem::Context& context, const golem::XMLContext* xmlcontext);
 	};
-
-	/** Process algortihm */
-//	virtual void processPoints(Data::Map::const_iterator dataPtr, const Selection& selection, const bool silent = false);
-	/** Perform trajectory */
-	virtual void perform(const std::string& data, const std::string& item, const golem::Controller::State::Seq& trajectory, bool testTrajectory = true) {
-		grasp::Player::perform(data, item, trajectory, testTrajectory);
-	}
-
 
 	/** Reset belief state */
 	inline void createBeliefState() {
@@ -477,13 +387,8 @@ protected:
 	grasp::data::Handler* modelGraspHandler;
 	/** Model data item */
 	std::string modelGraspItem;
-
 	/** Model scan pose */
 	grasp::ConfigMat34::Seq modelScanPoseSeq;
-	/** Model colour solid */
-	golem::RGBA modelColourSolid;
-	/** Model colour wireframe */
-	golem::RGBA modelColourWire;
 
 	/** Model trajectory handler */
 	grasp::data::Handler* modelHandlerTrj;
@@ -504,13 +409,8 @@ protected:
 	grasp::data::Handler* queryGraspHandler;
 	/** Query data item */
 	std::string queryGraspItem;
-
 	/** Query scan pose */
 	grasp::ConfigMat34::Seq queryScanPoseSeq;
-	/** Query colour solid */
-	golem::RGBA queryColourSolid;
-	/** Query colour wireframe */
-	golem::RGBA queryColourWire;
 
 	/** Query trajectory handler */
 	grasp::data::Handler* queryHandlerTrj;
@@ -530,20 +430,6 @@ protected:
 	/** Grasp pose closed (grasp) */
 	grasp::ConfigMat34 graspPoseClosed;
 
-	/** Object capture camera */
-	grasp::Camera* objectCamera;
-	/** Object data handler (scan) */
-	grasp::data::Handler* objectHandlerScan;
-	/** Object data handler (processed) */
-	grasp::data::Handler* objectHandler;
-	/** Object data item (scan) */
-	std::string objectItemScan;
-	/** Object data item (processed) */
-	std::string objectItem;
-	/** Object scan pose */
-	grasp::ConfigMat34::Seq objectScanPoseSeq;
-	/** Object manual frame adjustment */
-	grasp::RBAdjust objectFrameAdjustment;
 	/** Accurate pose estimation for the simulated object */
 	grasp::RBPose::Ptr simRBPose;
 	/** Reference frames */
@@ -574,48 +460,6 @@ protected:
 	golem::Mat34 modelFrame;
 	/** Model points */
 	grasp::Cloud::PointSeq modelPoints;
-	/** Model transformation frame **/
-	golem::Mat34 modelTrn;
-	/** Object transformation (for test porpuses) */
-	golem::Mat34 objectTrn;
-
-	/** Appereance for point clouds: model point cloud */
-	grasp::Cloud::Appearance modelAppearance;
-	/** Show model point cloud */
-	bool showModelPointCloud;
-	/** Show model features */
-	bool showModelFeatures;
-	/** Displayed feature index */
-	golem::U32 featureIndex;
-	/** Model renderer */
-	golem::DebugRenderer modelRenderer;
-
-	/** Appereance for point clouds: query point cloud */
-	grasp::Cloud::Appearance queryAppearance;
-	/** Show the query point cloud */
-	bool showQueryPointCloud;
-	/** Query renderer */
-	golem::DebugRenderer queryRenderer;
-
-	/** Appereance for point clouds: hypothesis point clouds */
-	grasp::Cloud::Appearance hypothesisAppearance;
-	/** Show the query point cloud */
-	bool showHypothesesPointClouds;
-	/** Show only the mean hypothesis */
-	bool showMeanHypothesisPointClouds;
-	/** Show only the mean hypothesis */
-	bool showHypothesisBounds;
-	/** Hypothesis renderer */
-	golem::DebugRenderer hypothesisRenderer;
-
-	/** Appereance for point clouds: debug point clouds */
-	grasp::Cloud::Appearance debugAppearance, resampleAppeareance;
-	/** Show query distribution (as frames) */
-	bool showQueryDistribFrames;
-	/** Show pose distribution **/
-	bool showQueryDistribPointClouds;
-	/** Query renderer */
-	golem::DebugRenderer beliefRenderer;
 
 	golem::Bounds::Seq handBounds;
 	golem::DebugRenderer debugRenderer;
@@ -626,18 +470,6 @@ protected:
 	bool showGroundTruth;
 	/** Query renderer */
 	golem::DebugRenderer groundTruthRenderer;
-
-	/** Rendering model frame size */
-	golem::Vec3 modelFrameSize;
-	/** Rendering query frame size */
-	golem::Vec3 queryFrameSize;
-	/** Rendering distribution frame size */
-	golem::Vec3 hypothesisFrameSize, distrFrameSize;
-	/** Appereance for point clouds */
-	grasp::Cloud::Appearance sampleAppearance;
-
-	/** Enables/disable screen capture from simulation */
-	bool screenCapture;
 
 	/** Smart pointer to the ft driven heuristic */
 	FTDrivenHeuristic* pHeuristic;
@@ -682,13 +514,5 @@ protected:
 //------------------------------------------------------------------------------
 
 };	// namespace
-
-namespace golem {
-
-template <> void Stream::read(spam::PosePlanner::Data &data) const;
-template <> void Stream::write(const spam::PosePlanner::Data &data);
-
-};	// namespace
-
 
 #endif /*_GRASP_POSEPLANNER_POSEPLANNER_H_*/

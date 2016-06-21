@@ -51,6 +51,7 @@
 #include <Golem/UI/Renderer.h>
 #include <Grasp/Core/Data.h>
 #include <Grasp/Core/UI.h>
+#include <Golem/UI/Renderer.h>
 #include <Spam/App/PosePlanner/Data.h>
 #include <Spam/App/R2GPlanner/Data.h>
 
@@ -79,15 +80,37 @@ public:
 	/** Query file */
 	mutable grasp::data::File dataFile;
 
+	/** Return the Belief description file to create a belief pointer */
+	Belief::Desc::Ptr getBeliefDesc() const;
+	virtual void set(const Belief* belief) {
+		this->belief = belief;
+	}
+	/** Set the new belief state */
+	void set(const golem::Mat34 modelFrame, const golem::Mat34 queryTransform, const grasp::RBPose::Sample::Seq& poses, const grasp::RBPose::Sample::Seq& hypotheses);
+	/** Set model points to draw the belief state */
+	virtual void setModelPoints(const std::string modelItem, const grasp::Cloud::PointSeq& points);
+	/** Set query points to draw the belief state */
+	virtual void setQueryPoints(const std::string queryItem, const grasp::Cloud::PointSeq& points);
+
 	virtual const golem::Mat34& getModelFrame() const {
 		return modelFrame;
 	}
 	virtual const golem::Mat34& getQueryTransform() const {
 		return queryTransform;
 	}
+	virtual const std::string& getModelItem() const {
+		return modelItem;
+	}
+	virtual const std::string& getQueryItem() const {
+		return queryItem;
+	}
 
-	Belief::Desc::Ptr getBeliefDesc() const;
-	void set(const golem::Mat34 modelFrame, const golem::Mat34 queryTransform, const grasp::RBPose::Sample::Seq& poses, const grasp::RBPose::Sample::Seq& hypotheses);
+	virtual void showMeanPose(const bool show) {
+		this->showMeanPoseOnly = show;
+	}
+	virtual void showQuery(const bool show) {
+		this->showQueryDistribution = show;
+	}
 
 	/** Clones item. */
 	virtual Item::Ptr clone() const;
@@ -98,11 +121,27 @@ public:
 protected:
 	/** Data handler */
 	HandlerBelief& handler;
+	/** Pointer to the Belief state */
+	const Belief* belief;
+
+	/** Show only the mean pose */
+	bool showMeanPoseOnly;
+	/** Show only the mean pose */
+	bool showQueryDistribution;
 
 	/** Query frame */
 	golem::Mat34 modelFrame;
 	/** Query transformation */
 	golem::Mat34 queryTransform;
+
+	/** Model item: keep track of the model in the data bundle */
+	std::string modelItem;
+	/** Model points */
+	grasp::Cloud::PointSeq modelPoints;
+	/** Query item: keep track of the query in the data bundle */
+	std::string queryItem;
+	/** Query points */
+	grasp::Cloud::PointSeq queryPoints;
 
 	/** Transformation samples */
 	grasp::RBPose::Sample::Seq poses;
@@ -120,9 +159,39 @@ protected:
 
 /** Data handler is associated with a particular item type, it knows how to create items, it can hold shared buffer.
 */
-class GOLEM_LIBRARY_DECLDIR HandlerBelief : public grasp::data::Handler {
+class GOLEM_LIBRARY_DECLDIR HandlerBelief : public grasp::data::Handler, public grasp::UI {
 public:
 	friend class ItemBelief;
+
+	/** Data handler description */
+	class GOLEM_LIBRARY_DECLDIR Appearance {
+	public:
+		/** Show frame */
+		bool showFrame;
+		/** Show point cloud */
+		bool showPoints;
+		/** Number of displayed samples */
+		golem::U32 samples;
+		/** Model feature appearance */
+		grasp::Cloud::Appearance appearance;
+
+		Appearance() {
+			setToDefault();
+		}
+		/** Sets the parameters to the default values. */
+		void setToDefault() {
+			showFrame = true;
+			showPoints = false;
+			samples = golem::U32(0);
+			appearance.setToDefault();
+		}
+		/** Assert that the object is valid. */
+		void assertValid(const grasp::Assert::Context& ac) const {
+			appearance.assertValid(ac);
+		}
+		/** Load descritpion from xml context. */
+		virtual void load(golem::Context& context, const golem::XMLContext* xmlcontext);
+	};
 
 	/** Data handler description */
 	class GOLEM_LIBRARY_DECLDIR Desc : public grasp::data::Handler::Desc {
@@ -132,6 +201,13 @@ public:
 
 		/** Pointer to belief desc file */
 		Belief::Desc::Ptr pBeliefDescPtr;
+
+		/** Model feature appearance */
+		Appearance posesAppearance;
+		/** Mean hypothesis feature appearance */
+		Appearance meanPoseAppearance;
+		/** Hypotheses feature appearance */
+		Appearance hypothesisAppearance;
 
 		/** Belief suffix */
 		std::string beliefSuffix;
@@ -143,11 +219,17 @@ public:
 		/** Sets the parameters to the default values. */
 		void setToDefault() {
 			pBeliefDescPtr.reset(new Belief::Desc());
+			posesAppearance.setToDefault();
+			meanPoseAppearance.setToDefault();
+			hypothesisAppearance.setToDefault();
 			beliefSuffix = getFileExtBelief();
 		}
 		/** Assert that the object is valid. */
 		void assertValid(const grasp::Assert::Context& ac) const {
 			grasp::Assert::valid(pBeliefDescPtr != nullptr, ac, "Belief desc: null pointer.");	
+			posesAppearance.assertValid(ac);
+			meanPoseAppearance.assertValid(ac);
+			hypothesisAppearance.assertValid(ac);
 			grasp::Assert::valid(beliefSuffix.length() > 0, ac, "beliefSuffix: empty");
 		}
 
@@ -170,8 +252,22 @@ protected:
 	/** Pointer to the descriptor file */
 	HandlerBelief::Desc desc;
 
+	/** Debug renderer */
+	golem::DebugRenderer renderer;
+
 	/** Creates render buffer */
 	void createRender(const ItemBelief& item);
+	/** golem::UIRenderer: Render on output device. */
+	virtual void render() const;
+	/** golem::UIRenderer: Render on output device. */
+	virtual void customRender() const;
+
+	/** golem::UIRenderer: Mouse button handler. */
+	virtual void mouseHandler(int button, int state, int x, int y);
+	/** golem::UIRenderer: Mouse motion handler. */
+	virtual void motionHandler(int x, int y);
+	/** golem::UIRenderer: Keyboard handler. */
+	virtual void keyboardHandler(int key, int x, int y);
 
 	/** Construct empty item, accessible only by Data. */
 	virtual grasp::data::Item::Ptr create() const;

@@ -139,8 +139,6 @@ void FTDemo::create(const Desc& desc) {
 			to<Data>(dataPtr)->queryPoints.clear();
 			to<Data>(dataPtr)->queryTransform.setId();
 			to<Data>(dataPtr)->queryFrame.setId();
-			to<Data>(dataPtr)->poses.clear();
-			to<Data>(dataPtr)->hypotheses.clear();
 			to<Data>(dataPtr)->simulateObjectPose.clear();
 		};
 
@@ -327,8 +325,8 @@ void FTDemo::create(const Desc& desc) {
 
 				// set render to show only mean hypothesis and ground truth
 				resetDataPointers();
-				showHypothesesPointClouds = true;
-				showMeanHypothesisPointClouds = true;
+				//showHypothesesPointClouds = true;
+				//showMeanHypothesisPointClouds = true;
 				showGroundTruth = true;
 				to<Data>(dataCurrentPtr)->createRender();
 
@@ -380,10 +378,6 @@ void FTDemo::create(const Desc& desc) {
 					if (!r2gtrajectory)
 						throw Message(Message::LEVEL_ERROR, "Handler %s does not support R2GTrajectory interface", beliefHandler->getID().c_str());
 
-					//if (!execute(dataCurrentPtr, inp)) { // if it fails to find a trajectory repeat 
-					//	++failures;
-					//	continue;
-					//}
 					Controller::State::Seq seq;
 					if (grasp::to<Data>(dataCurrentPtr)->stratType != Strategy::IR3NE)
 						r2gtrajectory->createTrajectory(grasp::Waypoint::lookup(*controller).command, seq);
@@ -407,20 +401,10 @@ void FTDemo::create(const Desc& desc) {
 					// find global trajectory & perform
 					R2GPlanner::perform(dataCurrentPtr->first, actionToString(grasp::to<Data>(dataCurrentPtr)->actionType).c_str(), seq, false);
 					context.write("Iteration %u: execute trajectory (%s)\n", iteration, actionToString(grasp::to<Data>(dataCurrentPtr)->actionType).c_str());
-					//if (!execute(dataCurrentPtr, inp)) {// not successfully close fingers
-					//	++failures;
-					//	continue;
-					//}
-					//grasp::to<Data>(dataCurrentPtr)->actionType = action::IG_PLAN_LIFT;
-					//context.write("Iteration %u: execute trajectory (%s)\n", iteration, actionToString(grasp::to<Data>(dataCurrentPtr)->actionType).c_str());
-					//if (!execute(dataCurrentPtr, inp)) {// not successfully close fingers
-					//	++failures;
-					//	continue;
-					//}
 					if (option("YN", "Success? (Y/N)") == 'Y')
-						/*context.write("Grasped!\n");// to<TrialData>(trialPtr)->*/grasped = true;
+						grasped = true;
 					else
-						/*context.write("Not grasped!\n"); //to<TrialData>(trialPtr)->*/grasped = false;
+						grasped = false;
 
 					results = grasp::makeString("%s\t%.6f\t%.6f\t%u\t%u\n", results.c_str(), error.lin, error.ang, grasped ? 1 : 0, iteration);
 					break;
