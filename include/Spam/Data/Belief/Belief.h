@@ -92,6 +92,13 @@ public:
 	/** Set query points to draw the belief state */
 	virtual void setQueryPoints(const std::string queryItem, const grasp::Cloud::PointSeq& points);
 
+	virtual grasp::RBPose::Sample::Seq getPoses() const {
+		return poses;
+	}
+	virtual grasp::RBPose::Sample::Seq getHypotheses() const {
+		return hypotheses;
+	}
+
 	virtual const golem::Mat34& getModelFrame() const {
 		return modelFrame;
 	}

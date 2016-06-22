@@ -245,6 +245,7 @@ void PosePlanner::Desc::load(golem::Context& context, const golem::XMLContext* x
 		XMLData((grasp::RBPose::Desc&)*simRBPoseDesc, xmlcontext->getContextFirst("pose_estimation_sim"));
 	}
 	catch (const golem::MsgXMLParser& msg) { context.write("%s\n", msg.str().c_str()); }
+	groundTruthAppearance.xmlData(xmlcontext->getContextFirst("groundtruth_appearance", false), false);
 
 	try{
 		golem::XMLData("sensor", graspSensorForce, xmlcontext->getContextFirst("grasp"));
@@ -363,6 +364,7 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	queryItemTrj = desc.queryItemTrj;
 
 	simRBPose = desc.simRBPoseDesc->create(context); // throws
+	groundTruthAppearance = desc.groundTruthAppearance;
 
 	// models
 	modelMap.clear();
@@ -374,9 +376,6 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	queryMap.clear();
 	for (Query::Desc::Map::const_iterator i = desc.queryDescMap.begin(); i != desc.queryDescMap.end(); ++i)
 		queryMap.insert(std::make_pair(i->first, i->second->create(context, i->first)));
-
-	groundTruthAppearance = desc.groundTruthAppearance;
-
 
 	modelFrame.setId();
 	resetDataPointers();
@@ -391,6 +390,61 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	scene.getHelp().insert(Scene::StrMapVal("081", "  Q                                       query create\n"));
 	scene.getHelp().insert(Scene::StrMapVal("081", "  6                                       query distribution\n"));
 	scene.getHelp().insert(Scene::StrMapVal("081", "  7                                       hypotheses distribution\n"));
+	scene.getHelp().insert(Scene::StrMapVal("082", "  B                                       Belief state menu\n"));
+
+	menuCtrlMap.insert(std::make_pair("B", [=](MenuCmdMap& menuCmdMap, std::string& desc) {
+		desc = "Press a key to: (L)oad belief state...";
+	}));
+	menuCmdMap.insert(std::make_pair("BL", [=]() {
+		if (!pBelief.get()) 
+			throw Cancel("No belief state supported\n");
+
+		// find handlers supporting data::BeliefState
+		typedef std::vector<std::pair<grasp::data::Handler*, data::BeliefState*>> BeliefStateMap;
+		BeliefStateMap beliefStateMap;
+		for (grasp::data::Handler::Map::const_iterator i = handlerMap.begin(); i != handlerMap.end(); ++i) {
+			data::BeliefState* state = is<data::BeliefState>(i);
+			if (state) beliefStateMap.push_back(std::make_pair(i->second.get(), state));
+		}
+		if (beliefStateMap.empty())
+			throw Cancel("No handlers support Belief state interface");
+		// pick up handler
+		BeliefStateMap::const_iterator beliefStatePtr = beliefStateMap.begin();
+		select(beliefStatePtr, beliefStateMap.begin(), beliefStateMap.end(), "Generate:\n", [](BeliefStateMap::const_iterator ptr) -> std::string {
+			return std::string("Handler: ") + ptr->first->getID();
+		});
+
+		//retrieve model point cloud
+		grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(beliefStatePtr->second->getModelItem());
+		if (ptr == to<Data>(dataCurrentPtr)->itemMap.end())
+			throw Message(Message::LEVEL_ERROR, "PosePlanner: Does not find %s.", beliefStatePtr->second->getModelItem().c_str());
+
+		// retrive point cloud with curvature
+		grasp::data::ItemPointsCurv *pointsCurv = is<grasp::data::ItemPointsCurv>(ptr->second.get());
+		if (!pointsCurv)
+			throw Cancel("PosePlanner: Does not support PointsCurv interface.");
+		if (pointsCurv->cloud->empty())
+			throw Cancel("PosePlanner: Model point cloud is empty.");
+		grasp::Cloud::PointCurvSeq curvPoints = *pointsCurv->cloud;
+
+		// copy as a vector of points in 3D
+		Vec3Seq mPoints;
+		mPoints.resize(curvPoints.size());
+		I32 idx = 0;
+		std::for_each(curvPoints.begin(), curvPoints.end(), [&](const Cloud::PointCurv& i){
+			mPoints[idx++] = Cloud::getPoint<Real>(i);
+		});
+
+		// copy as a generic point+normal point cloud (Cloud::pointSeq)
+		Cloud::PointSeq points;
+		points.resize(curvPoints.size());
+		Cloud::copy(curvPoints, points);
+
+		// set belief state
+		pBelief->set(beliefStatePtr->second->getPoses(), beliefStatePtr->second->getHypotheses(), beliefStatePtr->second->getModelFrame(), points);
+		// finish
+		context.write("Done!\n");
+	}));
 
 	menuCtrlMap.insert(std::make_pair("P", [=](MenuCmdMap& menuCmdMap, std::string& desc) {
 		desc = "Press a key to: (M)odel/(Q)ery estimation...";
@@ -467,7 +521,7 @@ grasp::data::Item::Map::iterator spam::PosePlanner::estimatePose(Data::Mode mode
 	// retrive point cloud with curvature
 	grasp::data::ItemPointsCurv *pointsCurv = is<grasp::data::ItemPointsCurv>(ptr->second.get());
 	if (!pointsCurv)
-		throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): Does not support PointdCurv interface.");
+		throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): Does not support PointsCurv interface.");
 	grasp::Cloud::PointCurvSeq curvPoints = *pointsCurv->cloud;
 
 	// copy as a vector of points in 3D

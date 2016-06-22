@@ -66,6 +66,9 @@ public:
 	virtual void setModelPoints(const std::string modelItem, const grasp::Cloud::PointSeq& points) = 0;
 	virtual void setQueryPoints(const std::string queryItem, const grasp::Cloud::PointSeq& points) = 0;
 
+	virtual grasp::RBPose::Sample::Seq getPoses() const = 0;
+	virtual grasp::RBPose::Sample::Seq getHypotheses() const = 0;
+
 	virtual const golem::Mat34& getModelFrame() const = 0;
 	virtual const golem::Mat34& getQueryTransform() const = 0;
 	virtual const std::string& getModelItem() const = 0;
