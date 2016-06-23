@@ -57,6 +57,35 @@ namespace spam {
 /** Reach-2-grasp demo. */
 class FTDemo : public R2GPlanner {
 public:
+	/** Data */
+	//class Data : public R2GPlanner::Data {
+	//public:
+	//	/** Data bundle description */
+	//	class Desc : public R2GPlanner::Data::Desc {
+	//	public:
+	//		/** Creates the object from the description. */
+	//		virtual grasp::data::Data::Ptr create(golem::Context &context) const;
+	//	};
+
+	//	/** Manager */
+	//	virtual void setOwner(grasp::Manager* owner);
+
+	//	/** Creates render buffer of the bundle without items */
+	//	virtual void createRender();
+
+	//	/** Clone data */
+	//	virtual Data* clone() const;
+
+	//protected:
+	//	/** Demo */
+	//	R2GPlanner* owner;
+
+	//	/** Creates data bundle */
+	//	void create(const Desc& desc);
+	//	/** Creates data bundle */
+	//	Data(golem::Context &context);
+	//};
+
 	/** R2G demo description */
 	class Desc : public R2GPlanner::Desc {
 	public:

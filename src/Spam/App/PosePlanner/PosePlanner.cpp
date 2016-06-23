@@ -10,6 +10,7 @@
 #include <Golem/Tools/Data.h>
 #include <Golem/Planner/GraphPlanner/Data.h>
 #include <Spam/App/PosePlanner/PosePlanner.h>
+#include <Spam/Data/Belief/Belief.h>
 
 #include <Golem/Math/Rand.h>
 #include <Grasp/Contact/Model.h>
@@ -180,8 +181,13 @@ void spam::PosePlanner::Data::createRender() {
 	Player::Data::createRender();
 	{
 		golem::CriticalSectionWrapper csw(owner->getCS());
-		if (owner->showGroundTruth)
-			owner->groundTruthAppearance.draw(simulateObjectPose, owner->groundTruthRenderer);
+		// show constantly the belief state, if needed
+		//const grasp::data::Item::Map::iterator ptr = itemMap.find(owner->currentBeliefItem);
+		//if (ptr != itemMap.end()) {
+		//	data::ItemBelief* pItem = grasp::to<data::ItemBelief>(ptr);
+		//	if (owner->drawBeliefState && pItem)
+		//		pItem->customRender();
+		//}
 	}
 }
 
@@ -243,9 +249,10 @@ void PosePlanner::Desc::load(golem::Context& context, const golem::XMLContext* x
 
 	try {
 		XMLData((grasp::RBPose::Desc&)*simRBPoseDesc, xmlcontext->getContextFirst("pose_estimation_sim"));
+		golem::XMLData("item", simulateItem, xmlcontext->getContextFirst("pose_estimation_sim"));
+		golem::XMLData("handler", simulateHandler, xmlcontext->getContextFirst("pose_estimation_sim"));
 	}
 	catch (const golem::MsgXMLParser& msg) { context.write("%s\n", msg.str().c_str()); }
-	groundTruthAppearance.xmlData(xmlcontext->getContextFirst("groundtruth_appearance", false), false);
 
 	try{
 		golem::XMLData("sensor", graspSensorForce, xmlcontext->getContextFirst("grasp"));
@@ -280,7 +287,7 @@ const std::string PosePlanner::Data::ModeName[MODE_QUERY + 1] = {
 
 //------------------------------------------------------------------------------
 
-spam::PosePlanner::PosePlanner(Scene &scene) : grasp::Player(scene), rand(context.getRandSeed()), pHeuristic(nullptr) {
+spam::PosePlanner::PosePlanner(Scene &scene) : grasp::Player(scene), rand(context.getRandSeed()), pHeuristic(nullptr), drawBeliefState(false) {
 }
 	
 bool spam::PosePlanner::create(const Desc& desc) {
@@ -363,8 +370,14 @@ bool spam::PosePlanner::create(const Desc& desc) {
 		throw Message(Message::LEVEL_CRIT, "spam::PosePlanner::create(): unknown query trajectory handler: %s", desc.queryHandlerTrj.c_str());
 	queryItemTrj = desc.queryItemTrj;
 
+	// simulate a ground truth for debugging and testing
 	simRBPose = desc.simRBPoseDesc->create(context); // throws
-	groundTruthAppearance = desc.groundTruthAppearance;
+	grasp::data::Handler::Map::const_iterator simHandlerPtr = handlerMap.find(desc.simulateHandler);
+	simulateHandler = simHandlerPtr != handlerMap.end() ? simHandlerPtr->second.get() : nullptr;
+	if (!simulateHandler)
+		throw Message(Message::LEVEL_CRIT, "spam::PosePlanner::create(): unknown simulate data handler: %s", desc.simulateHandler.c_str());
+	simulateItem = desc.simulateItem;
+
 
 	// models
 	modelMap.clear();
@@ -400,48 +413,60 @@ bool spam::PosePlanner::create(const Desc& desc) {
 			throw Cancel("No belief state supported\n");
 
 		// find handlers supporting data::BeliefState
-		typedef std::vector<std::pair<grasp::data::Handler*, data::BeliefState*>> BeliefStateMap;
+		typedef std::vector<std::pair<grasp::data::Item::Map::iterator, data::BeliefState*>> BeliefStateMap;
 		BeliefStateMap beliefStateMap;
-		for (grasp::data::Handler::Map::const_iterator i = handlerMap.begin(); i != handlerMap.end(); ++i) {
+		for (grasp::data::Item::Map::iterator i = to<Data>(dataCurrentPtr)->itemMap.begin(); i != to<Data>(dataCurrentPtr)->itemMap.end(); ++i) {
 			data::BeliefState* state = is<data::BeliefState>(i);
-			if (state) beliefStateMap.push_back(std::make_pair(i->second.get(), state));
+			if (state) beliefStateMap.push_back(std::make_pair(i, state));
 		}
 		if (beliefStateMap.empty())
 			throw Cancel("No handlers support Belief state interface");
 		// pick up handler
 		BeliefStateMap::const_iterator beliefStatePtr = beliefStateMap.begin();
-		select(beliefStatePtr, beliefStateMap.begin(), beliefStateMap.end(), "Generate:\n", [](BeliefStateMap::const_iterator ptr) -> std::string {
-			return std::string("Handler: ") + ptr->first->getID();
+		select(beliefStatePtr, beliefStateMap.begin(), beliefStateMap.end(), "Belief state:\n", [](BeliefStateMap::const_iterator ptr) -> std::string {
+			return std::string("Beliefs: ") + ptr->first->first.c_str();
 		});
+
+		currentBeliefItem = beliefStatePtr->first->first;
+		currentBeliefPtr = beliefStatePtr->first;
+		context.write("Loading belief state %s\n", currentBeliefItem.c_str());
 
 		//retrieve model point cloud
-		grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(beliefStatePtr->second->getModelItem());
-		if (ptr == to<Data>(dataCurrentPtr)->itemMap.end())
-			throw Message(Message::LEVEL_ERROR, "PosePlanner: Does not find %s.", beliefStatePtr->second->getModelItem().c_str());
-
-		// retrive point cloud with curvature
-		grasp::data::ItemPointsCurv *pointsCurv = is<grasp::data::ItemPointsCurv>(ptr->second.get());
-		if (!pointsCurv)
-			throw Cancel("PosePlanner: Does not support PointsCurv interface.");
-		if (pointsCurv->cloud->empty())
-			throw Cancel("PosePlanner: Model point cloud is empty.");
-		grasp::Cloud::PointCurvSeq curvPoints = *pointsCurv->cloud;
-
-		// copy as a vector of points in 3D
-		Vec3Seq mPoints;
-		mPoints.resize(curvPoints.size());
-		I32 idx = 0;
-		std::for_each(curvPoints.begin(), curvPoints.end(), [&](const Cloud::PointCurv& i){
-			mPoints[idx++] = Cloud::getPoint<Real>(i);
-		});
-
-		// copy as a generic point+normal point cloud (Cloud::pointSeq)
-		Cloud::PointSeq points;
-		points.resize(curvPoints.size());
-		Cloud::copy(curvPoints, points);
+		Cloud::PointSeq modelPoints;
+		try {
+			modelPoints = getPoints(dataCurrentPtr, beliefStatePtr->second->getModelItem());
+		}
+		catch (const Message& msg) { context.write("%s", msg.what()); }
 
 		// set belief state
-		pBelief->set(beliefStatePtr->second->getPoses(), beliefStatePtr->second->getHypotheses(), beliefStatePtr->second->getModelFrame(), points);
+		pBelief->set(beliefStatePtr->second->getPoses(), beliefStatePtr->second->getHypotheses(), beliefStatePtr->second->getModelFrame(), modelPoints);
+		to<Data>(dataCurrentPtr)->modelPoints = modelPoints;
+		to<Data>(dataCurrentPtr)->modelFrame = beliefStatePtr->second->getModelFrame();
+		to<Data>(dataCurrentPtr)->queryTransform = beliefStatePtr->second->getQueryTransform();
+		// retrieve query point cloud
+		Cloud::PointSeq queryPoints;
+		try {
+			queryPoints = getPoints(dataCurrentPtr, beliefStatePtr->second->getQueryItem());
+		}
+		catch (const Message& msg) { context.write("%s", msg.what()); }
+		to<Data>(dataCurrentPtr)->queryPoints = queryPoints;
+
+		// retrieve ground truth point cloud
+		Cloud::PointSeq simulatedPoints;
+		try {
+			simulatedPoints = getPoints(dataCurrentPtr, beliefStatePtr->second->getQueryItemSim());
+		}
+		catch (const Message& msg) { context.write("%s", msg.what()); }
+		to<Data>(dataCurrentPtr)->simulateObjectPose = queryPoints;
+
+		beliefStatePtr->second->set(pBelief.get());
+		RenderBlock renderBlock(*this);
+		{
+			Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, beliefStatePtr->first, to<Data>(dataCurrentPtr)->getView());
+		}
+		// render point cloud
+		to<Data>(dataCurrentPtr)->createRender();
+
 		// finish
 		context.write("Done!\n");
 	}));
@@ -499,14 +524,12 @@ void spam::PosePlanner::render() const {
 	Player::render();
 
 	golem::CriticalSectionWrapper cswRenderer(getCS());
-	groundTruthRenderer.render();
 	debugRenderer.render();
 }
 
 //------------------------------------------------------------------------------
 
 void spam::PosePlanner::resetDataPointers() {
-	showGroundTruth = false;
 }
 
 //------------------------------------------------------------------------------
@@ -564,11 +587,26 @@ grasp::data::Item::Map::iterator spam::PosePlanner::estimatePose(Data::Mode mode
 			if (true/*option("YN", "Do you want to tranform the simulated object? (Y/N)") == 'Y'*/) {
 				simRBPose->createQuery(points);
 				simQueryFrame = simRBPose->maximum().toMat34();
-				grasp::Cloud::transform(/*grasp::to<Data>(dataCurrentPtr)->queryTransform*/simQueryFrame, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
-				showGroundTruth = true;
+				grasp::Cloud::transform(simQueryFrame, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
 			}
 			else
 				grasp::Cloud::transform(grasp::to<Data>(dataCurrentPtr)->queryTransform, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+			
+			grasp::data::Item::Ptr simPtr = ptr->second->clone();
+			// save simulated point cloud
+			RenderBlock renderBlock(*this);
+			{
+				golem::CriticalSectionWrapper cswData(scene.getCS());
+				grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(simulateItem, simPtr));
+				if (ptr == to<Data>(dataCurrentPtr)->itemMap.end())
+					throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): Does not find %s.", simulateItem.c_str());
+				// retrive point cloud with curvature
+				//grasp::data::ItemPointsCurv *pCurv = is<grasp::data::ItemPointsCurv>(ptr->second.get());
+				//if (!pCurv)
+				//	throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): Does not support PointsCurv interface.");			
+				//*pCurv->cloud = *pointsCurv->cloud;
+				Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, ptr, to<Data>(dataCurrentPtr)->getView());
+			}
 
 			pBelief->realPose = simQueryFrame*modelFrame;
 
@@ -587,21 +625,23 @@ grasp::data::Item::Map::iterator spam::PosePlanner::estimatePose(Data::Mode mode
 		RenderBlock renderBlock(*this);
 		{
 			golem::CriticalSectionWrapper cswData(getCS());
-			grasp::data::Item::Map::iterator beliefPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(currentBeliefItem, beliefHandler->create()));
+			currentBeliefPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(currentBeliefItem, beliefHandler->create()));
 			//to<Data>(dataCurrentPtr)->itemMap.find(beliefItem); 
 			//to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(trjItemName, beliefHandler->create()));
-			spam::data::BeliefState* beliefState = is<spam::data::BeliefState>(beliefPtr->second.get());
-			beliefState = beliefPtr != to<Data>(dataCurrentPtr)->itemMap.end() ? beliefState : nullptr;
+			spam::data::BeliefState* beliefState = is<spam::data::BeliefState>(currentBeliefPtr->second.get());
+			beliefState = currentBeliefPtr != to<Data>(dataCurrentPtr)->itemMap.end() ? beliefState : nullptr;
 			if (!beliefState)
 				throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): beliefState handler does not implement data::beliefState");
 			// add current states
 			beliefState->set(pBelief.get());
-			beliefState->set(modelFrame, trn.toMat34(), pBelief->getSamples(), pBelief->getHypothesesToSample());
-			beliefState->setModelPoints(modelItem, modelPoints);
+			beliefState->set(trn.toMat34(), pBelief->getSamples(), pBelief->getHypothesesToSample());
+			beliefState->setModelPoints(modelItem, modelFrame, modelPoints);
 			beliefState->setQueryPoints(itemName, points);
-			beliefState->showMeanPose(false);
-			Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, beliefPtr, to<Data>(dataCurrentPtr)->getView());
-			context.write("Save: handler %s, inputs %s, %s...\n", beliefHandler->getID().c_str(), beliefPtr->first.c_str(), beliefItem.c_str());
+			beliefState->setSimObject(simulateItem, simQueryFrame, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+			beliefState->showMeanPoseOnly(false);
+			beliefState->showGroundTruth(true);
+			Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, currentBeliefPtr, to<Data>(dataCurrentPtr)->getView());
+			context.write("Save: handler %s, inputs %s, %s...\n", beliefHandler->getID().c_str(), currentBeliefPtr->first.c_str(), beliefItem.c_str());
 		}
 	}
 	// render point cloud
@@ -717,3 +757,24 @@ grasp::data::Item::Map::iterator spam::PosePlanner::objectProcess(const Data::Mo
 }
 
 //------------------------------------------------------------------------------
+
+grasp::Cloud::PointSeq spam::PosePlanner::getPoints(Data::Map::iterator dataPtr, const std::string &itemName) const {
+	grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(itemName);
+	if (ptr == to<Data>(dataCurrentPtr)->itemMap.end())
+		throw Message(Message::LEVEL_ERROR, "PosePlanner: Does not find %s.", itemName.c_str());
+
+	// retrive point cloud with curvature
+	grasp::data::ItemPointsCurv *pointsCurv = is<grasp::data::ItemPointsCurv>(ptr->second.get());
+	if (!pointsCurv)
+		throw Cancel("PosePlanner: Does not support PointsCurv interface.");
+	if (pointsCurv->cloud->empty())
+		throw Cancel("PosePlanner: Model point cloud is empty.");
+	grasp::Cloud::PointCurvSeq curvPoints = *pointsCurv->cloud;
+
+	// copy as a generic point+normal point cloud (Cloud::pointSeq)
+	Cloud::PointSeq points;
+	points.resize(curvPoints.size());
+	Cloud::copy(curvPoints, points);
+
+	return points;
+}

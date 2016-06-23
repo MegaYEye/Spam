@@ -62,9 +62,11 @@ public:
 	virtual void set(const Belief* belief) = 0;
 	virtual Belief::Desc::Ptr getBeliefDesc() const = 0;
 
-	virtual void set(const golem::Mat34 modelFrame, const golem::Mat34 queryTransform, const grasp::RBPose::Sample::Seq& poses, const grasp::RBPose::Sample::Seq& hypotheses) = 0;
-	virtual void setModelPoints(const std::string modelItem, const grasp::Cloud::PointSeq& points) = 0;
+	virtual void set(const golem::Mat34 queryTransform, const grasp::RBPose::Sample::Seq& poses, const grasp::RBPose::Sample::Seq& hypotheses) = 0;
+	virtual void setModelPoints(const std::string modelItem, const golem::Mat34 modelFrame, const grasp::Cloud::PointSeq& points) = 0;
 	virtual void setQueryPoints(const std::string queryItem, const grasp::Cloud::PointSeq& points) = 0;
+
+	virtual void setSimObject(const std::string queryItem, const golem::Mat34& queryTransform, const grasp::Cloud::PointSeq& points) = 0;
 
 	virtual grasp::RBPose::Sample::Seq getPoses() const = 0;
 	virtual grasp::RBPose::Sample::Seq getHypotheses() const = 0;
@@ -74,9 +76,13 @@ public:
 	virtual const std::string& getModelItem() const = 0;
 	virtual const std::string& getQueryItem() const = 0;
 
-	virtual void showMeanPose(const bool show) = 0;
+	virtual const std::string& getQueryItemSim() const = 0;
+	virtual const golem::Mat34& getQueryTransformSim() const = 0;
+
+	virtual void showMeanPoseOnly(const bool show) = 0;
 	virtual void showQuery(const bool show) = 0;
-};
+	virtual void showGroundTruth(const bool show) = 0;
+	};
 
 //------------------------------------------------------------------------------
 

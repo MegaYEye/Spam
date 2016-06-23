@@ -254,7 +254,7 @@ bool R2GPlanner::create(const Desc& desc) {
 		enableForceReading = false;
 		contactOccured = true;
 		armHandForce->getArmCtrl()->setMode(armMode);
-		armHandForce->getHandCtrl()->setMode(handMode);
+		armHandForce->getHandCtrl()->setMode(handMode, I32(-1));
 	}); // end robot->setEmergencyModeHandler
 
 	uncEnable = desc.uncEnable;
@@ -1250,7 +1250,6 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	//	(*g)->str(context);
 	// render uncertainty before belief update
 	resetDataPointers();
-	showGroundTruth = false;
 	to<Data>(dataCurrentPtr)->createRender();
 
 	const std::string updateItem = makeString("belief-update-%.3f", beliefItem.c_str(), context.getTimer().elapsed());
@@ -1351,7 +1350,6 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	// update query settings
 	grasp::to<Data>(dataPtr)->queryFrame.multiply(grasp::to<Data>(dataPtr)->queryTransform, modelFrame);
 
-	showGroundTruth = true;
 	createRender();
 
 	pHeuristic->setHypothesisBounds();
@@ -1362,24 +1360,25 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	recordingStop(getPlanner().trajectoryIdlePerf);
 	recordingWaitToStop();
 
-	currentBeliefItem = makeString("%s-%.3f", beliefItem.c_str(), recorderStart);
 	// save belief
+	currentBeliefItem = makeString("%s-%.3f", beliefItem.c_str(), recorderStart);
+	// clone item
+	grasp::data::Item::Ptr item = currentBeliefPtr->second->clone();
 	RenderBlock renderBlock(*this);
 	{
 		golem::CriticalSectionWrapper cswData(getCS());
-		grasp::data::Item::Map::iterator beliefPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(currentBeliefItem, beliefHandler->create()));
-		spam::data::BeliefState* beliefState = is<spam::data::BeliefState>(beliefPtr->second.get());
-		beliefState = beliefPtr != to<Data>(dataCurrentPtr)->itemMap.end() ? beliefState : nullptr;
+		currentBeliefPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(currentBeliefItem, item));
+		spam::data::BeliefState* beliefState = is<spam::data::BeliefState>(currentBeliefPtr->second.get());
+		beliefState = currentBeliefPtr != to<Data>(dataCurrentPtr)->itemMap.end() ? beliefState : nullptr;
 		if (!beliefState)
 			throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): beliefState handler does not implement data::beliefState");
 		// add current states
 		beliefState->set(pBelief.get());
-		beliefState->set(modelFrame, grasp::to<Data>(dataPtr)->queryTransform, pBelief->getSamples(), pBelief->getHypothesesToSample());
-		beliefState->setModelPoints(modelItem, modelPoints);
-		beliefState->setQueryPoints(queryItem, grasp::to<Data>(dataPtr)->queryPoints);
-		beliefState->showMeanPose(true);
-		Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, beliefPtr, to<Data>(dataCurrentPtr)->getView());
-		context.write("Save: handler %s, inputs %s, %s...\n", beliefHandler->getID().c_str(), beliefPtr->first.c_str(), beliefItem.c_str());
+		beliefState->set(grasp::to<Data>(dataPtr)->queryTransform, pBelief->getSamples(), pBelief->getHypothesesToSample());
+		beliefState->showMeanPoseOnly(true);
+		beliefState->showGroundTruth(true);
+		Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, currentBeliefPtr, to<Data>(dataCurrentPtr)->getView());
+		context.write("Save: handler %s, inputs %s, %s...\n", beliefHandler->getID().c_str(), currentBeliefPtr->first.c_str(), beliefItem.c_str());
 	}
 }
 

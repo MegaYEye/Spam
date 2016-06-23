@@ -84,6 +84,15 @@ void FTDemo::create(const Desc& desc) {
 	}));
 
 	menuCmdMap.insert(std::make_pair("ZX", [=]() {
+		// debug mode
+		const bool stopAtBreakPoint = option("YN", "Debug mode (Y/N)...") == 'Y';
+		const auto breakPoint = [=](const char* str) {
+			if (!stopAtBreakPoint && str)
+				context.write("%s....\n", str);
+			if (stopAtBreakPoint && str ? option("YN", makeString("%s: Continue (Y/N)...", str).c_str()) != 'Y' : waitKey(5) == 27)
+				throw Cancel("Demo cancelled");
+		};
+
 		// setup initial variables
 		const Controller::State home = grasp::Waypoint::lookup(*controller).command;
 
@@ -151,6 +160,7 @@ void FTDemo::create(const Desc& desc) {
 		bool grasped = false;
 
 		// command keys
+		std::string loadBeliefCmd("BL");
 		std::string createModelCmd("PM");
 		std::string createQueryCmd("PQ");
 		std::string itemTransCmd("IT");
@@ -162,27 +172,37 @@ void FTDemo::create(const Desc& desc) {
 		//--------------------------------------------------------------------//
 		// CREATE A MODEL POINT CLOUD
 		//--------------------------------------------------------------------//
-		readString("Enter object name: ", object);
-		// item name
-		readNumber("Enter iteration: ", iteration);
-		// create a model for the object
-		context.write("Create a model...\n");
-		for (; to<Data>(dataCurrentPtr)->modelPoints.empty();)
-			executeCmd(createModelCmd); // move the robot to the home pose after scanning
-		//reset();
-		context.write("done.\n");
+		if (stopAtBreakPoint) {
+			readString("Enter object name: ", object);
+			// item name
+			readNumber("Enter iteration: ", iteration);
+		}
+		else 
+			object = "debug";
+		
+		const int loadbelief = stopAtBreakPoint ? option("YN", "Load a belief state? (Y/N)") : 'Y';
+		if (loadbelief == 'Y')
+			executeCmd(loadBeliefCmd);
+		else {
+			// create a model for the object
+			context.write("Create a model...\n");
+			for (; to<Data>(dataCurrentPtr)->modelPoints.empty();)
+				executeCmd(createModelCmd); // move the robot to the home pose after scanning
+		}//reset();
+		// force to draw the belief state
+//		drawBeliefState = true;
 
 		//--------------------------------------------------------------------//
 		// CREATE A PREDICTIVE MODEL FOR THE GRASP
 		//--------------------------------------------------------------------//
 		// create a grasp
 		context.write("Create a predictive contact model for the grasp [%s]...\n", modelGraspItem.c_str());
-		if (option("YN", "Create a new contact model? (Y/N)") == 'Y') {
+		const int createModel = stopAtBreakPoint ? option("YN", "Create a new contact model? (Y/N)") : 'N';
+		if (createModel == 'Y') {
 			dataItemLabel = modelGraspItem;
 			executeCmd(itemTransCmd);
 			modelGraspItem = dataItemLabel;
 		}
-		context.write("done.\n");
 
 		//--------------------------------------------------------------------//
 		// CREATE LOG
@@ -229,13 +249,17 @@ void FTDemo::create(const Desc& desc) {
 				dataTrial.reset(to<Data>(testData)->clone());
 				// overwrite strategy
 				to<Data>(dataTrial)->stratType = tmp;
-				RenderBlock renderBlock(*this);
-				scene.getOpenGL(to<Data>(dataCurrentPtr)->getView().openGL); // set current view
-				scene.getOpenGL(to<Data>(dataTrial)->getView().openGL); // set view of the new data
 				{
 					golem::CriticalSectionWrapper cswData(scene.getCS());
 					dataMap.erase(dataPath);
 					dataCurrentPtr = dataMap.insert(dataMap.begin(), Data::Map::value_type(dataTrialPath, dataTrial));
+					setCurrentDataPtr(dataCurrentPtr);
+					// reset current view on the belief state
+					currentBeliefPtr = to<Data>(dataCurrentPtr)->itemMap.find(currentBeliefItem);
+					if (currentBeliefPtr != to<Data>(dataCurrentPtr)->itemMap.end())
+						Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, currentBeliefPtr, to<Data>(dataCurrentPtr)->getView());
+					else
+						context.write("%s is not available\n", currentBeliefItem.c_str());
 				}
 
 				//--------------------------------------------------------------------//
@@ -243,9 +267,10 @@ void FTDemo::create(const Desc& desc) {
 				//--------------------------------------------------------------------//
 				// create a query for the object
 				context.write("Create a query...\n");
-				resetDataPtr(dataCurrentPtr);
-				for (; to<Data>(dataCurrentPtr)->queryPoints.empty();)
-					executeCmd(createQueryCmd);
+				//resetDataPtr(dataCurrentPtr);
+				if (loadbelief == 'N')
+					for (; to<Data>(dataCurrentPtr)->queryPoints.empty();)
+						executeCmd(createQueryCmd);
 				// set the simulated object
 				if (!to<Data>(dataCurrentPtr)->simulateObjectPose.empty()) {
 					//sensorBundlePtr->getCollisionPtr()->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
@@ -253,7 +278,6 @@ void FTDemo::create(const Desc& desc) {
 					objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataCurrentPtr)->simulateObjectPose));
 				}
 				reset(); // move the robot to the home pose after scanning
-				context.write("done.\n");
 
 				// write results
 				results = grasp::makeString("%u\t%u\t%u", modelViews, queryViews, trial + 1);
@@ -325,9 +349,6 @@ void FTDemo::create(const Desc& desc) {
 
 				// set render to show only mean hypothesis and ground truth
 				resetDataPointers();
-				//showHypothesesPointClouds = true;
-				//showMeanHypothesisPointClouds = true;
-				showGroundTruth = true;
 				to<Data>(dataCurrentPtr)->createRender();
 
 				//--------------------------------------------------------------------//
@@ -357,10 +378,10 @@ void FTDemo::create(const Desc& desc) {
 
 					// retrive belief state
 					list.clear();
-					grasp::data::Item::Map::iterator bptr = to<Data>(dataCurrentPtr)->itemMap.find(currentBeliefItem);
-					if (bptr == to<Data>(dataCurrentPtr)->itemMap.end())
-						throw Message(Message::LEVEL_ERROR, "FTDemo: Does not find %s.", currentBeliefItem.c_str());
-					list.insert(list.end(), bptr);
+					currentBeliefPtr = to<Data>(dataCurrentPtr)->itemMap.find(currentBeliefItem);
+					if (currentBeliefPtr == to<Data>(dataCurrentPtr)->itemMap.end())
+						throw Message(Message::LEVEL_ERROR, "FTDemo: Does not support belief state handler %s.", currentBeliefItem.c_str());
+					list.insert(list.end(), currentBeliefPtr);
 
 					// insert trajectory
 					list.insert(list.end(), queryTrjPtr); // grasp on model
@@ -371,7 +392,7 @@ void FTDemo::create(const Desc& desc) {
 						golem::CriticalSectionWrapper cswData(getCS());
 						to<Data>(dataCurrentPtr)->itemMap.erase(trajectoryItem);
 						trjPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(trajectoryItem, queryR2GTrajectoryPtr));
-						Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, queryContactPtr, to<Data>(dataCurrentPtr)->getView());
+						Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, trjPtr, to<Data>(dataCurrentPtr)->getView());
 					}
 
 					spam::data::R2GTrajectory* r2gtrajectory = is<spam::data::R2GTrajectory>(trjPtr);

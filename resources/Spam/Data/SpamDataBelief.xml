@@ -62,5 +62,10 @@
       <!-- BLUE -->
       <colour override="1" R="0" G="0" B="255" A="255"/>
     </hypothesis_appearance>
+    <ground_truth_appearance show_frame="0" show_points="1" mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="100" camera_frame="1" camera_frame_size="0.05" feature_curv_pow="1.0">
+      <frame_size v1="0.1" v2="0.1" v3="0.1"/>
+      <!-- BLACK -->
+      <colour override="1" R="0" G="0" B="0" A="255"/>
+    </ground_truth_appearance>
   </data>
 </grasp>

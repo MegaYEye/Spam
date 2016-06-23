@@ -115,7 +115,7 @@ bool Belief::create(const Desc& desc) {
 
 	realPose.setId();
 
-	context.write("Belief::create(): kernels %d\n RBPose::create(): kernels %d, features %d\n", desc.kernels, desc.rbPoseDescPtr->kernels, desc.rbPoseDescPtr->features);
+	context.write("Belief::create(): kernels %d\nRBPose::create(): kernels %d, features %d\n", desc.kernels, desc.rbPoseDescPtr->kernels, desc.rbPoseDescPtr->features);
 //	mfsePoses.resize(desc.tactile.kernels);
 
 	return true;

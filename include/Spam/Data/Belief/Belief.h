@@ -82,15 +82,25 @@ public:
 
 	/** Return the Belief description file to create a belief pointer */
 	Belief::Desc::Ptr getBeliefDesc() const;
+
+	/** Set belief state */
 	virtual void set(const Belief* belief) {
 		this->belief = belief;
 	}
 	/** Set the new belief state */
-	void set(const golem::Mat34 modelFrame, const golem::Mat34 queryTransform, const grasp::RBPose::Sample::Seq& poses, const grasp::RBPose::Sample::Seq& hypotheses);
+	void set(const golem::Mat34 queryTransform, const grasp::RBPose::Sample::Seq& poses, const grasp::RBPose::Sample::Seq& hypotheses);
 	/** Set model points to draw the belief state */
-	virtual void setModelPoints(const std::string modelItem, const grasp::Cloud::PointSeq& points);
+	virtual void setModelPoints(const std::string modelItem, const golem::Mat34 modelFrame, const grasp::Cloud::PointSeq& points);
 	/** Set query points to draw the belief state */
 	virtual void setQueryPoints(const std::string queryItem, const grasp::Cloud::PointSeq& points);
+
+	/** Set simulated query points to draw the belief state */
+	virtual void setSimObject(const std::string queryItem, const golem::Mat34& queryTransform, const grasp::Cloud::PointSeq& points) {
+		this->queryItemSim = queryItem;
+		this->queryTransformSim = queryTransform;
+		this->queryPointsSim = points;
+		dataFile.setModified(true);
+	}
 
 	virtual grasp::RBPose::Sample::Seq getPoses() const {
 		return poses;
@@ -112,11 +122,21 @@ public:
 		return queryItem;
 	}
 
-	virtual void showMeanPose(const bool show) {
-		this->showMeanPoseOnly = show;
+	virtual const std::string& getQueryItemSim() const {
+		return this->queryItemSim;
+	}
+	virtual const golem::Mat34& getQueryTransformSim() const {
+		return this->queryTransformSim;
+	}
+
+	virtual void showMeanPoseOnly(const bool show) {
+		this->meanPoseOnly = show;
 	}
 	virtual void showQuery(const bool show) {
 		this->showQueryDistribution = show;
+	}
+	virtual void showGroundTruth(const bool show) {
+		this->showSimulated = show;
 	}
 
 	/** Clones item. */
@@ -124,6 +144,8 @@ public:
 
 	/** Creates render buffer, the buffer can be shared and allocated on Handler */
 	virtual void createRender();
+	/** golem::UIRenderer: Render on output device. */
+	virtual void customRender();
 
 protected:
 	/** Data handler */
@@ -132,9 +154,11 @@ protected:
 	const Belief* belief;
 
 	/** Show only the mean pose */
-	bool showMeanPoseOnly;
-	/** Show only the mean pose */
+	bool meanPoseOnly;
+	/** Show poses distribution */
 	bool showQueryDistribution;
+	/** Show ground truth */
+	bool showSimulated;
 
 	/** Query frame */
 	golem::Mat34 modelFrame;
@@ -149,6 +173,14 @@ protected:
 	std::string queryItem;
 	/** Query points */
 	grasp::Cloud::PointSeq queryPoints;
+
+	/** Query item: keep track of the query in the data bundle */
+	std::string queryItemSim;
+	/** Simulated query transformation */
+	golem::Mat34 queryTransformSim;
+	/** Simulated query points */
+	grasp::Cloud::PointSeq queryPointsSim;
+
 
 	/** Transformation samples */
 	grasp::RBPose::Sample::Seq poses;
@@ -215,6 +247,8 @@ public:
 		Appearance meanPoseAppearance;
 		/** Hypotheses feature appearance */
 		Appearance hypothesisAppearance;
+		/** Simulated object feature appearance */
+		Appearance simulatedAppearance;
 
 		/** Belief suffix */
 		std::string beliefSuffix;
@@ -229,6 +263,7 @@ public:
 			posesAppearance.setToDefault();
 			meanPoseAppearance.setToDefault();
 			hypothesisAppearance.setToDefault();
+			simulatedAppearance.setToDefault();
 			beliefSuffix = getFileExtBelief();
 		}
 		/** Assert that the object is valid. */
@@ -237,6 +272,7 @@ public:
 			posesAppearance.assertValid(ac);
 			meanPoseAppearance.assertValid(ac);
 			hypothesisAppearance.assertValid(ac);
+			simulatedAppearance.assertValid(ac);
 			grasp::Assert::valid(beliefSuffix.length() > 0, ac, "beliefSuffix: empty");
 		}
 
@@ -266,6 +302,8 @@ protected:
 	void createRender(const ItemBelief& item);
 	/** golem::UIRenderer: Render on output device. */
 	virtual void render() const;
+	/** golem::UIRenderer: Render on output device. */
+	virtual void customRender();
 	/** golem::UIRenderer: Render on output device. */
 	virtual void customRender() const;
 

@@ -236,12 +236,12 @@ public:
 		/** Query trajectory item */
 		std::string queryItemTrj;
 
-		/** Appereance for point clouds: ground truth point clouds */
-		grasp::Cloud::Appearance groundTruthAppearance;
-		/** Show simulated pose of the object */
-		bool showGroundTruth;
 		/** Pose estimation for simulated object */
 		grasp::RBPose::Desc::Ptr simRBPoseDesc;
+		/** Ground truth data item */
+		std::string simulateItem;
+		/** Ground truth data handler */
+		std::string simulateHandler;
 
 		/** Belief data handler */
 		std::string beliefHandler;
@@ -313,9 +313,9 @@ public:
 			queryHandlerTrj.clear();
 			queryItemTrj.clear();
 
-			groundTruthAppearance.setToDefault();
-			showGroundTruth = false;
 			simRBPoseDesc.reset(new grasp::RBPose::Desc);
+			simulateItem.clear();
+			simulateHandler.clear();
 
 			beliefHandler.clear();
 			beliefItem.clear();
@@ -364,6 +364,10 @@ protected:
 	/** Descriptor file */
 	Desc myDesc;
 
+	/** Force to draw the belief state */
+	bool drawBeliefState;
+	/** Pointer to the current belief state */
+	grasp::data::Item::Map::iterator currentBeliefPtr;
 	/** Belief data handler */
 	grasp::data::Handler* beliefHandler;
 	/** Belief data item */
@@ -434,6 +438,10 @@ protected:
 	grasp::RBPose::Ptr simRBPose;
 	/** Reference frames */
 	golem::Mat34 simModelFrame, simQueryFrame;
+	/** Query data item */
+	std::string simulateItem;
+	/** Ground truth data handler */
+	grasp::data::Handler* simulateHandler;
 
 	/** Models */
 	grasp::Model::Map modelMap;
@@ -464,13 +472,6 @@ protected:
 	golem::Bounds::Seq handBounds;
 	golem::DebugRenderer debugRenderer;
 
-	/** Appereance for point clouds: ground truth point clouds */
-	grasp::Cloud::Appearance groundTruthAppearance;
-	/** Show simulated pose of the object */
-	bool showGroundTruth;
-	/** Query renderer */
-	golem::DebugRenderer groundTruthRenderer;
-
 	/** Smart pointer to the ft driven heuristic */
 	FTDrivenHeuristic* pHeuristic;
 
@@ -480,6 +481,8 @@ protected:
 	grasp::data::Item::Map::iterator objectCapture(const Data::Mode mode, std::string &itemName);
 	/** Process object image and add to data bundle */
 	grasp::data::Item::Map::iterator objectProcess(const Data::Mode mode, grasp::data::Item::Map::iterator ptr);
+	/** Retrieve a point cloud from the data budle */
+	grasp::Cloud::PointSeq getPoints(Data::Map::iterator dataPtr, const std::string &itemName) const;
 
 	/** Reset data pointers */
 	void resetDataPointers();
