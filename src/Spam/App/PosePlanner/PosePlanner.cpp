@@ -184,10 +184,11 @@ void spam::PosePlanner::Data::createRender() {
 		// show constantly the belief state, if needed
 		const grasp::data::Item::Map::iterator ptr = itemMap.find(owner->currentBeliefItem);
 		if (owner->drawBeliefState && ptr != itemMap.end()) {
-			ptr->second->createRender();
-			//data::ItemBelief* pItem = grasp::to<data::ItemBelief>(ptr);
-			//if (pItem)
-			//	pItem->customRender();
+			//ptr->second->createRender();
+			data::ItemBelief* pItem = grasp::to<data::ItemBelief>(ptr);
+			if (pItem)
+				owner->addRenderer(is<golem::UIRenderer>(&pItem->getHandler()));
+				//pItem->customRender();
 		}
 	}
 }
@@ -288,7 +289,7 @@ const std::string PosePlanner::Data::ModeName[MODE_QUERY + 1] = {
 
 //------------------------------------------------------------------------------
 
-spam::PosePlanner::PosePlanner(Scene &scene) : grasp::Player(scene), rand(context.getRandSeed()), pHeuristic(nullptr), drawBeliefState(false) {
+spam::PosePlanner::PosePlanner(Scene &scene) : grasp::Player(scene), rand(context.getRandSeed()), pHeuristic(nullptr), drawBeliefState(false), currentBeliefItem() {
 }
 	
 bool spam::PosePlanner::create(const Desc& desc) {
@@ -392,7 +393,6 @@ bool spam::PosePlanner::create(const Desc& desc) {
 		queryMap.insert(std::make_pair(i->first, i->second->create(context, i->first)));
 
 	modelFrame.setId();
-	resetDataPointers();
 
 	queryViews = 3;
 
@@ -458,7 +458,7 @@ bool spam::PosePlanner::create(const Desc& desc) {
 			simulatedPoints = getPoints(dataCurrentPtr, beliefStatePtr->second->getQueryItemSim());
 		}
 		catch (const Message& msg) { context.write("%s", msg.what()); }
-		to<Data>(dataCurrentPtr)->simulateObjectPose = queryPoints;
+		to<Data>(dataCurrentPtr)->simulateObjectPose = simulatedPoints;
 
 		beliefStatePtr->second->set(pBelief.get());
 		RenderBlock renderBlock(*this);
@@ -526,21 +526,22 @@ void spam::PosePlanner::render() const {
 
 	golem::CriticalSectionWrapper cswRenderer(getCS());
 	debugRenderer.render();
-
-	if (drawBeliefState) {
-		const grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(currentBeliefItem);
-		if (ptr != to<Data>(dataCurrentPtr)->itemMap.end()) {
-			data::ItemBelief* pItem = grasp::to<data::ItemBelief>(ptr);
-			if (pItem)
-				pItem->customRender();
-		}
-	}
-
 }
 
 //------------------------------------------------------------------------------
 
 void spam::PosePlanner::resetDataPointers() {
+	const grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(currentBeliefItem);
+	if (ptr != to<Data>(dataCurrentPtr)->itemMap.end()) {
+		//ptr->second->createRender();
+		data::ItemBelief* pItem = grasp::to<data::ItemBelief>(ptr);
+		if (pItem) {
+			pItem->showMeanPoseOnly(true);
+			pItem->showQuery(false);
+			pItem->showGroundTruth(true);
+		}
+	}
+
 }
 
 //------------------------------------------------------------------------------

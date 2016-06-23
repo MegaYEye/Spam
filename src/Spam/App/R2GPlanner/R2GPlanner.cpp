@@ -791,7 +791,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 				golem::CriticalSectionWrapper csw(getCS());
 				to<Data>(dataCurrentPtr)->itemMap.erase(itemLabelTmp);
 			}
-			createRender();
+			to<Data>(dataCurrentPtr)->createRender();
 		});
 		{
 			golem::CriticalSectionWrapper csw(getCS());
@@ -800,7 +800,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 		}
 		// enable GUI interaction and refresh
 		UI::addCallback(*this, getCurrentHandler());
-		createRender();
+		to<Data>(dataCurrentPtr)->createRender();
 		// prompt user
 		EnableKeyboardMouse enableKeyboardMouse(*this);
 		option("\x0D", "Press <Enter> to accept trajectory...");
@@ -1350,7 +1350,7 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	// update query settings
 	grasp::to<Data>(dataPtr)->queryFrame.multiply(grasp::to<Data>(dataPtr)->queryTransform, modelFrame);
 
-	createRender();
+	to<Data>(dataCurrentPtr)->createRender();
 
 	pHeuristic->setHypothesisBounds();
 	for (auto g = ftGuards.begin(); g != ftGuards.end(); ++g)

@@ -196,6 +196,11 @@ void spam::data::HandlerBelief::createRender(const spam::data::ItemBelief& item)
 		UI::CriticalSectionWrapper cs(getUICallback());
 		renderer.reset();
 
+		// draw ground truth
+		if (item.showSimulated && desc.simulatedAppearance.showPoints) {
+			desc.simulatedAppearance.appearance.draw(item.queryPointsSim, renderer);
+		}
+
 		// draw hypothesis
 		for (Hypothesis::Seq::const_iterator i = item.belief->getHypotheses().begin(); i != item.belief->getHypotheses().end(); ++i) {
 			Appearance& appearance = i == item.belief->getHypotheses().begin() ? desc.meanPoseAppearance : desc.hypothesisAppearance;
@@ -203,11 +208,6 @@ void spam::data::HandlerBelief::createRender(const spam::data::ItemBelief& item)
 			appearance.appearance.draw((*i)->getCloud(), renderer);
 			if (item.meanPoseOnly) // this parameter can be control by outside
 				break;
-		}
-
-		// draw ground truth
-		if (item.showSimulated && desc.simulatedAppearance.showPoints) {
-			desc.simulatedAppearance.appearance.draw(item.queryPointsSim, renderer);
 		}
 
 		// draw query distribution as set of particles (use to debug the belief update)

@@ -189,8 +189,6 @@ void FTDemo::create(const Desc& desc) {
 			for (; to<Data>(dataCurrentPtr)->modelPoints.empty();)
 				executeCmd(createModelCmd); // move the robot to the home pose after scanning
 		}//reset();
-		// force to draw the belief state
-		drawBeliefState = true;
 
 		//--------------------------------------------------------------------//
 		// CREATE A PREDICTIVE MODEL FOR THE GRASP
@@ -261,6 +259,9 @@ void FTDemo::create(const Desc& desc) {
 					else
 						context.write("%s is not available\n", currentBeliefItem.c_str());
 				}
+				// force to draw the belief state
+				drawBeliefState = true;
+				to<Data>(dataCurrentPtr)->createRender();
 
 				//--------------------------------------------------------------------//
 				// CREATE A QUERY POINT CLOUD
@@ -310,10 +311,10 @@ void FTDemo::create(const Desc& desc) {
 					golem::CriticalSectionWrapper cswData(getCS());
 					to<Data>(dataCurrentPtr)->itemMap.erase(queryGraspItem);
 					queryContactPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(queryGraspItem, queryGraspItemPtr));
-					Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, queryContactPtr, to<Data>(dataCurrentPtr)->getView());
+					Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, currentBeliefPtr, to<Data>(dataCurrentPtr)->getView());
+					//Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, queryContactPtr, to<Data>(dataCurrentPtr)->getView());
 				}
-				to<Data>(dataCurrentPtr)->createRender();
-				return;
+
 				context.write("Transform: handler %s, inputs %s, %s...\n", queryGraspHandler->getID().c_str(), queryContactPtr->first.c_str(), modelItem.c_str());
 				// calculate the scor eof the desired grasp
 				grasp::data::ContactQuery *cq = is<grasp::data::ContactQuery>(queryContactPtr);
@@ -336,8 +337,10 @@ void FTDemo::create(const Desc& desc) {
 					golem::CriticalSectionWrapper cswData(getCS());
 					to<Data>(dataCurrentPtr)->itemMap.erase(queryItemTrj);
 					queryTrjPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(queryItemTrj, queryGraspTrj));
-					Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, queryTrjPtr, to<Data>(dataCurrentPtr)->getView());
+					Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, currentBeliefPtr, to<Data>(dataCurrentPtr)->getView());
+					//Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, queryTrjPtr, to<Data>(dataCurrentPtr)->getView());
 				}
+				to<Data>(dataCurrentPtr)->createRender();
 				context.write("done.\n");
 
 				context.write("Transform: handler %s, input %s...\n", queryHandlerTrj->getID().c_str(), queryTrjPtr->first.c_str());
@@ -394,8 +397,9 @@ void FTDemo::create(const Desc& desc) {
 						golem::CriticalSectionWrapper cswData(getCS());
 						to<Data>(dataCurrentPtr)->itemMap.erase(trajectoryItem);
 						trjPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(trajectoryItem, queryR2GTrajectoryPtr));
-						Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, trjPtr, to<Data>(dataCurrentPtr)->getView());
+//						Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, currentBeliefPtr, to<Data>(dataCurrentPtr)->getView());
 					}
+					to<Data>(dataCurrentPtr)->createRender();
 
 					spam::data::R2GTrajectory* r2gtrajectory = is<spam::data::R2GTrajectory>(trjPtr);
 					if (!r2gtrajectory)
