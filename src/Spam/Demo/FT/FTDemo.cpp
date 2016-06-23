@@ -190,7 +190,7 @@ void FTDemo::create(const Desc& desc) {
 				executeCmd(createModelCmd); // move the robot to the home pose after scanning
 		}//reset();
 		// force to draw the belief state
-//		drawBeliefState = true;
+		drawBeliefState = true;
 
 		//--------------------------------------------------------------------//
 		// CREATE A PREDICTIVE MODEL FOR THE GRASP
@@ -312,6 +312,8 @@ void FTDemo::create(const Desc& desc) {
 					queryContactPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(queryGraspItem, queryGraspItemPtr));
 					Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, queryContactPtr, to<Data>(dataCurrentPtr)->getView());
 				}
+				to<Data>(dataCurrentPtr)->createRender();
+				return;
 				context.write("Transform: handler %s, inputs %s, %s...\n", queryGraspHandler->getID().c_str(), queryContactPtr->first.c_str(), modelItem.c_str());
 				// calculate the scor eof the desired grasp
 				grasp::data::ContactQuery *cq = is<grasp::data::ContactQuery>(queryContactPtr);

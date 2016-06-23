@@ -193,7 +193,7 @@ void spam::data::HandlerBelief::createRender(const spam::data::ItemBelief& item)
 		return;
 
 	{
-		grasp::UI::CriticalSectionWrapper cs(getUICallback());
+		UI::CriticalSectionWrapper cs(getUICallback());
 		renderer.reset();
 
 		// draw hypothesis
@@ -243,8 +243,6 @@ void spam::data::HandlerBelief::createRender(const spam::data::ItemBelief& item)
 }
 
 void spam::data::HandlerBelief::render() const {
-	if (hasRenderBlock()) return;
-
 	renderer.render();
 }
 
@@ -262,7 +260,6 @@ void spam::data::HandlerBelief::customRender() const {
 
 void spam::data::HandlerBelief::mouseHandler(int button, int state, int x, int y) {
 	if (hasRenderBlock()) return;
-
 }
 
 void spam::data::HandlerBelief::motionHandler(int x, int y) {
@@ -270,6 +267,4 @@ void spam::data::HandlerBelief::motionHandler(int x, int y) {
 
 void spam::data::HandlerBelief::keyboardHandler(int key, int x, int y) {
 	if (hasRenderBlock()) return;
-
-	
 }

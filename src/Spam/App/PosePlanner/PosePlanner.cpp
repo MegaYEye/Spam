@@ -182,12 +182,13 @@ void spam::PosePlanner::Data::createRender() {
 	{
 		golem::CriticalSectionWrapper csw(owner->getCS());
 		// show constantly the belief state, if needed
-		//const grasp::data::Item::Map::iterator ptr = itemMap.find(owner->currentBeliefItem);
-		//if (ptr != itemMap.end()) {
-		//	data::ItemBelief* pItem = grasp::to<data::ItemBelief>(ptr);
-		//	if (owner->drawBeliefState && pItem)
-		//		pItem->customRender();
-		//}
+		const grasp::data::Item::Map::iterator ptr = itemMap.find(owner->currentBeliefItem);
+		if (owner->drawBeliefState && ptr != itemMap.end()) {
+			ptr->second->createRender();
+			//data::ItemBelief* pItem = grasp::to<data::ItemBelief>(ptr);
+			//if (pItem)
+			//	pItem->customRender();
+		}
 	}
 }
 
@@ -525,6 +526,16 @@ void spam::PosePlanner::render() const {
 
 	golem::CriticalSectionWrapper cswRenderer(getCS());
 	debugRenderer.render();
+
+	if (drawBeliefState) {
+		const grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(currentBeliefItem);
+		if (ptr != to<Data>(dataCurrentPtr)->itemMap.end()) {
+			data::ItemBelief* pItem = grasp::to<data::ItemBelief>(ptr);
+			if (pItem)
+				pItem->customRender();
+		}
+	}
+
 }
 
 //------------------------------------------------------------------------------
