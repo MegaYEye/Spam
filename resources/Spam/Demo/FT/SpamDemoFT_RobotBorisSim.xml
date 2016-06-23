@@ -178,6 +178,23 @@
       </query>
     </appearance>
 
+    <meanpose_appearance show_frame="1" show_points="1" mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="100" camera_frame="1" camera_frame_size="0.05" feature_curv_pow="1.0">
+      <frame_size v1="0.1" v2="0.1" v3="0.1"/>
+      <!-- GREEN -->
+      <colour override="1" R="0" G="255" B="0" A="255"/>
+    </meanpose_appearance>
+    <hypothesis_appearance show_frame="1" show_points="1" mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="100" camera_frame="1" camera_frame_size="0.05" feature_curv_pow="1.0">
+      <frame_size v1="0.01" v2="0.01" v3="0.01"/>
+      <!-- BLUE -->
+      <colour override="1" R="0" G="0" B="255" A="255"/>
+    </hypothesis_appearance>
+    <groundtruth_appearance show_frame="0" show_points="1" mode="point" mode_3d="1" mode_3d_a="177" point_size="1.0" frame_num="100" camera_frame="1" camera_frame_size="0.05" feature_curv_pow="1.0">
+      <frame_size v1="0.1" v2="0.1" v3="0.1"/>
+      <!-- BLACK -->
+      <colour override="1" R="0" G="0" B="0" A="255"/>
+    </groundtruth_appearance>
+
+
     <pose_estimation_sim item="ground_truth_pose" handler="PointsCurv+PointsCurv" points="100000" features="500000" attempts="10" kernels="50000" neighbours="20000" distance_range="20.0" distance_max="0.02" feature_norm_eps="1e-7" search_checks="32" search_kdtrees="4">
       <nn_search neighbours="0" search_checks="32" search_kdtrees="4" search_leaf_max_size="10"/>
       <covariance dim="7" c1="0.01" c2="0.01" c3="0.01" c4="0.1" c5="0.1" c6="0.1" c7="0.1"/>

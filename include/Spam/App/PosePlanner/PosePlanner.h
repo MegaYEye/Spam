@@ -274,6 +274,13 @@ public:
 		/** Manipulator Appearance */
 		grasp::Manipulator::Appearance manipulatorAppearance;
 
+		/** Appereance for point clouds: hypothesis point clouds */
+		grasp::Cloud::Appearance hypothesisAppearance;
+		/** Appereance for point clouds: debug point clouds */
+		grasp::Cloud::Appearance meanposeAppearance;
+		/** Appereance for point clouds: ground truth point clouds */
+		grasp::Cloud::Appearance groundTruthAppearance;
+
 		/** Constructs from description object */
 		Desc() {
 			Desc::setToDefault();
@@ -334,6 +341,10 @@ public:
 
 			manipulatorDesc.reset(new grasp::Manipulator::Desc);
 			manipulatorAppearance.setToDefault();
+
+			hypothesisAppearance.setToDefault();
+			meanposeAppearance.setToDefault();
+			groundTruthAppearance.setToDefault();
 		}
 		/** Checks if the description is valid. */
 		virtual void assertValid(const grasp::Assert::Context& ac) const {
@@ -363,6 +374,10 @@ protected:
 
 	/** Descriptor file */
 	Desc myDesc;
+
+	/** Appereance for point clouds: debug point clouds */
+	grasp::Cloud::Appearance hypothesisAppearance, meanposeAppeareance, groundtruthAppearance;
+	bool showMeanPoseOnly, showSimulate;
 
 	/** Force to draw the belief state */
 	bool drawBeliefState;

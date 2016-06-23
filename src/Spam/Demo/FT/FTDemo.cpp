@@ -337,7 +337,6 @@ void FTDemo::create(const Desc& desc) {
 					golem::CriticalSectionWrapper cswData(getCS());
 					to<Data>(dataCurrentPtr)->itemMap.erase(queryItemTrj);
 					queryTrjPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(queryItemTrj, queryGraspTrj));
-					Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, currentBeliefPtr, to<Data>(dataCurrentPtr)->getView());
 					//Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, queryTrjPtr, to<Data>(dataCurrentPtr)->getView());
 				}
 				to<Data>(dataCurrentPtr)->createRender();

@@ -181,15 +181,32 @@ void spam::PosePlanner::Data::createRender() {
 	Player::Data::createRender();
 	{
 		golem::CriticalSectionWrapper csw(owner->getCS());
-		// show constantly the belief state, if needed
-		const grasp::data::Item::Map::iterator ptr = itemMap.find(owner->currentBeliefItem);
-		if (owner->drawBeliefState && ptr != itemMap.end()) {
-			//ptr->second->createRender();
-			data::ItemBelief* pItem = grasp::to<data::ItemBelief>(ptr);
-			if (pItem)
-				owner->addRenderer(is<golem::UIRenderer>(&pItem->getHandler()));
-				//pItem->customRender();
+
+		// draw ground truth
+		if (!simulateObjectPose.empty() && owner->showSimulate) {
+			owner->groundtruthAppearance.draw(simulateObjectPose, owner->debugRenderer);
 		}
+
+		// draw hypothesis
+		if (owner->pBelief.get() && owner->drawBeliefState) {
+			for (Hypothesis::Seq::const_iterator i = owner->pBelief->getHypotheses().begin(); i != owner->pBelief->getHypotheses().end(); ++i) {
+				grasp::Cloud::Appearance& appearance = i == owner->pBelief->getHypotheses().begin() ? owner->meanposeAppeareance : owner->hypothesisAppearance;
+				owner->debugRenderer.addAxes((*i)->toRBPoseSampleGF().toMat34(), appearance.frameSize);
+				appearance.draw((*i)->getCloud(), owner->debugRenderer);
+				if (owner->showMeanPoseOnly) // this parameter can be control by outside
+					break;
+			}
+		}
+
+		// show constantly the belief state, if needed
+		//const grasp::data::Item::Map::iterator ptr = itemMap.find(owner->currentBeliefItem);
+		//if (owner->drawBeliefState && ptr != itemMap.end()) {
+		//	//ptr->second->createRender();
+		//	data::ItemBelief* pItem = grasp::to<data::ItemBelief>(ptr);
+		//	if (pItem)
+		//		owner->addRenderer(is<golem::UIRenderer>(&pItem->getHandler()));
+		//		//pItem->customRender();
+		//}
 	}
 }
 
@@ -278,6 +295,13 @@ void PosePlanner::Desc::load(golem::Context& context, const golem::XMLContext* x
 
 	manipulatorDesc->load(xmlcontext->getContextFirst("manipulator"));
 	manipulatorAppearance.load(xmlcontext->getContextFirst("manipulator appearance"));
+
+	try {
+		hypothesisAppearance.xmlData(xmlcontext->getContextFirst("hypothesis_appearance", false), false);
+		meanposeAppearance.xmlData(xmlcontext->getContextFirst("meanpose_appearance", false), false);
+		groundTruthAppearance.xmlData(xmlcontext->getContextFirst("groundtruth_appearance", false), false);
+	}
+	catch (const golem::MsgXMLParser& msg) { context.write("%s\n", msg.str().c_str()); }
 }
 
 //------------------------------------------------------------------------------
@@ -289,7 +313,7 @@ const std::string PosePlanner::Data::ModeName[MODE_QUERY + 1] = {
 
 //------------------------------------------------------------------------------
 
-spam::PosePlanner::PosePlanner(Scene &scene) : grasp::Player(scene), rand(context.getRandSeed()), pHeuristic(nullptr), drawBeliefState(false), currentBeliefItem() {
+spam::PosePlanner::PosePlanner(Scene &scene) : grasp::Player(scene), rand(context.getRandSeed()), pHeuristic(nullptr), drawBeliefState(false), showMeanPoseOnly(false), showSimulate(true), currentBeliefItem() {
 }
 	
 bool spam::PosePlanner::create(const Desc& desc) {
@@ -395,6 +419,9 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	modelFrame.setId();
 
 	queryViews = 3;
+	hypothesisAppearance = desc.hypothesisAppearance;
+	meanposeAppeareance = desc.meanposeAppearance;
+	groundtruthAppearance = desc.groundTruthAppearance;
 
 	myDesc = desc;
 	
@@ -531,17 +558,19 @@ void spam::PosePlanner::render() const {
 //------------------------------------------------------------------------------
 
 void spam::PosePlanner::resetDataPointers() {
-	const grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(currentBeliefItem);
-	if (ptr != to<Data>(dataCurrentPtr)->itemMap.end()) {
-		//ptr->second->createRender();
-		data::ItemBelief* pItem = grasp::to<data::ItemBelief>(ptr);
-		if (pItem) {
-			pItem->showMeanPoseOnly(true);
-			pItem->showQuery(false);
-			pItem->showGroundTruth(true);
-		}
-	}
+	showMeanPoseOnly = false;
+	showSimulate = true;
 
+	//const grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(currentBeliefItem);
+	//if (ptr != to<Data>(dataCurrentPtr)->itemMap.end()) {
+	//	//ptr->second->createRender();
+	//	data::ItemBelief* pItem = grasp::to<data::ItemBelief>(ptr);
+	//	if (pItem) {
+	//		pItem->showMeanPoseOnly(true);
+	//		pItem->showQuery(false);
+	//		pItem->showGroundTruth(true);
+	//	}
+	//}
 }
 
 //------------------------------------------------------------------------------
