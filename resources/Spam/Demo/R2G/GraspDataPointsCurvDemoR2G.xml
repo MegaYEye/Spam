@@ -20,6 +20,7 @@
       <downsample_segmentation enabled="1" enabled_with_normals="1" enabled_voxel_grid="0" grid_leaf_size="0.0015"/>
 
       <segmentation incremental="0" distance_threshold="0.00001"/>
+      <clustering enabled="0" tolerance="0.003" min_size="50" max_size="2147483647"/>
 
       <region>
         <bounds type="box" group="1">

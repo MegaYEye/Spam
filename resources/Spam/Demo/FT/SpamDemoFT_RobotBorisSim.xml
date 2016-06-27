@@ -3,7 +3,7 @@
 <golem>
   <rand seed="0"></rand>
   <parallels threads="8"></parallels>
-  <messages level="debug"/><!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
+  <messages level="error"/><!-- level="undef" level="verbose" level="debug" level="info" level="warning" level="error" level="crit" -->
 
   <universe name="Spam">
     <!--<window x="0" y="0" width="640" height="480"></window>-->

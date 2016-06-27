@@ -257,7 +257,7 @@ void FTDemo::create(const Desc& desc) {
 					if (currentBeliefPtr != to<Data>(dataCurrentPtr)->itemMap.end())
 						Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, currentBeliefPtr, to<Data>(dataCurrentPtr)->getView());
 					else
-						context.write("%s is not available\n", currentBeliefItem.c_str());
+						context.write("Belief Item is not available\n");
 				}
 				// force to draw the belief state
 				drawBeliefState = true;
@@ -273,11 +273,11 @@ void FTDemo::create(const Desc& desc) {
 					for (; to<Data>(dataCurrentPtr)->queryPoints.empty();)
 						executeCmd(createQueryCmd);
 				// set the simulated object
-				if (!to<Data>(dataCurrentPtr)->simulateObjectPose.empty()) {
-					//sensorBundlePtr->getCollisionPtr()->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
-					collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
-					objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataCurrentPtr)->simulateObjectPose));
-				}
+				//if (!to<Data>(dataCurrentPtr)->simulateObjectPose.empty()) {
+				//	//sensorBundlePtr->getCollisionPtr()->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+				//	collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+				//	objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataCurrentPtr)->simulateObjectPose));
+				//}
 				reset(); // move the robot to the home pose after scanning
 
 				// write results

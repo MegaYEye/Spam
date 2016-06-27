@@ -550,7 +550,7 @@ bool RagGraphPlanner::findGlobalTrajectory(const golem::Controller::State &begin
 #ifdef _GRAPHPLANNER_PERFMON
 #ifdef _HEURISTIC_PERFMON
 //	context.debug("Enabled Uncertainty %s\n", getFTDrivenHeuristic()->enableUnc ? "ON" : "OFF");
-	FTDrivenHeuristic::writeLog(context, "PathFinder::find()");
+	//FTDrivenHeuristic::writeLog(context, "PathFinder::find()");
 	Collision::writeLog(context, "PathFinder::find()");
 #endif
 #ifdef _BOUNDS_PERFMON
@@ -678,7 +678,7 @@ bool RagGraphPlanner::findLocalTrajectory(const Controller::State &cbegin, GenWo
 #ifdef _HEURISTIC_PERFMON
 	if (heuristic) {
 		context.write("Enabled Uncertainty %s\n", heuristic->enableUnc ? "ON" : "OFF");
-		heuristic->writeLog(context, "GraphPlanner::findTarget()");
+		//heuristic->writeLog(context, "GraphPlanner::findTarget()");
 		heuristic->getCollision()->writeLog(context, "GraphPlanner::findTarget()");;
 	}
 #endif

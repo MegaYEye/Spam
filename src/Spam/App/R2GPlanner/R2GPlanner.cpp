@@ -183,25 +183,27 @@ bool R2GPlanner::create(const Desc& desc) {
 	middleFTDesc.setLimits(&fLimit[12]);
 	ftGuards.push_back(middleFTDesc.create());
 
+	// set the call back to ahndle ground truth
+	simulateHandlerCallback = [&](const grasp::Cloud::PointSeq& points) {
+		context.write("Simulated callback(): points size %d\n", points.size());
+		collisionPtr->create(rand, points);
+		objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(points));
+	};
+
 	bool ftsensors = !ftSensorSeq.empty();
 	const grasp::Sensor::Map::const_iterator openNIPtr = sensorMap.find("OpenNI+OpenNI");
-	bool simulatedForces = !ftsensors && (openNIPtr == sensorMap.end());
+	const bool simulatedForces = true; // !ftsensors && (openNIPtr == sensorMap.end());
 	armHandForce->setSensorForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws
 		if (!enableForceReading)
 			return;
 
+		context.write("simulatedForces [%s] && !collisionPtr->getPoints().empty() [%s]\n", simulatedForces ? "TRUE" : "FALSE", !collisionPtr->getPoints().empty() ? "TRUE" : "FALSE");
 		if (simulatedForces && !collisionPtr->getPoints().empty()) {
 			for (auto i = 0; i < force.size(); ++i)
 				force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
 
-			golem::Controller::State dflt = manipulator->getController().createState();
-			manipulator->getController().setToDefault(dflt);
-
-			manipulator->getController().lookupState(golem::SEC_TM_REAL_MAX, dflt);
-			dflt.cvel.setToDefault(manipulator->getController().getStateInfo().getJoints());
-			dflt.cacc.setToDefault(manipulator->getController().getStateInfo().getJoints());
-
-			(void)collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(dflt), force, false);
+			golem::Controller::State dflt = grasp::Waypoint::lookup(*controller).state;
+			(void)collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(dflt), force, true);
 		}
 		// read from the state variable (if supported)
 		else {
@@ -253,8 +255,8 @@ bool R2GPlanner::create(const Desc& desc) {
 	armHandForce->setEmergencyModeHandler([=]() {
 		enableForceReading = false;
 		contactOccured = true;
-		armHandForce->getArmCtrl()->setMode(armMode);
-		armHandForce->getHandCtrl()->setMode(handMode, I32(-1));
+		//armHandForce->getArmCtrl()->setMode(armMode);
+		//armHandForce->getHandCtrl()->setMode(handMode);
 	}); // end robot->setEmergencyModeHandler
 
 	uncEnable = desc.uncEnable;
@@ -806,6 +808,8 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 		option("\x0D", "Press <Enter> to accept trajectory...");
 	}
 
+	bool emergencyMode = armHandForce->getHandCtrl()->getMode();
+
 	// go to initial state
 	sendTrajectory(initTrajectory);
 	// wait until the last trajectory segment is sent
@@ -836,6 +840,12 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 			// print every 10th robot state
 			if (i % 10 == 0) {
 				context.write("State #%d (%s)\r", i, enableForceReading ? "Y" : "N");
+
+				if (emergencyMode && i > 50) {
+					armHandForce->getArmCtrl()->setMode(armMode);
+					armHandForce->getHandCtrl()->setMode(handMode);
+					emergencyMode = false;
+				}
 
 				if (grasp::to<Data>(dataCurrentPtr)->actionType != action::GRASP && i > 500) {
 					enableForceReading = expectedCollisions(state);

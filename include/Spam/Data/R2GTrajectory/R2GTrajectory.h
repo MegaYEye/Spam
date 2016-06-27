@@ -382,7 +382,7 @@ public:
 		/** Trajectory duration */
 		golem::Real trjDuration;
 		/** IG Trajectory duration */
-		golem::Real trjIGDuration;
+		golem::Real trjR2GDuration;
 		/** Trajectory idle */
 		golem::Real trjIdle;
 
@@ -439,7 +439,7 @@ public:
 
 			trjExtrapolation = golem::Real(0.0);
 			trjDuration = golem::Real(5.0);
-			trjIGDuration = golem::Real(20.0);
+			trjR2GDuration = golem::Real(20.0);
 			trjIdle = golem::Real(1.0);
 
 			action.clear();
@@ -486,6 +486,7 @@ public:
 
 			grasp::Assert::valid(trjExtrapolation >= golem::REAL_ZERO, ac, "trjExtrapolation < 0");
 			grasp::Assert::valid(trjDuration > golem::REAL_EPS, ac, "trjDuration < eps");
+			grasp::Assert::valid(trjR2GDuration > golem::REAL_EPS, ac, "trjDuration < eps");
 			grasp::Assert::valid(trjIdle >= golem::REAL_ZERO, ac, "trjIdle < 0");
 
 			for (grasp::Mat34Seq::const_iterator i = action.begin(); i != action.end(); ++i)
@@ -594,7 +595,7 @@ protected:
 	/** Trajectory duration */
 	golem::Real trjDuration;
 	/** IG Trajectory duration */
-	golem::Real trjIGDuration;
+	golem::Real trjR2GDuration;
 
 	/** Trajectory idle */
 	golem::Real trjIdle;

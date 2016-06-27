@@ -196,6 +196,7 @@ void spam::PosePlanner::Data::createRender() {
 				if (owner->showMeanPoseOnly) // this parameter can be control by outside
 					break;
 			}
+			owner->pHeuristic->renderHypothesisCollisionBounds(owner->debugRenderer);
 		}
 
 		// show constantly the belief state, if needed
@@ -403,7 +404,7 @@ bool spam::PosePlanner::create(const Desc& desc) {
 	if (!simulateHandler)
 		throw Message(Message::LEVEL_CRIT, "spam::PosePlanner::create(): unknown simulate data handler: %s", desc.simulateHandler.c_str());
 	simulateItem = desc.simulateItem;
-
+	simulateHandlerCallback = nullptr;
 
 	// models
 	modelMap.clear();
@@ -486,8 +487,12 @@ bool spam::PosePlanner::create(const Desc& desc) {
 		}
 		catch (const Message& msg) { context.write("%s", msg.what()); }
 		to<Data>(dataCurrentPtr)->simulateObjectPose = simulatedPoints;
+		if (simulateHandlerCallback)
+			simulateHandlerCallback(simulatedPoints);
 
 		beliefStatePtr->second->set(pBelief.get());
+		// needed to determine when to expect collisions
+		pHeuristic->setHypothesisBounds();
 		RenderBlock renderBlock(*this);
 		{
 			Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, beliefStatePtr->first, to<Data>(dataCurrentPtr)->getView());
@@ -632,7 +637,11 @@ grasp::data::Item::Map::iterator spam::PosePlanner::estimatePose(Data::Mode mode
 			}
 			else
 				grasp::Cloud::transform(grasp::to<Data>(dataCurrentPtr)->queryTransform, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
-			
+	
+			// callback to handle groundtruth, if any
+			if (simulateHandlerCallback)
+				simulateHandlerCallback(grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
+
 			grasp::data::Item::Ptr simPtr = ptr->second->clone();
 			// save simulated point cloud
 			RenderBlock renderBlock(*this);

@@ -335,7 +335,7 @@ void spam::data::HandlerR2GTrajectory::Desc::load(golem::Context& context, const
 	golem::XMLData("extrapolation", trjExtrapolation, pxmlcontext->getContextFirst("profile"), false);
 	golem::XMLData("duration", trjDuration, pxmlcontext->getContextFirst("profile"), false);
 	try {
-		golem::XMLData("ig_duration", trjIGDuration, pxmlcontext->getContextFirst("profile"), false);
+		golem::XMLData("r2g_duration", trjR2GDuration, pxmlcontext->getContextFirst("profile"), false);
 	}
 	catch (const golem::MsgXMLParser&) {}
 	golem::XMLData("idle", trjIdle, pxmlcontext->getContextFirst("profile"), false);
@@ -407,7 +407,7 @@ void spam::data::HandlerR2GTrajectory::create(const Desc& desc) {
 
 	trjExtrapolation = desc.trjExtrapolation;
 	trjDuration = desc.trjDuration;
-	trjIGDuration = desc.trjIGDuration;
+	trjR2GDuration = desc.trjR2GDuration;
 
 	trjIdle = desc.trjIdle;
 
@@ -737,9 +737,9 @@ void spam::data::HandlerR2GTrajectory::createTrajectory(const ItemR2GTrajectory&
 
 	// Enable IG for reach-to-grasp trajectories and collisions with target object
 	this->pHeuristic->enableUnc = false;
-	this->pHeuristic->setPointCloudCollision(true);
+	this->pHeuristic->setPointCloudCollision(false);
 
-	Real trjDuration = this->trjDuration;
+	Real trjDuration = this->trjR2GDuration;
 
 	// make trajectory
 	golem::Controller::State::Seq states = grasp::Waypoint::make(item.getWaypoints(), false), commands = grasp::Waypoint::make(item.getWaypoints(), true);
@@ -747,7 +747,7 @@ void spam::data::HandlerR2GTrajectory::createTrajectory(const ItemR2GTrajectory&
 	if (getUICallback() && getUICallback()->hasInputEnabled()) {
 		Menu menu(context, *getUICallback());
 		//inverse = menu.option("FI", "Use (F)orward/(I)nverse trajectory... ") == 'I';
-		menu.readNumber("Trajectory duration: ", trjIGDuration);
+		menu.readNumber("Trajectory duration: ", trjDuration);
 	}
 
 	grasp::RBDist err = planner->findGlobalTrajectory(begin, commands.front(), trajectory, trajectory.begin());
@@ -778,7 +778,7 @@ void spam::data::HandlerR2GTrajectory::createIGTrajectory(const ItemR2GTrajector
 	this->pHeuristic->enableUnc = true;
 	this->pHeuristic->setPointCloudCollision(true);
 
-	Real trjDuration = this->trjDuration;
+	Real trjDuration = this->trjR2GDuration;
 
 	// make trajectory
 	golem::Controller::State::Seq states = grasp::Waypoint::make(item.getWaypoints(), false), commands = grasp::Waypoint::make(item.getWaypoints(), true);
@@ -786,7 +786,7 @@ void spam::data::HandlerR2GTrajectory::createIGTrajectory(const ItemR2GTrajector
 	if (getUICallback() && getUICallback()->hasInputEnabled()) {
 		Menu menu(context, *getUICallback());
 		//inverse = menu.option("FI", "Use (F)orward/(I)nverse trajectory... ") == 'I';
-		menu.readNumber("Trajectory duration: ", trjIGDuration);
+		menu.readNumber("Trajectory duration: ", trjDuration);
 	}
 
 	grasp::RBDist err = planner->findGlobalTrajectory(begin, commands.front(), trajectory, trajectory.begin());

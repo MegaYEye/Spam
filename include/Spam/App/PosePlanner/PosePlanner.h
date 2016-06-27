@@ -61,6 +61,9 @@ namespace spam {
 /** SPAM Pose planner. */
 class PosePlanner : public grasp::Player {
 public:
+	/** Callback to handle a ground truth pose of the object */
+	typedef std::function<void(const grasp::Cloud::PointSeq&)> SimulateHandler;
+
 	/** Action types */
 	enum  action {
 		NONE_ACTION = 0,
@@ -378,6 +381,8 @@ protected:
 	/** Appereance for point clouds: debug point clouds */
 	grasp::Cloud::Appearance hypothesisAppearance, meanposeAppeareance, groundtruthAppearance;
 	bool showMeanPoseOnly, showSimulate;
+	/** Callback to handle simulate ground truth */
+	SimulateHandler simulateHandlerCallback;
 
 	/** Force to draw the belief state */
 	bool drawBeliefState;
