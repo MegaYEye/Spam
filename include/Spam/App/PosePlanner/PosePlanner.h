@@ -511,8 +511,8 @@ protected:
 		golem::Controller::State dflt = controller->createState();
 		controller->setToDefault(dflt);
 
-		controller->lookupCommand(time, dflt);
-		//controller->lookupState(time, dflt);
+		//controller->lookupCommand(time, dflt);
+		controller->lookupState(time, dflt);
 		dflt.cvel.setToDefault(info.getJoints());
 		dflt.cacc.setToDefault(info.getJoints());
 		return dflt;

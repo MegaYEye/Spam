@@ -192,18 +192,17 @@ bool R2GPlanner::create(const Desc& desc) {
 
 	bool ftsensors = !ftSensorSeq.empty();
 	const grasp::Sensor::Map::const_iterator openNIPtr = sensorMap.find("OpenNI+OpenNI");
-	const bool simulatedForces = true; // !ftsensors && (openNIPtr == sensorMap.end());
+	enableSimContact = !ftsensors && (openNIPtr == sensorMap.end());
 	armHandForce->setSensorForceReader([&](const golem::Controller::State& state, grasp::RealSeq& force) { // throws
 		if (!enableForceReading)
 			return;
 
-		context.write("simulatedForces [%s] && !collisionPtr->getPoints().empty() [%s]\n", simulatedForces ? "TRUE" : "FALSE", !collisionPtr->getPoints().empty() ? "TRUE" : "FALSE");
-		if (simulatedForces && !collisionPtr->getPoints().empty()) {
+		if (enableSimContact && !collisionPtr->getPoints().empty()) {
 			for (auto i = 0; i < force.size(); ++i)
 				force[i] = collisionPtr->getFTBaseSensor().ftMedian[i] + (2 * rand.nextUniform<Real>()*collisionPtr->getFTBaseSensor().ftStd[i] - collisionPtr->getFTBaseSensor().ftStd[i]);
 
-			golem::Controller::State dflt = grasp::Waypoint::lookup(*controller).state;
-			(void)collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(dflt), force, true);
+			golem::Controller::State dflt = lookupState();
+			(void)collisionPtr->simulateFT(debugRenderer, desc.objCollisionDescPtr->flannDesc, rand, manipulator->getConfig(dflt), force, false);
 		}
 		// read from the state variable (if supported)
 		else {
@@ -216,7 +215,6 @@ bool R2GPlanner::create(const Desc& desc) {
 					data.wrench.w.getColumn3(&force[k + 3]);
 					k += 6;
 				}
-
 			}
 			else {
 				const ptrdiff_t forceOffset = armHandForce->getHand()->getReservedOffset(Controller::RESERVED_INDEX_FORCE_TORQUE);
