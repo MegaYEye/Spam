@@ -185,7 +185,6 @@ bool R2GPlanner::create(const Desc& desc) {
 
 	// set the call back to ahndle ground truth
 	simulateHandlerCallback = [&](const grasp::Cloud::PointSeq& points) {
-		context.write("Simulated callback(): points size %d\n", points.size());
 		collisionPtr->create(rand, points);
 		objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(points));
 	};
@@ -253,8 +252,8 @@ bool R2GPlanner::create(const Desc& desc) {
 	armHandForce->setEmergencyModeHandler([=]() {
 		enableForceReading = false;
 		contactOccured = true;
-		//armHandForce->getArmCtrl()->setMode(armMode);
-		//armHandForce->getHandCtrl()->setMode(handMode);
+		armHandForce->getArmCtrl()->setMode(armMode);
+		armHandForce->getHandCtrl()->setMode(handMode);
 	}); // end robot->setEmergencyModeHandler
 
 	uncEnable = desc.uncEnable;
@@ -1299,7 +1298,7 @@ void R2GPlanner::updateAndResample(Data::Map::iterator dataPtr) {
 	to<Data>(dataCurrentPtr)->createRender();
 
 
-	context.write("resample (wheel algorithm)...\n");
+//	context.write("resample (wheel algorithm)...\n");
 	// resampling (wheel algorithm)
 //	pBelief->createResample(/*manipulator->getConfig(getStateFrom(w))*/);
 //	size_t N = pBelief->getSamples().size(), index = rand.nextUniform<size_t>(0, N);

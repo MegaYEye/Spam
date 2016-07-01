@@ -181,6 +181,7 @@ void spam::PosePlanner::Data::createRender() {
 	Player::Data::createRender();
 	{
 		golem::CriticalSectionWrapper csw(owner->getCS());
+		owner->debugRenderer.reset();
 
 		// draw ground truth
 		if (!simulateObjectPose.empty() && owner->showSimulate) {
@@ -461,7 +462,6 @@ bool spam::PosePlanner::create(const Desc& desc) {
 		context.write("Loading belief state %s\n", currentBeliefItem.c_str());
 
 		//retrieve model point cloud
-		Cloud::PointSeq modelPoints;
 		try {
 			modelPoints = getPoints(dataCurrentPtr, beliefStatePtr->second->getModelItem());
 		}
@@ -470,7 +470,7 @@ bool spam::PosePlanner::create(const Desc& desc) {
 		// set belief state
 		pBelief->set(beliefStatePtr->second->getPoses(), beliefStatePtr->second->getHypotheses(), beliefStatePtr->second->getModelFrame(), modelPoints);
 		to<Data>(dataCurrentPtr)->modelPoints = modelPoints;
-		to<Data>(dataCurrentPtr)->modelFrame = beliefStatePtr->second->getModelFrame();
+		to<Data>(dataCurrentPtr)->modelFrame = modelFrame = beliefStatePtr->second->getModelFrame();
 		to<Data>(dataCurrentPtr)->queryTransform = beliefStatePtr->second->getQueryTransform();
 		// retrieve query point cloud
 		Cloud::PointSeq queryPoints;
@@ -489,6 +489,8 @@ bool spam::PosePlanner::create(const Desc& desc) {
 		to<Data>(dataCurrentPtr)->simulateObjectPose = simulatedPoints;
 		if (simulateHandlerCallback)
 			simulateHandlerCallback(simulatedPoints);
+		// for debug compute the query frame of ground truth
+		pBelief->realPose = beliefStatePtr->second->getQueryTransformSim()*modelFrame;
 
 		beliefStatePtr->second->set(pBelief.get());
 		// needed to determine when to expect collisions
@@ -647,6 +649,7 @@ grasp::data::Item::Map::iterator spam::PosePlanner::estimatePose(Data::Mode mode
 			RenderBlock renderBlock(*this);
 			{
 				golem::CriticalSectionWrapper cswData(scene.getCS());
+				to<Data>(dataCurrentPtr)->itemMap.erase(simulateItem);
 				grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(simulateItem, simPtr));
 				if (ptr == to<Data>(dataCurrentPtr)->itemMap.end())
 					throw Message(Message::LEVEL_ERROR, "PosePlanner::estimatePose(): Does not find %s.", simulateItem.c_str());

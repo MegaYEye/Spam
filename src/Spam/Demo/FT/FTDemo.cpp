@@ -84,15 +84,6 @@ void FTDemo::create(const Desc& desc) {
 	}));
 
 	menuCmdMap.insert(std::make_pair("ZX", [=]() {
-		// debug mode
-		const bool stopAtBreakPoint = option("YN", "Debug mode (Y/N)...") == 'Y';
-		const auto breakPoint = [=](const char* str) {
-			if (!stopAtBreakPoint && str)
-				context.write("%s....\n", str);
-			if (stopAtBreakPoint && str ? option("YN", makeString("%s: Continue (Y/N)...", str).c_str()) != 'Y' : waitKey(5) == 27)
-				throw Cancel("Demo cancelled");
-		};
-
 		// setup initial variables
 		const Controller::State home = grasp::Waypoint::lookup(*controller).command;
 
@@ -160,7 +151,6 @@ void FTDemo::create(const Desc& desc) {
 		bool grasped = false;
 
 		// command keys
-		std::string loadBeliefCmd("BL");
 		std::string createModelCmd("PM");
 		std::string createQueryCmd("PQ");
 		std::string itemTransCmd("IT");
@@ -172,30 +162,22 @@ void FTDemo::create(const Desc& desc) {
 		//--------------------------------------------------------------------//
 		// CREATE A MODEL POINT CLOUD
 		//--------------------------------------------------------------------//
-		if (stopAtBreakPoint) {
-			readString("Enter object name: ", object);
-			// item name
-			readNumber("Enter iteration: ", iteration);
-		}
-		else 
-			object = "debug";
+		object = "debug";
+		readString("Enter object name: ", object);
+		// item name
+		readNumber("Enter iteration: ", iteration);
 		
-		const int loadbelief = stopAtBreakPoint ? option("YN", "Load a belief state? (Y/N)") : 'Y';
-		if (loadbelief == 'Y')
-			executeCmd(loadBeliefCmd);
-		else {
-			// create a model for the object
-			context.write("Create a model...\n");
-			for (; to<Data>(dataCurrentPtr)->modelPoints.empty();)
-				executeCmd(createModelCmd); // move the robot to the home pose after scanning
-		}//reset();
+		// create a model for the object
+		context.write("Create a model...\n");
+		for (; to<Data>(dataCurrentPtr)->modelPoints.empty();)
+			executeCmd(createModelCmd); // move the robot to the home pose after scanning
 
 		//--------------------------------------------------------------------//
 		// CREATE A PREDICTIVE MODEL FOR THE GRASP
 		//--------------------------------------------------------------------//
 		// create a grasp
 		context.write("Create a predictive contact model for the grasp [%s]...\n", modelGraspItem.c_str());
-		const int createModel = stopAtBreakPoint ? option("YN", "Create a new contact model? (Y/N)") : 'N';
+		const int createModel = option("YN", "Create a new contact model? (Y/N)");
 		if (createModel == 'Y') {
 			dataItemLabel = modelGraspItem;
 			executeCmd(itemTransCmd);
@@ -252,12 +234,6 @@ void FTDemo::create(const Desc& desc) {
 					dataMap.erase(dataPath);
 					dataCurrentPtr = dataMap.insert(dataMap.begin(), Data::Map::value_type(dataTrialPath, dataTrial));
 					setCurrentDataPtr(dataCurrentPtr);
-					// reset current view on the belief state
-					currentBeliefPtr = to<Data>(dataCurrentPtr)->itemMap.find(currentBeliefItem);
-					if (currentBeliefPtr != to<Data>(dataCurrentPtr)->itemMap.end())
-						Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, currentBeliefPtr, to<Data>(dataCurrentPtr)->getView());
-					else
-						context.write("Belief Item is not available\n");
 				}
 				// force to draw the belief state
 				drawBeliefState = true;
@@ -269,15 +245,9 @@ void FTDemo::create(const Desc& desc) {
 				// create a query for the object
 				context.write("Create a query...\n");
 				//resetDataPtr(dataCurrentPtr);
-				if (loadbelief == 'N')
-					for (; to<Data>(dataCurrentPtr)->queryPoints.empty();)
-						executeCmd(createQueryCmd);
-				// set the simulated object
-				//if (!to<Data>(dataCurrentPtr)->simulateObjectPose.empty()) {
-				//	//sensorBundlePtr->getCollisionPtr()->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
-				//	collisionPtr->create(rand, grasp::to<Data>(dataCurrentPtr)->simulateObjectPose);
-				//	objectPointCloudPtr.reset(new grasp::Cloud::PointSeq(grasp::to<Data>(dataCurrentPtr)->simulateObjectPose));
-				//}
+				for (; to<Data>(dataCurrentPtr)->queryPoints.empty();)
+					executeCmd(createQueryCmd);
+
 				reset(); // move the robot to the home pose after scanning
 
 				// write results
@@ -287,32 +257,41 @@ void FTDemo::create(const Desc& desc) {
 				// CREATE A PREDICTIVE QUERY FOR THE GRASP
 				//--------------------------------------------------------------------//
 				// generate features
-				grasp::data::Transform* transform = is<grasp::data::Transform>(queryGraspHandler);
-				if (!transform)
-					throw Message(Message::LEVEL_ERROR, "Handler %s does not support Transform interface", queryGraspHandler->getID().c_str());
+				for (;;) {
+					grasp::data::Transform* transform = is<grasp::data::Transform>(queryGraspHandler);
+					if (!transform)
+						throw Message(Message::LEVEL_ERROR, "Handler %s does not support Transform interface", queryGraspHandler->getID().c_str());
 
 
-				grasp::data::Item::List list;
-				grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(modelGraspItem);
-				if (ptr == to<Data>(dataCurrentPtr)->itemMap.end())
-					throw Message(Message::LEVEL_ERROR, "R2GPlanner::estimatePose(): Does not find %s.", modelGraspItem.c_str());
-				list.insert(list.end(), ptr);
-				
-				// retrieve model point cloud
-				modelPtr = to<Data>(dataCurrentPtr)->itemMap.find(modelItem);
-				if (modelPtr == to<Data>(dataCurrentPtr)->itemMap.end())
-					throw Message(Message::LEVEL_ERROR, "R2GPlanner::estimatePose(): Does not find %s.", modelItem.c_str());
-				list.insert(list.end(), modelPtr); // grasp on model
-				grasp::data::Item::Ptr queryGraspItemPtr = transform->transform(list);
+					grasp::data::Item::List list;
+					grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(modelGraspItem);
+					if (ptr == to<Data>(dataCurrentPtr)->itemMap.end())
+						throw Message(Message::LEVEL_ERROR, "R2GPlanner::estimatePose(): Does not find %s.", modelGraspItem.c_str());
+					list.insert(list.end(), ptr);
 
-				// insert processed object, remove old one
-				RenderBlock renderBlock0(*this);
-				{
-					golem::CriticalSectionWrapper cswData(getCS());
-					to<Data>(dataCurrentPtr)->itemMap.erase(queryGraspItem);
-					queryContactPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(queryGraspItem, queryGraspItemPtr));
-					Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, currentBeliefPtr, to<Data>(dataCurrentPtr)->getView());
-					//Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, queryContactPtr, to<Data>(dataCurrentPtr)->getView());
+					// retrieve model point cloud
+					modelPtr = to<Data>(dataCurrentPtr)->itemMap.find(modelItem);
+					if (modelPtr == to<Data>(dataCurrentPtr)->itemMap.end())
+						throw Message(Message::LEVEL_ERROR, "R2GPlanner::estimatePose(): Does not find %s.", modelItem.c_str());
+					list.insert(list.end(), modelPtr); // grasp on model
+					grasp::data::Item::Ptr queryGraspItemPtr;
+					try {
+						queryGraspItemPtr = transform->transform(list);
+					}
+					catch (const Message& msg) {
+						context.write("%s\n", msg.what());
+						continue; // repeat the cicle until a trajectory is found
+					}
+					// insert processed object, remove old one
+					RenderBlock renderBlock0(*this);
+					{
+						golem::CriticalSectionWrapper cswData(getCS());
+						to<Data>(dataCurrentPtr)->itemMap.erase(queryGraspItem);
+						queryContactPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(queryGraspItem, queryGraspItemPtr));
+						Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, currentBeliefPtr, to<Data>(dataCurrentPtr)->getView());
+						//Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, queryContactPtr, to<Data>(dataCurrentPtr)->getView());
+					}
+					break; // perform the trajectory
 				}
 
 				context.write("Transform: handler %s, inputs %s, %s...\n", queryGraspHandler->getID().c_str(), queryContactPtr->first.c_str(), modelItem.c_str());
@@ -381,7 +360,7 @@ void FTDemo::create(const Desc& desc) {
 						throw Message(Message::LEVEL_ERROR, "Handler %s does not support Transform interface", r2gTrjHandler->getID().c_str());
 
 					// retrive belief state
-					list.clear();
+					grasp::data::Item::List list; // .clear();
 					currentBeliefPtr = to<Data>(dataCurrentPtr)->itemMap.find(currentBeliefItem);
 					if (currentBeliefPtr == to<Data>(dataCurrentPtr)->itemMap.end())
 						throw Message(Message::LEVEL_ERROR, "FTDemo: Does not support belief state handler %s.", currentBeliefItem.c_str());
@@ -432,6 +411,16 @@ void FTDemo::create(const Desc& desc) {
 					else
 						grasped = false;
 
+					// reset the rendered scene
+					RenderBlock renderBlock5(*this);
+					{
+						golem::CriticalSectionWrapper cswData(getCS());
+						if (currentBeliefPtr != to<Data>(dataCurrentPtr)->itemMap.end())
+							Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, currentBeliefPtr, to<Data>(dataCurrentPtr)->getView());
+					}
+					to<Data>(dataCurrentPtr)->createRender();
+
+					// print trial results
 					results = grasp::makeString("%s\t%.6f\t%.6f\t%u\t%u\n", results.c_str(), error.lin, error.ang, grasped ? 1 : 0, iteration);
 					break;
 				}
@@ -461,19 +450,86 @@ void FTDemo::create(const Desc& desc) {
 		context.write("Done!\n");
 	}));
 	menuCmdMap.insert(std::make_pair("ZP", [=]() {
-		grasp::data::Item::Map::const_iterator item = to<Data>(dataCurrentPtr)->getItem<grasp::data::Item::Map::const_iterator>(true);
-		grasp::data::Trajectory* trajectory = is<grasp::data::Trajectory>(item->second.get());
-		if (!trajectory)
-			throw Cancel("Error: no trajectory selected.");
-		// play
-		Controller::State::Seq seq;
-		trajectory->createTrajectory(seq);
-		// select collision object
-		CollisionBounds::Ptr collisionBounds = selectCollisionBounds();
-		// perform
-		perform(dataCurrentPtr->first, item->first, seq);
-		// done!
-		createRender();
+		// debug mode
+		const bool stopAtBreakPoint = option("YN", "Debug mode (Y/N)...") == 'Y';
+		const auto breakPoint = [=](const char* str) {
+			if (!stopAtBreakPoint && str)
+				context.write("%s....\n", str);
+			if (stopAtBreakPoint && str ? option("YN", makeString("%s: Continue (Y/N)...", str).c_str()) != 'Y' : waitKey(5) == 27)
+				throw Cancel("Demo cancelled");
+		};
+
+
+		std::string r2gHandlerItemName = "SpamDataR2GTrajectory+SpamDataR2GTrajectoryDemoR2G";
+		grasp::data::Handler::Map::const_iterator r2gTrjHandlerPtr = handlerMap.find(r2gHandlerItemName);
+		grasp::data::Handler* r2gTrjHandler = r2gTrjHandlerPtr != handlerMap.end() ? r2gTrjHandlerPtr->second.get() : nullptr;
+		if (!r2gTrjHandler)
+			throw Message(Message::LEVEL_CRIT, "spam::PosePlanner::create(): unknown model (scan) data handler: %s", r2gHandlerItemName.c_str());
+
+		// command keys
+		std::string loadBeliefCmd("BL");
+		std::string createModelCmd("PM");
+		std::string createQueryCmd("PQ");
+		std::string itemTransCmd("IT");
+		std::string itemConvCmd("IC");
+
+		// load belief state
+		executeCmd(loadBeliefCmd);
+		// force to draw the belief state
+		drawBeliefState = true;
+		to<Data>(dataCurrentPtr)->createRender();
+
+		// generate grasps on the model item
+		grasp::data::Transform* transform = is<grasp::data::Transform>(queryGraspHandler);
+		if (!transform)
+			throw Message(Message::LEVEL_ERROR, "Handler %s does not support Transform interface", queryGraspHandler->getID().c_str());
+
+		grasp::data::Item::List list;
+		grasp::data::Item::Map::iterator ptr = to<Data>(dataCurrentPtr)->itemMap.find(modelGraspItem);
+		if (ptr == to<Data>(dataCurrentPtr)->itemMap.end())
+			throw Message(Message::LEVEL_ERROR, "R2GPlanner::estimatePose(): Does not find %s.", modelGraspItem.c_str());
+		list.insert(list.end(), ptr);
+
+		// retrieve model point cloud
+		grasp::data::Item::Map::iterator modelPtr = to<Data>(dataCurrentPtr)->itemMap.find(modelItem);
+		if (modelPtr == to<Data>(dataCurrentPtr)->itemMap.end())
+			throw Message(Message::LEVEL_ERROR, "R2GPlanner::estimatePose(): Does not find %s.", modelItem.c_str());
+		list.insert(list.end(), modelPtr); // grasp on model
+		grasp::data::Item::Ptr queryGraspItemPtr = transform->transform(list);
+
+		//// create trajectory
+		//grasp::data::Convert* convert = is<grasp::data::Convert>(queryGraspItemPtr);
+		//if (!convert)
+		//	throw Message(Message::LEVEL_ERROR, "Handler %s does not support Convert interface", queryHandlerTrj->getID().c_str());
+
+		// convert
+		//grasp::data::Item::Map::iterator queryGraspTrj = convert->convert(*queryHandlerTrj);
+		//// insert processed object, remove old one
+		//RenderBlock renderBlock2(*this);
+		//{
+		//	golem::CriticalSectionWrapper cswData(getCS());
+		//	to<Data>(dataCurrentPtr)->itemMap.erase(queryItemTrj);
+		//	queryTrjPtr = to<Data>(dataCurrentPtr)->itemMap.insert(to<Data>(dataCurrentPtr)->itemMap.end(), grasp::data::Item::Map::value_type(queryItemTrj, queryGraspTrj));
+		//	//Data::View::setItem(to<Data>(dataCurrentPtr)->itemMap, queryTrjPtr, to<Data>(dataCurrentPtr)->getView());
+		//}
+		//to<Data>(dataCurrentPtr)->createRender();
+		//context.write("done.\n");
+
+		//context.write("Transform: handler %s, input %s...\n", queryHandlerTrj->getID().c_str(), queryTrjPtr->first.c_str());
+		////spam::data::R2GTrajectory* trajectory = is<spam::data::R2GTrajectory>(queryTrjPtr);
+		//grasp::data::Trajectory* trajectory = is<grasp::data::Trajectory>(queryTrjPtr);
+		//if (!trajectory)
+		//	throw Message(Message::LEVEL_ERROR, "Handler %s does not support Trajectory interface", queryHandlerTrj->getID().c_str());
+		//grasp::Waypoint::Seq inp = trajectory->getWaypoints();
+		//if (inp.size() < 3)
+		//	throw Cancel("Error: the selected trajectory have not at least 3 waypoints.");
+
+		//// set render to show only mean hypothesis and ground truth
+		//resetDataPointers();
+		//to<Data>(dataCurrentPtr)->createRender();
+
+
+
 		context.write("Done!\n");
 	}));
 

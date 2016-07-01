@@ -737,7 +737,7 @@ void spam::data::HandlerR2GTrajectory::createTrajectory(const ItemR2GTrajectory&
 
 	// Enable IG for reach-to-grasp trajectories and collisions with target object
 	this->pHeuristic->enableUnc = false;
-	this->pHeuristic->setPointCloudCollision(false);
+	this->pHeuristic->setPointCloudCollision(true);
 
 	Real trjDuration = this->trjR2GDuration;
 
