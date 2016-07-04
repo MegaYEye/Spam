@@ -85,7 +85,7 @@ void FTDemo::create(const Desc& desc) {
 
 	menuCmdMap.insert(std::make_pair("ZX", [=]() {
 		// setup initial variables
-		const Controller::State home = grasp::Waypoint::lookup(*controller).command;
+		const Controller::State home = lookupState(); // grasp::Waypoint::lookup(*controller).command;
 
 		std::string r2gHandlerItemName = "SpamDataR2GTrajectory+SpamDataR2GTrajectoryDemoR2G";
 		grasp::data::Handler::Map::const_iterator r2gTrjHandlerPtr = handlerMap.find(r2gHandlerItemName);
@@ -385,9 +385,9 @@ void FTDemo::create(const Desc& desc) {
 
 					Controller::State::Seq seq;
 					if (grasp::to<Data>(dataCurrentPtr)->stratType != Strategy::IR3NE)
-						r2gtrajectory->createTrajectory(grasp::Waypoint::lookup(*controller).command, seq);
+						r2gtrajectory->createTrajectory(grasp::Waypoint::lookup(*controller).state, seq);
 					else
-						r2gtrajectory->createIGTrajectory(grasp::Waypoint::lookup(*controller).command, seq);
+						r2gtrajectory->createIGTrajectory(grasp::Waypoint::lookup(*controller).state, seq);
 					
 					// find global trajectory & perform
 					R2GPlanner::perform(dataCurrentPtr->first, actionToString(grasp::to<Data>(dataCurrentPtr)->actionType).c_str(), seq, false);
@@ -395,7 +395,6 @@ void FTDemo::create(const Desc& desc) {
 					if (contactOccured && grasp::to<Data>(dataCurrentPtr)->stratType != Strategy::ELEMENTARY) {
 						contactOccured = false;
 						updateAndResample(dataCurrentPtr);
-						enableForceReading = false;
 						++iteration;
 						continue;
 						//}

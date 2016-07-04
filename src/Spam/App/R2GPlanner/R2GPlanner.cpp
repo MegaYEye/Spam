@@ -758,7 +758,7 @@ void R2GPlanner::perform(const std::string& data, const std::string& item, const
 		throw Message(Message::LEVEL_ERROR, "Player::perform(): At least two waypoints required");
 
 	golem::Controller::State::Seq initTrajectory;
-	findTrajectory(grasp::Waypoint::lookup(*controller).command, &trajectory.front(), nullptr, SEC_TM_REAL_ZERO, initTrajectory);
+	findTrajectory(grasp::Waypoint::lookup(*controller).state, &trajectory.front(), nullptr, SEC_TM_REAL_ZERO, initTrajectory);
 
 	golem::Controller::State::Seq completeTrajectory = initTrajectory;
 	completeTrajectory.insert(completeTrajectory.end(), trajectory.begin(), trajectory.end());
